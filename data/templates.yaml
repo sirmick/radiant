@@ -53,8 +53,14 @@ templates:
       - { var: coup_attempt, transform: win5, prior: 1.0 }        # coup trap
       - { var: leader_military, transform: none, lag: 1, prior: 0.3 }
       - { var: intrastate, transform: lag1, prior: 0.3 }
+      - { var: info_access, transform: z, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "ablation: holdout exp/obs 1.70→1.42, coef −0.73, survives joint fit; user hypothesis 'seize the TV station no longer works'" } }
     sources: ["Powell 2012", "Powell & Thyne 2011", "Gassebner, Gutmann & Voigt 2016"]
     notes: "Powell: military characteristics beat economic ones; wealth and growth 'perform poorly'. Priors reflect that."
+    candidates:                                                    # rival explanations for the post-1990 decline; fit-hazards scores each on the holdout
+      - { id: cold_war, var: cold_war, transform: none, prior: 0, hypothesis: "superpower patronage made coups cheap; ended 1991" }
+      - { id: anticoup_norm, var: anticoup_norm, transform: none, prior: 0, hypothesis: "post-2000 regional anti-coup sanctions raise the cost" }
+      - { id: year_trend, var: year, transform: z, prior: 0, hypothesis: "null: an unexplained secular trend" }
+      - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "urban mass publics make seizures contestable" }
 
   - id: autocratization_onset
     label: Autocratization episode begins
@@ -95,7 +101,10 @@ templates:
       - { var: intrastate, transform: win5, prior: 1.2 }          # conflict trap
       - { var: population, transform: log, prior: 0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
-    missing: [infant_mortality, bad_neighbourhood, state_discrimination]   # PITF's other variables — add when fetched
+    missing: [bad_neighbourhood, state_discrimination]   # PITF's other variables — add when fetched
+    candidates:
+      - { id: infant_mortality, var: infant_mortality, transform: log, prior: 0.5, hypothesis: "PITF: 75th vs 25th percentile = 7x the odds" }
+      - { id: info_access, var: info_access, transform: z, prior: 0, hypothesis: "information access and internal conflict onset" }
     sources: ["Goldstone et al. 2010 (PITF)", "Hegre et al. 2019 (ViEWS)", "Fearon & Laitin 2003"]
 
   - id: mid_force

@@ -1,9 +1,10 @@
 {
  "meta": {
-  "built": "2026-09-06T22:57:29.150Z"
+  "built": "2026-09-06T23:07:18.260Z"
  },
  "fits": {
   "leader_exit": {
+   "ablation": null,
    "status": "fitted",
    "unit": "actor-year",
    "event": "leader_exit",
@@ -128,6 +129,7 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "irregular_exit": {
+   "ablation": null,
    "status": "fitted",
    "unit": "actor-year",
    "event": "leader_exit",
@@ -264,135 +266,213 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "coup_attempt": {
+   "ablation": [
+    {
+     "variant": "base",
+     "n": 2482,
+     "events": 88,
+     "auc_holdout": 0.8796836509788668,
+     "brier_holdout": 0.018169223645923306,
+     "exp_obs_holdout": 1.3473211711436168,
+     "coefs": {}
+    },
+    {
+     "variant": "cold_war",
+     "n": 2482,
+     "events": 88,
+     "auc_holdout": 0.8796836509788668,
+     "brier_holdout": 0.018169223646071847,
+     "exp_obs_holdout": 1.3473211712282032,
+     "coefs": {
+      "cold_war": 0.5695362493059757
+     }
+    },
+    {
+     "variant": "anticoup_norm",
+     "n": 2482,
+     "events": 88,
+     "auc_holdout": 0.8796836509788668,
+     "brier_holdout": 0.018169223645923306,
+     "exp_obs_holdout": 1.3473211711436168,
+     "coefs": {
+      "anticoup_norm": -0.5071640954319043
+     }
+    },
+    {
+     "variant": "year_trend",
+     "n": 2482,
+     "events": 88,
+     "auc_holdout": 0.8827952806949306,
+     "brier_holdout": 0.0179633139753529,
+     "exp_obs_holdout": 0.8446811178676921,
+     "coefs": {
+      "z(year)": -0.32267824337728146
+     }
+    },
+    {
+     "variant": "urban_share",
+     "n": 2080,
+     "events": 70,
+     "auc_holdout": 0.8723583560223,
+     "brier_holdout": 0.018310026288865626,
+     "exp_obs_holdout": 1.3584448730383902,
+     "coefs": {
+      "z(urban_share)": 0.03807123038258242
+     }
+    },
+    {
+     "variant": "all",
+     "n": 2080,
+     "events": 70,
+     "auc_holdout": 0.8678853883054584,
+     "brier_holdout": 0.018245179077476237,
+     "exp_obs_holdout": 0.5690303992577286,
+     "coefs": {
+      "cold_war": 0.14680803645850482,
+      "anticoup_norm": -0.30736528964017357,
+      "z(year)": -0.34893746540835713,
+      "z(urban_share)": 0.07253148464065903
+     }
+    }
+   ],
    "status": "fitted",
    "unit": "actor-year",
    "event": "coup",
-   "n": 2593,
-   "events": 92,
-   "base_rate": 0.03548013883532588,
+   "n": 2482,
+   "events": 88,
+   "base_rate": 0.035455278001611606,
    "window": [
     1950,
     2021
    ],
-   "intercept": -3.551428915099849,
+   "intercept": -3.837009459674995,
    "coefs": {
     "regime=1": {
-     "value": 0.05165932496951182,
+     "value": 0.006688762442248611,
      "prior": 0.2
     },
     "regime=2": {
-     "value": -0.8486446055168303,
+     "value": -0.8266969000094594,
      "prior": -0.2
     },
     "regime=3": {
-     "value": -2.6155039717749053,
+     "value": -2.360576680228809,
      "prior": -1.7
     },
     "z(milper_share)": {
-     "value": -0.09952001294575318,
+     "value": -0.1320869450643445,
      "prior": 0.2
     },
     "z(log_gdp_pc)": {
-     "value": -0.13799692062552793,
+     "value": 0.07863194325987458,
      "prior": -0.5
     },
     "z(gdp_growth)": {
-     "value": -0.20344083652852615,
+     "value": -0.2308369023507605,
      "prior": -0.2
     },
     "win5(coup_attempt)": {
-     "value": 1.8435322910027991,
+     "value": 1.7444018734686662,
      "prior": 1
     },
     "leader_military": {
-     "value": -0.20450438481745173,
+     "value": -0.3061615947295295,
      "prior": 0.3
     },
     "lag1(intrastate)": {
-     "value": 0.38247165439617337,
+     "value": 0.3255016389366532,
      "prior": 0.3
+    },
+    "z(info_access)": {
+     "value": -0.8589567854935101,
+     "prior": -0.5
     }
    },
    "stats": {
     "milper_share": {
-     "mean": 0.010009350575704306,
-     "sd": 0.008951768323284348
+     "mean": 0.009883069555763548,
+     "sd": 0.009019665472081653
     },
     "log_gdp_pc": {
-     "mean": 9.004286878089314,
-     "sd": 0.9760581010821872
+     "mean": 9.021671574588199,
+     "sd": 0.9814232506576361
     },
     "gdp_growth": {
-     "mean": 0.02580062793674527,
-     "sd": 0.05587774543297568
+     "mean": 0.025623273741190767,
+     "sd": 0.05517404437283436
+    },
+    "info_access": {
+     "mean": 0.3297398391673237,
+     "sd": 0.36960329953337895
     }
    },
-   "auc_in": 0.8562705352641552,
-   "brier_in": 0.031162803011214293,
+   "auc_in": 0.8603658768132453,
+   "brier_in": 0.03091771248774018,
    "calibration": [
     {
-     "pred": 0.0016675361798404523,
+     "pred": 0.0004757339232670042,
      "obs": 0,
-     "n": 259
+     "n": 248
     },
     {
-     "pred": 0.0018411231787869963,
+     "pred": 0.0006415606655813338,
      "obs": 0,
-     "n": 259
+     "n": 248
     },
     {
-     "pred": 0.002002377786250369,
+     "pred": 0.0016028841878199605,
      "obs": 0,
-     "n": 259
+     "n": 248
     },
     {
-     "pred": 0.007286379203914509,
-     "obs": 0,
-     "n": 260
+     "pred": 0.00444668946367945,
+     "obs": 0.004032258064516129,
+     "n": 248
     },
     {
-     "pred": 0.018308810450479395,
-     "obs": 0.023166023166023165,
-     "n": 259
+     "pred": 0.015069119035531507,
+     "obs": 0.012048192771084338,
+     "n": 249
     },
     {
-     "pred": 0.024248413530609837,
-     "obs": 0.019305019305019305,
-     "n": 259
+     "pred": 0.02435382296739659,
+     "obs": 0.016129032258064516,
+     "n": 248
     },
     {
-     "pred": 0.02853175244781815,
-     "obs": 0.015384615384615385,
-     "n": 260
+     "pred": 0.03132093802047481,
+     "obs": 0.024193548387096774,
+     "n": 248
     },
     {
-     "pred": 0.03403949892372357,
-     "obs": 0.03474903474903475,
-     "n": 259
+     "pred": 0.03890395745995277,
+     "obs": 0.04838709677419355,
+     "n": 248
     },
     {
-     "pred": 0.05592538841755905,
-     "obs": 0.07335907335907337,
-     "n": 259
+     "pred": 0.05831462223059997,
+     "obs": 0.06451612903225806,
+     "n": 248
     },
     {
-     "pred": 0.18052577505379527,
-     "obs": 0.18846153846153846,
-     "n": 260
+     "pred": 0.17892713875918903,
+     "obs": 0.18473895582329317,
+     "n": 249
     }
    ],
    "holdout": {
     "split": 1986,
-    "n_train": 1702,
-    "n_test": 891,
-    "auc": 0.8753340969835816,
-    "brier": 0.01834467391228802,
-    "base_rate_test": 0.020202020202020204
+    "n_train": 1607,
+    "n_test": 875,
+    "auc": 0.8796836509788668,
+    "brier": 0.018169223645923306,
+    "base_rate_test": 0.02057142857142857
    },
    "fitted": "2026-09-06",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "autocratization_onset": {
+   "ablation": null,
    "status": "fitted",
    "unit": "actor-year",
    "event": "autocratization_onset",
@@ -511,6 +591,7 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "democratization_onset": {
+   "ablation": null,
    "status": "fitted",
    "unit": "actor-year",
    "event": "democratization_onset",
@@ -628,6 +709,51 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "intrastate_onset": {
+   "ablation": [
+    {
+     "variant": "base",
+     "n": 4049,
+     "events": 175,
+     "auc_holdout": 0.8326682829915479,
+     "brier_holdout": 0.04545282377819301,
+     "exp_obs_holdout": 0.506235040631366,
+     "coefs": {}
+    },
+    {
+     "variant": "infant_mortality",
+     "n": 3320,
+     "events": 157,
+     "auc_holdout": 0.8268637135360395,
+     "brier_holdout": 0.046756587062404584,
+     "exp_obs_holdout": 0.48647499490655494,
+     "coefs": {
+      "log(infant_mortality)": 0.31507040285038324
+     }
+    },
+    {
+     "variant": "info_access",
+     "n": 3872,
+     "events": 171,
+     "auc_holdout": 0.8263243167089321,
+     "brier_holdout": 0.04601631512781109,
+     "exp_obs_holdout": 0.45699598749320897,
+     "coefs": {
+      "z(info_access)": 0.0786466971939922
+     }
+    },
+    {
+     "variant": "all",
+     "n": 3247,
+     "events": 153,
+     "auc_holdout": 0.8198348126232742,
+     "brier_holdout": 0.04630079874881071,
+     "exp_obs_holdout": 0.4549635868968929,
+     "coefs": {
+      "log(infant_mortality)": 0.35012684991845383,
+      "z(info_access)": 0.12007102780018851
+     }
+    }
+   ],
    "status": "fitted",
    "unit": "actor-year",
    "event": "intrastate_onset",
@@ -752,6 +878,7 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_force": {
+   "ablation": null,
    "status": "fitted",
    "unit": "dyad-year",
    "event": "mid_force",
@@ -860,6 +987,7 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_war": {
+   "ablation": null,
    "status": "fitted",
    "unit": "dyad-year",
    "event": "mid_war",

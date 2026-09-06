@@ -179,7 +179,25 @@ for (const t of templates) {
     hold = { split, n_train: trainR.length, n_test: testR.length, auc: auc(pH, yH), brier: brier(pH, yH), base_rate_test: mean(yH) };
   }
   const evn = yv.reduce((a, b) => a + b, 0);
+  // ---- ablation: candidates fitted one at a time and all together, scored on the same era holdout
+  let ablation = null;
+  if (t.candidates?.length) {
+    ablation = [];
+    const variants = [['base', []], ...t.candidates.map(c => [c.id, [c]]), ['all', t.candidates]];
+    for (const [name, extra] of variants) {
+      const tv = { ...t, covariates: [...t.covariates, ...extra] };
+      const rowsV = buildActorRows(tv); const trainV = rowsV.filter(r => r.year < split), testV = rowsV.filter(r => r.year >= split);
+      if (trainV.filter(r => r.y).length < 5 || testV.filter(r => r.y).length < 5) { ablation.push({ variant: name, n: rowsV.length, note: 'insufficient events' }); continue; }
+      const statsV = {}; const colsV = encode(tv, rowsV, statsV); const dV = (rs) => rs.map(r => [1, ...colsV.map(c => c.get(r))]);
+      const bV = fitLogistic(dV(trainV), trainV.map(r => r.y), [0, ...colsV.map(c => c.prior)]);
+      const pH = predict(dV(testV), bV), yH = testV.map(r => r.y);
+      const bAll = fitLogistic(dV(rowsV), rowsV.map(r => r.y), [0, ...colsV.map(c => c.prior)]);
+      const predH = pH.reduce((a, b) => a + b, 0), obsH = yH.reduce((a, b) => a + b, 0);
+      ablation.push({ variant: name, n: rowsV.length, events: rowsV.filter(r => r.y).length, auc_holdout: auc(pH, yH), brier_holdout: brier(pH, yH), exp_obs_holdout: predH / Math.max(1, obsH), coefs: Object.fromEntries(extra.map(c => { const nm = colsV.find(x => x.name.includes(c.var))?.name; const j = colsV.findIndex(x => x.name === nm); return [nm, bAll[j + 1]]; })) });
+    }
+  }
   fits[t.id] = {
+    ablation,
     status: 'fitted', unit: t.unit, event: t.event, n: rows.length, events: evn, base_rate: evn / rows.length, window: t.window,
     intercept: beta[0], coefs: Object.fromEntries(cols.map((c, j) => [c.name, { value: beta[j + 1], prior: c.prior }])), stats,
     auc_in: auc(pIn, yv), brier_in: brier(pIn, yv), calibration: calibration(pIn, yv), holdout: hold,
@@ -187,6 +205,7 @@ for (const t of templates) {
   };
   const top = cols.map((c, j) => `${c.name} ${beta[j + 1] >= 0 ? '+' : ''}${beta[j + 1].toFixed(2)}`).join('  ');
   lines.push(`${t.id.padEnd(24)} n=${rows.length} ev=${evn} rate=${(evn / rows.length * 100).toFixed(2)}%  AUC in=${fits[t.id].auc_in?.toFixed(3)} hold=${hold?.auc?.toFixed(3) ?? '—'}(≥${split})\n${''.padEnd(24)} ${top}`);
+  if (ablation) for (const a of ablation) lines.push(`${''.padEnd(24)} ablation ${a.variant.padEnd(16)} ${a.note ?? `n=${a.n} ev=${a.events}  hold AUC ${a.auc_holdout?.toFixed(3)}  brier ${a.brier_holdout?.toFixed(4)}  exp/obs ${a.exp_obs_holdout?.toFixed(2)}  ${Object.entries(a.coefs).map(([k, v]) => `${k} ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join(' ')}`}`);
 }
 writeFileSync('data/fits.json', JSON.stringify({ meta: { built: new Date().toISOString() }, fits }, null, 1));
 console.log(lines.join('\n'));

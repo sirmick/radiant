@@ -118,6 +118,8 @@ export function stepYear(world, rng, opts = {}) {
     if (a.cur.population != null) a.cur.population *= Math.exp(a.popGrowth);
     if (a.cur.tpop != null) a.cur.tpop *= Math.exp(a.popGrowth);
     if (a.cur.leader_age != null) { a.cur.leader_age += 1; a.cur.leader_tenure = (a.cur.leader_tenure ?? 0) + 1; }
+    // information access diffuses as a wave: logistic toward 1, rate from the observed 1990–2020 global trajectory (~0.15/yr), slow before 1985
+    if (a.cur.info_access != null) { const r = y >= 1985 ? 0.15 : 0.03; const x = Math.max(0.02, a.cur.info_access); a.cur.info_access = Math.min(1, x + r * x * (1 - x)); }
     // clear annual flags; decay conflicts
     a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0;
     if (a.cur.intrastate) { a.conflictLeft = (a.conflictLeft ?? 1) - 1; if (a.conflictLeft <= 0) a.cur.intrastate = 0; }

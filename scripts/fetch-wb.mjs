@@ -21,9 +21,14 @@ const IND = {
   'NY.GDP.PETR.RT.ZS': 'oil_rents_gdp',
   'NY.GDP.TOTL.RT.ZS': 'resource_rents_gdp',
   'FP.CPI.TOTL.ZG': 'inflation',
+  'IT.NET.USER.ZS': 'internet_users',
+  'IT.CEL.SETS.P2': 'mobile_subs',
+  'IT.MLT.MAIN.P2': 'fixed_lines',
+  'SP.DYN.IMRT.IN': 'infant_mortality',
+  'SP.URB.TOTL.IN.ZS': 'urban_share',
 };
 for (const [code, name] of Object.entries(IND)) {
-  const url = `https://api.worldbank.org/v2/country/all/indicator/${code}?format=json&per_page=20000&date=2000:2024`;
+  const url = `https://api.worldbank.org/v2/country/all/indicator/${code}?format=json&per_page=20000&date=1960:2024`;
   const r = await fetch(url);
   const [meta, rows] = await r.json();
   const out = {};

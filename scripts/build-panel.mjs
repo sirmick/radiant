@@ -3,7 +3,7 @@
 // OWID energy by source (1800+), OWID coal/oil production, REIGN (leader age/tenure 1950–2021), CoW alliances 3.03,
 // CoW MID 3.02 (1816–2001), UCDP/PRIO 25.1 (1946–2024), hand events (wars with participants).
 // Output: { years: [...], vars: [...], actors: { id: { var: [per-year value|null] } }, sources: {...} }
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/hist.mjs';
 
 const Y0 = 1816, Y1 = 2025, YEARS = Array.from({ length: Y1 - Y0 + 1 }, (_, i) => Y0 + i);
@@ -94,6 +94,26 @@ for (const e of Y('data/history/events.yaml')) {
 }
 sources.at_war = 'data/history/events.yaml (hand-coded interstate wars)';
 
+// ---- World Bank WDI 1960+ (fetched by scripts/fetch-wb.mjs): information access, infant mortality, urbanisation
+{
+  const wb = (name) => JSON.parse(readFileSync(`data/raw/wb/${name}.json`, 'utf8')).data;
+  for (const [name, v] of [['internet_users', 'internet_users'], ['mobile_subs', 'mobile_subs'], ['fixed_lines', 'fixed_lines'], ['infant_mortality', 'infant_mortality'], ['urban_share', 'urban_share']]) {
+    const d = wb(name);
+    for (const [iso, years] of Object.entries(d)) for (const [y, val] of Object.entries(years)) { const id = owid(iso, +y); if (id) put(id, v, +y, +val); }
+    sources[v] = `World Bank WDI (${name})`;
+  }
+  // info_access: share of population with ready access to independent information; internet users, else mobile penetration, else fixed lines (scaled)
+  for (const [id, vars] of Object.entries(panel)) {
+    vars.info_access = YEARS.map((y, i) => {
+      const net = vars.internet_users?.[i], mob = vars.mobile_subs?.[i], fix = vars.fixed_lines?.[i];
+      const parts = [net != null ? net / 100 : null, mob != null ? Math.min(1, mob / 100) : null, fix != null ? Math.min(1, fix / 40) : null].filter(x => x != null);
+      if (!parts.length) return y < 1960 ? 0.02 : null;   // pre-1960: radio era, near-zero two-way information access
+      return Math.max(...parts);
+    });
+  }
+  sources.info_access = 'derived: max(internet users/100, mobile subs/100, fixed lines/40); 0.02 before 1960';
+}
+
 // ---- flag variables: null means "no event" inside the source's coverage window, so fill 0 for live years
 const FLAGS = { at_war: [1816, 2026], intrastate: [1946, 2024], interstate_ucdp: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], coup_attempt: [1950, 2021], coup_success: [1950, 2021], defence_pacts: [1816, 2000] };
 for (const [id, vars] of Object.entries(panel)) {
@@ -113,6 +133,9 @@ for (const [id, vars] of Object.entries(panel)) {
   }
   vars.great_power = YEARS.map(y => { const gp = a?.great_power; if (!gp) return 0; for (let i = 0; i < gp.length; i += 2) if (y >= gp[i] && (gp[i + 1] == null || y < gp[i + 1])) return 1; return 0; });
   vars.live = YEARS.map(y => (a && isLive(a, y) ? 1 : 0));
+  vars.year = YEARS.map(y => y);
+  vars.cold_war = YEARS.map(y => (y <= 1991 ? 1 : 0));
+  vars.anticoup_norm = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
 }
 
 // ---- write
