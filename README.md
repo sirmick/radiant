@@ -6,7 +6,9 @@ Origin: `docs/session-transcript.md` (the conversation that produced the scenari
 
 ## Status
 
-**M1 — data viewer + map** (done): scrubbable map 2000→2066 coloured by any registry variable, hatched territories, corridor/chokepoint overlay, per-actor data panel with sources and sparklines, hazard/claim/territory/corridor browsers. No engine yet — years past the data are held at the last value; the Monte Carlo replaces that.
+**M1 — data viewer + map** (done): scrubbable map 2000→2066 coloured by any registry variable, hatched territories, corridor/chokepoint overlay, per-actor data panel with sources and sparklines, hazard/claim/territory/corridor browsers.
+
+**M2a — historical pipeline + backtest** (done, offline in node): actor-year panel 1816–2025 (CoW NMC/MID/alliances, Maddison, V-Dem, UCDP, REIGN, OWID energy), 3,600 dated events, 8 generic hazard templates fitted with era holdout, an annual-step engine, and a rolling-origin backtest (as-of 1870…2000, +20y). See `docs/system.md` for what the first backtest found. Not yet wired to the map.
 
 ## Run
 
@@ -16,6 +18,15 @@ npm install
 node scripts/build-geo.mjs      # Natural Earth -> data/geo/world.topo.json
 node scripts/build-world.mjs    # data/*.yaml + data/raw -> public/world.json (validates, prints hazard 10-yr probabilities)
 npm run dev                     # http://localhost:5173
+```
+
+Historical pipeline + backtest (all offline once `data/raw/hist` is fetched — see `scripts/fetch-raw.sh` and the URLs in `scripts/build-panel.mjs`):
+
+```
+node scripts/build-panel.mjs      # -> data/panel.json   actor-year covariates 1816–2025
+node scripts/build-events.mjs     # -> data/events.json  dated events (machine + data/history/events.yaml)
+node scripts/fit-hazards.mjs      # -> data/fits.json    MAP logistic per template, holdout AUC, calibration
+node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 100   # -> scores/
 ```
 
 Screenshot check: `npx vite preview` then `node scripts/shot.mjs http://localhost:4173/ out.png [actor:IRN] [2050]`.
@@ -30,6 +41,12 @@ data/corridors.yaml   16 chokepoints + land corridors with load_bearing_for
 data/hazards.yaml     32 competing-risk hazards: base_q, covariates, reference class, fires
 data/claims.yaml      25 resolvable claims with priors and model queries
 data/overrides.yaml   hand values where datasets are silent (Taiwan, North Korea)
+data/templates.yaml   generic hazard templates (no country names): event, unit, covariates, literature priors
+data/waves.yaml       capability waves 1825→ with introduction/saturation/retirement and first-sovereign years
+data/history/         historical actor lifecycles (Prussia→DEU, Ottoman→TUR…) and hand-coded events 1816–2026
+data/panel.json, events.json, fits.json   built artefacts of the historical pipeline
+src/engine/core.js    annual-step engine: createWorld(asOf) → stepYear → runEnsemble
+scores/               backtest outputs
 data/raw/             fetched datasets (World Bank, UN WPP 2024, OWID/Energy Institute, IEA EV, Natural Earth)
 scripts/              fetch + build + screenshot
 src/lib/Map.svelte    D3-geo map; src/lib/Panel.svelte data panel; src/lib/data.js value-at-year + scales

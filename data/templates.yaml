@@ -1,0 +1,181 @@
+# Hazard templates — generic sub-models, instantiated per actor (or dyad) at build time. No country names here.
+# Each template: the event it predicts (kind in data/events.json), the unit (actor-year | dyad-year), the panel covariates
+# it reads (data/panel.json vars, transformed), a literature prior for the coefficients, and where the fitted values go.
+# scripts/fit-hazards.mjs fits a logistic model per template on the panel and writes data/fits.json with coefficients,
+# era-holdout scores and calibration. The engine reads fits.json; the literature prior is used when the fit is absent or n is tiny.
+# Covariate transforms: z (standardise on the fitting sample), log, lag1 (previous year), cat (one-hot), win5 (any in last 5 years).
+# Sources per template are the papers the covariate set comes from; coefficients are priors, not results.
+
+templates:
+  - id: leader_exit
+    label: Leader loses office (any exit)
+    unit: actor-year
+    event: leader_exit
+    window: [1950, 2021]           # REIGN coverage
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.3, 2: 0.9, 3: 1.1 } }     # elections make exits routine
+      - { var: leader_tenure, transform: log, lag: 1, prior: -0.2 }
+      - { var: leader_age, transform: z, lag: 1, prior: 0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: gdp_growth, transform: z, prior: -0.2 }
+      - { var: coup_attempt, transform: win5, prior: 0.4 }
+    outcomes: { regular: null, irregular: null }   # split fitted from events.irregular
+    sources: [Archigos/Goemans-Gleditsch-Chiozza 2009, "REIGN (Bell 2016)", "Svolik 2012"]
+
+  - id: irregular_exit
+    label: Irregular leader exit (coup, revolt, assassination, foreign removal)
+    unit: actor-year
+    event: leader_exit
+    event_filter: { irregular: 1 }
+    window: [1950, 2021]
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.2, 2: -0.8, 3: -1.8 } }
+      - { var: leader_tenure, transform: log, lag: 1, prior: -0.3 }
+      - { var: leader_age, transform: z, lag: 1, prior: 0.1 }
+      - { var: at_war, transform: lag1, prior: 0.6 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: log_gdp_pc, transform: z, prior: -0.4 }
+      - { var: coup_attempt, transform: win5, prior: 0.8 }
+      - { var: leader_irregular_entry, transform: none, lag: 1, prior: 0.5 }
+    sources: ["Goldstone et al. 2010 (PITF)", "Powell 2012", "Svolik 2012"]
+    notes: "This is the generic form of russia_transition / iran_consolidation / china_transition. Outcome mix (managed / hardliner / fragmentation) is a per-actor parameter in actors.yaml, not fitted."
+
+  - id: coup_attempt
+    label: Coup attempt
+    unit: actor-year
+    event: coup
+    window: [1950, 2021]
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0.2, 1: 0.4, 2: 0, 3: -1.5 } }
+      - { var: milper_share, transform: z, prior: 0.2 }          # milper / population
+      - { var: log_gdp_pc, transform: z, prior: -0.5 }
+      - { var: gdp_growth, transform: z, prior: -0.2 }
+      - { var: coup_attempt, transform: win5, prior: 1.0 }        # coup trap
+      - { var: leader_military, transform: none, lag: 1, prior: 0.3 }
+      - { var: intrastate, transform: lag1, prior: 0.3 }
+    sources: ["Powell 2012", "Powell & Thyne 2011", "Gassebner, Gutmann & Voigt 2016"]
+    notes: "Powell: military characteristics beat economic ones; wealth and growth 'perform poorly'. Priors reflect that."
+
+  - id: autocratization_onset
+    label: Autocratization episode begins
+    unit: actor-year
+    event: autocratization_onset
+    window: [1900, 2024]
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: -0.5, 1: 0.6, 2: 0.4, 3: -0.6 } }   # partial regimes are least stable
+      - { var: polyarchy, transform: z, prior: 0 }
+      - { var: log_gdp_pc, transform: z, prior: -0.5 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: intrastate, transform: lag1, prior: 0.4 }
+    sources: ["Maerz et al. 2024 (ERT)", "Przeworski et al. 2000", "Goldstone et al. 2010"]
+
+  - id: democratization_onset
+    label: Democratization episode begins
+    unit: actor-year
+    event: democratization_onset
+    window: [1900, 2024]
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.5, 2: 0.3, 3: -2 } }
+      - { var: log_gdp_pc, transform: z, prior: 0.3 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }             # crises open windows
+      - { var: at_war, transform: lag1, prior: 0.2 }
+      - { var: leader_exit_recent, transform: win5, prior: 0.5 }
+    sources: ["Boix & Stokes 2003", "Maerz et al. 2024 (ERT)", "Geddes, Wright & Frantz 2014"]
+
+  - id: intrastate_onset
+    label: Internal armed conflict onset (≥25 deaths)
+    unit: actor-year
+    event: intrastate_onset
+    window: [1946, 2024]
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.7, 2: 0.4, 3: -1.0 } }   # PITF: partial democracy ~30x full autocracy
+      - { var: log_gdp_pc, transform: z, prior: -0.6 }
+      - { var: gdp_growth, transform: z, prior: -0.2 }
+      - { var: intrastate, transform: win5, prior: 1.2 }          # conflict trap
+      - { var: population, transform: log, prior: 0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+    missing: [infant_mortality, bad_neighbourhood, state_discrimination]   # PITF's other variables — add when fetched
+    sources: ["Goldstone et al. 2010 (PITF)", "Hegre et al. 2019 (ViEWS)", "Fearon & Laitin 2003"]
+
+  - id: mid_force
+    label: Dyadic militarized dispute with use of force
+    unit: dyad-year
+    event: mid_force
+    window: [1816, 2001]
+    covariates:
+      - { var: allied, transform: none, prior: -0.6 }              # any defence pact between the pair
+      - { var: joint_democracy, transform: none, prior: -0.8 }     # both regime >= 2
+      - { var: cap_ratio, transform: log, prior: -0.3 }            # cinc_max / cinc_min: preponderance pacifies
+      - { var: major_power_any, transform: none, prior: 0.8 }
+      - { var: mid_force, transform: win5, prior: 1.5 }            # rivalry / recurrence
+      - { var: at_war_any, transform: lag1, prior: 0.5 }
+    missing: [contiguity]                                          # CoW Direct Contiguity not yet fetched — Bremer's #1 predictor
+    sources: ["Bremer 1992", "Oneal & Russett 1999", "Jones, Bremer & Singer 1996"]
+    notes: "Dyad sample: all pairs of live actors with cinc data. Corridor dampener and chokepoint stakes enter as extra dyad covariates once corridors carry historical status."
+
+  - id: mid_war
+    label: Dyadic war (hostility level 5)
+    unit: dyad-year
+    event: mid_war
+    window: [1816, 2001]
+    covariates:
+      - { var: allied, transform: none, prior: -0.5 }
+      - { var: joint_democracy, transform: none, prior: -1.0 }
+      - { var: cap_ratio, transform: log, prior: -0.4 }
+      - { var: major_power_any, transform: none, prior: 1.0 }
+      - { var: mid_force, transform: win5, prior: 2.0 }
+      - { var: nuclear_both, transform: none, prior: -1.5 }        # after 1945; the nuclear ceiling
+    sources: ["Bremer 1992", "Bueno de Mesquita & Lalman 1992"]
+
+  - id: weaponization
+    label: Nuclear latency to weapon
+    unit: actor-year
+    event: nuclear
+    event_filter: { status: weapon }
+    window: [1945, 2026]
+    sample: latent_only                                            # only actor-years with latent capability
+    covariates:
+      - { var: mid_force, transform: win5, prior: 0.8 }            # security threat
+      - { var: nuclear_ally, transform: none, prior: -1.2 }        # defence pact with a nuclear state substitutes
+      - { var: log_gdp_pc, transform: z, prior: 0.3 }
+      - { var: regime, transform: cat, prior: { 0: 0.3, 1: 0.2, 2: 0, 3: -0.3 } }
+      - { var: struck_program, transform: win5, prior: 0.5 }       # Osirak/Al Kibar/2025: ambiguous sign — the whole Iran argument
+    sources: ["Jo & Gartzke 2007", "Singh & Way 2004", "Fuhrmann & Tkach 2015"]
+    notes: "n ≈ 10 weaponizations over ~600 latent actor-years. Fit is a prior update, not a regression; report the posterior rate with its interval."
+
+  - id: chokepoint_status
+    label: Chokepoint status transition
+    unit: chokepoint-year
+    event: chokepoint
+    window: [1869, 2026]
+    states: [open, contested, closed]
+    covariates:
+      - { var: adjacent_war, transform: none, prior: 2.5 }         # a transit state at war
+      - { var: adjacent_intrastate, transform: none, prior: 1.0 }
+      - { var: nonstate_littoral, transform: none, prior: 1.5 }    # a Houthi-type actor on the shore
+    sources: ["hand events; too few for a fit — rates by state pair with a Gamma prior"]
+
+  - id: corridor_status
+    label: Corridor advances (planned→building→built) or is cut
+    unit: corridor-year
+    event: corridor
+    window: [1869, 2026]
+    covariates:
+      - { var: transit_at_war_any, transform: none, prior: -2.0 }
+      - { var: transit_gdp_growth_mean, transform: z, prior: 0.4 }
+      - { var: sponsor_great_power, transform: none, prior: 0.8 }
+    sources: ["hand events"]
+
+  - id: sovereign_default
+    label: Sovereign default or restructuring
+    unit: actor-year
+    event: default
+    window: [1816, 2024]
+    covariates:
+      - { var: gdp_growth, transform: z, prior: -0.5 }
+      - { var: at_war, transform: lag1, prior: 0.6 }
+      - { var: regime_change, transform: win5, prior: 0.5 }
+    missing: [external_debt_gdp, reserves_gdp, current_account, real_rate]   # Reinhart–Rogoff / BoC–BoE database not yet fetched
+    sources: ["Manasse & Roubini 2005", "Reinhart & Rogoff 2009", "Bank of Canada–Bank of England sovereign default database"]
+    status: candidate                                              # no events yet in events.json

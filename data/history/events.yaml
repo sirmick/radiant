@@ -1,0 +1,136 @@
+# Hand-coded canonical events, 1816–2026. Machine-generated events (leader exits, coups, regime episodes) come from
+# scripts/build-events.mjs; this file holds what the datasets don't: wars with participants, chokepoint/corridor status
+# changes, capability firsts, and 2022–2026 events past the datasets' end. Merged into data/events.compiled.yaml.
+# kind: war | chokepoint | corridor | territory | capability | regime | leader | nuclear | economic | alliance
+# Dates are years (fractional for quarters where it matters). Every entry is a scoring target and a refit observation.
+
+# ---------------------------------------------------------------- interstate wars (CoW-style, ≥1000 battle deaths)
+- { kind: war, id: crimean, start: 1853.8, end: 1856.2, sides: [[RUS], [GBR, FRA, OTTOMAN, ITA]], notes: "Sardinia for ITA" }
+- { kind: war, id: austro_prussian, start: 1866.5, end: 1866.6, sides: [[PRUSSIA, ITA], [AUT_HUN]] }
+- { kind: war, id: franco_prussian, start: 1870.6, end: 1871.1, sides: [[PRUSSIA], [FRA]], notes: "Rail-mobilisation war; produces DEU" }
+- { kind: war, id: russo_turkish_1877, start: 1877.3, end: 1878.2, sides: [[RUS, ROU, SRB], [OTTOMAN]] }
+- { kind: war, id: sino_japanese_1894, start: 1894.6, end: 1895.3, sides: [[JPN], [CHN]] }
+- { kind: war, id: spanish_american, start: 1898.3, end: 1898.6, sides: [[USA], [ESP]] }
+- { kind: war, id: russo_japanese, start: 1904.1, end: 1905.7, sides: [[JPN], [RUS]], notes: "Trans-Siberian single-track logistics decided it — corridor capacity as a war variable" }
+- { kind: war, id: italo_turkish, start: 1911.7, end: 1912.8, sides: [[ITA], [OTTOMAN]] }
+- { kind: war, id: balkan_1, start: 1912.8, end: 1913.4, sides: [[SRB, BGR, GRC], [OTTOMAN]] }
+- { kind: war, id: balkan_2, start: 1913.5, end: 1913.6, sides: [[SRB, GRC, ROU, OTTOMAN], [BGR]] }
+- { kind: war, id: ww1, start: 1914.6, end: 1918.9, sides: [[FRA, GBR, RUS, ITA, JPN, USA, SRB, ROU, GRC, BEL], [DEU, AUT_HUN, OTTOMAN, BGR]] }
+- { kind: war, id: polish_soviet, start: 1919.2, end: 1920.8, sides: [[POL], [RUS]] }
+- { kind: war, id: greco_turkish, start: 1919.4, end: 1922.8, sides: [[GRC], [TUR]] }
+- { kind: war, id: chaco, start: 1932.5, end: 1935.5, sides: [[PRY], [BOL]] }
+- { kind: war, id: italo_ethiopian, start: 1935.8, end: 1936.4, sides: [[ITA], [ETH]] }
+- { kind: war, id: sino_japanese_1937, start: 1937.5, end: 1945.6, sides: [[JPN], [CHN]] }
+- { kind: war, id: ww2, start: 1939.7, end: 1945.6, sides: [[GBR, FRA, RUS, USA, CHN, CAN, AUS, NZL, ZAF, POL, GRC, NLD, BEL, NOR, BRA], [DEU, ITA, JPN, HUN, ROU, BGR, FIN]] }
+- { kind: war, id: korean, start: 1950.5, end: 1953.6, sides: [[KOR, USA, GBR, TUR, CAN, AUS], [PRK, CHN]] }
+- { kind: war, id: suez_1956, start: 1956.8, end: 1956.9, sides: [[ISR, GBR, FRA], [EGY]] }
+- { kind: war, id: sino_indian, start: 1962.8, end: 1962.9, sides: [[CHN], [IND]] }
+- { kind: war, id: vietnam, start: 1965.2, end: 1975.3, sides: [[USA, KOR, AUS, THA], [VNM]] }
+- { kind: war, id: indo_pak_1965, start: 1965.6, end: 1965.7, sides: [[IND], [PAK]] }
+- { kind: war, id: six_day, start: 1967.4, end: 1967.5, sides: [[ISR], [EGY, SYR, JOR]] }
+- { kind: war, id: indo_pak_1971, start: 1971.9, end: 1971.95, sides: [[IND], [PAK]] }
+- { kind: war, id: yom_kippur, start: 1973.8, end: 1973.8, sides: [[EGY, SYR], [ISR]] }
+- { kind: war, id: sino_vietnamese, start: 1979.1, end: 1979.2, sides: [[CHN], [VNM]] }
+- { kind: war, id: iran_iraq, start: 1980.7, end: 1988.6, sides: [[IRQ], [IRN]], notes: "Tanker war 1984-88: Hormuz contested" }
+- { kind: war, id: falklands, start: 1982.3, end: 1982.5, sides: [[GBR], [ARG]] }
+- { kind: war, id: gulf_1991, start: 1991.0, end: 1991.2, sides: [[USA, GBR, FRA, SAU, EGY, SYR], [IRQ]] }
+- { kind: war, id: kargil, start: 1999.4, end: 1999.6, sides: [[IND], [PAK]] }
+- { kind: war, id: iraq_2003, start: 2003.2, end: 2003.4, sides: [[USA, GBR, AUS], [IRQ]] }
+- { kind: war, id: russo_georgian, start: 2008.6, end: 2008.6, sides: [[RUS], [GEO]] }
+- { kind: war, id: russo_ukrainian, start: 2022.15, end: null, sides: [[RUS], [UKR]], notes: "Donbas 2014 as a MID; full invasion Feb 2022" }
+- { kind: war, id: israel_iran_2025, start: 2025.45, end: 2025.5, sides: [[ISR, USA], [IRN]], notes: "12-day war, June 2025" }
+- { kind: war, id: israel_iran_2026, start: 2026.15, end: null, sides: [[USA, ISR], [IRN]], notes: "Feb 28 2026 onward; Khamenei killed; Hormuz closed" }
+
+# ---------------------------------------------------------------- chokepoint status
+- { kind: chokepoint, id: suez, year: 1869.9, status: open, notes: "Opens; Cape route displaced for Europe–Asia" }
+- { kind: chokepoint, id: suez, year: 1956.8, status: closed }
+- { kind: chokepoint, id: suez, year: 1957.3, status: open }
+- { kind: chokepoint, id: suez, year: 1967.4, status: closed, notes: "Closed 8 years" }
+- { kind: chokepoint, id: suez, year: 1975.4, status: open }
+- { kind: chokepoint, id: suez, year: 2023.9, status: contested, notes: "Houthi campaign halves traffic" }
+- { kind: chokepoint, id: panama, year: 1914.6, status: open }
+- { kind: chokepoint, id: kiel, year: 1895.5, status: open }
+- { kind: chokepoint, id: bosphorus, year: 1841, status: open, notes: "London Straits Convention: closed to warships" }
+- { kind: chokepoint, id: bosphorus, year: 1914.8, status: closed, notes: "Ottoman entry into WW1 seals Russia's grain exit" }
+- { kind: chokepoint, id: bosphorus, year: 1918.8, status: open }
+- { kind: chokepoint, id: bosphorus, year: 1936.5, status: open, notes: "Montreux" }
+- { kind: chokepoint, id: hormuz, year: 1984, status: contested, notes: "Tanker war" }
+- { kind: chokepoint, id: hormuz, year: 1988.6, status: open }
+- { kind: chokepoint, id: hormuz, year: 2026.2, status: closed }
+- { kind: chokepoint, id: bab_al_mandab, year: 2023.9, status: contested }
+- { kind: chokepoint, id: malacca, year: 1942.1, status: closed, notes: "Japanese occupation" }
+- { kind: chokepoint, id: malacca, year: 1945.7, status: open }
+- { kind: chokepoint, id: taiwan_strait, year: 1996.2, status: contested, notes: "Missile crisis" }
+- { kind: chokepoint, id: taiwan_strait, year: 1996.4, status: open }
+
+# ---------------------------------------------------------------- corridors (rail / canal / pipeline completions)
+- { kind: corridor, id: us_transcontinental, year: 1869.4, status: built, transits: [USA] }
+- { kind: corridor, id: canadian_pacific, year: 1885.9, status: built, transits: [CAN], notes: "Built to hold British Columbia — rail as state-making" }
+- { kind: corridor, id: trans_siberian, year: 1904.5, status: built, transits: [RUS], notes: "Single track at the Russo-Japanese war; double-tracked 1916" }
+- { kind: corridor, id: berlin_baghdad, year: 1903, status: building, transits: [DEU, AUT_HUN, OTTOMAN] }
+- { kind: corridor, id: berlin_baghdad, year: 1940.5, status: built, transits: [TUR, IRQ], notes: "Completed after the empires that fought over it were gone. The falsifier for the corridor-dampener: raised UK–DEU tension 1903-14" }
+- { kind: corridor, id: hejaz_railway, year: 1908.7, status: built, transits: [OTTOMAN] }
+- { kind: corridor, id: hejaz_railway, year: 1917, status: closed, notes: "Arab Revolt sabotage — first modern rail-cutting campaign" }
+- { kind: corridor, id: cape_to_cairo, year: 1900, status: planned, notes: "Never built; the counterfactual corridor" }
+- { kind: corridor, id: baku_batumi_pipeline, year: 1906, status: built, transits: [RUS] }
+- { kind: corridor, id: kirkuk_haifa_pipeline, year: 1935, status: built, transits: [IRQ, JOR, ISR] }
+- { kind: corridor, id: kirkuk_haifa_pipeline, year: 1948.4, status: closed }
+- { kind: corridor, id: tapline, year: 1950, status: built, transits: [SAU, JOR, SYR, LBN] }
+- { kind: corridor, id: tapline, year: 1976, status: closed }
+- { kind: corridor, id: druzhba_pipeline, year: 1964, status: built, transits: [RUS, UKR, POL, DDR] }
+- { kind: corridor, id: btc_pipeline, year: 2006.4, status: built, transits: [AZE, GEO, TUR], notes: "First post-Soviet corridor that bypasses Russia and Iran" }
+- { kind: corridor, id: nord_stream, year: 2011.9, status: built, transits: [RUS, DEU] }
+- { kind: corridor, id: nord_stream, year: 2022.7, status: closed }
+- { kind: corridor, id: power_of_siberia, year: 2019.9, status: built, transits: [RUS, CHN] }
+- { kind: corridor, id: middle_corridor, year: 2017.8, status: built, transits: [CHN, KAZ, AZE, GEO, TUR], notes: "BTK railway opens" }
+
+# ---------------------------------------------------------------- capability firsts and losses (backtest targets for waves)
+- { kind: capability, wave: steel, actor: DEU, year: 1893, event: overtakes, target: GBR }
+- { kind: capability, wave: steel, actor: USA, year: 1890, event: overtakes, target: GBR }
+- { kind: capability, wave: semiconductors, actor: JPN, year: 1986, event: overtakes, target: USA, notes: "DRAM" }
+- { kind: capability, wave: semiconductors, actor: KOR, year: 1998, event: overtakes, target: JPN, notes: "DRAM" }
+- { kind: capability, wave: solar_battery, actor: CHN, year: 2012, event: overtakes, target: DEU, notes: "PV" }
+- { kind: capability, wave: nuclear, actor: ZAF, year: 1991, event: relinquishes }
+- { kind: capability, wave: nuclear, actor: UKR, year: 1994, event: relinquishes, notes: "Budapest — the reference case every latent state now cites" }
+
+# ---------------------------------------------------------------- nuclear
+- { kind: nuclear, actor: USA, year: 1945.5, status: weapon }
+- { kind: nuclear, actor: RUS, year: 1949.6, status: weapon }
+- { kind: nuclear, actor: GBR, year: 1952.8, status: weapon }
+- { kind: nuclear, actor: FRA, year: 1960.1, status: weapon }
+- { kind: nuclear, actor: CHN, year: 1964.8, status: weapon }
+- { kind: nuclear, actor: ISR, year: 1967, status: weapon, notes: "Assessed" }
+- { kind: nuclear, actor: IND, year: 1974.4, status: weapon }
+- { kind: nuclear, actor: ZAF, year: 1979, status: weapon }
+- { kind: nuclear, actor: ZAF, year: 1991, status: none }
+- { kind: nuclear, actor: PAK, year: 1998.4, status: weapon }
+- { kind: nuclear, actor: PRK, year: 2006.8, status: weapon }
+- { kind: nuclear, actor: IRQ, year: 1981.4, status: latent, notes: "Osirak struck — program set back, later abandoned" }
+- { kind: nuclear, actor: SYR, year: 2007.7, status: none, notes: "Al Kibar struck" }
+- { kind: nuclear, actor: IRN, year: 2025.5, status: latent, notes: "Fordow/Natanz/Isfahan struck; HEU unaccounted" }
+
+# ---------------------------------------------------------------- hegemonic / systemic markers
+- { kind: economic, id: sterling_to_dollar, year: 1944.5, notes: "Bretton Woods: reserve currency transition completes" }
+- { kind: economic, id: opec_embargo, year: 1973.8 }
+- { kind: economic, id: gfc, year: 2008.7 }
+- { kind: economic, id: covid, year: 2020.2 }
+- { kind: alliance, id: nato_founded, year: 1949.3, members: [USA, CAN, GBR, FRA, ITA, NLD, BEL, DNK, NOR, PRT] }
+- { kind: alliance, id: warsaw_pact, year: 1955.4, retired: 1991.5 }
+- { kind: alliance, id: anglo_japanese, year: 1902.1, retired: 1923, members: [GBR, JPN] }
+- { kind: alliance, id: entente_cordiale, year: 1904.3, members: [GBR, FRA] }
+- { kind: alliance, id: triple_alliance, year: 1882.4, retired: 1915.4, members: [DEU, AUT_HUN, ITA] }
+- { kind: alliance, id: franco_russian, year: 1894, retired: 1917, members: [FRA, RUS] }
+- { kind: alliance, id: aukus, year: 2021.7, members: [AUS, GBR, USA] }
+- { kind: alliance, id: saudi_pakistan_defence, year: 2025.7, members: [SAU, PAK] }
+- { kind: alliance, id: safe_canada, year: 2026.4, members: [CAN], notes: "First non-EU member of the EU SAFE fund" }
+
+# ---------------------------------------------------------------- 2022–2026 tail (past the datasets' end; scoring targets from launch)
+- { kind: regime, actor: SYR, year: 2024.93, event: state_collapse, notes: "Assad falls" }
+- { kind: leader, actor: SYR, year: 2024.93, event: irregular_exit }
+- { kind: leader, actor: IRN, year: 2026.2, event: irregular_exit, notes: "Khamenei killed" }
+- { kind: leader, actor: USA, year: 2025.05, event: regular_exit }
+- { kind: territory, id: golan_buffer_2025, year: 2024.95, controller: ISR, status: buffer }
+- { kind: territory, id: nagorno_karabakh, year: 2023.7, controller: AZE, status: frozen }
+- { kind: territory, id: crimea, year: 2014.2, controller: RUS, status: occupied }
+- { kind: territory, id: donbas, year: 2014.3, controller: RUS, status: contested_active }
+- { kind: territory, id: ukraine_south_occupied, year: 2022.2, controller: RUS, status: contested_active }

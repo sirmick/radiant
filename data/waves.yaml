@@ -1,0 +1,149 @@
+# Capability waves — the generic form of the capability layer.
+# Every capability in variables.yaml (cap_*) belongs to a wave. A wave has an introduction year (first sovereign producer),
+# a diffusion profile the backtest fits, and a saturation rule after which the capability stops discriminating between actors.
+# Historical waves exist so the diffusion rule can be tested on 150 years of catch-up rather than asserted for the current one.
+# Levels per actor per year: N none, I import (uses it, doesn't make it), S sovereign (makes it at scale).
+# Sources: Bairoch industrialisation levels; Mitchell International Historical Statistics; OWID energy; hand-coded first-sovereign years (estimate).
+
+waves:
+  - id: steam_rail
+    label: Steam power and railways
+    introduced: 1825          # Stockton–Darlington
+    first_sovereign: GBR
+    diffusion: { median_years_to_S: 25, spread: 15 }     # years from I to S for a follower at 1900-level income; fitted
+    saturates: 1900           # every industrial state sovereign; stops discriminating
+    retired: 1960             # displaced by diesel/electric traction as a *capability*; rail km as infrastructure lives on in corridors
+    sovereign_by: { GBR: 1830, USA: 1840, FRA: 1845, DEU: 1845, BEL: 1840, AUT: 1850, RUS: 1870, JPN: 1895, ITA: 1870, ESP: 1880, SWE: 1875, CAN: 1880, IND: 1900, CHN: 1930, BRA: 1900, TUR: 1930 }
+    notes: "The reference wave: Britain's 15-year lead, German/American catch-up by 1850, Japan by 1895 after Meiji. Rail km is the infrastructure counterpart in corridors."
+
+  - id: telegraph_cable
+    label: Telegraph and submarine cable
+    introduced: 1844
+    first_sovereign: GBR
+    diffusion: { median_years_to_S: 15, spread: 10 }
+    saturates: 1880
+    retired: 1930
+    sovereign_by: { GBR: 1850, USA: 1850, FRA: 1855, DEU: 1855, RUS: 1865, JPN: 1880, ITA: 1865 }
+    notes: "First ISR/comms chokepoint: British cable monopoly ~1900 is the Starlink of its day. The satellite/constellation wave is its descendant."
+
+  - id: steel
+    label: Bessemer/open-hearth steel at scale
+    introduced: 1856
+    first_sovereign: GBR
+    diffusion: { median_years_to_S: 20, spread: 10 }
+    saturates: 1920
+    retired: null
+    sovereign_by: { GBR: 1860, USA: 1870, DEU: 1870, FRA: 1875, BEL: 1875, RUS: 1890, JPN: 1905, ITA: 1905, CAN: 1910, IND: 1915, CHN: 1955, KOR: 1975, BRA: 1950, TUR: 1940, AUS: 1920 }
+    notes: "Germany passes Britain in steel ~1893, the US ~1890: the classic 'catch-up then overtake' the model must reproduce."
+
+  - id: electricity
+    label: Electrical generation and grids
+    introduced: 1882
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 20, spread: 12 }
+    saturates: 1960
+    retired: null
+    sovereign_by: { USA: 1885, GBR: 1885, DEU: 1885, FRA: 1890, JPN: 1900, RUS: 1925, ITA: 1900, SWE: 1900, CAN: 1900, CHN: 1955, IND: 1950, KOR: 1965, BRA: 1950, TUR: 1950, AUS: 1920 }
+
+  - id: oil_ice
+    label: Oil refining and internal combustion
+    introduced: 1885
+    first_sovereign: DEU
+    diffusion: { median_years_to_S: 25, spread: 12 }
+    saturates: 1970
+    retired: 2050              # the EV wave displaces it as a capability; refining stays as cap_refining until then
+    sovereign_by: { DEU: 1890, FRA: 1895, USA: 1900, GBR: 1900, ITA: 1910, JPN: 1930, RUS: 1930, SWE: 1930, CAN: 1920, KOR: 1975, CHN: 1960, IND: 1960, BRA: 1960, TUR: 1970, IRN: 1915, SAU: 1945, AUS: 1930 }
+    notes: "Rentier-state creation wave. Iran 1908, Saudi 1938: the fiscal_breakeven variable is born here."
+
+  - id: aviation
+    label: Military and civil aviation
+    introduced: 1903
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 15, spread: 10 }
+    saturates: 1950
+    retired: 2040              # the autonomy wave ends manned air supremacy as a capability
+    sovereign_by: { USA: 1910, FRA: 1910, GBR: 1912, DEU: 1912, ITA: 1913, RUS: 1915, JPN: 1925, SWE: 1940, CAN: 1940, CHN: 1960, IND: 1965, ISR: 1975, BRA: 1975, KOR: 2005, TUR: 2020, IRN: 2000 }
+
+  - id: radio_radar
+    label: Radio, radar, electronics
+    introduced: 1900
+    first_sovereign: GBR
+    diffusion: { median_years_to_S: 15, spread: 10 }
+    saturates: 1960
+    retired: null
+    sovereign_by: { GBR: 1905, USA: 1905, DEU: 1905, FRA: 1910, JPN: 1930, RUS: 1935, ITA: 1930, SWE: 1945, NLD: 1935, CAN: 1945, ISR: 1970, CHN: 1965, IND: 1975, KOR: 1985, TWN: 1985 }
+
+  - id: nuclear
+    label: Nuclear fission (weapons and fuel cycle)
+    introduced: 1945
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 30, spread: 20 }
+    saturates: null            # never saturates — deliberately restricted diffusion
+    retired: null
+    maps_to: [cap_nukes, cap_latency]
+    sovereign_by: { USA: 1945, RUS: 1949, GBR: 1952, FRA: 1960, CHN: 1964, ISR: 1967, IND: 1974, ZAF: 1979, PAK: 1998, PRK: 2006 }
+    notes: "The one wave where the model's diffusion rule is *fought* by the system (NPT, export controls, strikes). Test: does the latency→weapon hazard reproduce this list and not more?"
+
+  - id: semiconductors
+    label: Semiconductors and computing
+    introduced: 1959
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 20, spread: 12 }
+    saturates: null
+    retired: null
+    maps_to: [cap_logic, cap_memory, cap_euv, cap_chem, cap_packaging, cap_power_semis]
+    sovereign_by: { USA: 1960, JPN: 1975, DEU: 1975, NLD: 1985, KOR: 1990, TWN: 1990, CHN: 2015, SGP: 1995, ISR: 1990, FRA: 1980, GBR: 1980 }
+    notes: "Sub-capabilities split off as the wave matured; the current cap_* entries are its leaves. Japan passed the US in DRAM 1986 and lost it to Korea by 1998: another overtake to reproduce."
+
+  - id: space
+    label: Orbital launch and satellites
+    introduced: 1957
+    first_sovereign: RUS
+    diffusion: { median_years_to_S: 25, spread: 15 }
+    saturates: null
+    retired: null
+    maps_to: [cap_launch, cap_leo_isr, cap_pnt]
+    sovereign_by: { RUS: 1957, USA: 1958, FRA: 1965, JPN: 1970, CHN: 1970, GBR: 1971, IND: 1980, ISR: 1988, IRN: 2009, KOR: 2013, PRK: 2012, NZL: 2018 }
+
+  - id: internet
+    label: Internet and mobile
+    introduced: 1990
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 10, spread: 5 }
+    saturates: 2015
+    retired: null
+    sovereign_by: { USA: 1992, GBR: 1995, DEU: 1995, JPN: 1995, KOR: 2000, CHN: 2005, IND: 2010, ISR: 1998, SWE: 1996, FIN: 1996 }
+
+  - id: solar_battery
+    label: Solar PV, batteries, EVs
+    introduced: 2005
+    first_sovereign: JPN
+    diffusion: { median_years_to_S: 12, spread: 6 }
+    saturates: 2045
+    retired: null
+    maps_to: [cap_inverters, cap_rail_hvdc]
+    sovereign_by: { JPN: 2005, DEU: 2008, CHN: 2010, KOR: 2012, USA: 2015 }
+    notes: "The wave the transcript's whole energy argument rides on. China's dominance here is the oil_ice wave's Standard Oil moment. ev_share is its diffusion variable."
+
+  - id: autonomy_ai
+    label: Autonomous systems and frontier AI
+    introduced: 2015
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 8, spread: 4 }
+    saturates: null
+    retired: null
+    maps_to: [cap_ai_compute, cap_strike, cap_usv, cap_de]
+    sovereign_by: { USA: 2015, CHN: 2017, GBR: 2018, ISR: 2018, TUR: 2020, UKR: 2023, IRN: 2020, RUS: 2022 }
+    notes: "Commodity drones are this wave's cheap end; frontier compute its expensive end. They diffuse at very different speeds — hence separate cap_ entries."
+
+  - id: quantum
+    label: Quantum computing and post-quantum transition
+    introduced: 2024
+    first_sovereign: null
+    diffusion: { median_years_to_S: 15, spread: 8 }
+    saturates: null
+    retired: null
+    maps_to: [cap_quantum]
+    sovereign_by: {}
+    lifecycle: candidate       # no history; wired to hazards only via crqc
+    notes: "The 'new factor' case. Enters as candidate; the crqc hazard is its only coupling until there's evidence."

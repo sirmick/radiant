@@ -1,0 +1,72 @@
+# Historical actor set — actors have lifecycles too.
+# id: model id (ISO3 of the modern successor where one exists; else a historical tag).
+# introduced/retired: years the entity exists as an actor in the model (system membership, roughly CoW/GW dates).
+# successor: id inheriting territory/state on retirement. gw: Gleditsch-Ward code (CShapes, REIGN uses CoW ccode which mostly matches).
+# owid: entity code in OWID/Maddison files (modern-borders series stand in for predecessors; flagged in `series_note`).
+# great_power: years in the CoW major-power list (drives the 'major power' dyad term).
+# Modern actors from data/actors.yaml are merged on top of this at build; entries here add lifecycle + codes.
+
+- { id: GBR, name: United Kingdom, introduced: 1816, gw: 200, owid: GBR, great_power: [1816, null] }
+- { id: FRA, name: France, introduced: 1816, gw: 220, owid: FRA, great_power: [1816, null] }
+- { id: PRUSSIA, name: Prussia, introduced: 1816, retired: 1871, successor: DEU, gw: 255, owid: DEU, great_power: [1816, 1871], series_note: "OWID Germany series used" }
+- { id: DEU, name: Germany, introduced: 1871, gw: 255, owid: DEU, great_power: [1871, 1945, 1991, null], notes: "1949-90 split: model keeps DEU as West Germany (gw 260) and adds DDR" }
+- { id: DDR, name: East Germany, introduced: 1949, retired: 1990, successor: DEU, gw: 265, owid: null }
+- { id: AUT_HUN, name: Austria-Hungary, introduced: 1816, retired: 1918, successor: AUT, gw: 300, owid: AUT, great_power: [1816, 1918], series_note: "OWID Austria series understates the empire" }
+- { id: AUT, name: Austria, introduced: 1918, gw: 305, owid: AUT }
+- { id: HUN, name: Hungary, introduced: 1918, gw: 310, owid: HUN }
+- { id: RUS, name: Russia / USSR, introduced: 1816, gw: 365, owid: RUS, great_power: [1816, 1917, 1922, null], notes: "USSR 1922-91 kept under RUS; successor states introduced 1991" }
+- { id: ITA, name: Italy, introduced: 1861, gw: 325, owid: ITA, great_power: [1860, 1943] }
+- { id: ESP, name: Spain, introduced: 1816, gw: 230, owid: ESP }
+- { id: PRT, name: Portugal, introduced: 1816, gw: 235, owid: PRT }
+- { id: NLD, name: Netherlands, introduced: 1816, gw: 210, owid: NLD }
+- { id: BEL, name: Belgium, introduced: 1830, gw: 211, owid: BEL }
+- { id: CHE, name: Switzerland, introduced: 1816, gw: 225, owid: CHE }
+- { id: SWE, name: Sweden, introduced: 1816, gw: 380, owid: SWE }
+- { id: NOR, name: Norway, introduced: 1905, gw: 385, owid: NOR }
+- { id: DNK, name: Denmark, introduced: 1816, gw: 390, owid: DNK }
+- { id: FIN, name: Finland, introduced: 1917, gw: 375, owid: FIN }
+- { id: POL, name: Poland, introduced: 1918, gw: 290, owid: POL }
+- { id: GRC, name: Greece, introduced: 1828, gw: 350, owid: GRC }
+- { id: ROU, name: Romania, introduced: 1878, gw: 360, owid: ROU }
+- { id: BGR, name: Bulgaria, introduced: 1908, gw: 355, owid: BGR }
+- { id: SRB, name: Serbia / Yugoslavia, introduced: 1878, gw: 345, owid: SRB, notes: "Yugoslavia 1918-92 under SRB" }
+- { id: UKR, name: Ukraine, introduced: 1991, gw: 369, owid: UKR }
+- { id: OTTOMAN, name: Ottoman Empire, introduced: 1816, retired: 1922, successor: TUR, gw: 640, owid: TUR, series_note: "OWID Turkey series used" }
+- { id: TUR, name: Turkey, introduced: 1922, gw: 640, owid: TUR }
+- { id: IRN, name: Persia / Iran, introduced: 1816, gw: 630, owid: IRN }
+- { id: EGY, name: Egypt, introduced: 1922, gw: 651, owid: EGY, notes: "Khedivate/British protectorate before; Suez matters from 1869 regardless — corridors don't need an actor" }
+- { id: IRQ, name: Iraq, introduced: 1932, gw: 645, owid: IRQ }
+- { id: SAU, name: Saudi Arabia, introduced: 1932, gw: 670, owid: SAU }
+- { id: SYR, name: Syria, introduced: 1946, gw: 652, owid: SYR }
+- { id: JOR, name: Jordan, introduced: 1946, gw: 663, owid: JOR }
+- { id: ISR, name: Israel, introduced: 1948, gw: 666, owid: ISR }
+- { id: ARE, name: United Arab Emirates, introduced: 1971, gw: 696, owid: ARE }
+- { id: QAT, name: Qatar, introduced: 1971, gw: 694, owid: QAT }
+- { id: USA, name: United States, introduced: 1816, gw: 2, owid: USA, great_power: [1898, null] }
+- { id: CAN, name: Canada, introduced: 1867, gw: 20, owid: CAN, notes: "Dominion 1867; GW system 1920. Model uses 1867 for the CPR/rail era" }
+- { id: MEX, name: Mexico, introduced: 1821, gw: 70, owid: MEX }
+- { id: BRA, name: Brazil, introduced: 1822, gw: 140, owid: BRA }
+- { id: ARG, name: Argentina, introduced: 1816, gw: 160, owid: ARG }
+- { id: CHL, name: Chile, introduced: 1818, gw: 155, owid: CHL }
+- { id: CHN, name: China, introduced: 1816, gw: 710, owid: CHN, great_power: [1950, null], notes: "Qing → ROC 1912 → PRC 1949 under one id; regime series carries the transitions" }
+- { id: JPN, name: Japan, introduced: 1816, gw: 740, owid: JPN, great_power: [1895, 1945, 1991, null] }
+- { id: KOREA, name: Korea (Joseon), introduced: 1816, retired: 1910, successor: KOR, gw: 730, owid: KOR }
+- { id: KOR, name: South Korea, introduced: 1948, gw: 732, owid: KOR }
+- { id: PRK, name: North Korea, introduced: 1948, gw: 731, owid: PRK }
+- { id: TWN, name: Taiwan, introduced: 1949, gw: 713, owid: TWN }
+- { id: IND, name: India, introduced: 1947, gw: 750, owid: IND, notes: "British India pre-1947 is a GBR dependency; rail km and steel enter via corridors/waves, not as an actor" }
+- { id: PAK, name: Pakistan, introduced: 1947, gw: 770, owid: PAK }
+- { id: IDN, name: Indonesia, introduced: 1949, gw: 850, owid: IDN }
+- { id: VNM, name: Vietnam, introduced: 1954, gw: 816, owid: VNM }
+- { id: THA, name: Thailand / Siam, introduced: 1816, gw: 800, owid: THA }
+- { id: PHL, name: Philippines, introduced: 1946, gw: 840, owid: PHL }
+- { id: MYS, name: Malaysia, introduced: 1957, gw: 820, owid: MYS }
+- { id: SGP, name: Singapore, introduced: 1965, gw: 830, owid: SGP }
+- { id: AUS, name: Australia, introduced: 1901, gw: 900, owid: AUS }
+- { id: NZL, name: New Zealand, introduced: 1907, gw: 920, owid: NZL }
+- { id: ZAF, name: South Africa, introduced: 1910, gw: 560, owid: ZAF }
+- { id: ETH, name: Ethiopia, introduced: 1855, gw: 530, owid: ETH }
+- { id: NGA, name: Nigeria, introduced: 1960, gw: 475, owid: NGA }
+- { id: KAZ, name: Kazakhstan, introduced: 1991, gw: 705, owid: KAZ }
+- { id: AZE, name: Azerbaijan, introduced: 1991, gw: 373, owid: AZE }
+- { id: ARM, name: Armenia, introduced: 1991, gw: 371, owid: ARM }
