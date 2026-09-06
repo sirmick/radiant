@@ -1,0 +1,17 @@
+# Hand overrides for actors the fetched datasets don't cover (Taiwan, North Korea) or get wrong.
+# { variable_id: { ISO3: value } }. Applied after fallbacks, source-tagged 'override'. Values are 2024/25 estimates.
+gdp_ppp: { TWN: 1.85e12, PRK: 4.0e10 }
+gdp_mer: { TWN: 8.0e11, PRK: 3.0e10 }
+trade_gdp: { TWN: 1.2, PRK: 0.15, NGA: 0.3 }
+current_account_gdp: { TWN: 0.14, PRK: 0.0 }
+inflation: { TWN: 0.02, PRK: 0.1 }
+resource_rents_gdp: { TWN: 0.0, PRK: 0.05 }
+oil_rents_gdp: { TWN: 0.0, PRK: 0.0 }
+energy_use_pc: { TWN: 4500 }
+water_stress: { TWN: 0.3 }
+arable_ha_pc: { TWN: 0.03 }
+elec_access: { TWN: 1.0 }
+oil_demand: { ARM: 12, SYR: 60, JOR: 60, PRK: 15, NGA: 300 }     # TWh/yr, rough
+gas_demand: { ARM: 25, SYR: 30, JOR: 40, PRK: 0, NGA: 200 }
+coal_demand: { ARM: 0, SYR: 1, JOR: 3, PRK: 100, NGA: 2 }
+gov_debt_gdp: { TWN: 0.28, PRK: 0.0 }

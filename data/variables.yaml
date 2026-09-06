@@ -1,0 +1,873 @@
+# Variable registry — the single source of truth for what the model tracks.
+# Build, engine and UI all read this. Nothing else hardcodes a variable id.
+#
+# kind:     series  = history from data, projected forward by an equation
+#           state   = discrete/slow snapshot that hazards and rules rewrite
+#           derived = computed each step from other variables, never an input
+#           latent  = one shared draw per run (correlation structure)
+#           param   = a distribution the equations read
+# scope:    actor | dyad | world
+# dynamics: slow (annual difference eq.) | quarterly | static (only hazards change it)
+# source:   { fetch: <fetcher id>, field, transform? } | { hand: <file>, field } | { estimate: <value or map> } | { compute: true }
+# equation: name of an exported function in src/engine/equations.js (required when dynamics != static)
+# display:  { fan, map, format, log }  — drives the UI picker; omit to hide
+
+groups:
+  demographics: Demographics
+  macro: Macro
+  energy: Energy & resources
+  human_capital: Human capital & tech
+  capability: Critical capabilities
+  regime: State & regime
+  external: External & alignment
+  military: Military
+  world: World
+
+variables:
+  # ---------------------------------------------------------------- demographics
+  - id: population
+    group: demographics
+    label: Population
+    unit: persons
+    kind: series
+    scope: actor
+    source: { fetch: wpp, field: TPopulation1July, transform: thousands }
+    dynamics: slow
+    equation: from_projection          # WPP medium already projects to 2100; equation only perturbs by latent fertility/migration shocks
+    display: { fan: true, map: true, format: ".3s" }
+
+  - id: working_age_share
+    group: demographics
+    label: Working-age share (15–64)
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wpp_age5, transform: working_age_share }
+    dynamics: slow
+    equation: from_projection
+    drives: [productivity, fiscal_balance]
+    display: { fan: true, map: true, format: ".0%" }
+
+  - id: old_age_share
+    group: demographics
+    label: Share 65+
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wpp_age5, transform: old_age_share }
+    dynamics: slow
+    equation: from_projection
+    drives: [fiscal_balance]
+    display: { fan: true, map: true, format: ".0%" }
+
+  - id: median_age
+    group: demographics
+    label: Median age
+    unit: years
+    kind: series
+    scope: actor
+    source: { fetch: wpp, field: MedianAgePop }
+    dynamics: slow
+    equation: from_projection
+    display: { fan: true, map: true, format: ".1f" }
+
+  - id: fertility
+    group: demographics
+    label: Total fertility rate
+    unit: births/woman
+    kind: series
+    scope: actor
+    source: { fetch: wpp, field: TFR }
+    dynamics: slow
+    equation: fertility                # WPP path × latent demographic shock; feeds population deviation from projection
+    drives: [population]
+    display: { fan: true, map: true, format: ".2f" }
+
+  - id: net_migration
+    group: demographics
+    label: Net migration
+    unit: persons/yr
+    kind: series
+    scope: actor
+    source: { fetch: wpp, field: NetMigrations, transform: thousands }
+    dynamics: slow
+    equation: net_migration            # responds to openness state and relative income
+    drives: [population, stem_immigration]
+    display: { fan: true, map: true, format: ".3s" }
+
+  # ---------------------------------------------------------------- macro
+  - id: gdp_ppp
+    group: macro
+    label: GDP (PPP)
+    unit: USD (current intl)
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: gdp_ppp }
+    dynamics: slow
+    equation: gdp                      # growth = productivity growth + working-age growth, convergence toward frontier
+    drives: [milex_abs, fiscal_balance, trade_weight]
+    display: { fan: true, map: true, format: ".3s", log: true }
+
+  - id: gdp_pc_ppp
+    group: macro
+    label: GDP per capita (PPP)
+    unit: USD
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: gdp_pc_ppp }
+    dynamics: slow
+    equation: gdp_pc
+    display: { fan: true, map: true, format: ".3s", log: true }
+
+  - id: productivity
+    group: macro
+    label: Productivity growth
+    unit: fraction/yr
+    kind: derived
+    scope: actor
+    source: { compute: true }
+    dynamics: slow
+    equation: productivity             # ← rd_gdp, stem_immigration, ai_compute access, energy price, convergence gap
+    drives: [gdp_ppp]
+
+  - id: gov_debt_gdp
+    group: macro
+    label: Government debt / GDP
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: gov_debt_gdp, transform: pct }
+    fallback: { estimate: region_median }
+    dynamics: slow
+    equation: debt
+    drives: [fiscal_stress]
+    display: { fan: true, map: true, format: ".0%" }
+
+  - id: fiscal_balance
+    group: macro
+    label: Fiscal balance / GDP
+    unit: fraction
+    kind: derived
+    scope: actor
+    source: { compute: true }
+    dynamics: slow
+    equation: fiscal_balance           # ← resource rents × price, old-age share, milex, debt service
+    drives: [gov_debt_gdp, fiscal_stress]
+    display: { fan: true, map: true, format: "+.1%" }
+
+  - id: trade_gdp
+    group: macro
+    label: Trade openness (trade/GDP)
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: trade_gdp, transform: pct }
+    dynamics: slow
+    equation: openness                 # ← protectionism state, bloc cuts
+    display: { fan: true, map: true, format: ".0%" }
+
+  - id: current_account_gdp
+    group: macro
+    label: Current account / GDP
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: current_account_gdp, transform: pct }
+    dynamics: static
+    display: { map: true, format: "+.1%" }
+
+  - id: inflation
+    group: macro
+    label: CPI inflation
+    unit: fraction/yr
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: inflation, transform: pct }
+    dynamics: static
+    display: { map: true, format: ".1%" }
+
+  - id: reserve_currency_share
+    group: macro
+    label: Share of global FX reserves
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { estimate: { USA: 0.57, EUR_BLOC: 0.20, JPN: 0.056, GBR: 0.048, CHN: 0.022, CAN: 0.027, AUS: 0.021, CHE: 0.002 } }   # IMF COFER 2025Q1, transcribed
+    fallback: { estimate: 0 }
+    dynamics: slow
+    equation: reserve_share            # erodes toward bloc trade shares as us_reliability falls
+    drives: [fiscal_stress]
+    display: { fan: true, format: ".1%" }
+
+  - id: resource_rents_gdp
+    group: macro
+    label: Natural resource rents / GDP
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: resource_rents_gdp, transform: pct }
+    dynamics: static
+    drives: [fiscal_balance]
+    display: { map: true, format: ".0%" }
+
+  - id: oil_rents_gdp
+    group: macro
+    label: Oil rents / GDP
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: oil_rents_gdp, transform: pct }
+    dynamics: static
+    drives: [fiscal_balance, fiscal_breakeven]
+    display: { map: true, format: ".0%" }
+
+  - id: fiscal_breakeven
+    group: macro
+    label: Fiscal breakeven oil price
+    unit: USD/bbl
+    kind: state
+    scope: actor
+    source: { estimate: { SAU: 90, ARE: 55, QAT: 45, IRQ: 95, IRN: 120, RUS: 75, NGA: 130, KAZ: 100, AZE: 75 } }   # IMF REO Oct 2025, rounded
+    dynamics: static
+    drives: [fiscal_stress]
+
+  - id: fiscal_stress
+    group: macro
+    label: Fiscal stress index
+    unit: index 0–1
+    kind: derived
+    scope: actor
+    source: { compute: true }
+    dynamics: quarterly
+    equation: fiscal_stress            # rentiers: (breakeven − brent)/breakeven clipped; others: debt & deficit pressure
+    display: { fan: true, map: true, format: ".2f" }
+
+  # ---------------------------------------------------------------- energy & resources
+  - id: oil_demand
+    group: energy
+    label: Oil consumption
+    unit: TWh/yr
+    kind: series
+    scope: actor
+    source: { fetch: owid, field: oil_consumption }
+    dynamics: slow
+    equation: oil_demand               # road share × (1 − ev_share growth) + petrochem/aviation floor
+    drives: [brent, fiscal_stress]
+    display: { fan: true, map: true, format: ".3s" }
+
+  - id: oil_production
+    group: energy
+    label: Oil production
+    unit: TWh/yr
+    kind: series
+    scope: actor
+    source: { fetch: owid, field: oil_production }
+    dynamics: slow
+    equation: oil_production           # high-cost producers cut first as brent falls
+    display: { fan: true, map: true, format: ".3s" }
+
+  - id: gas_demand
+    group: energy
+    label: Gas consumption
+    unit: TWh/yr
+    kind: series
+    scope: actor
+    source: { fetch: owid, field: gas_consumption }
+    dynamics: slow
+    equation: gas_demand
+    display: { fan: true, map: true, format: ".3s" }
+
+  - id: coal_demand
+    group: energy
+    label: Coal consumption
+    unit: TWh/yr
+    kind: series
+    scope: actor
+    source: { fetch: owid, field: coal_consumption }
+    dynamics: slow
+    equation: coal_demand
+    display: { fan: true, map: true, format: ".3s" }
+
+  - id: electricity_generation
+    group: energy
+    label: Electricity generation
+    unit: TWh/yr
+    kind: series
+    scope: actor
+    source: { fetch: owid, field: electricity_generation }
+    dynamics: slow
+    equation: electricity              # grows with electrification × gdp
+    display: { fan: true, map: true, format: ".3s" }
+
+  - id: renewables_share_elec
+    group: energy
+    label: Renewables share of electricity
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: owid, field: renewables_share_elec, transform: pct }
+    dynamics: slow
+    equation: renewables_share         # logistic toward ceiling, speed from latent electrification_speed
+    display: { fan: true, map: true, format: ".0%" }
+
+  - id: ev_share
+    group: energy
+    label: EV share of car stock
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: iea_ev, field: "EV stock share", transform: pct }
+    fallback: { estimate: region_median }
+    dynamics: slow
+    equation: ev_share                 # logistic, speed from latent electrification_speed × china_export_push
+    drives: [oil_demand]
+    display: { fan: true, map: true, format: ".0%" }
+
+  - id: energy_use_pc
+    group: energy
+    label: Primary energy per capita
+    unit: kgoe
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: energy_use_pc }
+    dynamics: static
+    display: { map: true, format: ".3s" }
+
+  - id: refining_coverage
+    group: energy
+    label: Refining capacity / oil demand
+    unit: ratio
+    kind: state
+    scope: actor
+    source: { estimate: { RUS: 1.6, UKR: 0.1, IRN: 1.1, AUS: 0.35, NZL: 0.0, IRQ: 0.7, USA: 1.05, CHN: 1.1, JPN: 1.0, KOR: 1.3, IND: 1.2, SAU: 1.2, ARE: 1.1, NGA: 0.9 } }
+    dynamics: quarterly
+    equation: refining                 # strikes and investment move it
+    drives: [fiscal_stress]
+    display: { map: true, format: ".2f" }
+
+  - id: food_self_sufficiency
+    group: energy
+    label: Food self-sufficiency
+    unit: ratio
+    kind: state
+    scope: actor
+    source: { estimate: { USA: 1.3, CAN: 1.5, BRA: 1.5, ARG: 1.6, AUS: 2.0, NZL: 2.5, FRA: 1.1, RUS: 1.2, UKR: 2.0, KAZ: 1.4, CHN: 0.85, JPN: 0.4, KOR: 0.45, TWN: 0.35, SAU: 0.2, ARE: 0.1, QAT: 0.1, ISR: 0.5, EGY: 0.6, IRN: 0.8, IRQ: 0.5, SGP: 0.1, GBR: 0.6, DEU: 0.9 } }   # FAO-based rough calorie ratios
+    fallback: { estimate: 0.8 }
+    dynamics: static
+    display: { map: true, format: ".2f" }
+
+  - id: water_stress
+    group: energy
+    label: Freshwater withdrawal / available
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: water_stress, transform: pct }
+    dynamics: static
+    display: { map: true, format: ".0%" }
+
+  - id: desal_dependence
+    group: energy
+    label: Share of potable water from desalination
+    unit: fraction
+    kind: state
+    scope: actor
+    source: { estimate: { SAU: 0.6, ARE: 0.9, QAT: 0.99, KWT: 0.9, BHR: 0.9, ISR: 0.8, SGP: 0.3, EGY: 0.02, AUS: 0.1, IRN: 0.02 } }
+    fallback: { estimate: 0.0 }
+    dynamics: static
+    display: { map: true, format: ".0%" }
+
+  - id: mineral_refining_share
+    group: energy
+    label: Share of global critical-mineral refining
+    unit: fraction
+    kind: state
+    scope: actor
+    source: { estimate: { CHN: 0.70, IDN: 0.08, CHL: 0.05, JPN: 0.03, KOR: 0.03, AUS: 0.02, USA: 0.02, CAN: 0.02, ZAF: 0.01, MYS: 0.02 } }   # IEA Critical Minerals 2025, refined Li/Co/Ni/graphite/REE weighted
+    fallback: { estimate: 0.0 }
+    dynamics: slow
+    equation: mineral_refining         # diffuses away from China with allied investment × ai_factory latent
+    display: { map: true, format: ".1%" }
+
+  - id: arable_ha_pc
+    group: energy
+    label: Arable land per capita
+    unit: ha
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: arable_ha_pc }
+    dynamics: static
+    display: { map: true, format: ".2f" }
+
+  # ---------------------------------------------------------------- human capital & tech
+  - id: rd_gdp
+    group: human_capital
+    label: R&D / GDP
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: rd_gdp, transform: pct }
+    fallback: { estimate: region_median }
+    dynamics: static
+    drives: [productivity, tech_diffusion]
+    display: { map: true, format: ".1%" }
+
+  - id: stem_immigration
+    group: human_capital
+    label: Net inflow of STEM researchers
+    unit: index (2025 = 100 for USA)
+    kind: state
+    scope: actor
+    source: { estimate: { USA: 100, CAN: 18, GBR: 22, AUS: 10, DEU: 14, CHE: 8, NLD: 6, FRA: 8, SGP: 5, CHN: 12, JPN: 4, KOR: 3, ARE: 4, ISR: 3 } }   # NSF SED stay-rates + CSET talent flows, indexed; estimate
+    fallback: { estimate: 1 }
+    dynamics: slow
+    equation: stem_immigration         # ← openness state, relative wages, us_reliability latent; redistributes within the pool
+    drives: [productivity, tech_diffusion]
+    display: { fan: true, map: true, format: ".0f" }
+
+  - id: openness
+    group: human_capital
+    label: Openness to migrants (policy)
+    unit: index 0–1
+    kind: state
+    scope: actor
+    source: { estimate: { USA: 0.35, CAN: 0.85, GBR: 0.6, AUS: 0.75, NZL: 0.7, DEU: 0.6, FRA: 0.5, NLD: 0.5, SWE: 0.5, JPN: 0.3, KOR: 0.3, SGP: 0.7, ARE: 0.6, CHN: 0.1, RUS: 0.1, IND: 0.2, ISR: 0.3, TUR: 0.3 } }   # MIPEX-informed + 2025 policy; estimate
+    fallback: { estimate: 0.3 }
+    dynamics: static                   # hazards (us_reliability_reversal) rewrite it
+    drives: [stem_immigration, net_migration]
+    display: { map: true, format: ".2f" }
+
+  - id: elec_access
+    group: human_capital
+    label: Electricity access
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: elec_access, transform: pct }
+    dynamics: static
+    display: { map: true, format: ".0%" }
+
+  # ---------------------------------------------------------------- critical capabilities
+  # Each capability is its own state variable with levels N/I/S, initialised from actors.yaml `tech.<id>`.
+  # Add a capability by adding an entry here and a key in each actor's tech map (missing keys default to N).
+  - id: cap_logic
+    group: capability
+    label: Leading-edge logic fabrication
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.logic }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 15, spend_elasticity: 0.5, blocmate_bonus: 0.4 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_memory
+    group: capability
+    label: DRAM/HBM/NAND at scale
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.memory }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 12, spend_elasticity: 0.5, blocmate_bonus: 0.4 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_euv
+    group: capability
+    label: EUV lithography tools
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.euv }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 25, spend_elasticity: 0.3, blocmate_bonus: 0.2 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_chem
+    group: capability
+    label: Semiconductor precursor chemistry
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.chem }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 10, spend_elasticity: 0.5, blocmate_bonus: 0.5 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_packaging
+    group: capability
+    label: Advanced packaging (CoWoS-class)
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.packaging }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 6, spend_elasticity: 0.6, blocmate_bonus: 0.5 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_power_semis
+    group: capability
+    label: SiC/IGBT power modules
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.power_semis }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 6, spend_elasticity: 0.6, blocmate_bonus: 0.5 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_ai_compute
+    group: capability
+    label: Frontier AI training compute
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.ai_compute }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 5, spend_elasticity: 0.8, blocmate_bonus: 0.6 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_leo_isr
+    group: capability
+    label: Sovereign LEO ISR constellation
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.leo_isr }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 8, spend_elasticity: 0.7, blocmate_bonus: 0.5 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_pnt
+    group: capability
+    label: Sovereign PNT
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.pnt }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 12, spend_elasticity: 0.5, blocmate_bonus: 0.6 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_strike
+    group: capability
+    label: Long-range autonomous strike at scale
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.strike }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 4, spend_elasticity: 0.8, blocmate_bonus: 0.7 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_usv
+    group: capability
+    label: Unmanned surface/subsurface vessels at scale
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.usv }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 3, spend_elasticity: 0.8, blocmate_bonus: 0.7 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_de
+    group: capability
+    label: Directed energy / HPM air defence
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.de }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 8, spend_elasticity: 0.6, blocmate_bonus: 0.5 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_nukes
+    group: capability
+    label: Deployed nuclear weapons
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.nukes }
+    dynamics: static                   # only weaponization hazards move it
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_latency
+    group: capability
+    label: Fuel-cycle nuclear latency
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.latency }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 10, spend_elasticity: 0.5, blocmate_bonus: 0.3 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_launch
+    group: capability
+    label: Orbital launch
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.launch }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 8, spend_elasticity: 0.6, blocmate_bonus: 0.4 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_refining
+    group: capability
+    label: Domestic crude refining ≥ 50% of demand
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.refining }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 6, spend_elasticity: 0.6, blocmate_bonus: 0.2 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_rail_hvdc
+    group: capability
+    label: Electrified rail + HVDC manufacturing
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.rail_hvdc }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 10, spend_elasticity: 0.5, blocmate_bonus: 0.5 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_inverters
+    group: capability
+    label: Grid inverters / BMS (control-plane firmware)
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.inverters }
+    dynamics: quarterly
+    equation: tech_diffusion
+    diffusion: { base_years_to_sovereign: 4, spend_elasticity: 0.7, blocmate_bonus: 0.7 }
+    display: { map: true, categorical: [N, I, S] }
+  - id: cap_quantum
+    group: capability
+    label: Fault-tolerant quantum computing
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: tech.quantum }
+    dynamics: static                   # crqc hazard flips it
+    display: { map: true, categorical: [N, I, S] }
+
+  # ---------------------------------------------------------------- state & regime
+  - id: regime_type
+    group: regime
+    label: Regime type
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: regime.type }
+    dynamics: static
+    display: { map: true, categorical: [liberal_democracy, electoral_democracy, electoral_autocracy, closed_autocracy, state_failure] }
+
+  - id: personalism
+    group: regime
+    label: Personalism
+    unit: 0–1
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: regime.personalism }
+    dynamics: static
+    drives: [hazard.leadership_transition]
+    display: { map: true, format: ".2f" }
+
+  - id: succession
+    group: regime
+    label: Succession institutionalisation
+    unit: 0–1
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: regime.succession }
+    dynamics: static
+    drives: [hazard.leadership_transition]
+    display: { map: true, format: ".2f" }
+
+  - id: leader_age
+    group: regime
+    label: Leader age
+    unit: years
+    kind: derived
+    scope: actor
+    source: { hand: actors.yaml, field: regime.leader_born }
+    dynamics: quarterly
+    equation: leader_age
+    drives: [hazard.leadership_transition]
+
+  - id: leader_tenure
+    group: regime
+    label: Leader tenure
+    unit: years
+    kind: derived
+    scope: actor
+    source: { hand: actors.yaml, field: regime.leader_since }
+    dynamics: quarterly
+    equation: leader_tenure
+
+  - id: nuclear_status
+    group: regime
+    label: Nuclear status
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: nuclear.status }
+    dynamics: static
+    display: { map: true, categorical: [none, latent, weapon] }
+
+  - id: war_losses
+    group: regime
+    label: Cumulative war losses index
+    unit: index 0–1
+    kind: state
+    scope: actor
+    source: { estimate: { RUS: 0.6, UKR: 0.7, IRN: 0.5, ISR: 0.2, SYR: 0.8, IRQ: 0.3 } }
+    fallback: { estimate: 0.0 }
+    dynamics: quarterly
+    equation: war_losses               # accrues while in active conflict, decays otherwise
+    drives: [hazard.leadership_transition]
+    display: { map: true, format: ".2f" }
+
+  # ---------------------------------------------------------------- external
+  - id: milex_gdp
+    group: military
+    label: Military spending / GDP
+    unit: fraction
+    kind: series
+    scope: actor
+    source: { fetch: wb, field: milex_gdp, transform: pct }
+    fallback: { estimate: region_median }
+    dynamics: slow
+    equation: milex                    # rises with threat, bloc pressure
+    drives: [fiscal_balance, tech_diffusion]
+    display: { fan: true, map: true, format: ".1%" }
+
+  - id: chokepoint_exposure
+    group: external
+    label: Trade share through chokepoints
+    unit: fraction per chokepoint
+    kind: state
+    scope: actor
+    source: { hand: actors.yaml, field: chokepoints }
+    dynamics: slow
+    equation: chokepoint_exposure      # falls as corridors get built
+    drives: [fiscal_stress]
+
+  - id: alignment
+    group: external
+    label: Alignment (dyadic)
+    unit: −1…1
+    kind: state
+    scope: dyad
+    source: { fetch: un_ideal_points, transform: ideal_point_similarity }   # M2: fetcher not yet written; build uses estimate matrix in data/alignment.yaml
+    fallback: { hand: alignment.yaml }
+    dynamics: quarterly
+    equation: alliance_gravity
+    display: { graph: true }
+
+  # ---------------------------------------------------------------- world
+  - id: brent
+    group: world
+    label: Oil price (Brent)
+    unit: USD/bbl
+    kind: derived
+    scope: world
+    source: { compute: true }
+    dynamics: quarterly
+    equation: brent                    # supply-curve price from world oil_demand vs. producer cost stack
+    drives: [fiscal_stress, oil_production]
+    display: { fan: true, format: ".0f" }
+
+  - id: launch_cost
+    group: world
+    label: Cost to LEO
+    unit: USD/kg
+    kind: derived
+    scope: world
+    source: { estimate: 1500 }
+    dynamics: slow
+    equation: launch_cost              # exponential decline, rate from latent
+    drives: [tech_diffusion]
+    display: { fan: true, format: ".0f", log: true }
+
+  - id: exit_door
+    group: world
+    label: Visible exit for Iran (deal on offer)
+    unit: 0–1
+    kind: state
+    scope: world
+    source: { estimate: 0.15 }
+    dynamics: static
+    drives: [hazard.iran_consolidation, hazard.iran_bomb, hazard.heu_removed]
+    display: { fan: true, format: ".2f" }
+
+  - id: nato_hollow
+    group: world
+    label: NATO Article 5 publicly hollowed
+    kind: state
+    scope: world
+    source: { estimate: 0 }
+    dynamics: static
+
+  - id: taiwan_crisis
+    group: world
+    label: Taiwan crisis active
+    kind: state
+    scope: world
+    source: { estimate: 0 }
+    dynamics: static
+
+  - id: crypto_reset
+    group: world
+    label: Public-key crypto broken (CRQC exists)
+    kind: state
+    scope: world
+    source: { estimate: 0 }
+    dynamics: static
+
+  - id: shock_gdp
+    group: world
+    label: Global GDP shock (accumulated)
+    unit: fraction
+    kind: state
+    scope: world
+    source: { estimate: 0 }
+    dynamics: quarterly
+    equation: shock_decay
+
+  - id: oil_demand
+    group: world
+    label: World oil consumption
+    unit: TWh/yr
+    kind: derived
+    scope: world
+    source: { compute: true }
+    dynamics: slow
+    equation: world_sum
+    of: oil_demand
+    display: { fan: true, format: ".3s" }
+
+  - id: year
+    group: world
+    label: Calendar year
+    kind: derived
+    scope: world
+    source: { compute: true }
+    dynamics: quarterly
+    equation: year
+
+# ---------------------------------------------------------------- latents
+# One draw per run. Anything referencing a latent id reads the same value, so correlated beliefs move together.
+latents:
+  - id: us_reliability
+    label: US reliability as ally/supplier
+    prior: { mean: 0.45, sd: 0.2, clip: [0, 1] }
+    drives: [openness.USA, alliance_gravity, export_control_enforcement, stem_immigration]
+  - id: electrification_speed
+    label: Speed of global electrification
+    prior: { mean: 1.0, sd: 0.3, clip: [0.4, 2.0] }
+    drives: [ev_share, renewables_share, oil_demand]
+  - id: china_export_push
+    label: China doubles down on renewables/EV export
+    prior: { mean: 1.0, sd: 0.25, clip: [0.5, 1.8] }
+    drives: [ev_share, mineral_refining]
+  - id: ai_factory
+    label: AI-designed automated factories become routine
+    prior: { mean: 0.5, sd: 0.25, clip: [0, 1] }
+    drives: [productivity, tech_diffusion, mineral_refining]
+  - id: drone_commoditization
+    label: Autonomous strike/USV become commodity tech
+    prior: { mean: 0.6, sd: 0.2, clip: [0, 1] }
+    drives: [tech_diffusion, conflict]
+  - id: demographic_shock
+    label: Fertility deviation from WPP medium
+    prior: { mean: 0.0, sd: 0.15, clip: [-0.4, 0.4] }
+    drives: [fertility]
+  - id: launch_cost_decline
+    label: Annual decline in launch cost
+    prior: { mean: 0.10, sd: 0.04, clip: [0.02, 0.2] }
+    drives: [launch_cost]

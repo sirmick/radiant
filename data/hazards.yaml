@@ -1,0 +1,409 @@
+# Hazards — unknown-time events as competing risks, evaluated every quarter.
+#   λ_t = base_q × exp(Σ beta·(x − center)) × Π(active multipliers);  P(fire this quarter) = 1 − exp(−λ_t)
+# base_q is a QUARTERLY rate. The build prints the implied 10-year cumulative probability next to each so nobody sets 0.05 by feel.
+# Covariate vars are paths into the sampled world: actors.<ISO>.<var>, latent.<id>, world.<var>, corridors.<id>.completion, territories.<id>.controller
+# fires.<outcome>: set = state rewrites, mult = multipliers on other hazards (persist for the run), add = additive state changes
+# once: true = can fire at most once per run. Snapshot: 2026-09-06. All numbers are estimates unless sourced.
+
+- id: russia_transition
+  name: Russian leadership transition
+  once: true
+  outcomes: [managed, hardliner, fragmentation]
+  outcome_weights: [0.5, 0.3, 0.2]
+  base_q: 0.012                                   # ~38% by 2036 at baseline covariates
+  covariates:
+    - { var: actors.RUS.leader_age, beta: 0.07, center: 74 }
+    - { var: actors.RUS.fiscal_stress, beta: 1.2, center: 0.3 }
+    - { var: actors.RUS.war_losses, beta: 0.8, center: 0.6 }
+    - { var: actors.RUS.refining_coverage, beta: -0.8, center: 1.3 }
+  reference_class: "personalist autocracies, leader >70, stalemated war, high fiscal stress: 1905, 1917, 1953, 1991 (n≈4, all Russian) + Franco/Tito/Mao for the age term"
+  fires:
+    managed:       { set: { actors.RUS.regime.personalism: 0.55, actors.RUS.regime.leader_born: 1965, actors.RUS.regime.leader_since: now }, mult: { ukraine_freeze: 3.0 } }
+    hardliner:     { set: { actors.RUS.regime.leader_born: 1968, actors.RUS.regime.leader_since: now }, mult: { ukraine_freeze: 0.5, baltic_incident: 2.5 } }
+    fragmentation: { set: { actors.RUS.regime.type: state_failure, actors.RUS.regime.personalism: 0.3, territories.transnistria.controller: MDA, territories.abkhazia.status: contested_active }, mult: { ukraine_freeze: 5.0, siberia_china_lease: 4.0 } }
+  source: estimate
+
+- id: ukraine_freeze
+  name: Ukraine armistice on the current line
+  once: true
+  outcomes: [armistice]
+  base_q: 0.05                                    # ~87% by 2036; the transcript said "a year or two, not five" driven by refinery numbers
+  covariates:
+    - { var: actors.RUS.fiscal_stress, beta: 1.5, center: 0.3 }
+    - { var: actors.RUS.refining_coverage, beta: -1.5, center: 1.3 }
+    - { var: latent.us_reliability, beta: -0.8, center: 0.45 }    # a reliable US keeps Kyiv fighting longer
+  reference_class: "Korea 1953, Transnistria 1992, Karabakh 1994: stalemate + exhaustion → line freeze without treaty"
+  fires:
+    armistice: { set: { territories.donbas.status: frozen, territories.ukraine_south_occupied.status: frozen, actors.UKR.war_losses: 0.3 }, mult: { ukraine_territory: 0.15, baltic_incident: 0.7 } }
+  source: estimate
+
+- id: ukraine_territory
+  name: Control change on the Ukrainian front
+  outcomes: [rus_gain, ukr_gain]
+  outcome_weights: [0.55, 0.45]
+  base_q: 0.02                                    # per quarter, either direction, while contested_active
+  covariates:
+    - { var: actors.RUS.fiscal_stress, beta: -1.0, center: 0.3, outcome: rus_gain }
+    - { var: latent.drone_commoditization, beta: 1.0, center: 0.6, outcome: ukr_gain }
+  fires:
+    rus_gain: { add: { actors.UKR.war_losses: 0.05 } }
+    ukr_gain: { add: { actors.RUS.war_losses: 0.05 } }
+  source: estimate
+  notes: "Territory geometry doesn't move in M1; this only accrues war_losses and feeds the transition hazards. M2 shifts the sketch."
+
+- id: baltic_incident
+  name: Russia–NATO militarized incident (Baltics/Suwałki)
+  once: false
+  outcomes: [incident]
+  base_q: 0.004                                   # ~15% by 2036
+  covariates:
+    - { var: latent.us_reliability, beta: -1.5, center: 0.45 }
+    - { var: actors.RUS.regime.personalism, beta: 1.0, center: 0.85 }
+  fires:
+    incident: { add: { actors.POL.milex_gdp: 0.005, actors.DEU.milex_gdp: 0.003 }, mult: { us_reliability_reversal_up: 1.5 } }
+  source: estimate
+
+- id: iran_consolidation
+  name: Iranian post-Khamenei consolidation
+  once: true
+  outcomes: [pragmatic, junta, state_failure]
+  outcome_weights: [0.35, 0.45, 0.20]
+  base_q: 0.06                                    # ~91% by 2036 — the factional fight resolves one way or another within a decade
+  covariates:
+    - { var: world.exit_door, beta: 1.5, center: 0.3, outcome: pragmatic }         # visible exit raises the pragmatic split
+    - { var: corridors.china_iran_turkey.completion, beta: 1.2, center: 0.5, outcome: pragmatic }
+    - { var: actors.IRN.fiscal_stress, beta: 1.0, center: 0.6, outcome: state_failure }
+    - { var: actors.IRN.war_losses, beta: 1.0, center: 0.5, outcome: junta }
+  reference_class: "Iran 1988 (poison chalice), Iran 2013-15 (JCPOA under sanctions) for pragmatic; Egypt 2013, Myanmar 2021 for junta; Libya, Syria 2011 for failure"
+  fires:
+    pragmatic:     { set: { actors.IRN.regime.personalism: 0.45, actors.IRN.regime.succession: 0.4, actors.IRN.regime.leader_born: 1965, actors.IRN.regime.leader_since: now, actors.IRN.openness: 0.3 }, mult: { iran_bomb: 0.3, hormuz_reopens: 3.0, corridor_build: 1.8, israel_iran_round: 0.5 } }
+    junta:         { set: { actors.IRN.regime.personalism: 0.8, actors.IRN.regime.succession: 0.15, actors.IRN.regime.leader_born: 1962, actors.IRN.regime.leader_since: now }, mult: { iran_bomb: 2.5, hormuz_reopens: 0.6, israel_iran_round: 1.8 } }
+    state_failure: { set: { actors.IRN.regime.type: state_failure, actors.IRN.regime.personalism: 0.3 }, mult: { iran_bomb: 0.8, heu_unaccounted: 6.0, corridor_build: 0.3, saudi_bomb: 1.5 } }
+  source: estimate
+
+- id: iran_bomb
+  name: Iran tests or is assessed to possess a nuclear weapon
+  once: true
+  outcomes: [weapon]
+  base_q: 0.008                                   # ~27% by 2036 unconditioned; consolidation multipliers move it 0.3×–2.5×
+  covariates:
+    - { var: actors.IRN.war_losses, beta: 1.0, center: 0.5 }
+    - { var: world.exit_door, beta: -1.5, center: 0.3 }
+  reference_class: "nuclear-latent states attacked or decapitated: Iraq 1981 (pursued, failed), Syria 2007 (abandoned), Libya 2003 (abandoned pre-attack), North Korea (bomb). n≈4, base rate ~25% → bomb"
+  fires:
+    weapon: { set: { actors.IRN.nuclear.status: weapon, actors.IRN.nuclear.warheads: 5, actors.IRN.tech.nukes: S }, mult: { saudi_bomb: 6.0, turkey_bomb: 2.5, israel_iran_round: 2.0, corridor_build: 0.5 } }
+  source: estimate
+
+- id: heu_removed
+  name: Verified removal/downblending of Iran's 60% HEU
+  once: true
+  outcomes: [removed]
+  base_q: 0.02                                    # ~55% by 2036
+  covariates:
+    - { var: world.exit_door, beta: 2.0, center: 0.3 }
+    - { var: actors.IRN.regime.personalism, beta: -1.5, center: 0.6 }
+  fires:
+    removed: { mult: { iran_bomb: 0.25, israel_iran_round: 0.5, saudi_bomb: 0.6 } }
+  source: estimate
+
+- id: heu_unaccounted
+  name: HEU stockpile leaves state custody
+  once: true
+  outcomes: [loose]
+  base_q: 0.001
+  fires:
+    loose: { mult: { saudi_bomb: 2.0, israel_iran_round: 3.0 } }
+  source: estimate
+  notes: "Only meaningful after state_failure; the multiplier there makes it ~6× more likely."
+
+- id: hormuz_reopens
+  name: Hormuz reopens to commercial traffic
+  once: false
+  outcomes: [reopen]
+  base_q: 0.10                                    # ~98% by 2036; expected within ~2 years at baseline
+  covariates:
+    - { var: actors.IRN.fiscal_stress, beta: 1.0, center: 0.6 }
+    - { var: actors.USA.fiscal_stress, beta: 0.5, center: 0.2 }
+  fires:
+    reopen: { set: { corridors.hormuz.status: open, world.exit_door: 0.45 }, mult: { israel_iran_round: 0.8 } }
+  source: estimate
+
+- id: israel_iran_round
+  name: Another Israel–Iran strike round
+  once: false
+  outcomes: [round]
+  base_q: 0.06                                    # recurring; ~1 round per 4 years at baseline
+  covariates:
+    - { var: actors.IRN.war_losses, beta: -0.5, center: 0.5 }
+    - { var: latent.drone_commoditization, beta: 0.5, center: 0.6 }
+  fires:
+    round: { add: { actors.IRN.war_losses: 0.15, actors.ISR.war_losses: 0.08, actors.IRN.refining_coverage: -0.1 }, set: { world.exit_door: 0.15 }, mult: { hormuz_reopens: 0.5, corridor_build: 0.7 } }
+  source: estimate
+  notes: "Each round slams the exit door and delays corridors. This is the mechanism by which 'the policy pursued to prevent the bomb produces it'."
+
+- id: israel_syria_treaty
+  name: Israel–Syria security agreement
+  once: true
+  outcomes: [treaty]
+  base_q: 0.03                                    # ~70% by 2036
+  covariates:
+    - { var: latent.us_reliability, beta: 1.0, center: 0.45 }     # needs a US guarantor for the south
+    - { var: actors.ISR.regime.personalism, beta: -1.0, center: 0.55 }
+    - { var: actors.SYR.war_losses, beta: -1.0, center: 0.8 }     # a fragmenting Syria can't sign
+  reference_class: "1974 disengagement; Egypt 1979; Jordan 1994 — dominance converted to treaty before it expires"
+  fires:
+    treaty: { set: { territories.syria_buffer.controller: UN, territories.syria_buffer.status: buffer, territories.syria_buffer.stakes.ISR: 0.3 }, mult: { turkey_israel_clash: 0.3, syria_zones: 0.5, corridor_build: 1.3 } }
+  source: estimate
+
+- id: syria_buffer_control
+  name: Change of control in the southern Syria buffer
+  outcomes: [israel_expands, syria_recovers]
+  outcome_weights: [0.5, 0.5]
+  base_q: 0.01
+  covariates:
+    - { var: actors.SYR.war_losses, beta: 1.0, center: 0.8, outcome: israel_expands }
+  fires:
+    israel_expands: { set: { territories.syria_buffer.status: occupied }, mult: { israel_syria_treaty: 0.5 } }
+    syria_recovers: { set: { territories.syria_buffer.controller: SYR, territories.syria_buffer.status: buffer } }
+  source: estimate
+
+- id: syria_zones
+  name: Syrian state fragmentation event (Druze / Alawite / Kurdish / ISIS)
+  once: false
+  outcomes: [fragment]
+  base_q: 0.03
+  covariates:
+    - { var: actors.SYR.fiscal_stress, beta: 1.0, center: 0.7 }
+  fires:
+    fragment: { add: { actors.SYR.war_losses: 0.1 }, set: { territories.syria_northeast_sdf.status: contested_active }, mult: { corridor_build: 0.6, israel_syria_treaty: 0.6 } }
+  source: estimate
+
+- id: turkey_israel_clash
+  name: Turkey–Israel direct exchange of fire in Syria
+  once: true
+  outcomes: [clash]
+  base_q: 0.003                                   # ~11% by 2036 (transcript: ~10% over five years)
+  covariates:
+    - { var: territories.syria_north_turkish.status, beta: 0, center: 0 }
+    - { var: actors.TUR.regime.personalism, beta: 1.0, center: 0.75 }
+  reference_class: "accident-driven: Turkish crew arrives early, Syrian-manned Turkish system fires. Not a decision."
+  fires:
+    clash: { add: { actors.TUR.war_losses: 0.1, actors.ISR.war_losses: 0.05 }, set: { world.nato_hollow: 1 }, mult: { us_reliability_reversal_down: 1.5, israel_syria_treaty: 0.3 } }
+  source: estimate
+
+- id: saudi_normalization
+  name: Saudi–Israel normalization
+  once: true
+  outcomes: [normalize]
+  base_q: 0.015                                   # ~45% by 2036
+  covariates:
+    - { var: latent.us_reliability, beta: 1.2, center: 0.45 }
+    - { var: actors.ISR.regime.personalism, beta: -1.0, center: 0.55 }
+  fires:
+    normalize: { mult: { corridor_build: 1.5, saudi_bomb: 0.6 } }
+  source: estimate
+
+- id: saudi_bomb
+  name: Saudi Arabia acquires nuclear weapons (Pakistan option)
+  once: true
+  outcomes: [weapon]
+  base_q: 0.002                                   # ~8% by 2036 unconditioned; iran_bomb ×6
+  covariates:
+    - { var: latent.us_reliability, beta: -2.0, center: 0.45 }
+  fires:
+    weapon: { set: { actors.SAU.nuclear.status: weapon, actors.SAU.nuclear.warheads: 10, actors.SAU.tech.nukes: S }, mult: { turkey_bomb: 2.0 } }
+  source: estimate
+
+- id: turkey_bomb
+  name: Turkey weaponizes
+  once: true
+  outcomes: [weapon]
+  base_q: 0.001
+  covariates:
+    - { var: latent.us_reliability, beta: -2.0, center: 0.45 }
+    - { var: world.nato_hollow, beta: 1.5, center: 0 }
+  fires:
+    weapon: { set: { actors.TUR.nuclear.status: weapon, actors.TUR.nuclear.warheads: 10, actors.TUR.tech.nukes: S } }
+  source: estimate
+
+- id: japan_korea_weaponize
+  name: Japan and/or Korea weaponize
+  once: true
+  outcomes: [korea, japan, both]
+  outcome_weights: [0.5, 0.2, 0.3]
+  base_q: 0.002
+  covariates:
+    - { var: latent.us_reliability, beta: -2.5, center: 0.45 }
+    - { var: corridors.taiwan_strait.status, beta: 0, center: 0 }
+  fires:
+    korea: { set: { actors.KOR.nuclear.status: weapon, actors.KOR.nuclear.warheads: 20, actors.KOR.tech.nukes: S } }
+    japan: { set: { actors.JPN.nuclear.status: weapon, actors.JPN.nuclear.warheads: 20, actors.JPN.tech.nukes: S } }
+    both:  { set: { actors.KOR.nuclear.status: weapon, actors.KOR.nuclear.warheads: 20, actors.KOR.tech.nukes: S, actors.JPN.nuclear.status: weapon, actors.JPN.nuclear.warheads: 20, actors.JPN.tech.nukes: S } }
+  source: estimate
+
+- id: china_transition
+  name: Chinese leadership transition (post-Xi)
+  once: true
+  outcomes: [technocrat, nationalist]
+  outcome_weights: [0.65, 0.35]
+  base_q: 0.008                                   # ~27% by 2036, ~55% by 2046; Xi is 73
+  covariates:
+    - { var: actors.CHN.leader_age, beta: 0.08, center: 73 }
+    - { var: actors.CHN.fiscal_stress, beta: 0.8, center: 0.3 }
+  reference_class: "PRC has no post-Deng precedent for a non-rule-bound transition; Mao→Hua→Deng is the only one"
+  fires:
+    technocrat:  { set: { actors.CHN.regime.personalism: 0.5, actors.CHN.regime.succession: 0.4, actors.CHN.regime.leader_born: 1968, actors.CHN.regime.leader_since: now }, mult: { taiwan_blockade: 0.5 } }
+    nationalist: { set: { actors.CHN.regime.personalism: 0.75, actors.CHN.regime.leader_born: 1966, actors.CHN.regime.leader_since: now }, mult: { taiwan_blockade: 2.5, scs_incident: 1.8 } }
+  source: estimate
+
+- id: taiwan_blockade
+  name: Chinese blockade/quarantine of Taiwan
+  once: true
+  outcomes: [blockade]
+  base_q: 0.005                                   # ~18% by 2036
+  covariates:
+    - { var: actors.CHN.regime.personalism, beta: 1.5, center: 0.8 }
+    - { var: latent.us_reliability, beta: -1.5, center: 0.45 }
+    - { var: actors.CHN.working_age_share, beta: -8.0, center: 0.68 }   # closing-window logic: shrinking workforce raises pressure to act
+    - { var: latent.drone_commoditization, beta: 1.0, center: 0.6 }
+  reference_class: "Cuba 1962, Berlin 1948, Taiwan 1996 — great-power quarantines short of invasion"
+  fires:
+    blockade: { set: { corridors.taiwan_strait.status: closed, world.taiwan_crisis: 1 }, add: { actors.TWN.war_losses: 0.3, actors.CHN.war_losses: 0.1 }, mult: { taiwan_control: 20.0, us_reliability_reversal_up: 2.0, japan_korea_weaponize: 3.0, export_control_collapse: 0.3 } }
+  source: estimate
+
+- id: taiwan_control
+  name: Taiwan changes controller
+  once: true
+  outcomes: [prc_control]
+  base_q: 0.0005                                  # ~2% by 2036 unconditioned; ×20 under blockade
+  covariates:
+    - { var: latent.us_reliability, beta: -2.0, center: 0.45 }
+  fires:
+    prc_control: { set: { territories.taiwan.controller: CHN, territories.taiwan.status: occupied, actors.TWN.regime.type: closed_autocracy, actors.CHN.tech.logic: S }, mult: { japan_korea_weaponize: 4.0 } }
+  source: estimate
+
+- id: scs_incident
+  name: South China Sea lethal incident
+  once: false
+  outcomes: [incident]
+  base_q: 0.02
+  covariates:
+    - { var: latent.drone_commoditization, beta: 1.0, center: 0.6 }
+  fires:
+    incident: { add: { actors.PHL.milex_gdp: 0.003 }, mult: { taiwan_blockade: 1.2 } }
+  source: estimate
+
+- id: export_control_collapse
+  name: Allied export-control regime on China collapses
+  once: true
+  outcomes: [collapse]
+  base_q: 0.01                                    # ~33% by 2036
+  covariates:
+    - { var: latent.us_reliability, beta: -3.0, center: 0.45 }
+  fires:
+    collapse: { set: { actors.CHN.tech.ai_compute: S, actors.CHN.tech.euv: I }, mult: { taiwan_blockade: 0.7 } }
+  source: estimate
+  notes: "'Presence was the product.' Fires when the US stops coordinating; China buys in bulk, minus the pretense."
+
+- id: us_reliability_reversal_down
+  name: US reliability shock (down)
+  once: false
+  outcomes: [shock]
+  base_q: 0.02
+  covariates:
+    - { var: latent.us_reliability, beta: -2.0, center: 0.45 }
+  fires:
+    shock: { add: { latent.us_reliability: -0.15, actors.USA.openness: -0.1 }, mult: { export_control_collapse: 1.5, saudi_bomb: 1.3, japan_korea_weaponize: 1.3 } }
+  source: estimate
+
+- id: us_reliability_reversal_up
+  name: US course correction (alliances as assets, immigration reopened)
+  once: false
+  outcomes: [correction]
+  base_q: 0.015                                   # ~45% by 2036; the transcript's "one election" reversal
+  covariates:
+    - { var: actors.USA.fiscal_stress, beta: 2.0, center: 0.2 }     # depression as tuition
+    - { var: latent.us_reliability, beta: -1.0, center: 0.45 }
+  fires:
+    correction: { add: { latent.us_reliability: 0.25, actors.USA.openness: 0.3 }, mult: { export_control_collapse: 0.5, us_reliability_reversal_down: 0.6 } }
+  source: estimate
+
+- id: us_depression
+  name: US depression-class downturn
+  once: true
+  outcomes: [depression]
+  base_q: 0.006                                   # ~21% by 2036
+  covariates:
+    - { var: actors.USA.reserve_currency_share, beta: -8.0, center: 0.57 }
+    - { var: actors.USA.gov_debt_gdp, beta: 2.0, center: 1.2 }
+    - { var: latent.electrification_speed, beta: 1.0, center: 1.0 }   # shale dies first
+  fires:
+    depression: { add: { actors.USA.fiscal_stress: 0.4, actors.USA.war_losses: 0 }, mult: { us_reliability_reversal_up: 3.0 } }
+  source: estimate
+
+- id: crqc
+  name: Cryptographically relevant quantum computer
+  once: true
+  outcomes: [allied_first, china_first]
+  outcome_weights: [0.65, 0.35]
+  base_q: 0.012                                   # ~38% by 2036, ~62% by 2046 (transcript: ~50% inside the window, 2032-40 modal)
+  covariates:
+    - { var: actors.USA.stem_immigration, beta: 0.01, center: 100, outcome: allied_first }
+  fires:
+    allied_first: { set: { actors.USA.tech.quantum: S, actors.GBR.tech.quantum: S, world.crypto_reset: 1 } }
+    china_first:  { set: { actors.CHN.tech.quantum: S, world.crypto_reset: 1 } }
+  source: estimate
+
+- id: corridor_build
+  name: A corridor advances a completion stage
+  once: false
+  outcomes: [advance]
+  base_q: 0.08                                    # each firing advances one random not-yet-built corridor by ~0.2
+  covariates:
+    - { var: latent.china_export_push, beta: 1.0, center: 1.0 }
+  fires:
+    advance: { corridor_advance: 0.2 }
+  source: estimate
+  notes: "Pooled hazard; the engine picks a corridor weighted by (1 − completion) and honours `requires`. Each corridor's own hazard id points here."
+
+- id: siberia_china_lease
+  name: Long-term Chinese resource concessions in Siberia
+  once: true
+  outcomes: [lease]
+  base_q: 0.002
+  covariates:
+    - { var: actors.RUS.fiscal_stress, beta: 2.0, center: 0.3 }
+  fires:
+    lease: { add: { actors.RUS.fiscal_stress: -0.2 } }
+  source: estimate
+
+- id: zangezur_control
+  name: Change of control in Syunik
+  once: true
+  outcomes: [aze_control]
+  base_q: 0.001
+  covariates:
+    - { var: actors.ARM.war_losses, beta: 1.0, center: 0 }
+  fires:
+    aze_control: { set: { territories.zangezur_syunik.controller: AZE, territories.zangezur_syunik.status: occupied }, add: { actors.IRN.war_losses: 0.05 } }
+  source: estimate
+
+- id: pandemic
+  name: Pandemic-class global shock
+  once: false
+  outcomes: [pandemic]
+  base_q: 0.0075                                  # ~26% by 2036; ~one per 30 years
+  fires:
+    pandemic: { add: { world.shock_gdp: -0.05 } }
+  source: "base rate: 1918, 1957, 1968, 2009, 2020"
+
+- id: climate_shock
+  name: Catastrophic climate event in a load-bearing region
+  once: false
+  outcomes: [shock]
+  base_q: 0.02
+  covariates:
+    - { var: world.year, beta: 0.04, center: 2026 }     # rising hazard over the horizon
+  fires:
+    shock: { add: { actors.IND.fiscal_stress: 0.1, actors.EGY.fiscal_stress: 0.1, actors.PAK.fiscal_stress: 0.15 } }
+  source: estimate

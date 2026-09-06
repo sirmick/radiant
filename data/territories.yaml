@@ -1,0 +1,292 @@
+# Territories — polygons whose controller is not their sole claimant. Where the dice get rolled.
+# geometry.ne_ids reference features in the Natural Earth 10m disputed-areas layer (data/geo/world.topo.json, object "disputed").
+# geometry.sketch is a hand-drawn lon/lat ring, tagged so the UI renders it as an approximation. Replace with ISW/DeepState GeoJSON when wired.
+# stakes: 0-1 per side, how much it would pay to hold/take (estimate). hazard: id in hazards.yaml (omit = static).
+# Snapshot: 2026-09-06.
+
+# ---------------------------------------------------------------- Ukraine
+- id: crimea
+  name: Crimea
+  controller: RUS
+  claimants: [UKR]
+  status: occupied
+  stakes: { RUS: 0.95, UKR: 0.8 }
+  geometry: { ne_ids: [1159321217] }
+  hazard: ukraine_territory
+  notes: "Annexed 2014. No plausible path back to Kyiv inside the model horizon except Russian state failure."
+
+- id: donbas
+  name: Donetsk & Luhansk (Russian-held)
+  controller: RUS
+  claimants: [UKR]
+  status: contested_active
+  stakes: { RUS: 0.9, UKR: 0.85 }
+  geometry: { ne_ids: [1763286545, 1763286547] }
+  hazard: ukraine_territory
+  notes: "NE breakaway polygons are the 2014-22 'republics'; the 2026 line runs west of them. Sketch below carries the rest."
+
+- id: ukraine_south_occupied
+  name: Zaporizhzhia & Kherson (Russian-held, land bridge)
+  controller: RUS
+  claimants: [UKR]
+  status: contested_active
+  stakes: { RUS: 0.85, UKR: 0.9 }
+  geometry:
+    sketch: [[33.6, 46.1], [34.3, 46.6], [35.2, 47.1], [36.2, 47.5], [37.2, 47.6], [37.5, 47.1], [37.2, 46.7], [36.0, 46.3], [35.0, 46.0], [34.0, 45.9]]
+    geometry_source: sketch (ISW control-of-terrain, Sept 2026, approximate)
+  hazard: ukraine_territory
+  notes: "Includes the ZNPP. The land bridge to Crimea is the thing Moscow will not trade."
+
+# ---------------------------------------------------------------- Levant
+- id: golan
+  name: Golan Heights
+  controller: ISR
+  claimants: [SYR]
+  status: occupied
+  stakes: { ISR: 0.9, SYR: 0.6 }
+  geometry: { ne_ids: [1159320905] }
+  notes: "Annexed 1981; US-recognised 2019. Static in the model — a Syria treaty codifies it, it doesn't return it."
+
+- id: syria_buffer
+  name: Israeli buffer zone in southern Syria (post-Dec 2024)
+  controller: ISR
+  claimants: [SYR]
+  status: buffer
+  stakes: { ISR: 0.5, SYR: 0.7 }
+  geometry:
+    ne_ids: [1159321297]
+    sketch: [[35.75, 33.35], [36.0, 33.4], [36.25, 33.2], [36.3, 32.9], [36.1, 32.7], [35.9, 32.75], [35.75, 33.0]]
+    geometry_source: sketch (UNDOF zone + IDF positions on Hermon and east of the line, approximate)
+  hazard: syria_buffer_control
+  notes: "The 1974 disengagement zone Israel entered after Assad fell. A Syria–Israel treaty (hazard israel_syria_treaty) returns it to a demilitarised SYR/UN status."
+
+- id: syria_north_turkish
+  name: Turkish-controlled / Turkish-backed zone (Idlib, Afrin, Euphrates Shield, Peace Spring)
+  controller: TUR
+  claimants: [SYR]
+  status: buffer
+  stakes: { TUR: 0.7, SYR: 0.5 }
+  geometry:
+    sketch: [[36.2, 36.6], [37.0, 36.8], [38.0, 36.9], [39.0, 36.9], [40.0, 36.9], [41.0, 37.1], [41.0, 36.6], [40.0, 36.4], [39.0, 36.5], [38.0, 36.4], [37.2, 36.0], [36.6, 35.6], [36.2, 35.8]]
+    geometry_source: sketch (approximate; Turkish zones are now formally under Damascus with Turkish forces present)
+  hazard: syria_zones
+  notes: "Abu al-Duhur is here. Where Turkish AD arrives first and Israel strikes runways. Transitioning to 'Turkish garrison inside Syrian sovereignty'."
+
+- id: syria_northeast_sdf
+  name: Northeast Syria (SDF / integration zone)
+  controller: SYR
+  claimants: [SYR]
+  status: contested_active
+  stakes: { SYR: 0.7, TUR: 0.6, USA: 0.3 }
+  geometry:
+    sketch: [[38.5, 36.2], [39.5, 36.7], [40.5, 36.7], [41.5, 37.0], [42.3, 37.2], [42.3, 36.3], [41.5, 35.5], [40.5, 35.0], [39.7, 35.2], [38.8, 35.6]]
+    geometry_source: sketch (approximate; March 2025 integration agreement partially implemented)
+  hazard: syria_zones
+  notes: "Controller nominally SYR after the SDF integration deal; contested because integration is incomplete and Turkey wants the YPG gone. Oil fields and the Euphrates crossings are here — the rail route to the Mediterranean runs through it."
+
+- id: gaza
+  name: Gaza
+  controller: ISR
+  claimants: [PSE]
+  status: occupied
+  stakes: { ISR: 0.6 }
+  geometry: { ne_ids: [1159320901] }
+  notes: "Static in M1. Matters to the model through Saudi normalisation and IMEC, not through control change."
+
+- id: west_bank
+  name: West Bank
+  controller: ISR
+  claimants: [PSE]
+  status: occupied
+  stakes: { ISR: 0.7 }
+  geometry: { ne_ids: [1159320903, 1746265961] }
+  notes: "Static in M1."
+
+- id: shebaa
+  name: Shebaa Farms
+  controller: ISR
+  claimants: [LBN, SYR]
+  status: occupied
+  stakes: { ISR: 0.3 }
+  geometry: { ne_ids: [1159320907] }
+  notes: "Static."
+
+# ---------------------------------------------------------------- Iraq / Kurdistan
+- id: kurdistan_region
+  name: Kurdistan Region of Iraq
+  controller: IRQ
+  claimants: [IRQ]
+  status: frozen
+  stakes: { IRQ: 0.6, TUR: 0.5, IRN: 0.4 }
+  geometry:
+    sketch: [[42.4, 37.3], [43.5, 37.4], [44.8, 37.2], [45.5, 36.5], [46.0, 35.8], [45.9, 35.1], [45.5, 34.8], [45.0, 35.2], [44.3, 35.5], [43.6, 36.0], [43.0, 36.5], [42.5, 36.9]]
+    geometry_source: sketch (KRG-administered governorates, approximate; disputed territories excluded)
+  notes: "Autonomous under Baghdad. Turkey and Iran compete here; the Development Road skirts it. Static in M1, a hazard candidate in M2."
+
+# ---------------------------------------------------------------- Caucasus
+- id: zangezur_syunik
+  name: Syunik / Zangezur corridor strip
+  controller: ARM
+  claimants: [ARM]
+  status: frozen
+  stakes: { ARM: 0.95, AZE: 0.8, IRN: 0.7, TUR: 0.7, RUS: 0.5 }
+  geometry:
+    sketch: [[45.9, 39.3], [46.4, 39.3], [46.6, 39.0], [46.5, 38.85], [46.2, 38.9], [45.95, 39.1]]
+    geometry_source: sketch (Meghri district strip along the Araxes, approximate)
+  hazard: zangezur_control
+  notes: "TRIPP (Aug 2025) makes it a US-managed transit route under Armenian sovereignty. Iran's red line is a change of controller, not a road. Control hazard is low but the stakes are the corridor."
+
+- id: nagorno_karabakh
+  name: Nagorno-Karabakh (former)
+  controller: AZE
+  claimants: [AZE]
+  status: frozen
+  stakes: { AZE: 0.9 }
+  geometry: { ne_ids: [1159320385] }
+  notes: "Resolved by force Sept 2023; NE polygon is the pre-2023 breakaway. Kept for history rendering. Static."
+
+- id: abkhazia
+  name: Abkhazia
+  controller: RUS
+  claimants: [GEO]
+  status: breakaway
+  stakes: { RUS: 0.7 }
+  geometry: { ne_ids: [1159320785] }
+  notes: "Russian-garrisoned. Moves only on Russian state failure."
+
+- id: south_ossetia
+  name: South Ossetia
+  controller: RUS
+  claimants: [GEO]
+  status: breakaway
+  stakes: { RUS: 0.6 }
+  geometry: { ne_ids: [1159320787] }
+
+- id: transnistria
+  name: Transnistria
+  controller: RUS
+  claimants: [MDA]
+  status: breakaway
+  stakes: { RUS: 0.4, UKR: 0.5 }
+  geometry: { ne_ids: [1159321047] }
+  notes: "Isolated since 2022; the first thing that flips if Russia fragments."
+
+# ---------------------------------------------------------------- East Asia
+- id: taiwan
+  name: Taiwan
+  controller: TWN
+  claimants: [CHN]
+  status: disputed
+  stakes: { TWN: 1.0, CHN: 0.95, USA: 0.7, JPN: 0.8 }
+  geometry: { ne_ids: [1159321335] }
+  hazard: taiwan_control
+  notes: "The contested middle of both systems. Control hazard is conditioned on the taiwan_blockade hazard, not independent of it."
+
+- id: senkaku
+  name: Senkaku / Diaoyu (Nansei-shotō disputed subset)
+  controller: JPN
+  claimants: [CHN, TWN]
+  status: disputed
+  stakes: { JPN: 0.6, CHN: 0.5 }
+  geometry: { ne_ids: [1159320959] }
+  notes: "NE polygon covers the whole Nansei chain; the dispute is the Senkakus only. Static in M1."
+
+- id: paracels
+  name: Paracel Islands
+  controller: CHN
+  claimants: [VNM, TWN]
+  status: occupied
+  stakes: { CHN: 0.7, VNM: 0.6 }
+  geometry: { ne_ids: [1159320477] }
+
+- id: spratlys
+  name: Spratly Islands
+  controller: MIXED
+  claimants: [CHN, TWN, VNM, PHL, MYS]
+  status: contested_active
+  stakes: { CHN: 0.8, PHL: 0.6, VNM: 0.6 }
+  geometry: { ne_ids: [1159321165] }
+  hazard: scs_incident
+  notes: "Controller MIXED = feature-by-feature occupation. The naval-drone scenario makes every reef a Houthi."
+
+- id: scarborough
+  name: Scarborough Shoal
+  controller: CHN
+  claimants: [PHL]
+  status: contested_active
+  stakes: { CHN: 0.6, PHL: 0.7, USA: 0.4 }
+  geometry: { ne_ids: [1159321227] }
+  hazard: scs_incident
+
+- id: korean_dmz
+  name: Korean DMZ
+  controller: UN
+  claimants: [KOR, PRK]
+  status: buffer
+  stakes: { KOR: 0.9, PRK: 0.9 }
+  geometry: { ne_ids: [1159320991, 1159321183] }
+  notes: "Static; the reference case for what a Ukraine armistice looks like."
+
+- id: dokdo
+  name: Dokdo / Takeshima
+  controller: KOR
+  claimants: [JPN]
+  status: disputed
+  stakes: { KOR: 0.5, JPN: 0.2 }
+  geometry: { ne_ids: [1159320995] }
+  notes: "The irritant inside the Japan–Korea alliance the model needs to hold."
+
+# ---------------------------------------------------------------- South Asia
+- id: kashmir_pak
+  name: Pakistan-administered Kashmir (AJK + Gilgit-Baltistan)
+  controller: PAK
+  claimants: [IND]
+  status: frozen
+  stakes: { PAK: 0.9, IND: 0.6 }
+  geometry: { ne_ids: [1159321155, 1159321157] }
+  notes: "CPEC runs through Gilgit-Baltistan. Static in M1."
+
+- id: siachen
+  name: Siachen Glacier
+  controller: IND
+  claimants: [PAK]
+  status: frozen
+  stakes: { IND: 0.5, PAK: 0.5 }
+  geometry: { ne_ids: [1159320963] }
+
+# ---------------------------------------------------------------- Gulf / Africa
+- id: abu_musa_tunbs
+  name: Abu Musa & the Tunbs
+  controller: IRN
+  claimants: [ARE]
+  status: occupied
+  stakes: { IRN: 0.8, ARE: 0.4 }
+  geometry: { ne_ids: [1159320883] }
+  notes: "Sit in the Hormuz approaches; IRGC Navy bases. Static unless Iran state-fails."
+
+- id: northern_cyprus
+  name: Northern Cyprus
+  controller: TUR
+  claimants: [CYP]
+  status: breakaway
+  stakes: { TUR: 0.8 }
+  geometry: { ne_ids: [1159320531, 1159320511] }
+  notes: "Turkey's EU/SAFE candidacy runs into this. Static in M1."
+
+- id: western_sahara
+  name: Western Sahara
+  controller: MAR
+  claimants: [SAH]
+  status: frozen
+  stakes: { MAR: 0.9 }
+  geometry: { ne_ids: [1159321223] }
+  notes: "Static; included so the Africa map isn't wrong."
+
+- id: somaliland
+  name: Somaliland
+  controller: SOM_L
+  claimants: [SOM]
+  status: breakaway
+  stakes: { ARE: 0.4, ETH: 0.5 }
+  geometry: { ne_ids: [1159321259] }
+  notes: "Berbera — UAE/Ethiopian port on the Bab al-Mandab approaches. Static in M1."

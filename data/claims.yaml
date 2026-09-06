@@ -1,0 +1,270 @@
+# Claims — resolvable statements with a human prior and a model query.
+# query: evaluated per sampled run at the horizon step. Grammar (src/engine/query.js):
+#   fired(hazard_id[, outcome])           hazard fired (with outcome) by horizon
+#   not fired(...)
+#   state(path) == value                  world/actor/territory/corridor state at horizon
+#   state(path) >= number
+#   A and B, A or B, (A)
+# p_history entries: [date, p, source] — source is human | model | crowd. prior is never edited.
+# Snapshot: 2026-09-06.
+
+- id: iran_bomb_2036
+  statement: Iran conducts a nuclear test or is officially assessed to possess a weapon by 2036-09-01
+  type: event
+  horizon: 2036-09-01
+  prior: 0.30
+  p_history: [[2026-09-06, 0.30, human]]
+  query: fired(iran_bomb)
+  depends_on: [iran_pragmatic_2032, heu_removed_2030]
+  antagonists: [heu_removed_2030]
+  resolution: IAEA / US IC / Israeli official assessment; CTBTO-detected test
+  falsifiers: [verified HEU export or downblending, IAEA continuity of knowledge restored for 2+ years]
+  signals: [iaea_quarterly, isfahan_imagery, iran_npt_status]
+  tags: [mideast, nuclear]
+
+- id: iran_pragmatic_2032
+  statement: Iran's post-Khamenei consolidation produces a pragmatic/technocratic turn (Chinese corridor money accepted, no bomb) by 2032
+  type: event
+  horizon: 2032-09-01
+  prior: 0.35
+  p_history: [[2026-09-06, 0.35, human]]
+  query: fired(iran_consolidation, pragmatic)
+  depends_on: [hormuz_reopens_2028, china_iran_rail_2036]
+  antagonists: [israel_iran_round_2029]
+  resolution: observable IRGC-state settlement; Chinese corridor investment >$10bn disbursed; IAEA access restored
+  falsifiers: [IRGC junta declared, NPT withdrawal]
+  signals: [iran_domestic, china_customs, iaea_quarterly]
+  tags: [mideast, succession]
+
+- id: heu_removed_2030
+  statement: Iran's 60% HEU stockpile is verifiably removed from Iran or downblended by 2030
+  type: event
+  horizon: 2030-09-01
+  prior: 0.35
+  p_history: [[2026-09-06, 0.35, human]]
+  query: fired(heu_removed)
+  resolution: IAEA verification report
+  signals: [iaea_quarterly, isfahan_imagery]
+  tags: [mideast, nuclear]
+
+- id: hormuz_reopens_2028
+  statement: Commercial tanker traffic through Hormuz returns to >70% of 2025 volume by 2028
+  type: event
+  horizon: 2028-09-01
+  prior: 0.75
+  p_history: [[2026-09-06, 0.75, human]]
+  query: fired(hormuz_reopens)
+  resolution: TankerTrackers / Lloyd's List monthly transit counts
+  signals: [tankertrackers, centcom]
+  tags: [mideast, chokepoint]
+
+- id: israel_iran_round_2029
+  statement: Another Israel–Iran strike round (≥3 days of reciprocal strikes) occurs by 2029
+  type: event
+  horizon: 2029-09-01
+  prior: 0.55
+  p_history: [[2026-09-06, 0.55, human]]
+  query: fired(israel_iran_round)
+  signals: [isw_iran, centcom]
+  tags: [mideast, conflict]
+
+- id: israel_syria_treaty_2032
+  statement: Israel and Syria sign a security/disengagement agreement by 2032
+  type: event
+  horizon: 2032-09-01
+  prior: 0.50
+  p_history: [[2026-09-06, 0.50, human]]
+  query: fired(israel_syria_treaty)
+  antagonists: [turkey_israel_clash_2031]
+  resolution: signed text, UN or US-witnessed
+  signals: [israel_mfa, syria_gov, us_state]
+  tags: [mideast, treaty]
+
+- id: turkey_israel_clash_2031
+  statement: Turkish and Israeli forces exchange fire directly in Syria by 2031
+  type: event
+  horizon: 2031-09-01
+  prior: 0.10
+  p_history: [[2026-09-06, 0.10, human]]
+  query: fired(turkey_israel_clash)
+  signals: [isw_syria, turkish_mfa]
+  tags: [mideast, conflict]
+
+- id: saudi_normalization_2034
+  statement: Saudi Arabia and Israel establish formal diplomatic relations by 2034
+  type: event
+  horizon: 2034-09-01
+  prior: 0.40
+  p_history: [[2026-09-06, 0.40, human]]
+  query: fired(saudi_normalization)
+  depends_on: [israel_syria_treaty_2032]
+  tags: [mideast, treaty]
+
+- id: saudi_bomb_2040
+  statement: Saudi Arabia possesses nuclear weapons (own or Pakistani-deployed) by 2040
+  type: event
+  horizon: 2040-09-01
+  prior: 0.15
+  p_history: [[2026-09-06, 0.15, human]]
+  query: fired(saudi_bomb)
+  depends_on: [iran_bomb_2036]
+  tags: [mideast, nuclear]
+
+- id: china_iran_rail_2036
+  statement: A through rail service China→Iran→Turkey operates with regular scheduled freight by 2036
+  type: event
+  horizon: 2036-09-01
+  prior: 0.45
+  p_history: [[2026-09-06, 0.45, human]]
+  query: state(corridors.china_iran_turkey.completion) >= 1
+  depends_on: [iran_pragmatic_2032]
+  resolution: published timetable + customs data showing ≥50 trains/yr end to end
+  signals: [china_customs, iran_rail]
+  tags: [eurasia, corridor]
+
+- id: imec_operational_2040
+  statement: IMEC carries scheduled freight India→Haifa→Europe by 2040
+  type: event
+  horizon: 2040-09-01
+  prior: 0.30
+  p_history: [[2026-09-06, 0.30, human]]
+  query: state(corridors.imec.completion) >= 1
+  depends_on: [saudi_normalization_2034]
+  tags: [mideast, corridor]
+
+- id: ukraine_armistice_2028
+  statement: A formal armistice or ceasefire freezes the Russia–Ukraine line for ≥12 months by 2028
+  type: event
+  horizon: 2028-09-01
+  prior: 0.60
+  p_history: [[2026-09-06, 0.60, human]]
+  query: fired(ukraine_freeze)
+  resolution: signed ceasefire + ISW reporting no front movement for 12 months
+  signals: [isw_ukraine, russia_matters]
+  tags: [europe, conflict]
+
+- id: russia_transition_2036
+  statement: Putin is no longer Russia's effective leader by 2036
+  type: event
+  horizon: 2036-09-01
+  prior: 0.60
+  p_history: [[2026-09-06, 0.60, human]]
+  query: fired(russia_transition)
+  signals: [russia_matters]
+  tags: [eurasia, succession]
+
+- id: russia_fragmentation_2046
+  statement: Russia loses effective control of at least one federal subject (secession or de facto autonomy) by 2046
+  type: event
+  horizon: 2046-09-01
+  prior: 0.25
+  p_history: [[2026-09-06, 0.25, human]]
+  query: fired(russia_transition, fragmentation)
+  depends_on: [russia_transition_2036]
+  tags: [eurasia, succession]
+
+- id: china_technocrat_2040
+  statement: Xi's successor is a collective/technocratic leadership that has not initiated a Taiwan blockade by 2040
+  type: event
+  horizon: 2040-09-01
+  prior: 0.50
+  p_history: [[2026-09-06, 0.50, human]]
+  query: fired(china_transition, technocrat) and not fired(taiwan_blockade)
+  tags: [east_asia, succession]
+
+- id: taiwan_blockade_2036
+  statement: China imposes a blockade or quarantine of Taiwan lasting ≥30 days by 2036
+  type: event
+  horizon: 2036-09-01
+  prior: 0.20
+  p_history: [[2026-09-06, 0.20, human]]
+  query: fired(taiwan_blockade)
+  antagonists: [china_technocrat_2040]
+  signals: [taiwan_mac, ins_japan]
+  tags: [east_asia, conflict]
+
+- id: taiwan_prc_control_2046
+  statement: The PRC exercises effective control over Taiwan by 2046
+  type: event
+  horizon: 2046-09-01
+  prior: 0.12
+  p_history: [[2026-09-06, 0.12, human]]
+  query: state(territories.taiwan.controller) == CHN
+  depends_on: [taiwan_blockade_2036]
+  tags: [east_asia, territory]
+
+- id: export_controls_collapse_2032
+  statement: China obtains frontier AI accelerators at volume without an effective allied export-control regime by 2032
+  type: event
+  horizon: 2032-09-01
+  prior: 0.35
+  p_history: [[2026-09-06, 0.35, human]]
+  query: fired(export_control_collapse)
+  signals: [bis_rules, asml_reports]
+  tags: [tech, alignment]
+
+- id: japan_korea_nuclear_2040
+  statement: Japan or South Korea deploys nuclear weapons by 2040
+  type: event
+  horizon: 2040-09-01
+  prior: 0.20
+  p_history: [[2026-09-06, 0.20, human]]
+  query: fired(japan_korea_weaponize)
+  tags: [east_asia, nuclear]
+
+- id: us_correction_2032
+  statement: The US enacts a durable course correction (alliance recommitment + STEM immigration expansion) by 2032
+  type: event
+  horizon: 2032-09-01
+  prior: 0.45
+  p_history: [[2026-09-06, 0.45, human]]
+  query: fired(us_reliability_reversal_up)
+  signals: [uscis_visa_tables, safe_procurement]
+  tags: [americas, alignment]
+
+- id: us_depression_2036
+  statement: The US experiences a depression-class downturn (≥10% peak-to-trough real GDP or ≥3 years of contraction) by 2036
+  type: event
+  horizon: 2036-09-01
+  prior: 0.20
+  p_history: [[2026-09-06, 0.20, human]]
+  query: fired(us_depression)
+  tags: [americas, macro]
+
+- id: crqc_2040
+  statement: A cryptographically relevant quantum computer is publicly demonstrated or officially assessed to exist by 2040
+  type: event
+  horizon: 2040-09-01
+  prior: 0.45
+  p_history: [[2026-09-06, 0.45, human]]
+  query: fired(crqc)
+  tags: [tech]
+
+- id: china_oil_peak_2030
+  statement: Chinese oil consumption in 2030 is below its 2025 level
+  type: structural
+  horizon: 2030-12-31
+  prior: 0.80
+  p_history: [[2026-09-06, 0.80, human]]
+  query: state(actors.CHN.oil_demand) < state0(actors.CHN.oil_demand)
+  signals: [iea_omr, china_customs]
+  tags: [energy]
+
+- id: global_oil_down_20_2040
+  statement: Global oil consumption in 2040 is ≥20% below 2025
+  type: structural
+  horizon: 2040-12-31
+  prior: 0.55
+  p_history: [[2026-09-06, 0.55, human]]
+  query: state(world.oil_demand) <= 0.8 * state0(world.oil_demand)
+  tags: [energy]
+
+- id: the_thread
+  statement: The conversation's full 40-year path holds — Iran pragmatic, no Iranian bomb, China–Iran–Turkey rail built, Israel–Syria treaty, no Turkey–Israel clash, Ukraine frozen then Russian transition, no Taiwan blockade, China technocratic succession, US correction — all by 2046
+  type: conditional
+  horizon: 2046-09-01
+  prior: 0.12
+  p_history: [[2026-09-06, 0.12, human]]
+  query: fired(iran_consolidation, pragmatic) and not fired(iran_bomb) and state(corridors.china_iran_turkey.completion) >= 1 and fired(israel_syria_treaty) and not fired(turkey_israel_clash) and fired(ukraine_freeze) and fired(russia_transition) and not fired(taiwan_blockade) and fired(china_transition, technocrat) and fired(us_reliability_reversal_up)
+  tags: [scenario]
+  notes: "The humbling number. The transcript's own estimate was 10–15%."

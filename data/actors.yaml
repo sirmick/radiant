@@ -1,0 +1,373 @@
+# Actors — hand-coded static fields only. Numeric series are pulled from data/raw by the build.
+# tech: map of capability id -> level. Capability ids are declared in variables.yaml (cap_<id>); missing keys default to N.
+# Levels: S sovereign, I import, N none.  regime.type per V-Dem Regimes of the World (v15, 2025 data), transcribed;
+# personalism/succession are 0-1 estimates informed by V-Dem v2xnp_pers and succession-institution literature.
+# Leader fields are set only where leader age is a hazard covariate.
+# Snapshot date: 2026-09-06.
+
+- id: USA
+  name: United States
+  region: americas
+  regime: { type: electoral_democracy, personalism: 0.45, succession: 0.9, leader_born: 1946, leader_since: 2025, source: "V-Dem v15 RoW (downgraded 2025) + estimate" }
+  nuclear: { status: weapon, warheads: 3700 }
+  tech: { logic: S, memory: S, euv: I, chem: S, ai_compute: S, leo_isr: S, pnt: S, strike: S, usv: S, de: S, nukes: S, latency: S, launch: S, refining: S, rail_hvdc: I, packaging: I, power_semis: S, inverters: S, quantum: S }
+  chokepoints: {}
+  notes: "Constellations, chip design, AI labs, food/energy exporter. Reliability is the variable, not capability."
+
+- id: CAN
+  name: Canada
+  region: americas
+  regime: { type: liberal_democracy, personalism: 0.2, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: S, pnt: I, strike: N, usv: I, de: N, nukes: N, latency: S, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: I, inverters: I, quantum: I }
+  notes: "First non-EU member of SAFE; uranium, hydro, nickel; AI talent sink. Latent via CANDU fuel cycle, no enrichment."
+
+- id: MEX
+  name: Mexico
+  region: americas
+  regime: { type: electoral_democracy, personalism: 0.4, succession: 0.8, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: I, inverters: I, quantum: N }
+  notes: "Labor and solar half of the North American continental system."
+
+- id: BRA
+  name: Brazil
+  region: americas
+  regime: { type: electoral_democracy, personalism: 0.35, succession: 0.8, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: S, launch: I, refining: S, rail_hvdc: I, packaging: N, power_semis: I, inverters: I, quantum: N }
+  notes: "Enrichment capability (Resende); Alcântara launch site."
+
+- id: GBR
+  name: United Kingdom
+  region: europe
+  regime: { type: liberal_democracy, personalism: 0.2, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: weapon, warheads: 225 }
+  tech: { logic: N, memory: N, euv: N, chem: I, ai_compute: I, leo_isr: I, pnt: I, strike: S, usv: S, de: S, nukes: S, latency: S, launch: I, refining: S, rail_hvdc: I, packaging: N, power_semis: I, inverters: I, quantum: I }
+  notes: "Storm Shadow, DragonFire, OneWeb (I on ISR/PNT since Galileo exit). Gravitating to EU on security."
+
+- id: FRA
+  name: France
+  region: europe
+  regime: { type: liberal_democracy, personalism: 0.3, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: weapon, warheads: 290 }
+  tech: { logic: N, memory: N, euv: N, chem: I, ai_compute: I, leo_isr: S, pnt: I, strike: S, usv: I, de: I, nukes: S, latency: S, launch: S, refining: S, rail_hvdc: S, packaging: N, power_semis: I, inverters: I, quantum: I }
+  notes: "CSO recon sats, Ariane, SCALP; Alstom rail. Galileo shared -> I on PNT."
+
+- id: DEU
+  name: Germany
+  region: europe
+  regime: { type: liberal_democracy, personalism: 0.15, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: I, memory: N, euv: I, chem: S, ai_compute: I, leo_isr: S, pnt: I, strike: I, usv: I, de: I, nukes: N, latency: S, launch: I, refining: S, rail_hvdc: S, packaging: I, power_semis: S, inverters: S, quantum: I }
+  notes: "Zeiss optics inside EUV (I, not S — tool is Dutch); Merck/BASF chemistry; SAR-Lupe; Siemens HVDC; Urenco share for latency."
+
+- id: ITA
+  name: Italy
+  region: europe
+  regime: { type: liberal_democracy, personalism: 0.3, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: I, ai_compute: I, leo_isr: S, pnt: I, strike: I, usv: I, de: I, nukes: N, latency: N, launch: S, refining: S, rail_hvdc: I, packaging: N, power_semis: I, inverters: S, quantum: I }
+  notes: "COSMO-SkyMed, Vega launcher; IMEC's European terminal candidate."
+
+- id: ESP
+  name: Spain
+  region: europe
+  regime: { type: liberal_democracy, personalism: 0.2, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: S, quantum: I }
+
+- id: POL
+  name: Poland
+  region: europe
+  regime: { type: electoral_democracy, personalism: 0.35, succession: 0.85, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Largest European land army build-up; SAFE's biggest borrower."
+
+- id: NLD
+  name: Netherlands
+  region: europe
+  regime: { type: liberal_democracy, personalism: 0.1, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: N, memory: N, euv: S, chem: I, ai_compute: I, leo_isr: I, pnt: I, strike: N, usv: I, de: N, nukes: N, latency: S, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: I, inverters: I, quantum: I }
+  notes: "ASML. The one hard technological line in the whole model. Urenco Almelo for latency."
+
+- id: SWE
+  name: Sweden
+  region: europe
+  regime: { type: liberal_democracy, personalism: 0.1, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: S, packaging: N, power_semis: I, inverters: I, quantum: I }
+  notes: "Gripen, Saab; rail/HVDC via Hitachi Energy (ex-ABB) Ludvika."
+
+- id: UKR
+  name: Ukraine
+  region: europe
+  regime: { type: electoral_democracy, personalism: 0.5, succession: 0.6, source: "V-Dem v15 RoW + wartime estimate" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: I, pnt: I, strike: S, usv: S, de: N, nukes: N, latency: I, launch: N, refining: I, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Most experienced drone/USV power on earth; sovereign on strike and USV, imports ISR/PNT. Refining mostly destroyed."
+
+- id: RUS
+  name: Russia
+  region: eurasia
+  regime: { type: closed_autocracy, personalism: 0.85, succession: 0.1, leader_born: 1952, leader_since: 2000, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: weapon, warheads: 4300 }
+  tech: { logic: N, memory: N, euv: N, chem: I, ai_compute: I, leo_isr: S, pnt: S, strike: S, usv: I, de: I, nukes: S, latency: S, launch: S, refining: S, rail_hvdc: I, packaging: N, power_semis: I, inverters: I, quantum: N }
+  notes: "War economy; refining down ~20% from Ukrainian strikes; every corridor in the model is designed to bypass it."
+
+- id: TUR
+  name: Turkey
+  region: eurasia
+  regime: { type: electoral_autocracy, personalism: 0.75, succession: 0.3, leader_born: 1954, leader_since: 2003, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: S, pnt: I, strike: S, usv: S, de: I, nukes: N, latency: I, launch: N, refining: I, rail_hvdc: N, packaging: N, power_semis: I, inverters: I, quantum: N }
+  notes: "Baykar, ULAQ, Göktürk; Bosphorus; gateway for three corridors. NATO-shared weapons don't count as sovereign nukes."
+
+- id: AZE
+  name: Azerbaijan
+  region: eurasia
+  regime: { type: closed_autocracy, personalism: 0.85, succession: 0.3, leader_born: 1961, leader_since: 2003, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Zangezur corridor's eastern end; Turkish client, Israeli drone customer, Iranian irritant."
+
+- id: ARM
+  name: Armenia
+  region: eurasia
+  regime: { type: electoral_democracy, personalism: 0.4, succession: 0.7, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: N, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Syunik/Zangezur transit state; drifting from Russia toward EU."
+
+- id: KAZ
+  name: Kazakhstan
+  region: eurasia
+  regime: { type: electoral_autocracy, personalism: 0.6, succession: 0.4, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: I, launch: I, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Middle Corridor spine; world's largest uranium producer; Baikonur leased to Russia."
+
+- id: IRN
+  name: Iran
+  region: mideast
+  regime: { type: closed_autocracy, personalism: 0.6, succession: 0.15, leader_born: null, leader_since: 2026, source: "V-Dem v15 RoW + post-Khamenei estimate" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: I, ai_compute: N, leo_isr: N, pnt: N, strike: S, usv: S, de: N, nukes: N, latency: S, launch: S, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { hormuz: 0.85 }
+  notes: "Three regimes in one (clerics, IRGC, technocrats). ~440 kg 60% HEU assessed at Isfahan. Succession unresolved; leader_born null until a consolidator emerges."
+
+- id: ISR
+  name: Israel
+  region: mideast
+  regime: { type: electoral_democracy, personalism: 0.55, succession: 0.8, leader_born: 1949, leader_since: 2022, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: weapon, warheads: 90 }
+  tech: { logic: I, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: S, pnt: N, strike: S, usv: S, de: S, nukes: S, latency: S, launch: S, refining: S, rail_hvdc: N, packaging: N, power_semis: I, inverters: S, quantum: I }
+  notes: "Ofek, Iron Beam, Jericho, Dolphins. Intel Kiryat Gat is not leading-edge -> logic I. 20,000 km² with one airport."
+
+- id: SAU
+  name: Saudi Arabia
+  region: mideast
+  regime: { type: closed_autocracy, personalism: 0.8, succession: 0.4, leader_born: 1985, leader_since: 2017, source: "V-Dem v15 RoW + estimate (MBS as effective ruler)" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: N, pnt: I, strike: I, usv: I, de: I, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { hormuz: 0.55, bab_al_mandab: 0.3 }
+  notes: "$10-15/bbl lifting cost — last producer standing. Yanbu pipeline + Landbridge bypass Hormuz. Pakistan option on nukes."
+
+- id: ARE
+  name: United Arab Emirates
+  region: mideast
+  regime: { type: closed_autocracy, personalism: 0.7, succession: 0.5, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: I, pnt: I, strike: I, usv: I, de: I, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { hormuz: 0.6 }
+  notes: "Fujairah bypass; Etihad Rail; Barakah reactors (fuel imported, 123 agreement forbids enrichment)."
+
+- id: QAT
+  name: Qatar
+  region: mideast
+  regime: { type: closed_autocracy, personalism: 0.7, succession: 0.5, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { hormuz: 0.95 }
+  notes: "LNG is the bridge fuel and all of it goes through Hormuz. Al Udeid. Turkey's alliance-grade partner."
+
+- id: EGY
+  name: Egypt
+  region: mideast
+  regime: { type: closed_autocracy, personalism: 0.75, succession: 0.3, leader_born: 1954, leader_since: 2014, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { suez: 0.4 }
+  notes: "Suez revenue; Gulf-Europe HVDC landing; largest Arab army."
+
+- id: IRQ
+  name: Iraq
+  region: mideast
+  regime: { type: electoral_autocracy, personalism: 0.4, succession: 0.4, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: I, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { hormuz: 0.9 }
+  notes: "Development Road (Faw-Turkey); PMF vs state; refining short of demand -> I."
+
+- id: SYR
+  name: Syria
+  region: mideast
+  regime: { type: closed_autocracy, personalism: 0.7, succession: 0.2, leader_born: 1982, leader_since: 2024, source: "estimate (transitional government)" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: N, rail_hvdc: N, packaging: N, power_semis: N, inverters: N, quantum: N }
+  notes: "Turkish client, Gulf-funded rebuild, Israeli buffer in the south. Whoever controls Syria controls whether Iran's rail reaches the Mediterranean."
+
+- id: JOR
+  name: Jordan
+  region: mideast
+  regime: { type: closed_autocracy, personalism: 0.5, succession: 0.6, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: I, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "IMEC and Gulf-Israel HVDC both cross it; stability is the corridor."
+
+- id: CHN
+  name: China
+  region: east_asia
+  regime: { type: closed_autocracy, personalism: 0.8, succession: 0.15, leader_born: 1953, leader_since: 2012, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: weapon, warheads: 600 }
+  tech: { logic: I, memory: S, euv: N, chem: S, ai_compute: I, leo_isr: S, pnt: S, strike: S, usv: S, de: S, nukes: S, latency: S, launch: S, refining: S, rail_hvdc: S, packaging: S, power_semis: S, inverters: S, quantum: I }
+  chokepoints: { malacca: 0.6, hormuz: 0.35, taiwan_strait: 0.3 }
+  notes: "Sovereign on everything except leading-edge logic (7nm without EUV), EUV (none), and frontier AI compute (import/gray). Fertility ~1.0. No succession rules."
+
+- id: JPN
+  name: Japan
+  region: east_asia
+  regime: { type: liberal_democracy, personalism: 0.15, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: I, memory: S, euv: N, chem: S, ai_compute: I, leo_isr: S, pnt: S, strike: I, usv: I, de: I, nukes: N, latency: S, launch: S, refining: S, rail_hvdc: S, packaging: S, power_semis: S, inverters: S, quantum: I }
+  chokepoints: { malacca: 0.7, hormuz: 0.75, taiwan_strait: 0.5 }
+  notes: "Shin-Etsu, SUMCO, JSR, TOK, Tokyo Electron: the chemistry nobody can replicate. Rokkasho for latency. QZSS regional PNT. The hinge of the East Asian anchor."
+
+- id: KOR
+  name: South Korea
+  region: east_asia
+  regime: { type: liberal_democracy, personalism: 0.25, succession: 0.9, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: S, memory: S, euv: N, chem: I, ai_compute: I, leo_isr: S, pnt: I, strike: S, usv: I, de: I, nukes: N, latency: S, launch: S, refining: S, rail_hvdc: S, packaging: S, power_semis: I, inverters: I, quantum: I }
+  chokepoints: { malacca: 0.65, hormuz: 0.7, taiwan_strait: 0.5 }
+  notes: "Samsung/Hynix; Hyunmoo; Nuri launcher; shipbuilding at scale. Latency via technical capacity, no enrichment plant -> S is generous; keep and flag."
+
+- id: TWN
+  name: Taiwan
+  region: east_asia
+  regime: { type: liberal_democracy, personalism: 0.2, succession: 0.9, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: S, memory: I, euv: N, chem: I, ai_compute: I, leo_isr: I, pnt: N, strike: S, usv: I, de: N, nukes: N, latency: I, launch: N, refining: S, rail_hvdc: I, packaging: S, power_semis: I, inverters: I, quantum: N }
+  chokepoints: { taiwan_strait: 1.0, malacca: 0.6 }
+  notes: "TSMC. The contested middle of both systems; wanted intact by everyone."
+
+- id: PRK
+  name: North Korea
+  region: east_asia
+  regime: { type: closed_autocracy, personalism: 0.95, succession: 0.3, leader_born: 1984, leader_since: 2011, source: "V-Dem v15 RoW + estimate" }
+  nuclear: { status: weapon, warheads: 50 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: I, pnt: N, strike: S, usv: N, de: N, nukes: S, latency: S, launch: S, refining: N, rail_hvdc: N, packaging: N, power_semis: N, inverters: N, quantum: N }
+  notes: "Reference case for 'bombed-latent state gets the bomb'. Succession is dynastic — institutionalised in its own way."
+
+- id: IND
+  name: India
+  region: south_asia
+  regime: { type: electoral_autocracy, personalism: 0.6, succession: 0.7, source: "V-Dem v15 RoW" }
+  nuclear: { status: weapon, warheads: 180 }
+  tech: { logic: N, memory: N, euv: N, chem: I, ai_compute: I, leo_isr: S, pnt: S, strike: S, usv: I, de: I, nukes: S, latency: S, launch: S, refining: S, rail_hvdc: S, packaging: N, power_semis: I, inverters: I, quantum: I }
+  chokepoints: { hormuz: 0.5, malacca: 0.3, bab_al_mandab: 0.3 }
+  notes: "INSTC and IMEC both start here; Chabahar; the demographic counterweight to China in IFs."
+
+- id: PAK
+  name: Pakistan
+  region: south_asia
+  regime: { type: electoral_autocracy, personalism: 0.5, succession: 0.3, source: "V-Dem v15 RoW" }
+  nuclear: { status: weapon, warheads: 170 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: S, usv: N, de: N, nukes: S, latency: S, launch: N, refining: I, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Saudi's nuclear option; Gwadar; mediator channel to Tehran."
+
+- id: IDN
+  name: Indonesia
+  region: sea
+  regime: { type: electoral_democracy, personalism: 0.45, succession: 0.75, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: N, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { malacca: 0.5 }
+  notes: "Nickel refining (Chinese-built); Malacca/Sunda/Lombok all Indonesian waters."
+
+- id: VNM
+  name: Vietnam
+  region: sea
+  regime: { type: closed_autocracy, personalism: 0.4, succession: 0.6, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: I, rail_hvdc: I, packaging: I, power_semis: N, inverters: I, quantum: N }
+  chokepoints: { malacca: 0.4 }
+  notes: "Paracel claimant; China+1 manufacturing; the coast China's supply lines are hostage to."
+
+- id: PHL
+  name: Philippines
+  region: sea
+  regime: { type: electoral_democracy, personalism: 0.5, succession: 0.7, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: I, rail_hvdc: N, packaging: I, power_semis: N, inverters: I, quantum: N }
+  notes: "Scarborough/Spratly front line; US EDCA bases; Luzon Strait."
+
+- id: SGP
+  name: Singapore
+  region: sea
+  regime: { type: electoral_autocracy, personalism: 0.3, succession: 0.85, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: I, memory: I, euv: N, chem: I, ai_compute: I, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: I, power_semis: I, inverters: I, quantum: I }
+  chokepoints: { malacca: 1.0 }
+  notes: "Mature-node fabs, Micron NAND; the exception that proves the migrant rule."
+
+- id: MYS
+  name: Malaysia
+  region: sea
+  regime: { type: electoral_democracy, personalism: 0.35, succession: 0.75, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: I, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: S, power_semis: I, inverters: I, quantum: N }
+  chokepoints: { malacca: 0.9 }
+  notes: "Advanced packaging (Penang) — the chem/packaging layer under TSMC; Spratly claimant."
+
+- id: THA
+  name: Thailand
+  region: sea
+  regime: { type: electoral_autocracy, personalism: 0.4, succession: 0.5, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: I, packaging: I, power_semis: N, inverters: I, quantum: N }
+
+- id: AUS
+  name: Australia
+  region: oceania
+  regime: { type: liberal_democracy, personalism: 0.15, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: I, leo_isr: I, pnt: I, strike: I, usv: I, de: I, nukes: N, latency: I, launch: I, refining: I, rail_hvdc: I, packaging: N, power_semis: I, inverters: I, quantum: I }
+  chokepoints: { malacca: 0.4 }
+  notes: "Indispensable and unconquerable, strangle-able: ~1 month fuel reserves, two refineries, undersea cables. Pine Gap. Latency = uranium + AUKUS reactors, no enrichment -> I."
+
+- id: NZL
+  name: New Zealand
+  region: oceania
+  regime: { type: liberal_democracy, personalism: 0.1, succession: 0.95, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: S, refining: N, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Rocket Lab Mahia -> sovereign launch geography. Refining closed 2022."
+
+- id: NGA
+  name: Nigeria
+  region: africa
+  regime: { type: electoral_autocracy, personalism: 0.5, succession: 0.6, source: "V-Dem v15 RoW" }
+  nuclear: { status: none, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: N, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: N, launch: N, refining: S, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "High-cost rentier that craters first in the oil-decline scenario; Dangote refinery -> refining S."
+
+- id: ZAF
+  name: South Africa
+  region: africa
+  regime: { type: electoral_democracy, personalism: 0.3, succession: 0.8, source: "V-Dem v15 RoW" }
+  nuclear: { status: latent, warheads: 0 }
+  tech: { logic: N, memory: N, euv: N, chem: N, ai_compute: N, leo_isr: I, pnt: I, strike: I, usv: I, de: N, nukes: N, latency: S, launch: N, refining: I, rail_hvdc: N, packaging: N, power_semis: N, inverters: I, quantum: N }
+  notes: "Former weapons state; Cape route beneficiary if chokepoints close; Simandou-adjacent iron ore competitor to Pilbara is Guinea, not ZAF."
