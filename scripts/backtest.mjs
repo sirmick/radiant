@@ -12,7 +12,7 @@ const skipDyads = process.argv.includes('--no-dyads');
 const UNIVERSE = arg('universe', 'modeled');   // modeled (67 simulated actors) | all (every state)
 const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
 // ground-truth coverage per event kind: score only inside these windows (the datasets end; absence past the end is not a non-event)
-const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001] };
+const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1900, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001] };
 
 const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
 const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
@@ -29,7 +29,7 @@ function realized(asOf, horizon) {
   for (const e of events) {
     const y = Math.floor(e.year ?? e.start); if (y <= asOf || y > asOf + horizon) continue;
     const cov = COVERAGE[e.kind]; if (cov && (y < cov[0] || y > cov[1])) continue;
-    if (e.actor) any.add(`${e.kind}|${e.actor}`);
+    if (e.actor) for (const t of templates) if (t.event === e.kind && (!t.event_filter || Object.entries(t.event_filter).every(([k, v]) => e[k] === v))) any.add(`${t.id}|${e.actor}`);
     if (e.a && e.b) dy.add(`${e.kind}|${pairKey(e.a, e.b)}`);
   }
   return { any, dy };
@@ -59,9 +59,15 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     const covYears = cov ? Math.max(0, Math.min(asOf + horizon, cov[1]) - Math.max(asOf, cov[0] - 1)) : horizon;
     if (covYears < horizon) { /* truth truncated: compare against the ensemble's P(event within covYears) instead */ }
     if (t.unit === 'actor-year') {
-      if (t.event_filter) continue; // filtered events (irregular) share a kind; scored via leader_exit for now
-      // only actors whose covariates the template can evaluate at asOf (hazard computed at least once)
-      for (const id of ids) { const p = ens.pAny[`${kind}|${id}`]; if (p == null && !(`${kind}|${id}` in ens.expected)) { if (!hasCoverage(w0, t, id)) continue; } pairs.push([covYears < horizon ? ens.pAnyWithin(`${kind}|${id}`, covYears) : (p ?? 0), real.any.has(`${kind}|${id}`) ? 1 : 0, id]); }
+      if (t.status === 'monitored') continue;
+      for (const id of ids) {
+        const a0 = w0.actors[id];
+        if (t.sample?.regime_max != null && !(a0.cur.regime <= t.sample.regime_max)) continue;
+        if (t.sample?.regime_min != null && !(a0.cur.regime >= t.sample.regime_min)) continue;
+        const key = `${t.id}|${id}`; const p = ens.pAny[key];
+        if (p == null && !(key in ens.expected)) { if (!hasCoverage(w0, t, id)) continue; }
+        pairs.push([covYears < horizon ? ens.pAnyWithin(key, covYears) : (p ?? 0), real.any.has(key) ? 1 : 0, id]);
+      }
     } else if (!skipDyads) {
       for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const k = `${kind}|${pairKey(ids[i], ids[j])}`; pairs.push([covYears < horizon ? ens.pAnyWithin(k, covYears) : (ens.pAnyDyad[k] ?? 0), real.dy.has(k) ? 1 : 0, k]); }
     }

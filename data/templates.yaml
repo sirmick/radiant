@@ -65,10 +65,14 @@ templates:
       - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "urban mass publics make seizures contestable" }
 
   - id: autocratization_onset
+    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
+    status: monitored                  # fitted and backtested, not simulated: superseded by autocratize_step
     label: Autocratization episode begins
     unit: actor-year
     event: autocratization_onset
     window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_min: 1 }          # closed autocracies can't autocratize further
     covariates:
       - { var: regime, transform: cat, prior: { 0: -0.5, 1: 0.6, 2: 0.4, 3: -0.6 } }   # partial regimes are least stable
       - { var: polyarchy, transform: z, prior: 0 }
@@ -79,10 +83,14 @@ templates:
     sources: ["Maerz et al. 2024 (ERT)", "Przeworski et al. 2000", "Goldstone et al. 2010"]
 
   - id: democratization_onset
+    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
+    status: monitored                  # superseded by democratize_step (holdout AUC 0.47 vs 0.77)
     label: Democratization episode begins
     unit: actor-year
     event: democratization_onset
     window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_max: 1 }          # at-risk set: autocracies
     covariates:
       - { var: regime, transform: cat, prior: { 0: 0, 1: 0.5, 2: 0.3, 3: -2 } }
       - { var: log_gdp_pc, transform: z, prior: 0.3 }
@@ -90,6 +98,48 @@ templates:
       - { var: at_war, transform: lag1, prior: 0.2 }
       - { var: leader_exit_recent, transform: win5, prior: 0.5 }
     sources: ["Boix & Stokes 2003", "Maerz et al. 2024 (ERT)", "Geddes, Wright & Frantz 2014"]
+
+  - id: democratize_step
+    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
+    label: Regime category moves up (V-Dem RoW), autocracies at risk
+    unit: actor-year
+    event: regime_change
+    event_filter: { direction: democratize }
+    window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_max: 1 }
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.5 } }
+      - { var: log_gdp_pc, transform: z, prior: 0.3 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.2 }
+      - { var: leader_exit_recent, transform: win5, prior: 0.5 }
+    rejected:                                                     # tested 2026-09-06 (neighbourhood diffusion); kept so the loop doesn't re-propose them
+      - { id: nbr_democracy_share, evidence: "democratize_step holdout≥1990: coef −0.25 (wrong sign), Brier worse; autocratize_step: coef +0.36, AUC 0.74→0.61. Selection effect: surviving autocracies in democratic neighbourhoods are the resilient ones; 2010s backsliding happened inside democratic Europe." }
+      - { id: nbr_regime_up_recent, evidence: "≈0 on all targets" }
+      - { id: nbr_regime_down_recent, evidence: "+0.14–0.35 in-sample, no holdout gain" }
+      - { id: bad_neighbourhood, evidence: "+0.28 on intrastate, +0.35 on autocratization in-sample; holdout AUC unchanged or lower" }
+      - { id: nbr_conflict_count, evidence: "≈0" }
+    sources: ["Gleditsch & Ward 2006", "V-Dem RoW via OWID"]
+    lifecycle: { phase: active, promoted: 2026-09-06, reason: "category-step target beats ERT episodes on holdout: AUC 0.47→0.77; engine uses this for regime dynamics" }
+
+  - id: autocratize_step
+    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
+    label: Regime category moves down (V-Dem RoW)
+    unit: actor-year
+    event: regime_change
+    event_filter: { direction: autocratize }
+    window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_min: 1 }
+    covariates:
+      - { var: regime, transform: cat, prior: { 1: 0, 2: 0.3, 3: -0.8 } }
+      - { var: log_gdp_pc, transform: z, prior: -0.5 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: intrastate, transform: lag1, prior: 0.4 }
+    sources: ["Goldstone et al. 2010", "V-Dem RoW via OWID"]
+    lifecycle: { phase: active, promoted: 2026-09-06, reason: "holdout AUC 0.74; NOTE under-predicts post-1990 autocratization 5× (exp/obs 0.21) — open era shock" }
 
   - id: intrastate_onset
     label: Internal armed conflict onset (≥25 deaths)
@@ -106,7 +156,6 @@ templates:
     missing: [bad_neighbourhood, state_discrimination]   # PITF's other variables — add when fetched
     candidates:
       - { id: infant_mortality, var: infant_mortality, transform: log, prior: 0.5, hypothesis: "PITF: 75th vs 25th percentile = 7x the odds" }
-      - { id: info_access, var: info_access, transform: z, prior: 0, hypothesis: "information access and internal conflict onset" }
     sources: ["Goldstone et al. 2010 (PITF)", "Hegre et al. 2019 (ViEWS)", "Fearon & Laitin 2003"]
 
   - id: mid_force

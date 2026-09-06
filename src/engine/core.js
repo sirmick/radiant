@@ -67,7 +67,9 @@ function linearPredictor(fit, t, feats) {
 export function actorHazards(world, a) {
   const out = {};
   for (const t of world.templates) {
-    const fit = world.fits[t.id]; if (!fit || fit.status !== 'fitted' || t.unit !== 'actor-year') continue;
+    const fit = world.fits[t.id]; if (!fit || fit.status !== 'fitted' || t.unit !== 'actor-year' || t.status === 'monitored') continue;
+    if (t.sample?.regime_max != null && !(a.cur.regime <= t.sample.regime_max)) continue;
+    if (t.sample?.regime_min != null && !(a.cur.regime >= t.sample.regime_min)) continue;
     const feats = {}; let ok = true;
     for (const c of t.covariates) { const x = featureActor(world, a, c); if (x == null) { ok = false; break; } feats[c.var] = x; }
     if (!ok) continue;
@@ -103,10 +105,11 @@ export function dyadHazards(world, a, b) {
 function applyActorEvent(world, a, kind, rng) {
   const y = world.year; a.fired[kind] = y;
   switch (kind) {
+    case 'irregular_exit': applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (a.cur.regime > 0 && rng() < 0.5) a.cur.regime -= 1; break;
     case 'leader_exit': a.cur.leader_tenure = 0; a.cur.leader_age = 45 + Math.floor(rng() * 25); a.cur.leader_military = rng() < 0.2 ? 1 : 0; a.recent.leader_exit[0] = 1; break;
     case 'coup': a.cur.coup_attempt = 1; if (rng() < 0.5) { a.cur.coup_success = 1; applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (a.cur.regime > 0 && rng() < 0.6) a.cur.regime -= 1; } break;
-    case 'autocratization_onset': if (a.cur.regime > 0) a.cur.regime -= 1; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); break;
-    case 'democratization_onset': if (a.cur.regime < 3) a.cur.regime += 1; a.cur.polyarchy = Math.min(1, (a.cur.polyarchy ?? 0.5) + 0.1); break;
+    case 'autocratization_onset': case 'autocratize_step': if (a.cur.regime > 0) a.cur.regime -= 1; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); a.cur.regime_down = 1; break;
+    case 'democratization_onset': case 'democratize_step': if (a.cur.regime < 3) a.cur.regime += 1; a.cur.polyarchy = Math.min(1, (a.cur.polyarchy ?? 0.5) + 0.1); a.cur.regime_up = 1; break;
     case 'intrastate_onset': a.cur.intrastate = 1; a.conflictLeft = 1 + Math.floor(rng() * 6); a.cur.gdp_pc *= 0.97; break;
   }
 }
@@ -132,7 +135,7 @@ export function stepYear(world, rng, opts = {}) {
     a.cur.great_game = a.cur.bipolar && a.cur.sp_client_any ? 1 : 0;
     if (a.cur.info_access != null) { const r = y >= 1985 ? 0.15 : 0.03; const x = Math.max(0.02, a.cur.info_access); a.cur.info_access = Math.min(1, x + r * x * (1 - x)); }
     // clear annual flags; decay conflicts
-    a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0;
+    a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0; a.cur.regime_up = 0; a.cur.regime_down = 0;
     if (a.cur.intrastate) { a.conflictLeft = (a.conflictLeft ?? 1) - 1; if (a.conflictLeft <= 0) a.cur.intrastate = 0; }
     for (const v of Object.keys(a.recent)) { a.recent[v].unshift(0); a.recent[v].length = 5; }
     if (a.prev.coup_attempt) a.recent.coup_attempt[0] = 1; if (a.prev.intrastate) a.recent.intrastate[0] = 1; if (a.prev.mid_force) a.recent.mid_force[0] = 1; if (a.prev.at_war) a.recent.at_war[0] = 1;
@@ -141,7 +144,7 @@ export function stepYear(world, rng, opts = {}) {
   for (const id of ids) {
     const a = world.actors[id]; const hz = actorHazards(world, a);
     for (const [kind, p] of Object.entries(hz)) {
-      if (rng() < p) { const ev = { kind: world.templates.find(t => t.id === kind).event, template: kind, actor: id, year: y }; fired.push(ev); applyActorEvent(world, a, ev.kind === 'coup' ? 'coup' : ev.kind, rng); }
+      if (rng() < p) { const t = world.templates.find(t => t.id === kind); const ev = { kind: t.event, template: kind, actor: id, year: y }; fired.push(ev); applyActorEvent(world, a, ev.kind === 'coup' ? 'coup' : (t.event_filter ? kind : ev.kind), rng); }
     }
   }
   // dyad hazards
@@ -167,7 +170,7 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     for (let h = 1; h <= horizon; h++) {
       const fired = stepYear(w, rng, { skipDyads });
       for (const e of fired) {
-        if (e.actor) { const k = `${e.kind}|${e.actor}`; countBy[k] = (countBy[k] ?? 0) + 1; (yearHist[k] ??= new Array(horizon).fill(0))[h - 1]++; if (!seen.has(k)) { seen.add(k); anyBy[k] = (anyBy[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
+        if (e.actor) { const k = `${e.template ?? e.kind}|${e.actor}`; countBy[k] = (countBy[k] ?? 0) + 1; (yearHist[k] ??= new Array(horizon).fill(0))[h - 1]++; if (!seen.has(k)) { seen.add(k); anyBy[k] = (anyBy[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
         else { const k = `${e.kind}|${pairKey(e.a, e.b)}`; if (!seenD.has(k)) { seenD.add(k); dyadAny[k] = (dyadAny[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
       }
     }

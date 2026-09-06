@@ -47,6 +47,14 @@ Templates are generic, so they are fitted on every state in the CoW/GW system (c
 
 Backtest as-of 1950…2000, +20y, all states: coup_attempt exp/obs 1.08, Brier skill +0.27, AUC 0.81, calibration deciles 2→1 17→14 40→42 56→51 74→67; intrastate +0.16; autocratization +0.10; democratization +0.12; mid_force +0.16 (contiguity in; "allied" flips from +0.35 to −0.13 once contiguity is controlled — Bremer's artefact). Post-Cold-War coup over-prediction went 2.55×/3.48× (as-of 1990/2000) → 1.08×/1.46×.
 
+## Neighbourhood diffusion: tested and rejected (2026-09-06)
+
+Candidates `nbr_democracy_share`, `nbr_regime_up/down_recent`, `bad_neighbourhood`, `nbr_conflict_count`, `nbr_coup_recent` on four templates, holdout ≥1990. Wrong sign or no holdout gain everywhere (democracy share −0.25 on democratization, +0.36 on autocratization: survivor selection — the autocracies left inside democratic neighbourhoods are the resilient ones; the 2010s backsliding happened inside democratic Europe). Recorded under `rejected:` in `data/templates.yaml` so the loop does not re-propose them.
+
+Two things the test surfaced instead:
+- **Target definition matters more than covariates.** V-Dem RoW category steps (`democratize_step`, `autocratize_step`) replace ERT "episodes" as the regime templates. An apparent AUC jump to 0.77 was leakage — events dated to the year the new regime is observed, credited to rows already in the new category. Fixed by `lead: 1` (label = next year's event; hazard from this year's state applies to the coming year, which is how the engine uses it). Honest one-year holdout AUC is 0.59 for both directions.
+- **Dynamic backtest, all states, 1950–2000 +20y:** autocratize_step skill +0.17, AUC 0.77 (calibration 17→3 30→19 43→41 55→52 67→62); democratize_step skill −0.12, AUC 0.52 — calibrated but no discrimination. Which autocracies democratize is not predictable from income, growth, war and leader turnover; Przeworski's "predicting emergence is hard" reproduces. Open: `irregular_exit` over-predicts 1.9× dynamically (coup-trap feedback needs decay).
+
 ## What the first backtest said (as-of 1870…2000, +20y, 100 runs, 67 actors)
 
 - One-year fits with AUC 0.8+ become 20-year dynamic forecasts with AUC 0.65–0.8 and mostly near-zero Brier skill over the base rate. That is the honest starting point.

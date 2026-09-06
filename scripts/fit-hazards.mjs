@@ -59,10 +59,12 @@ function buildActorRows(t) {
   for (const [id, vars] of Object.entries(panel.actors)) {
     for (let y = Math.max(w0, Y0 + 5); y <= Math.min(w1, panel.meta.y1); y++) {
       if (!vars.live?.[y - Y0]) continue;
+      if (t.sample?.regime_max != null && !(pv(id, 'regime', y) <= t.sample.regime_max)) continue;
+      if (t.sample?.regime_min != null && !(pv(id, 'regime', y) >= t.sample.regime_min)) continue;
       const feats = {}; let ok = true;
       for (const c of t.covariates) { const x = rawValue(id, c, y); if (x == null) { ok = false; break; } feats[c.var] = x; }
       if (!ok) continue;
-      rows.push({ unit: id, year: y, feats, y: hasEvent(t.event, id, y, t.event_filter) ? 1 : 0 });
+      rows.push({ unit: id, year: y, feats, y: hasEvent(t.event, id, y + (t.lead ?? 0), t.event_filter) ? 1 : 0 });
     }
   }
   return rows;
@@ -177,7 +179,7 @@ for (const t of templates) {
   const beta = fitLogistic(X, yv, prior);
   const pIn = predict(X, beta);
   // era holdout: split at the window midpoint (or 1946 if inside the window)
-  const [w0, w1] = t.window; const split = w0 < 1946 && w1 > 1960 ? 1946 : Math.round((w0 + w1) / 2);
+  const [w0, w1] = t.window; const split = t.holdout_split ?? (w0 < 1946 && w1 > 1960 ? 1946 : Math.round((w0 + w1) / 2));
   const trainR = rows.filter(r => r.year < split), testR = rows.filter(r => r.year >= split);
   let hold = null;
   if (trainR.filter(r => r.y).length >= 5 && testR.filter(r => r.y).length >= 5) {

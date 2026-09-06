@@ -146,6 +146,40 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.anticoup_norm = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
 }
 
+// ---- neighbourhood covariates from CShapes contiguity (1886+): who your neighbours are and what just happened to them
+{
+  const contig = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
+  const nbrs = {};   // id -> [[other, from, to], ...]
+  for (const [k, ivs] of Object.entries(contig)) { const [a, b] = k.split('|'); for (const [f, t] of ivs) { (nbrs[a] ??= []).push([b, f, t]); (nbrs[b] ??= []).push([a, f, t]); } }
+  const g = (id, v, i) => panel[id]?.[v]?.[i];
+  for (const [id, vars] of Object.entries(panel)) {
+    if (vars.regime) { vars.regime_up = vars.regime.map((r, i) => (i > 0 && r != null && vars.regime[i - 1] != null && r > vars.regime[i - 1] ? 1 : 0)); vars.regime_down = vars.regime.map((r, i) => (i > 0 && r != null && vars.regime[i - 1] != null && r < vars.regime[i - 1] ? 1 : 0)); }
+  }
+  const win = (nid, v, i) => { for (let k = 1; k <= 5; k++) { const x = g(nid, v, i - k); if (x != null && x > 0) return 1; } return 0; };
+  for (const [id, vars] of Object.entries(panel)) {
+    const a = actors.get(id); if (!a) continue;
+    const N = { nbr_count: [], nbr_democracy_share: [], nbr_conflict_count: [], bad_neighbourhood: [], nbr_coup_recent: [], nbr_regime_up_recent: [], nbr_regime_down_recent: [], nbr_at_war_share: [] };
+    YEARS.forEach((y, i) => {
+      if (y < 1886 || !isLive(a, y)) { for (const k of Object.keys(N)) N[k].push(null); return; }
+      const ns = (nbrs[id] ?? []).filter(([, f, t]) => y >= f && y <= t).map(([o]) => o).filter(o => panel[o]?.live?.[i]);
+      const withRegime = ns.filter(o => g(o, 'regime', i) != null);
+      const dem = withRegime.filter(o => g(o, 'regime', i) >= 2).length;
+      const conflict = ns.filter(o => (g(o, 'intrastate', i) ?? 0) > 0 || (g(o, 'at_war', i) ?? 0) > 0).length;
+      N.nbr_count.push(ns.length);
+      N.nbr_democracy_share.push(withRegime.length ? dem / withRegime.length : null);
+      N.nbr_conflict_count.push(conflict);
+      N.bad_neighbourhood.push(conflict >= 4 ? 1 : 0);
+      N.nbr_coup_recent.push(ns.some(o => win(o, 'coup_attempt', i)) ? 1 : 0);
+      N.nbr_regime_up_recent.push(ns.some(o => win(o, 'regime_up', i)) ? 1 : 0);
+      N.nbr_regime_down_recent.push(ns.some(o => win(o, 'regime_down', i)) ? 1 : 0);
+      N.nbr_at_war_share.push(ns.length ? ns.filter(o => (g(o, 'at_war', i) ?? 0) > 0).length / ns.length : null);
+    });
+    Object.assign(vars, N);
+  }
+  sources.nbr_democracy_share = 'derived from CShapes contiguity + V-Dem RoW (Gleditsch & Ward 2006)';
+  sources.bad_neighbourhood = 'PITF: ≥4 contiguous neighbours in armed conflict (UCDP intrastate or hand wars)';
+}
+
 // ---- write
 const vars = [...new Set(Object.values(panel).flatMap(v => Object.keys(v)))].sort();
 const out = { meta: { built: new Date().toISOString(), y0: Y0, y1: Y1 }, years: YEARS, vars, sources, actors: panel };
