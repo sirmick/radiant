@@ -61,13 +61,14 @@ sources.coal_prod = sources.oil_prod = 'OWID fossil production (Energy Institute
   sources.leader_age = sources.leader_tenure = sources.coup_attempt = 'REIGN 2021.8 (1950–2021), Powell–Thyne coups';
 }
 
-// ---- alliances: defence-pact partner count per actor-year (sstype 1 = defense)
+// ---- alliances: defence-pact partner count per actor-year (sstype 1 = defense); superpower client ties (any pact type with USA / RUS)
 for (const r of readCsv(H + 'alliance_v303_dyadic.csv')) {
-  if (r.sstype !== '1') continue;
-  const y = +r.year; const a = code(r.ccode1, y), b = code(r.ccode2, y);
-  add(a, 'defence_pacts', y, 1); add(b, 'defence_pacts', y, 1);
+  const y = +r.year; const a = code(r.ccode1, y), b = code(r.ccode2, y); if (!a || !b) continue;
+  if (r.sstype === '1') { add(a, 'defence_pacts', y, 1); add(b, 'defence_pacts', y, 1); }
+  for (const [x, other] of [[a, b], [b, a]]) { if (other === 'USA' && x !== 'USA') put(x, 'pact_usa', y, 1); if (other === 'RUS' && x !== 'RUS') put(x, 'pact_rus', y, 1); }
 }
 sources.defence_pacts = 'CoW Formal Alliances 3.03 dyadic (1816–2000)';
+sources.pact_usa = sources.pact_rus = 'CoW Formal Alliances 3.03: any alliance type with USA / USSR-Russia; carried forward 2001–2021';
 
 // ---- MIDs: per actor-year, use of force (hostlev>=4) and war (5)
 for (const r of readCsv(H + 'midb_3.02.csv')) {
@@ -134,6 +135,12 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.great_power = YEARS.map(y => { const gp = a?.great_power; if (!gp) return 0; for (let i = 0; i < gp.length; i += 2) if (y >= gp[i] && (gp[i + 1] == null || y < gp[i + 1])) return 1; return 0; });
   vars.live = YEARS.map(y => (a && isLive(a, y) ? 1 : 0));
   vars.year = YEARS.map(y => y);
+  // superpower client ties: 0 inside coverage when absent, carried forward after the alliance data ends (2000)
+  for (const v of ['pact_usa', 'pact_rus']) { vars[v] ??= new Array(YEARS.length).fill(null); let last = null; YEARS.forEach((y, i) => { if (!a || !isLive(a, y)) return; if (vars[v][i] == null) vars[v][i] = y <= 2000 ? 0 : last; last = vars[v][i]; }); }
+  vars.bipolar = YEARS.map(y => (y >= 1947 && y <= 1991 ? 1 : 0));
+  vars.sp_client_any = YEARS.map((y, i) => ((vars.pact_usa[i] || vars.pact_rus[i]) ? 1 : 0));
+  vars.sp_client_one = YEARS.map((y, i) => ((vars.pact_usa[i] ? 1 : 0) + (vars.pact_rus[i] ? 1 : 0) === 1 ? 1 : 0));
+  vars.great_game = YEARS.map((y, i) => (vars.bipolar[i] && vars.sp_client_any[i] ? 1 : 0));
   vars.cold_war = YEARS.map(y => (y <= 1991 ? 1 : 0));
   vars.anticoup_norm = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
 }

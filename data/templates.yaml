@@ -54,10 +54,12 @@ templates:
       - { var: leader_military, transform: none, lag: 1, prior: 0.3 }
       - { var: intrastate, transform: lag1, prior: 0.3 }
       - { var: info_access, transform: z, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "ablation: holdout exp/obs 1.70→1.42, coef −0.73, survives joint fit; user hypothesis 'seize the TV station no longer works'" } }
+      - { var: great_game, transform: none, prior: 0.3, lifecycle: { phase: active, promoted: 2026-09-06, reason: "ablation: superpower client × bipolar era, coef +0.37, best holdout AUC among mechanisms, survives joint fit while bare client status does not; user hypothesis 'both USA and USSR ran great games'" } }
     sources: ["Powell 2012", "Powell & Thyne 2011", "Gassebner, Gutmann & Voigt 2016"]
     notes: "Powell: military characteristics beat economic ones; wealth and growth 'perform poorly'. Priors reflect that."
     candidates:                                                    # rival explanations for the post-1990 decline; fit-hazards scores each on the holdout
-      - { id: cold_war, var: cold_war, transform: none, prior: 0, hypothesis: "superpower patronage made coups cheap; ended 1991" }
+      - { id: cold_war, var: cold_war, transform: none, prior: 0, hypothesis: "superpower patronage made coups cheap; ended 1991 (era dummy — not identifiable on a temporal holdout)" }
+      - { id: sp_client_one, var: sp_client_one, transform: none, prior: 0, hypothesis: "clients of exactly one superpower are the contested ones (retained as a monitored rival; ≈0 in the joint fit)" }
       - { id: anticoup_norm, var: anticoup_norm, transform: none, prior: 0, hypothesis: "post-2000 regional anti-coup sanctions raise the cost" }
       - { id: year_trend, var: year, transform: z, prior: 0, hypothesis: "null: an unexplained secular trend" }
       - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "urban mass publics make seizures contestable" }
