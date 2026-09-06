@@ -11,12 +11,13 @@ const sigmoid = (x) => 1 / (1 + Math.exp(-x));
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /** Build a world state at `asOf` from the panel. Only actors live at asOf with a regime value are included. */
-export function createWorld({ panel, events, fits, templates, asOf, pacts }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled' }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   const pv = (id, v, y) => { const arr = panel.actors[id]?.[v]; const i = y - Y0; return arr && i >= 0 && i < arr.length ? arr[i] : null; };
   const actors = {};
   for (const [id, vars] of Object.entries(panel.actors)) {
     if (!vars.live?.[idx]) continue;
+    if (universe === 'modeled' && !vars.modeled?.[idx]) continue;
     const cur = {}; for (const v of Object.keys(vars)) cur[v] = vars[v][idx];
     // trailing growth rates for the structural layer
     const g = []; for (let k = 1; k <= 10; k++) { const x = pv(id, 'gdp_growth', asOf - k); if (x != null) g.push(x); }
@@ -32,7 +33,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts }) {
   const dyadRecent = new Map();
   for (const e of events) if ((e.kind === 'mid_force' || e.kind === 'mid_war') && e.a && e.b && e.year <= asOf && e.year > asOf - 5) dyadRecent.set(pairKey(e.a, e.b), asOf);
   const nukes = new Set(); for (const e of events) if (e.kind === 'nuclear' && e.status === 'weapon' && e.year <= asOf) nukes.add(e.actor);
-  return { year: asOf, asOf, actors, dyadRecent, nukes, pacts: pacts ?? new Set(), fits, templates, log: [] };
+  return { year: asOf, asOf, actors, dyadRecent, nukes, pacts: pacts ?? new Set(), contiguity: contiguity ?? {}, fits, templates, log: [] };
 }
 
 /** Feature value for a covariate spec, mirroring scripts/fit-hazards.mjs. */
@@ -77,7 +78,12 @@ export function actorHazards(world, a) {
 }
 export function dyadHazards(world, a, b) {
   const out = {}; const ca = a.cur.cinc, cb = b.cur.cinc; if (ca == null || cb == null || a.cur.regime == null || b.cur.regime == null) return out;
+  const k = pairKey(a.id, b.id); const y = world.year;
+  const contiguous = (world.contiguity[k] ?? []).some(([f, t]) => y >= f && y <= t) ? 1 : 0;
+  const major = (a.cur.great_power || b.cur.great_power) ? 1 : 0;
+  if (!contiguous && !major) return out;   // politically relevant dyads only
   const feats = {
+    contiguous,
     allied: world.pacts.has(`${pairKey(a.id, b.id)}|${world.year}`) || world.pacts.has(`${pairKey(a.id, b.id)}|*`) ? 1 : 0,
     joint_democracy: a.cur.regime >= 2 && b.cur.regime >= 2 ? 1 : 0,
     cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),

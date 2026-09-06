@@ -8,7 +8,7 @@ Origin: `docs/session-transcript.md` (the conversation that produced the scenari
 
 **M1 — data viewer + map** (done): scrubbable map 2000→2066 coloured by any registry variable, hatched territories, corridor/chokepoint overlay, per-actor data panel with sources and sparklines, hazard/claim/territory/corridor browsers.
 
-**M2a — historical pipeline + backtest** (done, offline in node): actor-year panel 1816–2025 (CoW NMC/MID/alliances, Maddison, V-Dem, UCDP, REIGN, OWID energy), 3,600 dated events, 8 generic hazard templates fitted with era holdout, an annual-step engine, and a rolling-origin backtest (as-of 1870…2000, +20y). See `docs/system.md` for what the first backtest found. Not yet wired to the map.
+**M2a — historical pipeline + backtest** (done, offline in node): actor-year panel 1816–2025 for all 217 states (CoW NMC/MID/alliances, Maddison, V-Dem, UCDP, REIGN, OWID energy, World Bank), 8,071 dated events, contiguity from CShapes, 8 generic hazard templates fitted with era holdout, an annual-step engine, a rolling-origin backtest (as-of 1870…2000, +20y), and an ablation loop for candidate factors. See `docs/system.md`. Not yet wired to the map.
 
 ## Run
 

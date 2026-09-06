@@ -115,15 +115,15 @@ templates:
     event: mid_force
     window: [1816, 2001]
     covariates:
+      - { var: contiguous, transform: none, prior: 1.5 }           # Bremer's #1 predictor; from CShapes borders (1886+)
       - { var: allied, transform: none, prior: -0.6 }              # any defence pact between the pair
       - { var: joint_democracy, transform: none, prior: -0.8 }     # both regime >= 2
       - { var: cap_ratio, transform: log, prior: -0.3 }            # cinc_max / cinc_min: preponderance pacifies
       - { var: major_power_any, transform: none, prior: 0.8 }
       - { var: mid_force, transform: win5, prior: 1.5 }            # rivalry / recurrence
       - { var: at_war_any, transform: lag1, prior: 0.5 }
-    missing: [contiguity]                                          # CoW Direct Contiguity not yet fetched — Bremer's #1 predictor
     sources: ["Bremer 1992", "Oneal & Russett 1999", "Jones, Bremer & Singer 1996"]
-    notes: "Dyad sample: all pairs of live actors with cinc data. Corridor dampener and chokepoint stakes enter as extra dyad covariates once corridors carry historical status."
+    notes: "Dyad sample: politically relevant dyads (contiguous or ≥1 major power), all states, 1886–2001. Corridor dampener and chokepoint stakes enter as extra dyad covariates once corridors carry historical status."
 
   - id: mid_war
     label: Dyadic war (hostility level 5)
@@ -131,6 +131,7 @@ templates:
     event: mid_war
     window: [1816, 2001]
     covariates:
+      - { var: contiguous, transform: none, prior: 1.5 }
       - { var: allied, transform: none, prior: -0.5 }
       - { var: joint_democracy, transform: none, prior: -1.0 }
       - { var: cap_ratio, transform: log, prior: -0.4 }

@@ -1,0 +1,888 @@
+{
+ "meta": {
+  "run": "2026-09-06T23:32:26.894Z",
+  "from": 1870,
+  "to": 2000,
+  "step": 10,
+  "horizon": 20,
+  "runs": 100,
+  "skipDyads": false
+ },
+ "byAsOf": [
+  {
+   "asOf": 1870,
+   "horizon": 20,
+   "actors": 27,
+   "ms": 1244,
+   "templates": {
+    "mid_force": {
+     "n": 351,
+     "predicted": 30.029999999999994,
+     "observed": 14,
+     "brier": 0.05102877492877493,
+     "auc": 0.70517168291649,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 351,
+     "predicted": 17.240000000000002,
+     "observed": 2,
+     "brier": 0.012068945868945868,
+     "auc": 0.9634670487106017,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1880,
+   "horizon": 20,
+   "actors": 29,
+   "ms": 1275,
+   "templates": {
+    "mid_force": {
+     "n": 406,
+     "predicted": 37.7,
+     "observed": 26,
+     "brier": 0.059451231527093605,
+     "auc": 0.8196862348178138,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 406,
+     "predicted": 20.390000000000015,
+     "observed": 13,
+     "brier": 0.03378152709359607,
+     "auc": 0.6916226267371306,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1890,
+   "horizon": 20,
+   "actors": 29,
+   "ms": 1335,
+   "templates": {
+    "mid_force": {
+     "n": 406,
+     "predicted": 45.36000000000001,
+     "observed": 31,
+     "brier": 0.06818029556650249,
+     "auc": 0.8348387096774194,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 406,
+     "predicted": 22.999999999999986,
+     "observed": 15,
+     "brier": 0.039422167487684734,
+     "auc": 0.7265984654731458,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1900,
+   "horizon": 20,
+   "actors": 29,
+   "ms": 1464,
+   "templates": {
+    "autocratization_onset": {
+     "n": 22,
+     "predicted": 2.74,
+     "observed": 2,
+     "brier": 0.09537272727272725,
+     "auc": 0.375,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 23,
+     "predicted": 8.51,
+     "observed": 11,
+     "brier": 0.2797695652173912,
+     "auc": 0.45075757575757575,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 406,
+     "predicted": 63.77999999999998,
+     "observed": 52,
+     "brier": 0.08860394088669954,
+     "auc": 0.8536505867014341,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 406,
+     "predicted": 31.84999999999999,
+     "observed": 35,
+     "brier": 0.06823768472906404,
+     "auc": 0.8112052368117059,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1910,
+   "horizon": 20,
+   "actors": 33,
+   "ms": 1644,
+   "templates": {
+    "autocratization_onset": {
+     "n": 24,
+     "predicted": 2.3,
+     "observed": 9,
+     "brier": 0.31011666666666676,
+     "auc": 0.5814814814814815,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 27,
+     "predicted": 9.070000000000002,
+     "observed": 11,
+     "brier": 0.26621851851851847,
+     "auc": 0.4971590909090909,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 528,
+     "predicted": 61.88999999999997,
+     "observed": 61,
+     "brier": 0.07983428030303029,
+     "auc": 0.8566012567135887,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 528,
+     "predicted": 30.96999999999999,
+     "observed": 46,
+     "brier": 0.06966799242424242,
+     "auc": 0.810865055024355,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1920,
+   "horizon": 20,
+   "actors": 36,
+   "ms": 1831,
+   "templates": {
+    "autocratization_onset": {
+     "n": 27,
+     "predicted": 3.56,
+     "observed": 19,
+     "brier": 0.5322370370370371,
+     "auc": 0.6776315789473685,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 28,
+     "predicted": 9.289999999999997,
+     "observed": 4,
+     "brier": 0.15988214285714283,
+     "auc": 0.671875,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 630,
+     "predicted": 64.13999999999999,
+     "observed": 60,
+     "brier": 0.0668580952380952,
+     "auc": 0.8807748538011696,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 630,
+     "predicted": 27.310000000000002,
+     "observed": 190,
+     "brier": 0.25608333333333333,
+     "auc": 0.6967523923444976,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1930,
+   "horizon": 20,
+   "actors": 37,
+   "ms": 1977,
+   "templates": {
+    "autocratization_onset": {
+     "n": 29,
+     "predicted": 1.9800000000000006,
+     "observed": 10,
+     "brier": 0.3253172413793103,
+     "auc": 0.3447368421052632,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 32,
+     "predicted": 8.57,
+     "observed": 16,
+     "brier": 0.334571875,
+     "auc": 0.5,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 666,
+     "predicted": 63.46999999999997,
+     "observed": 95,
+     "brier": 0.09508363363363365,
+     "auc": 0.8562079454327588,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 666,
+     "predicted": 28.979999999999986,
+     "observed": 201,
+     "brier": 0.25579069069069077,
+     "auc": 0.7047343925533622,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1940,
+   "horizon": 20,
+   "actors": 39,
+   "ms": 2014,
+   "templates": {
+    "autocratization_onset": {
+     "n": 28,
+     "predicted": 2.000000000000001,
+     "observed": 3,
+     "brier": 0.09444285714285716,
+     "auc": 0.6866666666666666,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 29,
+     "predicted": 9.260000000000002,
+     "observed": 16,
+     "brier": 0.29097931034482744,
+     "auc": 0.5504807692307693,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 741,
+     "predicted": 103.67000000000006,
+     "observed": 82,
+     "brier": 0.10715371120107967,
+     "auc": 0.7893611902735113,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 741,
+     "predicted": 40.38999999999999,
+     "observed": 27,
+     "brier": 0.038525641025641044,
+     "auc": 0.711977383546011,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1950,
+   "horizon": 20,
+   "actors": 50,
+   "ms": 3085,
+   "templates": {
+    "leader_exit": {
+     "n": 45,
+     "predicted": 43.69,
+     "observed": 42,
+     "brier": 0.06548666666666664,
+     "auc": 0.5595238095238095,
+     "scored_years": 20
+    },
+    "coup_attempt": {
+     "n": 42,
+     "predicted": 18.549999999999997,
+     "observed": 15,
+     "brier": 0.20400714285714278,
+     "auc": 0.7024691358024692,
+     "scored_years": 20
+    },
+    "autocratization_onset": {
+     "n": 46,
+     "predicted": 14.01,
+     "observed": 11,
+     "brier": 0.1775804347826087,
+     "auc": 0.6623376623376623,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 46,
+     "predicted": 17.380000000000003,
+     "observed": 10,
+     "brier": 0.20175217391304343,
+     "auc": 0.5819444444444445,
+     "scored_years": 20
+    },
+    "intrastate_onset": {
+     "n": 46,
+     "predicted": 20.17,
+     "observed": 12,
+     "brier": 0.21449782608695656,
+     "auc": 0.6740196078431373,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 1225,
+     "predicted": 73.30999999999999,
+     "observed": 105,
+     "brier": 0.05919273469387757,
+     "auc": 0.8090348639455782,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 1225,
+     "predicted": 28.389999999999993,
+     "observed": 26,
+     "brier": 0.019344734693877555,
+     "auc": 0.9079361005966511,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1960,
+   "horizon": 20,
+   "actors": 53,
+   "ms": 3127,
+   "templates": {
+    "leader_exit": {
+     "n": 48,
+     "predicted": 46.71999999999999,
+     "observed": 44,
+     "brier": 0.0710541666666667,
+     "auc": 0.7784090909090909,
+     "scored_years": 20
+    },
+    "coup_attempt": {
+     "n": 44,
+     "predicted": 17.750000000000004,
+     "observed": 13,
+     "brier": 0.1432431818181818,
+     "auc": 0.8821339950372209,
+     "scored_years": 20
+    },
+    "autocratization_onset": {
+     "n": 49,
+     "predicted": 11.730000000000002,
+     "observed": 12,
+     "brier": 0.1441081632653061,
+     "auc": 0.8603603603603603,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 49,
+     "predicted": 16.73,
+     "observed": 16,
+     "brier": 0.21097755102040816,
+     "auc": 0.6382575757575758,
+     "scored_years": 20
+    },
+    "intrastate_onset": {
+     "n": 49,
+     "predicted": 19.720000000000002,
+     "observed": 18,
+     "brier": 0.20682857142857144,
+     "auc": 0.7213261648745519,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 1378,
+     "predicted": 72.14000000000001,
+     "observed": 89,
+     "brier": 0.05356560232220615,
+     "auc": 0.7375763809590223,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 1378,
+     "predicted": 28.78,
+     "observed": 31,
+     "brier": 0.020292017416545717,
+     "auc": 0.7715353114447877,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1970,
+   "horizon": 20,
+   "actors": 54,
+   "ms": 3288,
+   "templates": {
+    "leader_exit": {
+     "n": 49,
+     "predicted": 47.44999999999999,
+     "observed": 47,
+     "brier": 0.03633673469387755,
+     "auc": 0.898936170212766,
+     "scored_years": 20
+    },
+    "coup_attempt": {
+     "n": 48,
+     "predicted": 17.700000000000003,
+     "observed": 13,
+     "brier": 0.1784125,
+     "auc": 0.7736263736263737,
+     "scored_years": 20
+    },
+    "autocratization_onset": {
+     "n": 50,
+     "predicted": 10.450000000000001,
+     "observed": 7,
+     "brier": 0.098246,
+     "auc": 0.8554817275747508,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 50,
+     "predicted": 15.409999999999997,
+     "observed": 25,
+     "brier": 0.23706600000000003,
+     "auc": 0.7344,
+     "scored_years": 20
+    },
+    "intrastate_onset": {
+     "n": 50,
+     "predicted": 18.469999999999995,
+     "observed": 19,
+     "brier": 0.2131020000000001,
+     "auc": 0.7376910016977929,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 1431,
+     "predicted": 78.0799999999999,
+     "observed": 94,
+     "brier": 0.054620405310971336,
+     "auc": 0.6897786406530976,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 1431,
+     "predicted": 31.249999999999996,
+     "observed": 45,
+     "brier": 0.03012990915443746,
+     "auc": 0.6564373897707231,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1980,
+   "horizon": 20,
+   "actors": 56,
+   "ms": 3458,
+   "templates": {
+    "leader_exit": {
+     "n": 52,
+     "predicted": 50.09,
+     "observed": 50,
+     "brier": 0.036809615384615385,
+     "auc": 0.78,
+     "scored_years": 20
+    },
+    "coup_attempt": {
+     "n": 51,
+     "predicted": 13.149999999999993,
+     "observed": 11,
+     "brier": 0.14388431372549018,
+     "auc": 0.7818181818181819,
+     "scored_years": 20
+    },
+    "autocratization_onset": {
+     "n": 53,
+     "predicted": 9.709999999999999,
+     "observed": 4,
+     "brier": 0.08270754716981134,
+     "auc": 0.7295918367346939,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 53,
+     "predicted": 15.620000000000006,
+     "observed": 20,
+     "brier": 0.17544150943396228,
+     "auc": 0.8181818181818182,
+     "scored_years": 20
+    },
+    "intrastate_onset": {
+     "n": 53,
+     "predicted": 19.69,
+     "observed": 18,
+     "brier": 0.1611264150943396,
+     "auc": 0.8261904761904761,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 1540,
+     "predicted": 80.67999999999995,
+     "observed": 117,
+     "brier": 0.05987558441558439,
+     "auc": 0.7057828951715108,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 1540,
+     "predicted": 32.039999999999985,
+     "observed": 43,
+     "brier": 0.027847792207792196,
+     "auc": 0.6152226934489133,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1990,
+   "horizon": 20,
+   "actors": 55,
+   "ms": 3437,
+   "templates": {
+    "leader_exit": {
+     "n": 53,
+     "predicted": 51.88,
+     "observed": 52,
+     "brier": 0.01839245283018868,
+     "auc": 0.8653846153846154,
+     "scored_years": 20
+    },
+    "coup_attempt": {
+     "n": 52,
+     "predicted": 7.9399999999999995,
+     "observed": 6,
+     "brier": 0.09539230769230768,
+     "auc": 0.8043478260869565,
+     "scored_years": 20
+    },
+    "autocratization_onset": {
+     "n": 54,
+     "predicted": 13.249999999999998,
+     "observed": 10,
+     "brier": 0.14787962962962964,
+     "auc": 0.6886363636363636,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 54,
+     "predicted": 16.74,
+     "observed": 8,
+     "brier": 0.1366962962962963,
+     "auc": 0.7975543478260869,
+     "scored_years": 20
+    },
+    "intrastate_onset": {
+     "n": 54,
+     "predicted": 21.550000000000008,
+     "observed": 19,
+     "brier": 0.146987037037037,
+     "auc": 0.8443609022556391,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 1485,
+     "predicted": 51.56,
+     "observed": 63,
+     "brier": 0.035620740740740724,
+     "auc": 0.7488391043243364,
+     "scored_years": 11
+    },
+    "mid_war": {
+     "n": 1485,
+     "predicted": 18.269999999999982,
+     "observed": 2,
+     "brier": 0.0024779124579124593,
+     "auc": 0.943863789615644,
+     "scored_years": 11
+    }
+   }
+  },
+  {
+   "asOf": 2000,
+   "horizon": 20,
+   "actors": 59,
+   "ms": 4018,
+   "templates": {
+    "leader_exit": {
+     "n": 58,
+     "predicted": 56.70999999999999,
+     "observed": 55,
+     "brier": 0.043753448275862084,
+     "auc": 0.9727272727272728,
+     "scored_years": 20
+    },
+    "coup_attempt": {
+     "n": 57,
+     "predicted": 5.379999999999999,
+     "observed": 4,
+     "brier": 0.08587719298245614,
+     "auc": 0.6344339622641509,
+     "scored_years": 20
+    },
+    "autocratization_onset": {
+     "n": 59,
+     "predicted": 13.38,
+     "observed": 18,
+     "brier": 0.19425762711864408,
+     "auc": 0.7208672086720868,
+     "scored_years": 20
+    },
+    "democratization_onset": {
+     "n": 59,
+     "predicted": 16.56,
+     "observed": 10,
+     "brier": 0.1388847457627119,
+     "auc": 0.7346938775510204,
+     "scored_years": 20
+    },
+    "intrastate_onset": {
+     "n": 59,
+     "predicted": 21.729999999999993,
+     "observed": 20,
+     "brier": 0.12547966101694916,
+     "auc": 0.9,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 1711,
+     "predicted": 7.64999999999998,
+     "observed": 8,
+     "brier": 0.00439853886616014,
+     "auc": 0.7680563711098062,
+     "scored_years": 1
+    },
+    "mid_war": {
+     "n": 1711,
+     "predicted": 2.549999999999996,
+     "observed": 0,
+     "brier": 0.000029398012857977834,
+     "auc": null,
+     "scored_years": 1
+    }
+   }
+  }
+ ],
+ "pooled": {
+  "mid_force": {
+   "n": 12904,
+   "predicted": 833.459999999996,
+   "observed": 897,
+   "brier": 0.05500773403595808,
+   "brier_base": 0.06468122626374594,
+   "skill": 0.14955641360822325,
+   "auc": 0.8009540885616798,
+   "calibration": [
+    [
+     0,
+     0.012790697674418604
+    ],
+    [
+     0,
+     0.032932971716388995
+    ],
+    [
+     0,
+     0.03913211933359163
+    ],
+    [
+     0.011441301820999644,
+     0.01898488957768307
+    ],
+    [
+     0.31148004649360606,
+     0.24370399070127857
+    ]
+   ]
+  },
+  "mid_war": {
+   "n": 12904,
+   "predicted": 361.4099999999959,
+   "observed": 676,
+   "brier": 0.046502937073776215,
+   "brier_base": 0.049642474024404165,
+   "skill": 0.06324295902505905,
+   "auc": 0.7349622459269927,
+   "calibration": [
+    [
+     0,
+     0.0686046511627907
+    ],
+    [
+     0,
+     0.010073614877954282
+    ],
+    [
+     0,
+     0.015497869043006587
+    ],
+    [
+     0.0029949631925610125,
+     0.01162340178225494
+    ],
+    [
+     0.1370321580782631,
+     0.15614103060829135
+    ]
+   ]
+  },
+  "autocratization_onset": {
+   "n": 441,
+   "predicted": 85.10999999999997,
+   "observed": 105,
+   "brier": 0.18132086167800426,
+   "brier_base": 0.18140589569160995,
+   "skill": 0.00046875000000135003,
+   "auc": 0.5983843537414966,
+   "calibration": [
+    [
+     0.047840909090909094,
+     0.26136363636363635
+    ],
+    [
+     0.10215909090909091,
+     0.10227272727272728
+    ],
+    [
+     0.1526136363636364,
+     0.19318181818181818
+    ],
+    [
+     0.24624999999999997,
+     0.23863636363636365
+    ],
+    [
+     0.41359550561797753,
+     0.39325842696629215
+    ]
+   ]
+  },
+  "democratization_onset": {
+   "n": 450,
+   "predicted": 143.13999999999984,
+   "observed": 147,
+   "brier": 0.207977777777778,
+   "brier_base": 0.21995555555555554,
+   "skill": 0.054455445544553394,
+   "auc": 0.6348083787970634,
+   "calibration": [
+    [
+     0.06388888888888886,
+     0.12222222222222222
+    ],
+    [
+     0.21044444444444446,
+     0.24444444444444444
+    ],
+    [
+     0.3632222222222222,
+     0.4666666666666667
+    ],
+    [
+     0.4312222222222225,
+     0.37777777777777777
+    ],
+    [
+     0.5216666666666672,
+     0.4222222222222222
+    ]
+   ]
+  },
+  "leader_exit": {
+   "n": 305,
+   "predicted": 296.54000000000036,
+   "observed": 290,
+   "brier": 0.04447409836065572,
+   "brier_base": 0.04676162321956468,
+   "skill": 0.04891885057471401,
+   "auc": 0.8065517241379311,
+   "calibration": [
+    [
+     0.9132786885245912,
+     0.8524590163934426
+    ],
+    [
+     0.9670491803278682,
+     0.9180327868852459
+    ],
+    [
+     0.9854098360655746,
+     0.9836065573770492
+    ],
+    [
+     0.9955737704918031,
+     1
+    ],
+    [
+     1,
+     1
+    ]
+   ]
+  },
+  "coup_attempt": {
+   "n": 294,
+   "predicted": 80.47000000000013,
+   "observed": 62,
+   "brier": 0.13819149659863955,
+   "brier_base": 0.16641214308852795,
+   "skill": 0.16958285595105627,
+   "auc": 0.8234149054505006,
+   "calibration": [
+    [
+     0.004482758620689657,
+     0
+    ],
+    [
+     0.039491525423728836,
+     0.01694915254237288
+    ],
+    [
+     0.19101694915254241,
+     0.2033898305084746
+    ],
+    [
+     0.4491525423728815,
+     0.3050847457627119
+    ],
+    [
+     0.6798305084745764,
+     0.5254237288135594
+    ]
+   ]
+  },
+  "intrastate_onset": {
+   "n": 311,
+   "predicted": 121.33000000000008,
+   "observed": 106,
+   "brier": 0.17535980707395482,
+   "brier_base": 0.22466682519825065,
+   "skill": 0.21946728485964184,
+   "auc": 0.794454670961804,
+   "calibration": [
+    [
+     0.08290322580645164,
+     0.016129032258064516
+    ],
+    [
+     0.18612903225806457,
+     0.22580645161290322
+    ],
+    [
+     0.34032258064516124,
+     0.3225806451612903
+    ],
+    [
+     0.5346774193548387,
+     0.41935483870967744
+    ],
+    [
+     0.7999999999999999,
+     0.7142857142857143
+    ]
+   ]
+  }
+ }
+}

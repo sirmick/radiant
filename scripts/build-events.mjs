@@ -6,7 +6,7 @@
 import { writeFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap } from './lib/hist.mjs';
 
-const actors = loadActors(); const code = makeCodeMap(actors); const owid = makeOwidMap(actors);
+const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
 const H = 'data/raw/hist/'; const events = [];
 
 // ---- leader exits: consecutive REIGN months with a different leader for the same ccode
@@ -64,7 +64,7 @@ const H = 'data/raw/hist/'; const events = [];
   for (const r of readCsv(H + 'UcdpPrioConflict_v25_1.csv')) {
     const y = +r.year, t = +r.type_of_conflict, ep = `${r.conflict_id}:${r.start_date2}`;
     if (seen.has(ep)) continue; seen.add(ep);
-    const as = r.gwno_a.split(',').map(s => code(s.trim(), y)).filter(Boolean), bs = r.gwno_b.split(',').map(s => code(s.trim(), y)).filter(Boolean);
+    const as = r.gwno_a.split(',').map(s => gw(s.trim(), y)).filter(Boolean), bs = r.gwno_b.split(',').map(s => gw(s.trim(), y)).filter(Boolean);
     if (t === 2) for (const a of as) for (const b of bs) events.push({ kind: 'interstate_onset', a, b, year: y, intensity: +r.intensity_level, source: 'UCDP/PRIO 25.1' });
     if (t === 3 || t === 4) for (const a of as) events.push({ kind: 'intrastate_onset', actor: a, year: y, intensity: +r.intensity_level, territory: r.territory_name || null, source: 'UCDP/PRIO 25.1' });
   }

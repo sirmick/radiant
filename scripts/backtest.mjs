@@ -9,6 +9,8 @@ import { createWorld, runEnsemble } from '../src/engine/core.js';
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const FROM = +arg('from', 1870), TO = +arg('to', 2000), STEP = +arg('step', 10), H = +arg('horizon', 20), RUNS = +arg('runs', 200);
 const skipDyads = process.argv.includes('--no-dyads');
+const UNIVERSE = arg('universe', 'modeled');   // modeled (67 simulated actors) | all (every state)
+const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
 // ground-truth coverage per event kind: score only inside these windows (the datasets end; absence past the end is not a non-event)
 const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001] };
 
@@ -41,10 +43,10 @@ const auc = (pairs) => { // [[p, y]]
 const fmt = (x, d = 2) => (x == null ? '   —' : x.toFixed(d).padStart(5));
 
 const results = []; const pooled = {};
-console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs${skipDyads ? ', dyads off' : ''}\n`);
+console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}\n`);
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
-  const make = () => createWorld({ panel, events, fits, templates, asOf, pacts });
+  const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE });
   const t0 = Date.now();
   const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads });
   const real = realized(asOf, horizon);
@@ -91,5 +93,5 @@ for (const [id, pairs] of Object.entries(pooled)) {
 }
 mkdirSync('scores', { recursive: true });
 const out = { meta: { run: new Date().toISOString(), from: FROM, to: TO, step: STEP, horizon: H, runs: RUNS, skipDyads }, byAsOf: results, pooled: summary };
-writeFileSync(`scores/backtest-${FROM}-${TO}-h${H}.json`, JSON.stringify(out, null, 1));
-console.log(`\nwrote scores/backtest-${FROM}-${TO}-h${H}.json`);
+writeFileSync(`scores/backtest-${FROM}-${TO}-h${H}-${UNIVERSE}.json`, JSON.stringify(out, null, 1));
+console.log(`\nwrote scores/backtest-${FROM}-${TO}-h${H}-${UNIVERSE}.json`);

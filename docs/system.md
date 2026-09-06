@@ -41,7 +41,13 @@ No country names in `data/templates.yaml`. Each template predicts one event kind
 | mid_war | dyad-year | CoW MID | 0.74 |
 | weaponization, chokepoint_status, corridor_status, sovereign_default | — | prior only (no panel sample yet) | — |
 
-## What the first backtest said (as-of 1870…2000, +20y, 100 runs)
+## Full scale (2026-09-06, later): fit on all 217 states, simulate 64
+
+Templates are generic, so they are fitted on every state in the CoW/GW system (countrycode panel crosswalk), and only the modeled actors are simulated. Contiguity is derived from CShapes 2.0 polygons (30 km buffer); dyads are restricted to politically relevant pairs (contiguous or ≥1 major power). Two user hypotheses were promoted through the ablation loop: `info_access` (−0.88 on coup odds per SD) and `great_game` (superpower client × bipolar era, +0.54).
+
+Backtest as-of 1950…2000, +20y, all states: coup_attempt exp/obs 1.08, Brier skill +0.27, AUC 0.81, calibration deciles 2→1 17→14 40→42 56→51 74→67; intrastate +0.16; autocratization +0.10; democratization +0.12; mid_force +0.16 (contiguity in; "allied" flips from +0.35 to −0.13 once contiguity is controlled — Bremer's artefact). Post-Cold-War coup over-prediction went 2.55×/3.48× (as-of 1990/2000) → 1.08×/1.46×.
+
+## What the first backtest said (as-of 1870…2000, +20y, 100 runs, 67 actors)
 
 - One-year fits with AUC 0.8+ become 20-year dynamic forecasts with AUC 0.65–0.8 and mostly near-zero Brier skill over the base rate. That is the honest starting point.
 - **Feedback amplification**: recurrence covariates (`win5(mid_force)` +2.9, conflict trap +1.5) are right one year ahead but self-perpetuate in simulation → disputes over-predicted ~1.5×, intrastate onsets ~1.7×. Fix: fit the recurrence term on multi-year horizons, or add decay.

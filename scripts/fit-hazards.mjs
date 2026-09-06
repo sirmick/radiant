@@ -9,6 +9,8 @@ const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
 const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
 const templates = Y('data/templates.yaml').templates;
 const actors = loadActors(); const code = makeCodeMap(actors);
+const contig = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
+const isContiguous = (a, b, y) => (contig[a < b ? `${a}|${b}` : `${b}|${a}`] ?? []).some(([f, t]) => y >= f && y <= t);
 const YEARS = panel.years, Y0 = panel.meta.y0;
 const only = new Set(process.argv.slice(2));
 
@@ -71,7 +73,11 @@ function buildDyadRows(t) {
     const live = ids.filter(id => panel.actors[id].live?.[y - Y0] && pv(id, 'cinc', y) != null && pv(id, 'regime', y) != null);
     for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
       const a = live[i], b = live[j]; const ca = pv(a, 'cinc', y), cb = pv(b, 'cinc', y);
+      const contiguous = y >= 1886 ? (isContiguous(a, b, y) ? 1 : 0) : null;
+      const major = (pv(a, 'great_power', y) || pv(b, 'great_power', y)) ? 1 : 0;
+      if (contiguous == null || (!contiguous && !major)) continue;   // politically relevant dyads only (Lemke & Reed 2001)
       const feats = {
+        contiguous,
         allied: pacts.has(`${pairKey(a, b)}|${y}`) ? 1 : 0,
         joint_democracy: pv(a, 'regime', y) >= 2 && pv(b, 'regime', y) >= 2 ? 1 : 0,
         cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),

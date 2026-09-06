@@ -7,7 +7,7 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/hist.mjs';
 
 const Y0 = 1816, Y1 = 2025, YEARS = Array.from({ length: Y1 - Y0 + 1 }, (_, i) => Y0 + i);
-const actors = loadActors(); const code = makeCodeMap(actors); const owid = makeOwidMap(actors);
+const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
 const H = 'data/raw/hist/';
 const panel = {}; const put = (id, v, y, val) => { if (!id || y < Y0 || y > Y1 || val == null || Number.isNaN(val)) return; ((panel[id] ??= {})[v] ??= new Array(YEARS.length).fill(null))[y - Y0] = val; };
 const add = (id, v, y, n = 1) => { if (!id || y < Y0 || y > Y1) return; const arr = ((panel[id] ??= {})[v] ??= new Array(YEARS.length).fill(0)); arr[y - Y0] += n; };
@@ -81,7 +81,7 @@ sources.mid_force = 'CoW MID 3.02 participant-level (1816–2001), hostility lev
 // ---- UCDP: intrastate conflict years (type 3/4), interstate (type 2), 1946–2024
 for (const r of readCsv(H + 'UcdpPrioConflict_v25_1.csv')) {
   const y = +r.year, t = +r.type_of_conflict;
-  const as = r.gwno_a.split(',').map(s => code(s.trim(), y)), bs = r.gwno_b.split(',').map(s => code(s.trim(), y));
+  const as = r.gwno_a.split(',').map(s => gw(s.trim(), y)), bs = r.gwno_b.split(',').map(s => gw(s.trim(), y));
   if (t === 3 || t === 4) for (const a of as) if (a) put(a, 'intrastate', y, +r.intensity_level);
   if (t === 2) for (const a of [...as, ...bs]) if (a) add(a, 'interstate_ucdp', y, 1);
 }
@@ -134,6 +134,7 @@ for (const [id, vars] of Object.entries(panel)) {
   }
   vars.great_power = YEARS.map(y => { const gp = a?.great_power; if (!gp) return 0; for (let i = 0; i < gp.length; i += 2) if (y >= gp[i] && (gp[i + 1] == null || y < gp[i + 1])) return 1; return 0; });
   vars.live = YEARS.map(y => (a && isLive(a, y) ? 1 : 0));
+  vars.modeled = YEARS.map(() => (a?.modeled ? 1 : 0));
   vars.year = YEARS.map(y => y);
   // superpower client ties: 0 inside coverage when absent, carried forward after the alliance data ends (2000)
   for (const v of ['pact_usa', 'pact_rus']) { vars[v] ??= new Array(YEARS.length).fill(null); let last = null; YEARS.forEach((y, i) => { if (!a || !isLive(a, y)) return; if (vars[v][i] == null) vars[v][i] = y <= 2000 ? 0 : last; last = vars[v][i]; }); }

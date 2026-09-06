@@ -1,5 +1,5 @@
-// Shared helpers for the historical pipeline: CSV parsing, code maps, actor lifecycles.
-import { readFileSync } from 'node:fs';
+// Shared helpers for the historical pipeline: CSV parsing, the state universe, code maps, actor lifecycles.
+import { readFileSync, existsSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 
 export const splitCsv = (line) => parseCsv(line)[0] ?? [];
@@ -20,7 +20,7 @@ export function parseCsv(text) {
   return rows;
 }
 export function* csvRows(text) {
-  const rows = parseCsv(text.replace(/^\uFEFF/, ''));
+  const rows = parseCsv(text.replace(/^﻿/, ''));
   const head = rows[0].map(h => h.trim());
   for (let i = 1; i < rows.length; i++) {
     const cells = rows[i]; if (cells.length === 1 && cells[0] === '') continue;
@@ -30,34 +30,59 @@ export function* csvRows(text) {
 export const readCsv = (p) => [...csvRows(readFileSync(p, 'utf8'))];
 export const Y = (p) => parseYaml(readFileSync(p, 'utf8'));
 
-/** Historical actor set merged with modern actors: id -> { id, introduced, retired, successor, gw, owid, great_power } */
+const slug = (name) => name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+/**
+ * The state universe: every state in the countrycode panel (CoW / GW system membership) 1816–2025,
+ * merged with the hand-coded historical entities (data/history/actors.yaml) and the modern model actors (data/actors.yaml).
+ * id -> { id, name, introduced, retired, successor, gw, cow, owid, great_power, modeled }
+ * `modeled` = simulated by the engine (hand/modern sets); everything else is fit-only.
+ */
 export function loadActors() {
   const hist = Y('data/history/actors.yaml');
   const modern = Y('data/actors.yaml');
-  const byId = new Map(hist.map(a => [a.id, { ...a }]));
+  const byId = new Map(hist.map(a => [a.id, { ...a, modeled: true }]));
   for (const m of modern) {
-    if (!byId.has(m.id)) byId.set(m.id, { id: m.id, name: m.name, introduced: 1991, gw: null, owid: m.id });
-    byId.get(m.id).modern = m;
+    if (!byId.has(m.id)) byId.set(m.id, { id: m.id, name: m.name, introduced: 1991, gw: null, owid: m.id, modeled: true });
+    byId.get(m.id).modern = m; byId.get(m.id).modeled = true;
   }
-  for (const a of byId.values()) { a.introduced ??= 1816; a.retired ??= null; a.owid ??= a.id; }
+  // universe from the countrycode panel: iso3c when present, else a slug of the English name
+  const panelPath = 'data/raw/hist/codelist_panel.csv';
+  const span = new Map();   // id -> { y0, y1, gw, cow, name, iso }
+  const cowRows = [], gwRows = [];
+  if (existsSync(panelPath)) for (const r of csvRows(readFileSync(panelPath, 'utf8'))) {
+    const y = +r.year, cow = r.cown ? +r.cown : null, gw = r.gwn ? +r.gwn : null; if (cow == null && gw == null) continue;
+    const iso = r.iso3c || null; const id = iso ?? slug(r['country.name.en']);
+    const s = span.get(id) ?? span.set(id, { y0: y, y1: y, gw, cow, name: r['country.name.en'], iso }).get(id);
+    s.y0 = Math.min(s.y0, y); s.y1 = Math.max(s.y1, y); s.gw ??= gw; s.cow ??= cow;
+    if (cow != null) cowRows.push([cow, y, id]); if (gw != null) gwRows.push([gw, y, id]);
+  }
+  for (const [id, s] of span) {
+    if (byId.has(id)) { const a = byId.get(id); a.cow ??= s.cow; a.gw ??= s.gw; continue; }
+    byId.set(id, { id, name: s.name, introduced: s.y0, retired: s.y1 >= 2020 ? null : s.y1 + 1, gw: s.gw, cow: s.cow, owid: s.iso ?? null, modeled: false, universe: true });
+  }
+  for (const a of byId.values()) { a.introduced ??= 1816; a.retired ??= null; a.owid ??= a.id; a.modeled ??= false; }
+  byId.cowRows = cowRows; byId.gwRows = gwRows;
   return byId;
 }
 
-/** (CoW/GW ccode, year) -> model actor id, honouring lifecycles (Prussia→DEU, Austria-Hungary→AUT, Ottoman→TUR, Korea→KOR). */
-export function makeCodeMap(actors) {
-  const byGw = new Map();
-  for (const a of actors.values()) if (a.gw != null) (byGw.get(a.gw) ?? byGw.set(a.gw, []).get(a.gw)).push(a);
+/** (ccode, year) -> actor id. Hand entities win (Prussia→DEU, Austria-Hungary→AUT, Ottoman→TUR, Korea→KOR), else the countrycode panel. */
+export function makeCodeMap(actors, system = 'cow') {
+  const byCode = new Map();
+  for (const a of actors.values()) { const c = system === 'gw' ? (a.gw ?? a.cow) : (a.cow ?? a.gw); if (c != null && a.modeled) (byCode.get(c) ?? byCode.set(c, []).get(c)).push(a); }
   const extra = { 260: 'DEU', 265: 'DDR', 305: 'AUT', 300: 'AUT_HUN', 730: 'KOREA', 816: 'VNM', 817: 'VNM' };
+  const panelRows = system === 'gw' ? actors.gwRows : actors.cowRows;
+  const panelByCode = new Map();
+  for (const [c, y, id] of panelRows ?? []) (panelByCode.get(c) ?? panelByCode.set(c, []).get(c)).push([y, id]);
+  const cache = new Map();
   return (code, year) => {
-    const c = +code;
-    const list = byGw.get(c);
-    if (list) {
-      const live = list.filter(a => year >= a.introduced && (a.retired == null || year < a.retired));
-      if (live.length) return live[0].id;
-      return list[0].id;
-    }
-    if (extra[c]) return extra[c];
-    return null;
+    const c = +code; const k = `${c}|${year}`; if (cache.has(k)) return cache.get(k);
+    let out = null;
+    const list = byCode.get(c);
+    if (list) { const live = list.filter(a => year >= a.introduced && (a.retired == null || year < a.retired)); out = (live[0] ?? list[0]).id; }
+    else if (extra[c]) out = extra[c];
+    else { const rows = panelByCode.get(c); if (rows) { let best = null, bd = Infinity; for (const [y, id] of rows) { const d = Math.abs(y - year); if (d < bd) { bd = d; best = id; } } out = best; } }
+    cache.set(k, out); return out;
   };
 }
 
