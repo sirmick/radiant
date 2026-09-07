@@ -1,63 +1,60 @@
 # Radiant
 
-An open, versioned world model for the next 40 years: ~44 actors, contested territories, load-bearing corridors, competing-risk hazards, and resolvable claims — all as YAML in git, compiled to one JSON, run as a Monte Carlo in the browser, with uncertainty as the primary visual.
+A world model you can argue with. One historical panel (every state, 1816–2025), one dated event log, one dated infrastructure layer (corridors, chokepoints, territories, military presence), a set of **generic** hazard templates fitted on that history, and one engine that steps the world forward a year at a time — whether the clock says 1870 (a backtest) or 2025 (a forecast). A browser viewer shows the whole thing as a scrubbable map, and an adversary/fixer/checker loop refines the model era by era with every change measured against the backtest.
 
-Origin: `docs/origin/session-transcript.md` (the conversation that produced the first scenario and spec). Its hand-typed 2026 hazards and claims are retired in `docs/origin/` — the engine runs only templates fitted on the 1816–2025 panel, and the model is refined era by era by the adversary/fixer/checker loop (`docs/refine-log.md`). Schema: `docs/schema.md`; system: `docs/system.md`.
+Nothing hand-typed drives the engine. Every number carries a source or is labelled `estimate`; every mechanism has a fitted history and a holdout score; every proposed factor earns its place by ablation or is recorded as rejected with the numbers.
 
-## Status
+- **Live viewer:** `npm run dev` → http://localhost:5173 (or `npx vite preview` for the built app; bound to `0.0.0.0`).
+- **Docs index:** [docs/system.md](docs/system.md) (how the loop keeps it honest) · [docs/schema.md](docs/schema.md) (entities and files) · [docs/data-catalogue.md](docs/data-catalogue.md) (every dataset) · [docs/ui.md](docs/ui.md) (the viewer) · [docs/runbook.md](docs/runbook.md) (commands and workflows) · [docs/contributing.md](docs/contributing.md) (how to add things) · [docs/glossary.md](docs/glossary.md) · [docs/refine-log.md](docs/refine-log.md) (what each loop turn changed) · [docs/escalations.md](docs/escalations.md) (decisions for the operator) · [docs/ui-review.md](docs/ui-review.md) (UI gaps, ranked).
+- **Origin:** [docs/origin/](docs/origin/) — the conversation that started it and the hand-typed 2026 scenario it produced, retired on 2026-09-07 ("faithful first").
 
-**M1 — data viewer + map** (done): scrubbable map 2000→2066 coloured by any registry variable, hatched territories, corridor/chokepoint overlay, per-actor data panel with sources and sparklines, hazard/claim/territory/corridor browsers.
-
-**M2a — historical pipeline + backtest** (done, offline in node): actor-year panel 1816–2025 for all 217 states (CoW NMC/MID/alliances, Maddison, V-Dem, UCDP, REIGN, OWID energy, World Bank), 8,071 dated events, contiguity from CShapes, 8 generic hazard templates fitted with era holdout, an annual-step engine, a rolling-origin backtest (as-of 1870…2000, +20y), and an ablation loop for candidate factors. See `docs/system.md`.
-
-**M2b — forward ensemble on the map** (done): `scripts/run-forward.mjs` instantiates the fitted generic templates on every state's 2025 state and simulates 2026→2065 (`public/forecast.json`). The map's **Forecast** group shows expected regime level, regime uncertainty, and P(event by year) for each template; the panel shows the regime distribution at the slider year and cumulative probabilities at 5/10/20/40 years. Generic templates only — the named 2026 hazards (Taiwan, Hormuz, CRQC…) are not yet wired in.
-
-## Run
+## Quick start
 
 ```
 npm install
-./scripts/fetch-raw.sh          # ~60 MB of public data into data/raw (gitignored)
-node scripts/build-geo.mjs      # Natural Earth -> data/geo/world.topo.json
-node scripts/build-world.mjs    # data/*.yaml + data/raw -> public/world.json (validates, prints hazard 10-yr probabilities)
-npm run dev                     # http://localhost:5173
+./scripts/fetch-raw.sh                 # public datasets into data/raw (gitignored, ~150 MB)
+npm run build:hist                     # panel -> events -> fits           (data/panel.json, events.json, fits.json)
+npm run backtest                       # rolling-origin backtest           (scores/)
+npm run forecast                       # 2026-2065 ensemble                (public/forecast.json)
+node scripts/build-geo.mjs && node scripts/build-world.mjs && npm run build:ui-data   # map data (public/*.json)
+npm run dev
 ```
 
-Historical pipeline + backtest (all offline once `data/raw/hist` is fetched — see `scripts/fetch-raw.sh` and the URLs in `scripts/build-panel.mjs`):
+The full command reference is in [docs/runbook.md](docs/runbook.md).
+
+## What is modelled
+
+| layer | file(s) | what |
+|---|---|---|
+| Actors | `data/history/actors.yaml`, `data/actors.yaml`, countrycode panel | 217 states with lifecycles (introduced / retired / successor / spans); 64 modelled in detail |
+| Panel | `data/panel.json` (built) | ~65 actor-year covariates 1816–2025: regime, capability, economy, demography, information access, alliances, superpower ties, neighbourhood |
+| Events | `data/events.json` (built), `data/history/events.yaml` | ~8,000 dated events: leader exits, coups, regime steps, disputes, wars, civil-war onsets, corridor/chokepoint/territory changes, nuclear acquisitions |
+| Infrastructure | `data/corridors.yaml`, `data/territories.yaml`, `data/presence.yaml`, `data/waves.yaml` | corridors and chokepoints with dated `history`; contested territories with dated control; great-power bases, garrisons and fleet areas; capability waves |
+| Templates | `data/templates.yaml`, `data/fits.json` (built) | generic hazards (no country names): leader exit, irregular exit, coup, regime steps up/down, liberal erosion, civil-war onset, dispute, war, chokepoint and corridor status; fitted with era holdouts, candidates and rejections recorded |
+| Engine | `src/engine/core.js` | annual step: structural drift, actor hazards, dyad hazards (politically relevant dyads), corridor hazards, births/retirements, great-power dates, rivalry decay |
+| Scores | `scores/*.json` | rolling-origin backtests: coefficients refit on labels ≤ as-of, scored only inside each dataset's truth window |
+| Forecasts | `public/forecast*.json` | ensembles from 2025 and from past as-of years (1900, 1930, 1955, 1975, 1990, 2005) |
+
+## Status (2026-09-07)
+
+- **M1** viewer + map · **M2a** historical pipeline and backtest · **M2b** forward ensemble on the map — done.
+- **Refinement loop** (`.claude/workflows/refine.js`): eras 1870–1914 and 1914–1945 done and checked; loop restarts after the implementation run.
+- **Implementation run** (`.claude/workflows/implement.js`): approved escalations — rolling-origin refit ✔, war process ✔ (duration built, not promoted), coalitions ✔ (era term promoted; joining built, not promoted), corridor layer scored ✔, data quality and modern fold in progress, then re-baseline.
+- **Queued packages:** military presence (data and map exist; model wiring), termination hazards (war end, chokepoint reopen, contest settle), alliance model layer + blocs.
+- **UI:** timeline 1870–2066 with play, history and forecast layers, past-as-of forecasts with actual-vs-forecast, News, Scores, flags/regime glyphs, alliances, conflicts, military presence, continuous fields (spheres of influence, conflict intensity), hover cards, URL state.
+
+## Repository layout
 
 ```
-node scripts/build-panel.mjs      # -> data/panel.json   actor-year covariates 1816–2025
-node scripts/build-events.mjs     # -> data/events.json  dated events (machine + data/history/events.yaml)
-node scripts/fit-hazards.mjs      # -> data/fits.json    MAP logistic per template, holdout AUC, calibration
-node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 100   # -> scores/   (refits per as-of year; --no-refit for the leaky full-sample comparison)
-node scripts/run-forward.mjs --runs 300 --horizon 40                                # -> public/forecast.json (as of 2025)
-node scripts/run-forward.mjs --as-of 1955 --runs 200 --horizon 30                   # -> public/forecast-1955.json: coefficients refit on labels <= 1955; UI 'forecast from' menu
-```
-
-Screenshot check: `npx vite preview` then `node scripts/shot.mjs http://localhost:4173/ out.png [actor:IRN] [2050]`.
-
-## Layout
-
-```
-data/variables.yaml   the registry — every variable the model tracks; build, engine, UI all read it
-data/actors.yaml      44 states: regime, nuclear, capability map, chokepoint exposure (hand-coded, source-tagged)
-data/territories.yaml 29 polygons whose controller ≠ sole claimant
-data/corridors.yaml   16 chokepoints + land corridors with load_bearing_for
-data/overrides.yaml   hand values where datasets are silent (Taiwan, North Korea)
-data/templates.yaml   generic hazard templates (no country names): event, unit, covariates, literature priors
-data/waves.yaml       capability waves 1825→ with introduction/saturation/retirement and first-sovereign years
-data/history/         historical actor lifecycles (Prussia→DEU, Ottoman→TUR…) and hand-coded events 1816–2026
-data/panel.json, events.json, fits.json   built artefacts of the historical pipeline
-src/engine/core.js    annual-step engine: createWorld(asOf) → stepYear → runEnsemble
+data/                 hand-authored YAML (source-tagged) + built JSON artefacts
+  history/            actor lifecycles, hand-coded events 1816–2026
+  raw/                fetched datasets (gitignored)
+docs/                 documentation (index above)
+agent/                procedures for the loop's adversary, fixer, checker, implementer
+.claude/workflows/    refine.js (attack → fix → check per era), implement.js (approved packages → checker → baseline)
+scripts/              fetch, build, fit, backtest, forecast, UI slices, screenshots  (docs/runbook.md)
+src/engine/core.js    the engine (node + browser)
+src/lib/              viewer: Map.svelte, Panel.svelte, data.js, influence.js (fields)
 scores/               backtest outputs
-data/raw/             fetched datasets (World Bank, UN WPP 2024, OWID/Energy Institute, IEA EV, Natural Earth)
-scripts/              fetch + build + screenshot
-src/lib/Map.svelte    D3-geo map; src/lib/Panel.svelte data panel; src/lib/data.js value-at-year + scales
+public/               compiled data the viewer loads
 ```
-
-## Adding a variable
-
-1. Add an entry to `data/variables.yaml` (`id`, `group`, `kind`, `scope`, `source`, `display`).
-2. If it needs a new dataset: add a fetcher in `scripts/build-world.mjs` returning `{ ISO3: { year: value } }`.
-3. If it evolves over time: add `equation: <name>` and implement it in `src/engine/equations.js` (M2).
-
-Nothing else needs to change — the map picker, panel tables and validation are generated from the registry.

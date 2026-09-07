@@ -182,3 +182,20 @@ A named set of overrides — latent means, hazard multipliers, parameter values 
 ```
 
 The engine (`src/engine/`) reads this, runs N worlds in a Worker, and writes results into typed arrays the UI queries: per-variable percentile bands by year, per-hazard firing-time histograms, per-territory controller frequencies by year, per-claim marginals, and a run×event bitmask for conditioning.
+
+
+## Military presence (`data/presence.yaml`) — added 2026-09-07
+
+Dated great-power stations: `{ actor, host | sea:<area>, name, kind: base|garrison|fleet|advisors, level 1–3, from, to|null, geometry: [lon, lat], source }`. `level` 1 = outpost/advisors, 2 = base or brigade-scale, 3 = fleet HQ / corps-scale / occupation. Entries whose `source` contains `operator` are the user's own observations and are drawn with emphasis and labelled unverified. Compiled to `public/presence.json` by `scripts/build-presence-slice.mjs`; consumed by the map's presence layer and the influence field, and (package 7) by the panel builder as `presence_<POWER>`, `presence_any`, `presence_change`, the dyad covariate `patron_presence`, and the corridor covariate `guarantor_presence`.
+
+## Dated history on records
+
+Corridors and territories carry `history: [{ year, status?, controller?, capacity?, source }]`; the top-level `status`/`controller` is the 2026 snapshot. The viewer reads the entry in force at the slider year (`statusAt`) and does not draw a record before its first entry; `scripts/build-events.mjs` and `scripts/build-world.mjs` fail the build when a `corridor`/`chokepoint`/`territory` event id has no record, or a record has no history. The corridor-year / chokepoint-year panel unit (package 4) is built from these histories.
+
+## Fields (`src/lib/influence.js`)
+
+A field is a continuous geographic overlay: `{ label, note, paint: 'dominant'|'heat', groups(ctx), sources(ctx) -> [{ group, polygonKey?, lonlat?, w, lambda }], color(ctx, group), threshold }`. Sources add `w` to every grid cell inside a polygon and/or `w·exp(−d/λ)` around a point. `dominant` paints each cell with its leading group at an opacity equal to the margin over the runner-up; `heat` paints one hue at an opacity proportional to intensity. Weights are `estimate` — fields are pictures of the data layers, not fitted quantities. Registered: `influence`, `conflict`.
+
+## Ensembles (`public/forecast*.json`, `public/forecasts.json`)
+
+`run-forward.mjs` writes `{ meta: { asOf, from, to, runs, horizon, fit_source, templates }, actors: { id: { regime0, p: { template: cumulative P by year }, regime: [[p0,p1,p2,p3] per year], gdp_pc: [[q10,q50,q90]], info_access } }, dyads: { "A|B": { template: { pAny, curve } } } }`. With `--as-of Y < 2025` the coefficients are refit on labels ≤ Y (`scripts/lib/fit.mjs`), and the index `forecasts.json` lists every ensemble for the viewer's *forecast from* menu.
