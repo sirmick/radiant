@@ -1,6 +1,24 @@
 # Refinement log
 
-One section per turn of the adversary → fixer → checker loop (`.claude/workflows/refine.js`, procedures in `agent/`). Baseline before the first turn: `scores/backtest-1870-2010-h20-all.json` (as-of 1870…2010, +20y, 100 runs, all states).
+One section per turn of the adversary → fixer → checker loop (`.claude/workflows/refine.js`, procedures in `agent/`). The file the loop compares against is `scores/backtest-1870-2010-h20-all.json` (as-of 1870…2010 step 10, +20y, 100 runs, all states, rolling-origin refit).
+
+**Baseline 2026-09-07 — after implementing the approved escalation packages.** Per-template detail, `auc_at_risk`, and the template × as-of rows that carry no fit are in [Baseline 2026-09-07](#baseline-2026-09-07) at the foot of this file.
+
+| template | exp/obs | Brier skill | AUC |
+|---|---|---|---|
+| coup_attempt | 0.89 | +0.18 | 0.76 |
+| chokepoint_status | 0.96 | +0.14 | 0.76 |
+| intrastate_onset | 1.02 | +0.11 | 0.74 |
+| mid_force | 0.78 | +0.08 | 0.77 |
+| corridor_status | 1.13 | +0.06 | 0.66 |
+| mid_war | 0.80 | −0.01 | 0.77 |
+| democratic_deepening | 1.50 | −0.07 | 0.70 |
+| autocratic_closure | 0.65 | −0.14 | 0.60 |
+| democratize_step | 0.95 | −0.19 | 0.55 |
+| irregular_exit | 2.05 | −0.47 | 0.70 |
+| leader_exit | 0.86 | −0.83 | 0.74 |
+
+Baseline before implementation, 2026-09-07 — the table this replaces. It was measured on 2026-09-06, before the first turn of the loop: full-sample coefficients on every row (all leaky, the fit saw the years it is scored on), the pre-turn actor universe, and no corridor or chokepoint unit. It records what the numbers used to say; it is **not** a like-for-like comparison with the table above, and the two should not be differenced.
 
 | template | exp/obs | Brier skill | AUC |
 |---|---|---|---|
@@ -315,3 +333,45 @@ Approved with the note "adds columns only; must leave the 1870–2010 backtest n
 **Nothing moved.** `data/fits.json` byte-identical; the 1870–2010 backtest score file identical to the digit before and after (100 runs, universe all), and 2,711,940 cells across the 12,914 pre-existing actor-columns compare equal. `public/world.json`: 2,549 of 2,569 actor-variable `v0` identical; the 20 that moved are all in the two variables that declare a `region_median` fallback (`gov_debt_gdp`, `ev_share`), where an actor whose only observation predates 2000 now takes the fallback rather than showing a 1990-vintage number as current. Cost: the full backtest goes 105s → 122s.
 
 **For the next package.** (a) The modern columns are *available* and *unused* — no template names one yet. The obvious first candidates are `working_age_share`, `fertility` and `median_age` on the regime ladder post-1950, and `milex_gdp` on `mid_force` (7,892 actor-years, 1960–2024). (b) Two of the modern columns are second measurements of a historical one and should be reconciled before either is fitted: `population_wpp` vs `population` (WPP against OWID/HYDE), and `oil_demand`/`gas_demand`/`coal_demand` (OWID country file) vs `oil_twh`/`coal_twh` (OWID by-source file). (c) `scripts/build-history-slice.mjs` still lists 15 hand-picked variables; the map could offer any of the 64 new ones now. (d) The World Bank pull (`scripts/fetch-wb.mjs`) has 26 indicators on disk of which the registry declares 20 — `gdp_mer` and `age65_share` are fetched and unregistered, so they are not folded.
+
+## Baseline 2026-09-07
+
+The re-baseline after the approved escalation packages of 2026-09-07 (`statistics-4` rolling-origin refit, `engine-6` rivalry decay, `engine-7` war nesting, `statistics-6` pre-1946 era term, the corridor layer, `era-1870-1914/data-6` empire series, `operator/modern-fold`; the coalition and war-duration halves ship as candidates, switched off). Produced with:
+
+```
+node scripts/build-panel.mjs && node scripts/build-events.mjs && node scripts/fit-hazards.mjs
+node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all
+node scripts/run-forward.mjs --runs 300 --horizon 40; node scripts/build-history-slice.mjs; node scripts/build-news.mjs; node scripts/build-world.mjs
+```
+
+`scores/backtest-1870-2010-h20-all.json`: 15 as-of years, 80 scored rows, **0 leaky**, 45 rows reported with no fit at their as-of year and excluded from `pooled`, 0 underpowered, 121 s.
+
+### Pooled across as-of years
+
+`exp/obs` is expected over observed count; `skill` is Brier skill against the sample base rate; `AUC@risk` is over the units the model can put mass on (`p > 0`), which is what the fitted coefficients actually rank — the backtest reports it **per as-of row, not pooled**, so the column is the `n_at_risk`-weighted mean of the per-as-of values that entered `pooled`.
+
+| template | n | exp | obs | exp/obs | Brier | base | skill | AUC | AUC@risk | n_at_risk | as-of years pooled |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| coup_attempt | 1105 | 255.6 | 287 | 0.89 | 0.158 | 0.192 | +0.18 | 0.76 | 0.74 | 712 | 1960–2010 |
+| chokepoint_status | 36 | 16.2 | 17 | 0.96 | 0.214 | 0.249 | +0.14 | 0.76 | 0.85 | 28 | 1910–1940 |
+| intrastate_onset | 1241 | 395.1 | 387 | 1.02 | 0.190 | 0.215 | +0.11 | 0.74 | 0.77 | 1101 | 1950–2010 |
+| mid_force | 108797 | 1093.4 | 1407 | 0.78 | 0.0117 | 0.0128 | +0.08 | 0.77 | 0.79 | 6165 | 1900–2000 |
+| corridor_status | 83 | 25.9 | 23 | 1.13 | 0.188 | 0.200 | +0.06 | 0.66 | 0.66 | 83 | 1910–1940 |
+| mid_war | 108797 | 525.0 | 655 | 0.80 | 0.0060 | 0.0060 | −0.01 | 0.77 | 0.72 | 5078 | 1900–2000 |
+| democratic_deepening | 169 | 42.0 | 28 | 1.50 | 0.148 | 0.138 | −0.07 | 0.70 | 0.64 | 142 | 1970–2010 |
+| autocratic_closure | 696 | 209.6 | 320 | 0.65 | 0.284 | 0.248 | −0.14 | 0.60 | 0.64 | 635 | 1920–2010 |
+| democratize_step | 942 | 476.8 | 500 | 0.95 | 0.296 | 0.249 | −0.19 | 0.55 | 0.51 | 876 | 1920–2010 |
+| irregular_exit | 1105 | 401.4 | 196 | 2.05 | 0.215 | 0.146 | −0.47 | 0.70 | 0.76 | 845 | 1960–2010 |
+| leader_exit | 1105 | 793.7 | 928 | 0.86 | 0.246 | 0.135 | −0.83 | 0.74 | 0.79 | 846 | 1960–2010 |
+
+`liberal_erosion` is in no row of the table: it has fewer than the minimum training events at **every** as-of year in the window (n=1826, events=3 in years ≤ 2010), so the refit reports `no fit at as-of` at all twelve as-of years where its truth window is open (1900–2010) and the template is out of `pooled` entirely. The 45 no-fit rows are: `mid_force`/`mid_war` 1870–1890; `chokepoint_status`/`corridor_status` 1870–1900; `democratize_step`, `autocratize_step`, `autocratization_onset`, `autocratic_closure` 1900–1910; `democratization_onset` 1900; `democratic_deepening` 1900–1960; `liberal_erosion` 1900–2010; `leader_exit`, `irregular_exit`, `coup_attempt` 1950.
+
+### Reading it honestly
+
+- **These are not new numbers.** The run reproduces `scores/backtest-1870-2010-h20-all.json` as committed at `bf570a2` in every field except `meta.run` and the per-as-of `ms`, and `data/panel.json`, `data/events.json` and `data/fits.json` rebuild byte-for-byte except `meta.built`. The baseline's value is that the whole chain was rebuilt from source and landed on the same digits, not that anything improved.
+- **The two tables at the top of this file are not comparable, and the difference is not attributable to any one change.** The old one was fitted on the full sample — the coefficients had seen the years being scored — but it also predates the actor-universe corrections, the engine rewrites and the corridor unit. The one clean piece of evidence available is the `--no-refit` companion run of 2026-09-07 05:53 (`scores/backtest-1870-2010-h20-all-norefit.json`, itself taken before the last two packages): with full-sample leaky coefficients on otherwise current code, `leader_exit` scores −0.68 and `mid_force` +0.09. So the refit costs `leader_exit` about 0.15 of skill and `mid_force` about 0.01 — it is **not** what turned +0.10 into −0.83. That gap belongs to the model changes between 2026-09-06 and today, and no run in `scores/` isolates them.
+- **Two exit templates are badly miscalibrated and say so.** `leader_exit` (skill −0.83) puts near-certainty on exits in the top four calibration bins (95→85, 98→95, 100→98) and near-zero in the bottom bin where 71% of units exit — the hazard is far too steep in tenure. `irregular_exit` over-predicts 2.05×. Both still rank at AUC 0.70–0.74, so the ordering is real and the level is wrong; a base-rate intercept refit is the obvious next package.
+- **`mid_force`/`mid_war` under-predict at 0.78/0.80, and 43% of the observed dyads are structural misses** — 607 of 1407 and 280 of 655 units that fought were given `p = 0` by the relevance filter, at every as-of year and not only the early ones (the worst are 1930 and 1940, 105/261 and 128/239). The pooled AUC of 0.77 is measured over a sample where nearly half the positives could never be ranked.
+- **The dyadic templates have no row at all at as-of 2010**, and neither is reported: CoW MID 5.0 ends in 2001, so `backtest.mjs:101` skips the template before it can emit a reason. The pooled dyadic numbers are 1900–2000, and 1990/2000 are scored over 11 and 1 truth-years respectively rather than 20. That silent skip is the one thing in this baseline that the log's own rule — a template that cannot be scored is reported, not dropped — says should be a row.
+- **The corridor layer is in the baseline table for the first time**: `chokepoint_status` +0.14 / AUC@risk 0.85 on 36 pooled units, `corridor_status` +0.06 on 83. Both are small-n, and both are confined to the 1910–1940 as-of years — earlier there are too few prior events to fit, and their truth windows close in 1945.
+- **`public/forecast.json` is now 300 runs × 40y**, per this baseline's command list; the copy committed at `07d7dbf` was 500 runs. `public/scores.json` was not rebuilt — it was generated from the identical previous run of the same backtest file, so its numbers already match this baseline.
