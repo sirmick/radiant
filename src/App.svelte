@@ -24,7 +24,7 @@
   let selected = $state(null);
 
   const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; };
-  loadWorld().then(d => { data = d; const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; }).catch(e => { error = String(e); });
+  loadWorld().then(d => { data = d; applyHash(); }).catch(e => { error = String(e); });
   let tab = $state('news');
   const HL_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', coup: '#d95c4f', alliance: '#6cb4ff', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3' };
   const headlines = $derived.by(() => {
