@@ -9,7 +9,7 @@
 // Nothing here knows about country names; it reads data/panel.json, data/events.json and data/templates.yaml only.
 import { readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap } from './hist.mjs';
-import { rivalryScore, rivalryDecay } from '../../src/engine/core.js';
+import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked } from '../../src/engine/core.js';
 
 export const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -31,6 +31,14 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
+  // coalition relevance (era-1914-1945/engine-1): the same rule the engine gates its dyad draw with, read from the same
+  // declaration in data/templates.yaml, so the sample the coefficients are estimated on and the sample they are drawn
+  // over are one set. Here the war graph is the observed one — the cross-side pairs the hand-coded `sides:` lists imply,
+  // lagged a year like at_war_any — and the alliance graph is dated rather than frozen.
+  const COALITION = coalitionRule(templates);
+  const warSpans = COALITION?.relevance ? warDyadSpans(events) : null;
+  const warPartnersCache = new Map();
+  const warPartners = (y) => { if (!warPartnersCache.has(y)) warPartnersCache.set(y, warPartnersAt(warSpans, y)); return warPartnersCache.get(y); };
   const isContiguous = (a, b, y) => (contiguity[a < b ? `${a}|${b}` : `${b}|${a}`] ?? []).some?.(([f, t]) => y >= f && y <= t) ?? false;
 
   // ---------------------------------------------------------------- event index
@@ -95,15 +103,20 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
   // relabelled per template (mid_force and mid_war share 69k rows).
   const dyadCache = new Map();
   function dyadFeatureRows(w0, w1) {
-    const key = `${w0}|${w1}|${DECAY}`; if (dyadCache.has(key)) return dyadCache.get(key);
+    const key = `${w0}|${w1}|${DECAY}|${COALITION?.relevance || 'base'}`; if (dyadCache.has(key)) return dyadCache.get(key);
     const rows = []; const ids = Object.keys(panel.actors);
     for (let y = Math.max(w0, Y0 + 5); y <= Math.min(w1, panel.meta.y1); y++) {
       const live = ids.filter(id => panel.actors[id].live?.[y - Y0] && pv(id, 'cinc', y) != null && pv(id, 'regime', y) != null);
+      const wp = warSpans ? warPartners(y - 1) : null;
+      const alliedY = { has: (k) => pacts.has(`${k}|${y}`) };
       for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
         const a = live[i], b = live[j]; const ca = pv(a, 'cinc', y), cb = pv(b, 'cinc', y);
         const contiguous = y >= 1886 ? (isContiguous(a, b, y) ? 1 : 0) : null;
         const major = (pv(a, 'great_power', y) || pv(b, 'great_power', y)) ? 1 : 0;
-        if (contiguous == null || (!contiguous && !major)) continue;   // politically relevant dyads only (Lemke & Reed 2001)
+        // politically relevant dyads only (Lemke & Reed 2001), plus — where the coalition rule is on — the pairs a
+        // running war makes relevant: at war with each other, or at war with a state allied to the other.
+        if (contiguous == null) continue;
+        if (!contiguous && !major && !(wp && warLinked(wp, alliedY, a, b, COALITION.relevance))) continue;
         const feats = {
           contiguous,
           allied: pacts.has(`${pairKey(a, b)}|${y}`) ? 1 : 0,
@@ -114,6 +127,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
           rivalry: rivalryScore(lastDisputeBefore(pairKey(a, b), y), y, DECAY),
           at_war_any: ((pv(a, 'at_war', y - 1) ?? 0) || (pv(b, 'at_war', y - 1) ?? 0)) ? 1 : 0,
           nuclear_both: hasNukes(a, y) && hasNukes(b, y) ? 1 : 0,
+          pre_1946: y < 1946 ? 1 : 0,   // era-1870-1914/statistics-6, a derived constant; candidate only
         };
         rows.push({ unit: pairKey(a, b), a, b, year: y, feats });
       }
@@ -185,17 +199,22 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
     if (ablation && t.candidates?.length) {
       ablationOut = [];
       const variants = [['base', []], ...t.candidates.map(c => [c.id, [c]]), ['all', t.candidates]];
+      // A candidate may declare its own holdout_split, and then the whole ablation (base included) is scored at it, so
+      // the variants stay comparable. An era dummy needs one: with the template's own split every training row is on
+      // one side of the era and the coefficient never leaves its prior — the identification rule docs/system.md states.
+      const splitA = t.candidates.find(c => c.holdout_split)?.holdout_split ?? split;
       for (const [name, extra] of variants) {
         const tv = { ...t, covariates: [...t.covariates, ...extra] };
-        let rowsV = buildActorRows(tv); if (maxYear != null) rowsV = rowsV.filter(r => labelYear(tv, r) <= maxYear);
-        const trainV = rowsV.filter(r => r.year < split), testV = rowsV.filter(r => r.year >= split);
+        let rowsV = t.unit === 'dyad-year' ? buildDyadRows(tv) : buildActorRows(tv);
+        if (maxYear != null) rowsV = rowsV.filter(r => labelYear(tv, r) <= maxYear);
+        const trainV = rowsV.filter(r => r.year < splitA), testV = rowsV.filter(r => r.year >= splitA);
         if (trainV.filter(r => r.y).length < 5 || testV.filter(r => r.y).length < 5) { ablationOut.push({ variant: name, n: rowsV.length, note: 'insufficient events' }); continue; }
         const statsV = {}; const colsV = encode(tv, rowsV, statsV); const dV = (rs) => rs.map(r => [1, ...colsV.map(c => c.get(r))]);
         const bV = fitLogistic(dV(trainV), trainV.map(r => r.y), [0, ...colsV.map(c => c.prior)]);
         const pH = predict(dV(testV), bV), yH = testV.map(r => r.y);
         const bAll = fitLogistic(dV(rowsV), rowsV.map(r => r.y), [0, ...colsV.map(c => c.prior)]);
         const predH = pH.reduce((a, b) => a + b, 0), obsH = yH.reduce((a, b) => a + b, 0);
-        ablationOut.push({ variant: name, n: rowsV.length, events: rowsV.filter(r => r.y).length, auc_holdout: auc(pH, yH), brier_holdout: brier(pH, yH), exp_obs_holdout: predH / Math.max(1, obsH), coefs: Object.fromEntries(extra.map(c => { const nm = colsV.find(x => x.name.includes(c.var))?.name; const j = colsV.findIndex(x => x.name === nm); return [nm, bAll[j + 1]]; })) });
+        ablationOut.push({ variant: name, split: splitA, n: rowsV.length, events: rowsV.filter(r => r.y).length, auc_holdout: auc(pH, yH), brier_holdout: brier(pH, yH), exp_obs_holdout: predH / Math.max(1, obsH), coefs: Object.fromEntries(extra.map(c => { const nm = colsV.find(x => x.name.includes(c.var))?.name; const j = colsV.findIndex(x => x.name === nm); return [nm, bAll[j + 1]]; })) });
       }
     }
     const years = rows.map(r => labelYear(t, r));

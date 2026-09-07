@@ -86,6 +86,38 @@ Era rows this package targets, pooled: 1870–1910 `mid_force` 0.28 · +0.10 · 
 
 **Test that decides it.** `node scripts/fit-hazards.mjs mid_war --split 1946`: promote only if holdout AUC improves and the base variant's holdout exp/obs moves toward 1; then the per-era, per-dyad-type calibration table must show 1886–1914 contiguous-only exp/obs above 0.6 (from 0.36) and 1946–2001 major-only below 1.6 (from 2.31). If rejected, record under `rejected:` with these numbers.
 
+**Status:** implemented (2026-09-07) — **promoted on `mid_war`, rejected on `mid_force`**. Raised as a `candidates:` entry by the operator's note on the `engine-1` package and scored by the loop's own ablation.
+
+**Implemented as.** A derived dyad-year constant `pre_1946` (year < 1946), built in `scripts/lib/fit.mjs`'s dyad feature block and mirrored in `src/engine/core.js:dyadHazards`. Two deviations from the package as written, both forced by identification:
+- **Not `holdout_split: 1946`, and not in `build-panel.mjs`.** A pre-1946 dummy has *no within-training variation at any split at or before 1946* — every training row is on one side of the era, the coefficient cannot leave its prior, and the test is empty. The candidate therefore declares its own `holdout_split: 1975`, and the whole ablation (base variant included) is scored at that split so the variants stay comparable. `scripts/lib/fit.mjs` gained two fixes to make that runnable: the ablation loop built **actor** rows for every template, so a candidate on a dyad-year template was silently scored on the wrong sample; and a candidate may now declare the split its ablation runs at.
+- **It is a dyad-year constant, not a panel column.** Nothing in `data/panel.json` is needed for `year < 1946`.
+
+**Test result.** `node scripts/fit-hazards.mjs mid_war mid_force`, ablation at split 1975:
+
+| | holdout AUC | holdout exp/obs | fitted |
+|---|---|---|---|
+| `mid_war` base | 0.838 | 3.68 | — |
+| `mid_war` + `pre_1946` | **0.841** | **2.10** | +1.17 |
+| `mid_force` base | 0.900 | 1.14 | — |
+| `mid_force` + `pre_1946` | 0.900 | 1.12 | +0.14 |
+
+Per-era, per-dyad-type in-sample calibration on `mid_war` (exp/obs, contiguous-only / major-only / both), base → with the term: 1886–1914 **0.37 / 1.07 / 0.84 → 0.71 / 1.64 / 1.20**, 1915–1945 0.77 / 0.59 / 0.78 → 1.38 / 0.82 / 0.98, 1946–2001 1.38 / **2.37** / 2.66 → 0.88 / **1.17** / 1.25. The package asked for 1886–1914 contiguous-only above 0.6 (0.37 → 0.71) and 1946–2001 major-only below 1.6 (2.37 → 1.17); both hold. `mid_force` earns nothing and is recorded under `rejected:` with its numbers.
+
+The term also pulls `lag1(at_war_any)` down from +2.13 to +1.92 on the full sample: part of what that coefficient was carrying was the era, not the contagion.
+
+**Under the rolling-origin refit it is identified only where a forecaster holds both eras**, and the fitted coefficient by as-of year says exactly that: 1940 **−0.00** (no post-1946 training row at all), 1950 −0.39, 1960 +0.40, 1970 +0.76, 1980 +0.96, 1990 +1.05, 2000 +1.22. So every pre-1946 as-of row in the backtest is **bit-identical** to the run without the term, and the whole effect is post-war. The one row it makes worse is as-of 1950, where the five post-war years in the training sample contain 1948 and the Korean onset and the term fits *negative*: `mid_war` exp/obs 3.81 → 5.48. From as-of 1960 the peace accumulates and every row improves.
+
+**Scores: before → after** (pooled 1870–2010, +20y, 100 runs, all states; exp/obs · Brier skill · AUC):
+
+| template | before | after |
+|---|---|---|
+| mid_war | 1.03 · −0.035 · 0.765 | **0.79 · −0.009 · 0.768** |
+| mid_force | 0.84 · +0.069 · 0.766 | **0.78 · +0.084 · 0.766** |
+
+Era rows: **1910–1940** unchanged to the digit (`mid_war` 0.39 · +0.092, `mid_force` 0.50 · +0.122 — the term is unidentified there). **1950–2000** `mid_war` 3.89 · −0.670 → **2.61 · −0.53**, `mid_force` 1.32 · −0.026 → **1.17 · +0.01**. Per as-of year, `mid_war` exp/obs: 1950 3.81 → 5.48, 1960 5.10 → **2.93**, 1970 4.61 → **1.88**, 1980 4.23 → **1.53**, 1990 2.33 → **0.86**, 2000 0.31 → 0.18. `mid_force` improves everywhere post-1946 without a term of its own, through the `at_war` feedback from the war template (1970 1.43 → 1.16, 1980 1.40 → 1.13).
+
+Note for the packages that quote it: **the 1950–2000 `mid_war` over-prediction guard is now 2.61, not 3.89**, and `auc_at_risk` on the post-1990 rows is computed over a smaller at-risk set (a rarer event fails to appear at all in 100 runs: `mid_war` `n_at_risk` at as-of 1990 goes 794 → 607), so those two numbers are not comparable across the change.
+
 ## era-1870-1914 / engine-7 — nest mid_war inside mid_force, and give wars duration
 
 **Adds.** (a) A conditional draw: war fires only in a dyad-year where a dispute fired, with `P(war | dispute)` either derived as `hz.mid_war / max(hz.mid_force, hz.mid_war)` or refitted on the mid_force-positive subsample. (b) A `warLeft` counter mirroring `conflictLeft`, so `at_war` survives more than one year and `lag1(at_war_any)` means something.
@@ -187,6 +219,49 @@ Era rows this package and `engine-7` target: **1910–1940** `mid_force` 0.53 ·
 
 **Test that decides it.** `node scripts/backtest.mjs --from 1910 --to 1940 --step 10 --horizon 20 --runs 100 --universe all`: `n_structural_miss` for `mid_war` falls below 20 at as-of 1930 and 1940 (now 75 and 87) with `auc_at_risk` not below its current 0.75 / 0.74, and pooled `mid_war` skill above 0.117. Guard: as-of 1950–2000 `mid_war` exp/obs must not rise above its current 2.62 — a joining rule that fires in the wrong era makes the standing over-prediction worse.
 
+**Status:** partial (2026-09-07) — both halves built, measured, and **not promoted**. The coalition rule does what the package said it would do to the structural residual and fails its post-1945 guard by 11×. It ships switched off in the data (`mid_war.coalition.status: candidate` in `data/templates.yaml`); `COALITION_ON=1` on any `backtest.mjs` run reproduces every number below, and `ENGINE_ABLATE=coalition` forces it off whatever the data says. The operator's second instruction — a pre-1946 era term as a `candidates:` entry — was run first, is **promoted on `mid_war`**, and is written up under `era-1870-1914 / statistics-6`; every number here is measured on top of it.
+
+**Implemented as.** Both halves, from one declaration (`mid_war.coalition` in `data/templates.yaml`) read by `coalitionRule(templates)` in `src/engine/core.js` and imported by `scripts/lib/fit.mjs`, so the fit and the simulation cannot use different relevance sets.
+- **Joining.** After the dyad loop, each fired `mid_war` is treated as a war between two sides: every defence-pact ally of each side is drawn in at `p_join`, an ally of both sides stays out, and each joiner × opposing-side pair is emitted as a `mid_force` **and** a `mid_war` (the labels nest, so the engine nests too), written into `world.dyadRecent` and into the next year's war graph. One round only — a joiner's own allies are not drawn — so a cascade cannot run away on alliance chains alone.
+- **Relevance.** `dyadHazards` admits a pair that is neither contiguous nor major-power if it is at war with the other, or at war with a state allied to the other, evaluated on the **simulated** year's war graph (seeded at as-of from the dated war records, rewritten by `stepYear` from the run's own wars). `scripts/lib/fit.mjs` builds the identical clause on the observed war graph — the cross-side pairs the hand-coded `sides:` lists imply, lagged a year like `at_war_any` — which adds 854 dyad-years to the estimation sample (69,099 → 69,953).
+- **`p_join = 0.094`, calibrated, reproducible.** `scripts/coalition-calib.mjs` is new and prints the calibration: for each of the 44 hand-coded wars take the pair that starts it (earliest entrant per side), count every live state holding a CoW defence pact (sstype 1) with either in that year, and count how many of those appear in the war's `sides:` list. **28 joiners / 297 allies at risk = 0.0943.** The `sides:` lists are the one place country names are allowed, and the calibration is recorded as `source:` on the template.
+
+**Test result.** The structural half passes in direction and misses the threshold; the guard fails outright.
+
+`node scripts/backtest.mjs --from 1910 --to 1940 --step 10 --horizon 20 --runs 100 --universe all` and the same for `--from 1950 --to 2000`, run three ways: off, `COALITION_ON=1 COALITION_P_JOIN=0` (the relevance half alone) and `COALITION_ON=1` (both halves, `p_join = 0.094`). Every cell below is 100 runs, all states, coefficients refit per as-of year:
+
+| | off | relevance only (`COALITION_P_JOIN=0`) | both halves |
+|---|---|---|---|
+| `mid_war` `n_structural_miss` 1930 / 1940 | 81 / 87 | 77 / **57** | **70 / 54** (test asked for < 20) |
+| `mid_war` `auc_at_risk` 1930 / 1940 | 0.729 / 0.776 | 0.729 / **0.704** | **0.776 / 0.823** (guard: not below 0.75 / 0.74) |
+| `mid_war` pooled exp/obs · skill | 0.39 · +0.092 | 0.45 · +0.100 | **0.60 · +0.129** |
+| `mid_force` `n_structural_miss` 1930 / 1940 | 105 / 128 | 96 / 96 | **93 / 88** |
+| `mid_force` pooled exp/obs · skill | 0.50 · +0.122 | 0.54 · +0.133 | **0.64 · +0.146** |
+| **guard**: 1950–2000 `mid_war` exp/obs | 2.61 | **4.85** | **28.00** |
+| 1950–2000 `mid_force` exp/obs | 1.17 | 1.69 | 6.39 |
+
+With both halves on: `auc_at_risk` holds and rises, pooled skill clears 0.117, the under-prediction the 1914–1945 era has always shown is roughly halved — and `n_structural_miss` lands at 70 and 54 where the test asked for below 20. **The guard then fails by 11×**: 1950–2000 pooled `mid_war` exp/obs 2.61 → **28.00** (skill −0.53 → −12.87) and `mid_force` 1.17 → 6.39, with every post-1945 as-of year 10–40× over (1950 41.6, 1960 38.0, 1970 30.9, 1980 20.4, 1990 9.9).
+
+**The relevance half alone does not rescue it**, and that is the measurement this turn adds beyond the package: it carries most of the structural gain at as-of 1940 (87 → 57 of the 87 → 54) and still takes the post-1945 guard from 2.61 to **4.85**, because it admits pairs *because* one side is at war and every such pair carries `lag1(at_war_any)` = +1.92. It also loses discrimination exactly where it adds units — as-of 1940 `auc_at_risk` 0.776 → **0.704**, below the guard's 0.74 — since the pairs it opens are mostly ones that never fight.
+
+**Why it fails, measured.** Both halves amplify, separately and together. Sweep at 1950–1980, 20 runs, pooled `mid_war` exp/obs (3.10 with the mechanism off):
+
+| `p_join` | joining only | + relevance (`linked`) | + relevance (`both_at_war`) |
+|---|---|---|---|
+| 0.094 (calibrated) | 12.96 | **33.58** | 17.10 |
+| 0.046 | 7.36 | — | — |
+| 0.0145 | 4.19 | — | 4.26 |
+| 0.005 | 3.42 | 6.78 | — |
+
+No setting of `p_join` is neutral post-1945, because the level is wrong before the rule multiplies it.
+
+1. **`p_join` is a per-war rate applied per dyadic war-year draw.** The engine draws joiners once per *fired dyad*, and post-1945 it fires several times too many of those. Against the record (`scripts/coalition-calib.mjs`): 1,016 dyadic war-years carry 3,973 ally-draws — 3.91 allies per dyadic war-year counting every ally of the pair, which is the engine's own denominator, or 2.13 counting only the allies still out of the war. The historical rate per draw is therefore **0.0070–0.0130**, not 0.094: an order of magnitude below the per-war rate, because a coalition war is one joining decision spread over many dyad-years, and post-1945 blocs are an order of magnitude larger than the wartime average (Gulf 1991: 5 joiners of 66 allies at risk; Vietnam 1 of 38; Falklands 0 of 43).
+2. **The relevance half admits a pair *because* one side is at war**, so every pair it admits carries `lag1(at_war_any)` = +1.92 on the very covariate that is already supercritical — which is why it fails the guard (4.85) even with the joining rule switched off. On the observed record the rule is small and the fit sees that the post-war half of it is cold — 854 extra dyad-years (69,099 → 69,953), 397 of them pre-1946 carrying 29 wars (7.3%) and 457 post-1946 carrying 4 (0.9%). In simulation it is not small: at as-of 1970 `mid_war` `n_at_risk` goes 749 → 1,702 on its own and → **5,186** with joining on, because every one of the engine's too-many wars opens its belligerents' whole alliance neighbourhood.
+
+**Scores: before → after.** No published number moves: the mechanism is off in `data/templates.yaml`, and `scores/backtest-1870-2010-h20-all.json` is unchanged by it (pooled `mid_war` 0.79 · −0.009 · 0.77, `mid_force` 0.78 · +0.084 · 0.77 — those moved under `statistics-6`, not here). The ablation runs are kept beside it under their own names: an engine switch now goes into the backtest's `meta.engine` **and into the filename** (`…-abl-coalition_on_1.json`), so a sweep can no longer overwrite a published score file with a number produced under a different engine — which is exactly what happened to `scores/backtest-1950-1980-h20-all.json` during this turn's first sweep.
+
+**What would make it promotable** (escalated as such): a war process whose *level* is right post-1945 before any joining rule multiplies it — `statistics-6` took the standing over-prediction from 3.89 to 2.61 and that is still 2.6× too many wars for a coalition rule to sit on top of. Then either (a) `p_join` calibrated per dyadic war-year (0.0070–0.0130) instead of per war, or (b) the joining draw made **once per war component per year** rather than once per fired dyad, which is what the per-war calibration actually measures, or (c) a relevance rule that does not hand every pair it opens the `lag1(at_war_any)` term that opened it — a war-linked pair is *structurally* at risk without being at the contagion coefficient's odds, which is the one form of this package that was not tried here and the only one whose failure mode is not already measured.
+
 ## era-1914-1945 / engine-5 — war duration (the damping this turn's contagion term needs)
 
 **Adds.** A `warLeft` counter for interstate war mirroring `conflictLeft`: a fired `mid_war` holds `at_war = 1` on both belligerents for a drawn duration, suppresses a duplicate draw on a dyad already at war, and applies `warShock` for the whole spell. (Supersedes the duration half of `era-1870-1914 / engine-7`; the nesting half was resolved this turn in the labels — `mid_war` now nests inside `mid_force` by construction.)
@@ -251,3 +326,23 @@ Era rows this package and `engine-7` target: **1910–1940** `mid_force` 0.53 ·
 **Templates it feeds.** None directly yet; it makes the modern era attackable by the loop and gives future candidates (EV share, fertility, working-age share, renewables) a home.
 
 **Test that decides it.** `node -e` on `data/panel.json` shows `population`, `fertility`, `working_age_share`, `oil_twh`, `ev_share`, `cap_logic` … non-null for ≥ 40 actors in 2025 with `meta.sources` entries; `createWorld(2025)` exposes them on `a.cur`; the 1870–2010 backtest numbers are unchanged (the fold adds columns, changes no fitted covariate).
+
+## operator / presence — military presence: bases, garrisons and fleet stations as a layer that feeds chokepoints, conflicts and coups
+
+**Adds.** (a) Entity `data/presence.yaml` (written 2026-09-07): dated great-power stations 1870–2026 `{actor, host | sea:<area>, kind: base|garrison|fleet|advisors, level 1–3, from, to, geometry, source}`; the two 2026 operator observations (US Gulf carrier presence → Indian Ocean; drawdown in Japan/Korea) are entries tagged `operator … unverified`. (b) Panel variables in `scripts/build-panel.mjs`: `sp_presence_host` = max level of any great-power presence on the host that year, per power (`presence_USA`, `presence_RUS`, `presence_GBR`, `presence_FRA`, `presence_CHN`, …) and `presence_any`; `presence_change` = level dropped in the last 3 years (a withdrawal). (c) Derived dyad covariate `patron_presence(a, b)` = a great power with level ≥ 2 on a's territory that is allied to a (and not to b), and symmetric. (d) Corridor-year covariate `guarantor_presence` = max great-power fleet/base level whose geometry is within ~1,500 km of the chokepoint / along a corridor's transits, and `guarantor_withdrawal` = fell in the last 3 years. (e) Optional: the DMDC/Kane US troops-abroad panel (`data/raw/hist/troops_us.csv`, 1950–2005) as `troops_usa_host` where available, to calibrate levels.
+
+**Why.** Presence is the mechanism behind terms the model already scores by proxy: `great_game` (client × bipolar) is "a superpower garrison next door"; a chokepoint's closure hazard depends on who guarantees it; a US garrison changes what a coup costs (Iran 1953 vs 1979, Thailand, Korea 1961/1979, Pakistan). The 2026 Hormuz case is exactly a guarantor withdrawal the model cannot see.
+
+**Data it needs.** `data/presence.yaml` (exists, ~130 records, mostly `estimate` dates — verify the ones the tests lean on). Optional: Heritage/Kane "Global U.S. Troop Deployment 1950–2005" (DMDC), if fetchable.
+
+**Templates it feeds (as `candidates:`, prior 0 unless stated).**
+- `chokepoint_status`: `guarantor_presence` (prior −0.5: closure less likely with a guarantor), `guarantor_withdrawal` (+0.5).
+- `mid_force` / `mid_war`: `patron_presence` (prior −0.3 for the dyad overall — tripwire deterrence; but +0.3 on disputes *between* the host and the patron's rivals — test both forms).
+- `coup_attempt` / `autocratic_closure`: `presence_any` and `presence_USA` / `presence_RUS` (sign unknown: protection vs provocation), and `presence_change` (withdrawal in the last 3 years, prior +0.3).
+- `intrastate_onset`: `presence_any` (prior −0.2).
+
+**Test that decides it.** Ablation on the era holdouts (≥1986 for coups/closure, ≥1946 for dyads, corridor-year holdout ≥1970): promote each term only on a holdout AUC/Brier gain. Named falsifiers: Iran 1979 (US advisors present, revolution anyway), Vietnam 1973–75 (presence then withdrawal), Suez 1956 (British garrison had just left — withdrawal completed Jun 1956, closure Oct 1956: the term should fire), Subic 1992 → Mischief Reef 1995 (withdrawal then a rival's move), Aden 1967. Direction check on the 2026 state: after `guarantor_withdrawal` fires for Hormuz, the chokepoint's closure hazard must rise, not fall.
+
+**Map.** A `presence` layer: base/garrison markers coloured by power, sized by level; fleet areas as dashed circles; dated by the slider; hover shows actor, name, since, source. Legend lists the powers present that year with counts.
+
+**Status:** queued as package 7 after the current implementation run (needs the corridor-year unit from package 4).

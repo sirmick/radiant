@@ -66,6 +66,74 @@ const NO_NESTING = ABLATE.includes('war_nesting');
  */
 const warDurationOn = (templates) => !ABLATE.includes('war_duration') && (templates ?? []).some(t => t.unit === 'dyad-year' && t.duration?.status === 'active');
 
+/**
+ * Coalition joining and the relevance set it implies (era-1914-1945/engine-1), declared in the data on the dyadic war
+ * template (`coalition:` in data/templates.yaml) and read by both this engine and scripts/lib/fit.mjs, so the sample
+ * the coefficients are estimated on and the sample the simulation draws are one set. ENGINE_ABLATE=coalition forces it
+ * off on both sides at once. Returns null when it is off.
+ */
+export function coalitionRule(templates) {
+  if (ABLATE.includes('coalition')) return null;
+  const t = (templates ?? []).find(t => t.unit === 'dyad-year' && t.coalition);
+  // COALITION_ON=1 switches a candidate mechanism on for an ablation run without editing the data (node only), the way
+  // ENGINE_ABLATE switches an active one off. Both are stamped into the backtest's meta and its filename.
+  const on = t && (t.coalition.status === 'active' || (typeof process !== 'undefined' && process.env?.COALITION_ON));
+  if (!on) return null;
+  if (t.coalition.p_join == null) throw new Error(`template '${t.id}': coalition must declare p_join`);
+  // ablation switches, node only: COALITION_P_JOIN=<p> overrides the calibrated joining probability and
+  // ENGINE_ABLATE=coalition_relevance keeps the joining rule but drops the relevance half (on both sides at once).
+  const env = (typeof process !== 'undefined' && process.env) || {};
+  return {
+    pJoin: env.COALITION_P_JOIN != null ? +env.COALITION_P_JOIN : +t.coalition.p_join,
+    relevance: ABLATE.includes('coalition_relevance') ? false : (env.COALITION_RELEVANCE || t.coalition.relevance || false),
+  };
+}
+
+/**
+ * Dyadic war spans from the hand-coded war records: a cross-side pair of a war is at war in every year both of its
+ * members are in it. The same construction scripts/build-panel.mjs uses for the actor-level `at_war` flag
+ * (per-participant `entries:`/`exits:` where declared, the war-level span otherwise), lifted to the pair — which is
+ * what a coalition is: the pairs the sides lists imply and no dyadic dataset before CoW Dyadic MID carries.
+ * Returns pairKey -> [[y0, y1], ...].
+ */
+export function warDyadSpans(events, endDefault = 2026) {
+  const out = new Map();
+  for (const e of events) {
+    if (e.kind !== 'war' || !Array.isArray(e.sides) || e.sides.length < 2) continue;
+    const end = e.end ?? endDefault;
+    const span = (a) => [Math.floor(e.entries?.[a] ?? e.start), Math.floor(e.exits?.[a] ?? end)];
+    for (const a of e.sides[0]) for (const b of e.sides[1]) {
+      const [a0, a1] = span(a), [b0, b1] = span(b); const y0 = Math.max(a0, b0), y1 = Math.min(a1, b1);
+      if (y1 < y0 || a === b) continue;
+      const k = pairKey(a, b); (out.get(k) ?? out.set(k, []).get(k)).push([y0, y1]);
+    }
+  }
+  return out;
+}
+/** actor -> Set(actors it is at war with) in `year`, from the spans above. */
+export function warPartnersAt(spans, year) {
+  const m = new Map();
+  for (const [k, ivs] of spans) {
+    if (!ivs.some(([f, t]) => year >= f && year <= t)) continue;
+    const i = k.indexOf('|'); const a = k.slice(0, i), b = k.slice(i + 1);
+    (m.get(a) ?? m.set(a, new Set()).get(a)).add(b); (m.get(b) ?? m.set(b, new Set()).get(b)).add(a);
+  }
+  return m;
+}
+/**
+ * The coalition relevance clause, evaluated at the simulated year rather than frozen at as-of: a pair is politically
+ * relevant if it is itself at war, or if one side is at war with a state allied to the other. `partners` is last
+ * year's war graph; `allied` is the defence-pact graph (frozen at as-of in the engine, dated in the fitter).
+ */
+export function warLinked(partners, allied, a, b, mode = 'linked') {
+  const pa = partners.get(a), pb = partners.get(b);
+  if (!pa && !pb) return false;
+  if (mode === 'both_at_war' && !(pa && pb)) return false;   // the tighter form: both sides already in a war
+  if (pa) { if (pa.has(b)) return true; for (const c of pa) if (c !== b && allied.has(pairKey(c, b))) return true; }
+  if (pb) { for (const c of pb) if (c !== a && allied.has(pairKey(c, a))) return true; }
+  return false;
+}
+
 /** Build one actor's state at year `at` from its panel row. `asOf` only marks which staleness is recorded. */
 function buildActorState({ panel, events, id, vars, at, asOf }) {
   const Y0 = panel.meta.y0;
@@ -121,8 +189,15 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   // structural zero, which reads as "this state cannot have a regime transition" for the whole decolonisation cohort.
   const med = (v) => { const xs = Object.values(actors).map(a => a.cur[v]).filter(x => x != null).sort((p, q) => p - q); return xs.length ? xs[Math.floor(xs.length / 2)] : null; };
   const entryPrior = Object.fromEntries(['regime', 'polyarchy', 'gdp_pc', 'log_gdp_pc', 'gdp_growth', 'population', 'tpop'].map(v => [v, med(v)]));
+  // coalition joining and the relevance set it implies (era-1914-1945/engine-1). `warPartners` is the war graph as it
+  // stood in the last observed year — seeded from the dated war records at asOf and rewritten by stepYear from the
+  // simulation's own wars thereafter, so the relevance rule is evaluated at the simulated year and not frozen at as-of.
+  const coalition = coalitionRule(templates);
+  const allied = alliedAt(pacts, asOf);
   return {
     year: asOf, asOf, actors, dyadRecent, nukes, entryPrior,
+    coalition, warPartners: coalition ? warPartnersAt(warDyadSpans(events), asOf) : new Map(),
+    allyOf: coalition ? allyAdjacency(allied) : null,
     // interstate war as a spell rather than a one-year flag: warSpells holds the years left on each pair's war,
     // warDurations is the panel's own run-length distribution as observed at asOf, and warSeed is the set of actors
     // already at war at asOf (a war in progress takes a fresh draw as its residual — a stated approximation).
@@ -130,7 +205,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     warSpells: new Map(), warDurations: warDurationOn(templates) ? warRunLengths(panel, asOf) : null,
     warSeed: warDurationOn(templates) ? new Set(Object.keys(actors).filter(id => actors[id].cur.at_war > 0)) : null,
     rivalryDecay: rivalryDecay(templates),
-    allied: alliedAt(pacts, asOf), contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
+    allied, contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
     fits, templates, log: [],
   };
@@ -144,6 +219,13 @@ function alliedAt(pacts, asOf) {
   let best = null; for (const y of byYear.keys()) { if (y === '*') continue; const n = +y; if (n <= asOf && (best == null || n > best)) best = n; }
   const out = new Set([...(byYear.get('*') ?? []), ...(best == null ? [] : byYear.get(String(best)))]);
   memo.set(asOf, out); return out;
+}
+/** actor -> sorted array of its defence-pact partners, from the frozen alliance edge set (deterministic order). */
+function allyAdjacency(allied) {
+  const m = new Map();
+  for (const k of allied) { const i = k.indexOf('|'); const a = k.slice(0, i), b = k.slice(i + 1); (m.get(a) ?? m.set(a, []).get(a)).push(b); (m.get(b) ?? m.set(b, []).get(b)).push(a); }
+  for (const v of m.values()) v.sort();
+  return m;
 }
 /** Contiguous pairs as they stood at `snapYear`. */
 function contiguousAt(contiguity, snapYear) {
@@ -204,7 +286,11 @@ export function dyadHazards(world, a, b) {
   const k = pairKey(a.id, b.id);
   const contiguous = world.contiguous.has(k) ? 1 : 0;
   const major = (a.cur.great_power || b.cur.great_power) ? 1 : 0;
-  if (!contiguous && !major) return out;   // politically relevant dyads only
+  // politically relevant dyads only (Lemke & Reed 2001) — plus, where the coalition rule is on, the pairs a running war
+  // makes relevant: at war with each other, or at war with a state allied to the other. That clause is read from the
+  // simulated year's war graph, not frozen at as-of, which is the whole point: a small-power pair on opposite sides of
+  // a coalition war is at probability exactly zero for twenty years without it (docs/escalations.md names the pairs).
+  if (!contiguous && !major && !(world.coalition?.relevance && warLinked(world.warPartners, world.allied, a.id, b.id, world.coalition.relevance))) return out;
   const feats = {
     contiguous,
     allied: world.allied.has(k) ? 1 : 0,
@@ -214,6 +300,8 @@ export function dyadHazards(world, a, b) {
     rivalry: rivalryScore(world.dyadRecent.get(k), world.year, world.rivalryDecay),
     at_war_any: (a.prev.at_war || b.prev.at_war) ? 1 : 0,
     nuclear_both: world.nukes.has(a.id) && world.nukes.has(b.id) ? 1 : 0,
+    // era term (era-1870-1914/statistics-6): a derived constant, mirrored in scripts/lib/fit.mjs's dyad feature block
+    pre_1946: world.year < 1946 ? 1 : 0,
   };
   for (const t of world.templates) {
     const fit = world.fits[t.id]; if (!fit || fit.status !== 'fitted' || t.unit !== 'dyad-year') continue;
@@ -344,6 +432,7 @@ export function stepYear(world, rng, opts = {}) {
   // P(war | dispute) = p_war / max(p_force, p_war). The marginal is unchanged where p_war <= p_force and capped at
   // the dispute's own probability where the war model runs hotter than the dispute model. A pair already at war has
   // no fresh onset to draw: the spell it is in is the same conflict.
+  const warPairs = [];   // the pairs at war this year: fired onsets plus any spell still running
   if (!opts.skipDyads) for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
     const a = world.actors[ids[i]], b = world.actors[ids[j]]; const k = pairKey(a.id, b.id);
     const hz = dyadHazards(world, a, b);
@@ -356,11 +445,54 @@ export function stepYear(world, rng, opts = {}) {
     if (u2 != null && u2 < pWar) {
       fired.push({ kind: 'mid_war', a: a.id, b: b.id, year: y }); world.dyadRecent.set(k, y);
       a.cur.at_war = 1; b.cur.at_war = 1; a.cur.mid_war = 1; b.cur.mid_war = 1;
+      warPairs.push([a.id, b.id]);
       if (world.warDurations) { const dur = drawWarDuration(world, rng); if (dur > 1) world.warSpells.set(k, dur - 1); }
     }
   }
+  if (world.coalition && !opts.skipDyads) fired.push(...coalitionJoin(world, rng, warPairs, y));
+  // the war graph the next year's relevance clause reads: this year's onsets, its joiners, and any spell still open
+  if (world.coalition) {
+    const spans = new Map(); for (const [a, b] of warPairs) spans.set(pairKey(a, b), [[y, y]]);
+    for (const k of world.warSpells.keys()) if (!spans.has(k)) spans.set(k, [[y, y]]);
+    world.warPartners = warPartnersAt(spans, y);
+  }
   world.log.push(...fired);
   return fired;
+}
+
+/**
+ * Coalition joining (era-1914-1945/engine-1). A fired war is a war between two *sides*, not two states: each defence-pact
+ * ally of each side is drawn into it with probability `p_join`, and every joiner × opposing-side pair becomes a war of
+ * its own. One round — a joiner's own allies are not drawn, so a cascade cannot run away on alliance chains alone.
+ * `p_join` is calibrated on the `sides:` lists in data/history/events.yaml and declared in data/templates.yaml; the
+ * `warPairs` array is mutated so the pairs the joiners make are in next year's war graph too.
+ */
+function coalitionJoin(world, rng, warPairs, y) {
+  const out = []; const p = world.coalition.pJoin; if (!(p > 0)) return out;
+  const allyOf = world.allyOf ?? new Map();
+  for (const [ida, idb] of warPairs.slice()) {
+    const sides = [[ida], [idb]], joined = [[], []];
+    for (let s = 0; s < 2; s++) {
+      const cands = new Set(); for (const m of sides[s]) for (const c of allyOf.get(m) ?? []) cands.add(c);
+      for (const c of [...cands].sort()) {
+        if (c === ida || c === idb || !world.actors[c]) continue;
+        if (rng() < p) joined[s].push(c);
+      }
+    }
+    for (let s = 0; s < 2; s++) for (const c of joined[s]) {
+      if (joined[1 - s].includes(c)) continue;   // an ally of both sides stays out
+      const j = world.actors[c]; j.cur.at_war = 1; j.cur.mid_war = 1; j.cur.mid_force = 1;
+      for (const o of [...sides[1 - s], ...joined[1 - s]]) {
+        const k = pairKey(c, o); if (world.warSpells.has(k) || c === o) continue;
+        // a coalition pair is a dispute as well as a war: the labels nest (mid_war ⊂ mid_force) and so does the engine
+        out.push({ kind: 'mid_force', a: c, b: o, year: y, via: 'coalition' });
+        out.push({ kind: 'mid_war', a: c, b: o, year: y, via: 'coalition' });
+        world.dyadRecent.set(k, y); warPairs.push([c, o]);
+        if (world.warDurations) { const dur = drawWarDuration(world, rng); if (dur > 1) world.warSpells.set(k, dur - 1); }
+      }
+    }
+  }
+  return out;
 }
 
 /** Run an ensemble from a world factory. Returns per-run event logs and aggregated probabilities. */

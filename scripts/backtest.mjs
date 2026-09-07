@@ -180,7 +180,12 @@ for (const [id, pairs] of Object.entries(pooled)) {
   console.log(`   ${id.padEnd(22)} n=${String(pairs.length).padStart(6)}  exp/obs=${(predicted / Math.max(1, observed)).toFixed(2).padStart(5)}  brier=${brier.toFixed(3)} (base ${brierBase.toFixed(3)}, skill ${fmt(1 - brier / brierBase)})  auc=${fmt(auc(pairs))}  cal: ${cal.map(([p, o]) => `${(p * 100).toFixed(0)}→${(o * 100).toFixed(0)}`).join(' ')}`);
 }
 mkdirSync('scores', { recursive: true });
-const out = { meta: { run: new Date().toISOString(), from: FROM, to: TO, step: STEP, horizon: H, runs: RUNS, skipDyads, refit: REFIT, fit_source: REFIT ? 'rolling-origin: refit per as-of year on labels ≤ as-of' : 'full-sample data/fits.json (leaks past the as-of date)' }, byAsOf: results, pooled: summary };
-const file = `scores/backtest-${FROM}-${TO}-h${H}-${UNIVERSE}${REFIT ? '' : '-norefit'}.json`;
+// An ablation run is not the published run: the engine switches go into meta and into the filename, so a sweep can
+// never overwrite scores/backtest-<window>.json with a number that was produced under a different engine.
+const ENGINE_ENV = ['ENGINE_ABLATE', 'RIVALRY_DECAY', 'COALITION_ON', 'COALITION_P_JOIN', 'COALITION_RELEVANCE']
+  .filter(k => process.env[k] != null && process.env[k] !== '').map(k => `${k}=${process.env[k]}`);
+const slug = ENGINE_ENV.length ? '-abl-' + ENGINE_ENV.join(',').replace(/[^A-Za-z0-9.=,_-]/g, '').toLowerCase().replace(/[=,]/g, '_') : '';
+const out = { meta: { run: new Date().toISOString(), from: FROM, to: TO, step: STEP, horizon: H, runs: RUNS, skipDyads, refit: REFIT, fit_source: REFIT ? 'rolling-origin: refit per as-of year on labels ≤ as-of' : 'full-sample data/fits.json (leaks past the as-of date)', engine: { env: ENGINE_ENV, mechanisms: Object.fromEntries(templates.filter(t => t.unit === 'dyad-year').flatMap(t => [['duration', t.duration?.status], ['coalition', t.coalition?.status]].filter(([, v]) => v))) } }, byAsOf: results, pooled: summary };
+const file = `scores/backtest-${FROM}-${TO}-h${H}-${UNIVERSE}${REFIT ? '' : '-norefit'}${slug}.json`;
 writeFileSync(file, JSON.stringify(out, null, 1));
 console.log(`\nwrote ${file}`);
