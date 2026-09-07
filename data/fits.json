@@ -1,6 +1,6 @@
 {
  "meta": {
-  "built": "2026-09-07T14:10:13.133Z"
+  "built": "2026-09-07T14:53:10.070Z"
  },
  "fits": {
   "leader_exit": {
@@ -1652,7 +1652,42 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_force": {
-   "ablation": null,
+   "ablation": [
+    {
+     "variant": "base",
+     "split": 1946,
+     "n": 69099,
+     "events": 813,
+     "auc_holdout": 0.8612760241231097,
+     "brier_holdout": 0.009896591977916694,
+     "exp_obs_holdout": 0.9565620896386926,
+     "coefs": {}
+    },
+    {
+     "variant": "corridor_stake",
+     "split": 1946,
+     "n": 69099,
+     "events": 813,
+     "auc_holdout": 0.8613174848595349,
+     "brier_holdout": 0.009891756196695562,
+     "exp_obs_holdout": 0.9166616532403932,
+     "coefs": {
+      "z(corridor_stake)": -0.040548043924562745
+     }
+    },
+    {
+     "variant": "all",
+     "split": 1946,
+     "n": 69099,
+     "events": 813,
+     "auc_holdout": 0.8613174848595349,
+     "brier_holdout": 0.009891756196695562,
+     "exp_obs_holdout": 0.9166616532403932,
+     "coefs": {
+      "z(corridor_stake)": -0.040548043924562745
+     }
+    }
+   ],
    "status": "fitted",
    "unit": "dyad-year",
    "event": "mid_force",
@@ -1774,7 +1809,42 @@
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_war": {
-   "ablation": null,
+   "ablation": [
+    {
+     "variant": "base",
+     "split": 1939,
+     "n": 69099,
+     "events": 227,
+     "auc_holdout": 0.8481422407840483,
+     "brier_holdout": 0.0031119655561596305,
+     "exp_obs_holdout": 0.9073939827883057,
+     "coefs": {}
+    },
+    {
+     "variant": "corridor_stake",
+     "split": 1939,
+     "n": 69099,
+     "events": 227,
+     "auc_holdout": 0.8501187768012922,
+     "brier_holdout": 0.003109811430810696,
+     "exp_obs_holdout": 0.8698872752918813,
+     "coefs": {
+      "z(corridor_stake)": -0.12751126363316473
+     }
+    },
+    {
+     "variant": "all",
+     "split": 1939,
+     "n": 69099,
+     "events": 227,
+     "auc_holdout": 0.8501187768012922,
+     "brier_holdout": 0.003109811430810696,
+     "exp_obs_holdout": 0.8698872752918813,
+     "coefs": {
+      "z(corridor_stake)": -0.12751126363316473
+     }
+    }
+   ],
    "status": "fitted",
    "unit": "dyad-year",
    "event": "mid_war",
@@ -1908,12 +1978,192 @@
    "reason": "no panel sample yet; using literature prior"
   },
   "chokepoint_status": {
-   "status": "unfitted",
-   "reason": "no panel sample yet; using literature prior"
+   "ablation": null,
+   "status": "fitted",
+   "unit": "chokepoint-year",
+   "event": "chokepoint",
+   "n": 1143,
+   "events": 37,
+   "base_rate": 0.03237095363079615,
+   "window": [
+    1869,
+    2026
+   ],
+   "trained_through": 2024,
+   "train_years": [
+    1869,
+    2024
+   ],
+   "intercept": -4.051219720205852,
+   "coefs": {
+    "adjacent_war": {
+     "value": 2.3837437154474355,
+     "prior": 2.5
+    },
+    "adjacent_intrastate": {
+     "value": -0.3536967605727977,
+     "prior": 1
+    }
+   },
+   "stats": {},
+   "auc_in": 0.7744489516641415,
+   "brier_in": 0.02929811507695388,
+   "calibration": [
+    {
+     "pred": 0.012069670048488803,
+     "obs": 0,
+     "n": 114
+    },
+    {
+     "pred": 0.012069670048488803,
+     "obs": 0.008771929824561403,
+     "n": 114
+    },
+    {
+     "pred": 0.014851532580120497,
+     "obs": 0,
+     "n": 114
+    },
+    {
+     "pred": 0.01710351653429853,
+     "obs": 0.017391304347826087,
+     "n": 115
+    },
+    {
+     "pred": 0.01710351653429853,
+     "obs": 0.02631578947368421,
+     "n": 114
+    },
+    {
+     "pred": 0.01710351653429853,
+     "obs": 0.017543859649122806,
+     "n": 114
+    },
+    {
+     "pred": 0.01710351653429853,
+     "obs": 0.043478260869565216,
+     "n": 115
+    },
+    {
+     "pred": 0.01710351653429853,
+     "obs": 0.02631578947368421,
+     "n": 114
+    },
+    {
+     "pred": 0.039599263142027004,
+     "obs": 0.017543859649122806,
+     "n": 114
+    },
+    {
+     "pred": 0.15876098312174702,
+     "obs": 0.16521739130434782,
+     "n": 115
+    }
+   ],
+   "holdout": {
+    "split": 1946,
+    "n_train": 466,
+    "n_test": 677,
+    "auc": 0.5804347826086956,
+    "brier": 0.02116243779717448,
+    "base_rate_test": 0.014771048744460856
+   },
+   "fitted": "2026-09-07",
+   "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "corridor_status": {
-   "status": "unfitted",
-   "reason": "no panel sample yet; using literature prior"
+   "ablation": null,
+   "status": "fitted",
+   "unit": "corridor-year",
+   "event": "corridor",
+   "n": 3143,
+   "events": 37,
+   "base_rate": 0.011772192173083042,
+   "window": [
+    1869,
+    2026
+   ],
+   "trained_through": 2025,
+   "train_years": [
+    1869,
+    2025
+   ],
+   "intercept": -5.59482551897289,
+   "coefs": {
+    "transit_at_war_any": {
+     "value": 2.434979836889188,
+     "prior": 1.5
+    },
+    "sponsor_great_power": {
+     "value": 0.41916302850618065,
+     "prior": 0.8
+    }
+   },
+   "stats": {},
+   "auc_in": 0.8127077496040793,
+   "brier_in": 0.011300664639488199,
+   "calibration": [
+    {
+     "pred": 0.0037032825548475074,
+     "obs": 0,
+     "n": 314
+    },
+    {
+     "pred": 0.0037032825548475074,
+     "obs": 0.006369426751592357,
+     "n": 314
+    },
+    {
+     "pred": 0.0037032825548475074,
+     "obs": 0,
+     "n": 314
+    },
+    {
+     "pred": 0.0037032825548475074,
+     "obs": 0.0031746031746031746,
+     "n": 315
+    },
+    {
+     "pred": 0.0037704532339129576,
+     "obs": 0.0031847133757961785,
+     "n": 314
+    },
+    {
+     "pred": 0.0056207001208976,
+     "obs": 0.01592356687898089,
+     "n": 314
+    },
+    {
+     "pred": 0.005620700120897601,
+     "obs": 0,
+     "n": 315
+    },
+    {
+     "pred": 0.0056207001208976,
+     "obs": 0,
+     "n": 314
+    },
+    {
+     "pred": 0.02617969919608707,
+     "obs": 0.022292993630573247,
+     "n": 314
+    },
+    {
+     "pred": 0.05600097077978995,
+     "obs": 0.06666666666666667,
+     "n": 315
+    }
+   ],
+   "holdout": {
+    "split": 1946,
+    "n_train": 1114,
+    "n_test": 2029,
+    "auc": 0.6828143021914648,
+    "brier": 0.003396267865960673,
+    "base_rate_test": 0.002957121734844751
+   },
+   "fitted": "2026-09-07",
+   "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "sovereign_default": {
    "status": "unfitted",

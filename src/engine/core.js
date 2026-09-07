@@ -58,6 +58,10 @@ const drawWarDuration = (world, rng) => { const d = world.warDurations; return d
 // random stream is deliberately the same either way — two draws per dyad-year — so an ablation differs by mechanism only.
 const ABLATE = ((typeof process !== 'undefined' && process.env && process.env.ENGINE_ABLATE) || '').split(',').map(s => s.trim());
 const NO_NESTING = ABLATE.includes('war_nesting');
+// ENGINE_ABLATE=corridor_layer takes the corridor / chokepoint layer out of the world entirely (era-1914-1945/corridors-7).
+// With it off the engine consumes no random numbers for records, so a run reproduces the pre-2026-09-07 random stream
+// exactly — which is how the claim "the dyadic numbers moved by stream noise only" is checked rather than asserted.
+const NO_CORRIDORS = ABLATE.includes('corridor_layer');
 /**
  * Whether war duration is switched on. It is declared in the data, not here: `duration.status` on the dyadic war
  * template in data/templates.yaml. It stands at `candidate` — built, measured on 2026-09-07 and not promoted, because
@@ -134,6 +138,129 @@ export function warLinked(partners, allied, a, b, mode = 'linked') {
   return false;
 }
 
+// ---------------------------------------------------------------- the corridor / chokepoint layer
+// One row per record per year (data/corridors.yaml), the unit era-1914-1945/corridors-7 asked for. Everything below is
+// read by BOTH scripts/lib/fit.mjs (over the historical panel) and this engine (over the simulated world): the `look`
+// argument is the only difference between the two, so the sample the coefficients are estimated on and the state the
+// hazard is drawn from cannot drift apart. No country names — every id comes out of the record.
+export const CORRIDOR_UNIT = { chokepoint: 'chokepoint-year', corridor: 'corridor-year' };
+const IMPAIRED = new Set(['closed', 'contested']);           // a record first observed impaired existed before it
+const BASE_STATUS = { chokepoint: 'open', corridor: 'built' };
+const ACTIVE_STATUS = new Set(['open', 'built', 'building', 'contested']);   // carries traffic (or will): stake > 0
+// the record's history sorted once, memoised on the record itself (non-enumerable: a record is also serialised into
+// public/world.json by scripts/build-world.mjs, and a memo must never turn into published data)
+const histOf = (rec) => {
+  if (!rec.__hist) Object.defineProperty(rec, '__hist', { value: [...(rec.history ?? [])].sort((a, b) => a.year - b.year), enumerable: false });
+  return rec.__hist;
+};
+
+/**
+ * The first year the record is a unit. A record enters the sample when its dated history opens — except where the
+ * first row is already an impairment (`closed`/`contested`), which is only observable if the thing existed in its
+ * unimpaired state before: those records start at the template window instead (a strait is not built).
+ */
+export function corridorFirstYear(rec, windowFrom) {
+  const h = histOf(rec); if (!h.length) return null;
+  return IMPAIRED.has(h[0].status) ? windowFrom : Math.max(windowFrom, Math.floor(h[0].year));
+}
+/** Status and controller in force at the END of `year`; controller carries forward across rows that omit it. */
+export function corridorStateAt(rec, year) {
+  const h = histOf(rec); if (!h.length) return null;
+  let s = IMPAIRED.has(h[0].status) ? { status: BASE_STATUS[rec.kind] ?? 'open', controller: null } : null;
+  for (const r of h) { if (Math.floor(r.year) > year) break; s = { status: r.status, controller: r.controller ?? s?.controller ?? null }; }
+  return s;
+}
+/**
+ * The years in [from, to] in which the record's status OR controller changed — the label of the two templates.
+ * Control is half of what the layer is for (Suez 1882 and 1956 are control changes at constant status), and a
+ * change that reverses inside one year is still a transition in that year: the unit is the record-year.
+ */
+export function corridorTransitionYears(rec, from, to) {
+  const h = histOf(rec); const out = new Set(); if (!h.length) return out;
+  let cur = IMPAIRED.has(h[0].status) ? { status: BASE_STATUS[rec.kind] ?? 'open', controller: null } : null;
+  for (const r of h) {
+    const next = { status: r.status, controller: r.controller ?? cur?.controller ?? null }, y = Math.floor(r.year);
+    if (cur && (next.status !== cur.status || next.controller !== cur.controller) && y >= from && y <= to) out.add(y);
+    cur = next;
+  }
+  return out;
+}
+/**
+ * The record's transit states as they stand this year: a transit that is not a live actor is followed through the
+ * successor chain (an empire's corridor is its successor's corridor), and the controller counts as a transit — which
+ * is what keeps a corridor scorable through a period when no state on it is in the system (Suez 1883–1921 transits
+ * EGY, out of the system under occupation, and is held by GBR).
+ */
+export function corridorTransits(rec, state, look) {
+  const out = [];
+  const add = (id0) => { let id = id0, n = 0; while (id && !look.live(id) && n++ < 4) id = look.successor(id); if (id && look.live(id) && !out.includes(id)) out.push(id); };
+  for (const t of rec.transits ?? []) add(t);
+  if (state?.controller) add(state.controller);
+  return out;
+}
+/** The covariate block for one record-year. `null` where the source does not cover the year (see `default_outside`). */
+export function corridorFeatures(rec, state, look) {
+  const T = corridorTransits(rec, state, look);
+  const anyOf = (f) => { let seen = false; for (const id of T) { const x = f(id); if (x == null) continue; seen = true; if (x > 0) return 1; } return seen ? 0 : null; };
+  const war = anyOf(look.atWar);
+  const gs = T.map(look.gdpGrowth).filter(x => x != null);
+  const sponsor = rec.sponsor ?? state?.controller ?? null;
+  const sponsorLive = sponsor && look.live(sponsor) ? sponsor : null;
+  return {
+    adjacent_war: war, transit_at_war_any: war,                    // the same construction under each template's name
+    adjacent_intrastate: anyOf(look.intrastate),
+    transit_gdp_growth_mean: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null,
+    sponsor_great_power: sponsorLive ? (look.greatPower(sponsorLive) > 0 ? 1 : 0) : 0,
+    n_transits: T.length,
+  };
+}
+
+/**
+ * The corridor dampener (docs/schema.md): infrastructure that runs through one of a pair and is load-bearing for a
+ * third party which is tied by a defence pact to one of the two. Summed over records and third parties, log1p'd
+ * because the sum is a long tail, and z-scored by the fitter. Registered as a candidate on the dyadic templates.
+ */
+export function corridorIndex(entries, look) {
+  const byTransit = new Map();
+  for (const { rec, state } of entries) {
+    if (!state || !ACTIVE_STATUS.has(state.status)) continue;      // planned, abandoned or closed: no traffic to lose
+    for (const id of corridorTransits(rec, state, look)) (byTransit.get(id) ?? byTransit.set(id, []).get(id)).push(rec);
+  }
+  return { byTransit };
+}
+/** A covariate's declared structural default where its source does not cover the year (`default_outside`). */
+export function outsideDefault(c, year) {
+  if (!c.default_outside) return null;
+  const [w0, w1] = c.default_outside.window;
+  return (year < w0 || year > w1) ? c.default_outside.value : null;
+}
+/**
+ * What a fired transition moves the record to: the empirical status mix observed at asOf (kind -> from -> to counts),
+ * so the outcome of a simulated transition is drawn from the record layer's own history and not from a typed number.
+ */
+export function corridorOutcomeMix(records, asOf) {
+  const m = {};
+  for (const rec of records) {
+    const h = histOf(rec); if (!h.length) continue;
+    let cur = IMPAIRED.has(h[0].status) ? (BASE_STATUS[rec.kind] ?? 'open') : null;
+    for (const r of h) {
+      if (Math.floor(r.year) > asOf) break;
+      if (cur && r.status !== cur) { const k = (m[rec.kind] ??= {}); const f = (k[cur] ??= {}); f[r.status] = (f[r.status] ?? 0) + 1; }
+      cur = r.status;
+    }
+  }
+  return m;
+}
+export function corridorStake(index, a, b, allied) {
+  const ra = index.byTransit.get(a), rb = index.byTransit.get(b);
+  if (!ra && !rb) return 0;
+  let s = 0;
+  const one = (rec) => { let w = 0; for (const [c, lb] of Object.entries(rec.load_bearing_for ?? {})) { if (c === a || c === b) continue; if (allied.has(pairKey(c, a)) || allied.has(pairKey(c, b))) w += lb; } return w; };
+  for (const rec of ra ?? []) s += one(rec);
+  for (const rec of rb ?? []) if (!ra?.includes(rec)) s += one(rec);
+  return Math.log1p(s);
+}
+
 /** Build one actor's state at year `at` from its panel row. `asOf` only marks which staleness is recorded. */
 function buildActorState({ panel, events, id, vars, at, asOf }) {
   const Y0 = panel.meta.y0;
@@ -163,7 +290,7 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
  * `contiguityFrom` is the first year the contiguity source covers — for an asOf before it, that first snapshot
  * stands in (documented imputation; CShapes 2.0 begins 1886 and there is no border data behind it).
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [] }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -205,6 +332,13 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     warSpells: new Map(), warDurations: warDurationOn(templates) ? warRunLengths(panel, asOf) : null,
     warSeed: warDurationOn(templates) ? new Set(Object.keys(actors).filter(id => actors[id].cur.at_war > 0)) : null,
     rivalryDecay: rivalryDecay(templates),
+    // the corridor / chokepoint layer, as-of dated like everything else: a record is in the world only if its dated
+    // history has opened by asOf (a corridor announced inside the horizon is not knowledge the forecaster holds — the
+    // backtest reports those records and their transitions separately rather than scoring them at zero), its status and
+    // controller are the ones in force at asOf, and the outcome mix a fired transition draws from is the history to date.
+    corridors: NO_CORRIDORS ? [] : corridors.filter(rec => { const t = templates.find(x => x.unit === CORRIDOR_UNIT[rec.kind]); const f = t ? corridorFirstYear(rec, t.window[0]) : null; return f != null && f <= asOf; })
+      .map(rec => ({ rec, state: corridorStateAt(rec, asOf) })),
+    corridorMix: corridorOutcomeMix(corridors, asOf),
     allied, contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
     fits, templates, log: [],
@@ -302,12 +436,57 @@ export function dyadHazards(world, a, b) {
     nuclear_both: world.nukes.has(a.id) && world.nukes.has(b.id) ? 1 : 0,
     // era term (era-1870-1914/statistics-6): a derived constant, mirrored in scripts/lib/fit.mjs's dyad feature block
     pre_1946: world.year < 1946 ? 1 : 0,
+    // corridor dampener (era-1914-1945/corridors-7): infrastructure running through one of the pair that a third party
+    // tied to either side leans on. Same construction in scripts/lib/fit.mjs; a candidate, not a fitted covariate.
+    corridor_stake: corridorStakeFor(world, a.id, b.id),
   };
   for (const t of world.templates) {
     const fit = world.fits[t.id]; if (!fit || fit.status !== 'fitted' || t.unit !== 'dyad-year') continue;
     const eta = linearPredictor(fit, t, feats); if (eta != null) out[t.id] = sigmoid(eta);
   }
   return out;
+}
+
+/** The world as the record layer reads it: the simulated actors, not the panel. The fitter passes the panel instead. */
+export function worldLook(world) {
+  return {
+    live: (id) => world.actors[id] != null,
+    atWar: (id) => world.actors[id]?.cur.at_war ?? null,
+    intrastate: (id) => world.actors[id]?.cur.intrastate ?? null,
+    gdpGrowth: (id) => world.actors[id]?.cur.gdp_growth ?? null,
+    greatPower: (id) => world.actors[id]?.cur.great_power ?? null,
+    successor: (id) => world.lifecycle?.successors?.[id] ?? null,
+  };
+}
+/** The dampener for one pair, with the year's record index built once per step. */
+function corridorStakeFor(world, a, b) {
+  if (!world.corridors?.length) return 0;
+  if (world.corridorIdxYear !== world.year) { world.corridorIdx = corridorIndex(world.corridors, worldLook(world)); world.corridorIdxYear = world.year; }
+  return corridorStake(world.corridorIdx, a, b, world.allied);
+}
+
+/** Annual probability of a status/control transition for one corridor or chokepoint record in the current state. */
+export function corridorHazards(world, entry) {
+  const t = world.templates.find(x => x.unit === CORRIDOR_UNIT[entry.rec.kind]);
+  const fit = t && world.fits[t.id]; if (!fit || fit.status !== 'fitted') return null;
+  const feats = corridorFeatures(entry.rec, entry.state, worldLook(world));
+  for (const c of t.covariates) { if (feats[c.var] == null) { const d = outsideDefault(c, world.year); if (d == null) return null; feats[c.var] = d; } }
+  const eta = linearPredictor(fit, t, feats); if (eta == null) return null;
+  return { template: t.id, event: t.event, p: sigmoid(eta) };
+}
+/** Where a fired transition goes: drawn from the status mix the record layer showed at asOf (never a typed number). */
+function drawCorridorStatus(world, entry, rng) {
+  const kind = world.corridorMix?.[entry.rec.kind] ?? {};
+  const from = kind[entry.state.status];
+  let opts = from ? Object.entries(from) : null;
+  if (!opts?.length) {   // an unseen origin status: fall back to every status this kind has ever moved to, minus the current one
+    const all = {}; for (const row of Object.values(kind)) for (const [to, n] of Object.entries(row)) all[to] = (all[to] ?? 0) + n;
+    opts = Object.entries(all).filter(([to]) => to !== entry.state.status);
+  }
+  if (!opts.length) return entry.state.status;
+  const tot = opts.reduce((s, [, n]) => s + n, 0); let u = rng() * tot;
+  for (const [to, n] of opts) { u -= n; if (u <= 0) return to; }
+  return opts[opts.length - 1][0];
 }
 
 /** Effects of a fired event on state — the generic rewrites. */
@@ -450,6 +629,19 @@ export function stepYear(world, rng, opts = {}) {
     }
   }
   if (world.coalition && !opts.skipDyads) fired.push(...coalitionJoin(world, rng, warPairs, y));
+  // the corridor / chokepoint layer (era-1914-1945/corridors-7), drawn last in the step so that a transit state that
+  // went to war this year is visible to the corridor hazard — the fit reads the same contemporaneous at_war. A fired
+  // transition rewrites the record's status from the observed outcome mix; control transfer is not simulated (the
+  // competing-risks control model over claimants in docs/schema.md is still an escalation), so a simulated record
+  // moves only through status while the label counts control changes too.
+  for (const entry of world.corridors ?? []) {
+    const hz = corridorHazards(world, entry); if (!hz) continue;
+    if (rng() < hz.p) {
+      const to = drawCorridorStatus(world, entry, rng);
+      fired.push({ kind: hz.event, template: hz.template, record: entry.rec.id, year: y, from: entry.state.status, status: to });
+      entry.state = { status: to, controller: entry.state.controller };
+    }
+  }
   // the war graph the next year's relevance clause reads: this year's onsets, its joiners, and any spell still open
   if (world.coalition) {
     const spans = new Map(); for (const [a, b] of warPairs) spans.set(pairKey(a, b), [[y, y]]);
@@ -516,7 +708,8 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
         if (a.cur.info_access != null) (infoRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.info_access;
       }
       for (const e of fired) {
-        if (e.actor) { const k = `${e.template ?? e.kind}|${e.actor}`; countBy[k] = (countBy[k] ?? 0) + 1; (yearHist[k] ??= new Array(horizon).fill(0))[h - 1]++; if (!seen.has(k)) { seen.add(k); anyBy[k] = (anyBy[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
+        const unit = e.actor ?? e.record;   // actor-year, corridor-year and chokepoint-year units all key the same way
+        if (unit) { const k = `${e.template ?? e.kind}|${unit}`; countBy[k] = (countBy[k] ?? 0) + 1; (yearHist[k] ??= new Array(horizon).fill(0))[h - 1]++; if (!seen.has(k)) { seen.add(k); anyBy[k] = (anyBy[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
         else { const k = `${e.kind}|${pairKey(e.a, e.b)}`; if (!seenD.has(k)) { seenD.add(k); dyadAny[k] = (dyadAny[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
       }
     }

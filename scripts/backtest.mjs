@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap } from './lib/hist.mjs';
 import { createFitter } from './lib/fit.mjs';
-import { createWorld, runEnsemble } from '../src/engine/core.js';
+import { createWorld, runEnsemble, CORRIDOR_UNIT, corridorFirstYear, corridorTransitionYears } from '../src/engine/core.js';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const FROM = +arg('from', 1870), TO = +arg('to', 2000), STEP = +arg('step', 10), H = +arg('horizon', 20), RUNS = +arg('runs', 200);
@@ -22,12 +22,25 @@ const contiguityFile = JSON.parse(readFileSync('data/contiguity.json', 'utf8'));
 const contiguity = contiguityFile.pairs; const contiguityFrom = contiguityFile.meta?.years?.[0] ?? null;
 const MIN_AT_RISK = 10;   // a template scored on fewer at-risk units than this is reported but kept out of the pooled summary
 // ground-truth coverage per event kind: score only inside these windows (the datasets end; absence past the end is not a non-event)
-const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1900, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001] };
+// chokepoint/corridor: the hand-coded record layer (data/corridors.yaml) is complete only where the refine loop has
+// been. Two demonstrations that it is not complete after 1945: the Bosphorus record ends at `closed` in 1939 and never
+// reopens, and the Kiel record ends at `open/GBR` in 1945 and never returns to German control. Scoring a 1950-2000 row
+// against that would count missing transitions as non-events. The templates are still FITTED on 1869-2026 (that is all
+// the record there is, and the test in docs/escalations.md asks for >= 30 events), so the published full-sample fit
+// carries a post-1945 base rate biased low — the backtest rows at as-of <= 1940 are refit on labels <= as-of and do not.
+const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1900, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], chokepoint: [1869, 1945], corridor: [1869, 1945] };
+const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
 
 const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
 const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
 const { fits } = JSON.parse(readFileSync('data/fits.json', 'utf8'));
 const templates = Y('data/templates.yaml').templates;
+const corridors = Y('data/corridors.yaml');
+// era-1914-1945/corridors-7: CORRIDOR_DAMPENER=1 promotes the `corridor_stake` candidate on every template that
+// declares it, for one run, without editing the data — the fitter and the engine read the same templates array, so the
+// covariate is estimated and drawn on the same sample. Refit-only (the default): the published data/fits.json has no
+// coefficient for it, so --no-refit with this switch is not a defined run. Stamped into meta.engine and the filename.
+if (process.env.CORRIDOR_DAMPENER) for (const t of templates) { const c = (t.candidates ?? []).find(c => c.id === 'corridor_stake'); if (c) t.covariates = [...t.covariates, c]; }
 const actors = loadActors(); const code = makeCodeMap(actors);
 const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
 const Y0 = panel.meta.y0;
@@ -37,7 +50,7 @@ const pacts = new Set();
 for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
 
 // ---- rolling-origin coefficients: one fits object per as-of year, cached (the design matrices are built once).
-const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, pacts }) : null;
+const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, pacts, corridors, successors }) : null;
 const fitCache = new Map();
 function fitsAt(asOf) {
   if (!REFIT) return fits;
@@ -69,7 +82,7 @@ console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS}
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
   const F = fitsAt(asOf);
-  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom });
+  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom, corridors });
   const t0 = Date.now();
   const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads });
   const real = realized(asOf, horizon);
@@ -93,6 +106,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     const f = F[t.id];
     if (f?.status !== 'fitted') { row.templates[t.id] = { n: 0, reason: `no fit at as-of: ${f?.reason ?? 'unfitted'}`, fit_source: 'none (no training data at as-of)', fit_split: null, leaky: false, scored_years: covYears }; continue; }
     let excluded = 0, excludedWithEvent = 0; const excludedVars = {};
+    let unborn = 0, unbornEvents = 0;   // corridor/chokepoint records whose dated history opens inside the horizon
     if (t.unit === 'actor-year') {
       if (t.status === 'monitored') continue;
       // the at-risk set is every actor live at any point in the window that passes the template's sample filter, read
@@ -112,6 +126,19 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
         }
         pairs.push([covYears < horizon ? ens.pAnyWithin(key, covYears) : (p ?? 0), y, id]);
       }
+    } else if (RECORD_UNITS.has(t.unit)) {
+      // one unit per corridor/chokepoint record that exists at as-of. A record whose dated history opens INSIDE the
+      // horizon is not a unit the forecaster holds — a corridor is announced by an actor decision this model does not
+      // model — so it is counted and reported (n_unborn_records / n_unborn_events) rather than scored at p=0.
+      const truthEnd = Math.min(asOf + horizon, cov ? cov[1] : asOf + horizon);
+      for (const r of corridors) {
+        if (CORRIDOR_UNIT[r.kind] !== t.unit) continue;
+        const first = corridorFirstYear(r, t.window[0]);
+        const y = corridorTransitionYears(r, asOf + 1, truthEnd).size ? 1 : 0;
+        if (first == null || first > asOf) { unborn++; unbornEvents += y; continue; }
+        const key = `${t.id}|${r.id}`;
+        pairs.push([covYears < horizon ? ens.pAnyWithin(key, covYears) : (ens.pAny[key] ?? 0), y, r.id]);
+      }
     } else if (!skipDyads) {
       for (let i = 0; i < dyadIds.length; i++) for (let j = i + 1; j < dyadIds.length; j++) { const k = `${kind}|${pairKey(dyadIds[i], dyadIds[j])}`; pairs.push([covYears < horizon ? ens.pAnyWithin(k, covYears) : (ens.pAnyDyad[k] ?? 0), real.dy.has(k) ? 1 : 0, k]); }
     }
@@ -130,6 +157,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     rec.fit_source = REFIT ? `refit on labels ≤ ${f.trained_through} (n=${f.n}, events=${f.events})` : 'full-sample fit (data/fits.json)';
     rec.leaky = rec.fit_split == null ? null : rec.fit_split > asOf;
     if (t.unit === 'actor-year') { rec.n_excluded_no_covariate = excluded; rec.n_excluded_with_event = excludedWithEvent; rec.excluded_vars = excludedVars; }
+    if (RECORD_UNITS.has(t.unit)) { rec.n_unborn_records = unborn; rec.n_unborn_events = unbornEvents; }
     if (t.unit === 'actor-year' && at.length < MIN_AT_RISK) rec.underpowered = true;
     row.templates[t.id] = rec;
     if (!rec.underpowered) (pooled[t.id] ??= []).push(...pairs.map(([p, y]) => [p, y]));
@@ -138,7 +166,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   console.log(`as-of ${asOf} (+${horizon}y, ${ids.length} actors, ${(row.ms / 1000).toFixed(1)}s)`);
   for (const [id, s] of Object.entries(row.templates)) {
     if (!s.n) { console.log(`   ${id.padEnd(22)}      ${s.reason}`); continue; }
-    console.log(`   ${id.padEnd(22)}${s.scored_years < horizon ? `[${s.scored_years}y]` : '     '} n=${String(s.n).padStart(5)}  atrisk=${String(s.n_at_risk).padStart(5)}  exp=${s.predicted.toFixed(1).padStart(6)}  obs=${String(s.observed).padStart(4)}  miss0=${String(s.n_structural_miss).padStart(3)}${s.n_excluded_no_covariate ? `  nocov=${String(s.n_excluded_no_covariate).padStart(3)}` : ''}  ratio=${fmt(s.observed ? s.predicted / s.observed : null)}  brier=${fmt(s.brier, 3)}  auc=${fmt(s.auc)}  auc@risk=${fmt(s.auc_at_risk)}  fit≤${s.fit_split}${s.leaky ? ' LEAKY' : ''}${s.underpowered ? '  [underpowered, out of pooled]' : ''}`);
+    console.log(`   ${id.padEnd(22)}${s.scored_years < horizon ? `[${s.scored_years}y]` : '     '} n=${String(s.n).padStart(5)}  atrisk=${String(s.n_at_risk).padStart(5)}  exp=${s.predicted.toFixed(1).padStart(6)}  obs=${String(s.observed).padStart(4)}  miss0=${String(s.n_structural_miss).padStart(3)}${s.n_excluded_no_covariate ? `  nocov=${String(s.n_excluded_no_covariate).padStart(3)}` : ''}${s.n_unborn_records ? `  unborn=${s.n_unborn_records}/${s.n_unborn_events}` : ''}  ratio=${fmt(s.observed ? s.predicted / s.observed : null)}  brier=${fmt(s.brier, 3)}  auc=${fmt(s.auc)}  auc@risk=${fmt(s.auc_at_risk)}  fit≤${s.fit_split}${s.leaky ? ' LEAKY' : ''}${s.underpowered ? '  [underpowered, out of pooled]' : ''}`);
   }
 }
 /** Which of a template's covariates the world cannot supply for this actor (empty = fully covered). */
@@ -182,7 +210,7 @@ for (const [id, pairs] of Object.entries(pooled)) {
 mkdirSync('scores', { recursive: true });
 // An ablation run is not the published run: the engine switches go into meta and into the filename, so a sweep can
 // never overwrite scores/backtest-<window>.json with a number that was produced under a different engine.
-const ENGINE_ENV = ['ENGINE_ABLATE', 'RIVALRY_DECAY', 'COALITION_ON', 'COALITION_P_JOIN', 'COALITION_RELEVANCE']
+const ENGINE_ENV = ['ENGINE_ABLATE', 'RIVALRY_DECAY', 'COALITION_ON', 'COALITION_P_JOIN', 'COALITION_RELEVANCE', 'CORRIDOR_DAMPENER']
   .filter(k => process.env[k] != null && process.env[k] !== '').map(k => `${k}=${process.env[k]}`);
 const slug = ENGINE_ENV.length ? '-abl-' + ENGINE_ENV.join(',').replace(/[^A-Za-z0-9.=,_-]/g, '').toLowerCase().replace(/[=,]/g, '_') : '';
 const out = { meta: { run: new Date().toISOString(), from: FROM, to: TO, step: STEP, horizon: H, runs: RUNS, skipDyads, refit: REFIT, fit_source: REFIT ? 'rolling-origin: refit per as-of year on labels ≤ as-of' : 'full-sample data/fits.json (leaks past the as-of date)', engine: { env: ENGINE_ENV, mechanisms: Object.fromEntries(templates.filter(t => t.unit === 'dyad-year').flatMap(t => [['duration', t.duration?.status], ['coalition', t.coalition?.status]].filter(([, v]) => v))) } }, byAsOf: results, pooled: summary };

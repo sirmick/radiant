@@ -9,7 +9,8 @@
 // Nothing here knows about country names; it reads data/panel.json, data/events.json and data/templates.yaml only.
 import { readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap } from './hist.mjs';
-import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked } from '../../src/engine/core.js';
+import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked,
+  CORRIDOR_UNIT, corridorFirstYear, corridorStateAt, corridorTransitionYears, corridorFeatures, corridorIndex, corridorStake, outsideDefault } from '../../src/engine/core.js';
 
 export const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -21,13 +22,15 @@ export function loadFitInputs() {
   const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
   const templates = Y('data/templates.yaml').templates;
   const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
+  const corridors = Y('data/corridors.yaml');
   const actors = loadActors(); const code = makeCodeMap(actors);
+  const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
   const pacts = new Set();
   for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
-  return { panel, events, templates, contiguity, pacts };
+  return { panel, events, templates, contiguity, pacts, corridors, successors };
 }
 
-export function createFitter({ panel, events, templates, contiguity, pacts }) {
+export function createFitter({ panel, events, templates, contiguity, pacts, corridors = [], successors = {} }) {
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
@@ -99,6 +102,48 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
     }
     return rows;
   }
+  // ---------------------------------------------------------------- the corridor / chokepoint layer
+  // The record layer reads the panel through the same `look` interface src/engine/core.js reads the simulated world
+  // through, so corridorFeatures() is one construction with two data sources (agent/implementer.md: fit and simulation
+  // are the same model). Covariates are contemporaneous: the engine draws corridor transitions last in the step, after
+  // the war draws, so a transit state that goes to war this year is visible on both sides.
+  const panelLook = (y) => ({
+    live: (id) => panel.actors[id]?.live?.[y - Y0] === 1,
+    atWar: (id) => pv(id, 'at_war', y),
+    intrastate: (id) => pv(id, 'intrastate', y),
+    gdpGrowth: (id) => pv(id, 'gdp_growth', y),
+    greatPower: (id) => pv(id, 'great_power', y),
+    successor: (id) => successors[id] ?? null,
+  });
+  /** The records that exist in year y, with the status/controller in force at the end of it (for the dampener). */
+  const entriesCache = new Map();
+  const corridorEntriesAt = (y) => {
+    if (entriesCache.has(y)) return entriesCache.get(y);
+    const out = corridors.filter(rec => { const f = corridorFirstYear(rec, Y0); return f != null && y >= f; }).map(rec => ({ rec, state: corridorStateAt(rec, y) }));
+    entriesCache.set(y, out); return out;
+  };
+  const idxCache = new Map();
+  const corridorIndexAt = (y) => { if (!idxCache.has(y)) idxCache.set(y, corridorIndex(corridorEntriesAt(y), panelLook(y))); return idxCache.get(y); };
+
+  function buildRecordRows(t) {
+    const rows = []; const [w0, w1] = t.window; const yEnd = Math.min(w1, panel.meta.y1);
+    for (const rec of corridors) {
+      if (CORRIDOR_UNIT[rec.kind] !== t.unit) continue;
+      const first = corridorFirstYear(rec, w0); if (first == null) continue;
+      const trans = corridorTransitionYears(rec, first, yEnd);
+      for (let y = first; y <= yEnd; y++) {
+        // the state the year opens in (the year's own transition is the label, so it cannot be a covariate)
+        const state = corridorStateAt(rec, y - 1) ?? corridorStateAt(rec, y);
+        const f = corridorFeatures(rec, state, panelLook(y));
+        const feats = {}; let ok = true;
+        for (const c of t.covariates) { let x = f[c.var]; if (x == null) x = outsideDefault(c, y); if (x == null) { ok = false; break; } feats[c.var] = x; }
+        if (!ok) continue;
+        rows.push({ unit: rec.id, year: y, feats, y: trans.has(y + (t.lead ?? 0)) ? 1 : 0 });
+      }
+    }
+    return rows;
+  }
+
   // the dyad feature block does not depend on which dyadic template asks for it, so it is built once per window and
   // relabelled per template (mid_force and mid_war share 69k rows).
   const dyadCache = new Map();
@@ -109,6 +154,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
       const live = ids.filter(id => panel.actors[id].live?.[y - Y0] && pv(id, 'cinc', y) != null && pv(id, 'regime', y) != null);
       const wp = warSpans ? warPartners(y - 1) : null;
       const alliedY = { has: (k) => pacts.has(`${k}|${y}`) };
+      const cIdx = corridorIndexAt(y);
       for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
         const a = live[i], b = live[j]; const ca = pv(a, 'cinc', y), cb = pv(b, 'cinc', y);
         const contiguous = y >= 1886 ? (isContiguous(a, b, y) ? 1 : 0) : null;
@@ -128,6 +174,9 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
           at_war_any: ((pv(a, 'at_war', y - 1) ?? 0) || (pv(b, 'at_war', y - 1) ?? 0)) ? 1 : 0,
           nuclear_both: hasNukes(a, y) && hasNukes(b, y) ? 1 : 0,
           pre_1946: y < 1946 ? 1 : 0,   // era-1870-1914/statistics-6, a derived constant; candidate only
+          // era-1914-1945/corridors-7, the dampener docs/schema.md specifies; built by src/engine/core.js so the
+          // engine's dyad block and this one are one construction. Candidate only.
+          corridor_stake: corridorStake(cIdx, a, b, alliedY),
         };
         rows.push({ unit: pairKey(a, b), a, b, year: y, feats });
       }
@@ -138,10 +187,12 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
     const [w0, w1] = t.window;
     return dyadFeatureRows(w0, w1).map(r => ({ unit: r.unit, year: r.year, feats: r.feats, y: hasDyadEvent(t.event, r.a, r.b, r.year) ? 1 : 0 }));
   }
+  const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
+  const rowsOf = (t) => t.unit === 'dyad-year' ? buildDyadRows(t) : RECORD_UNITS.has(t.unit) ? buildRecordRows(t) : buildActorRows(t);
   const rowCache = new Map();
   function rowsFor(t) {
     if (rowCache.has(t.id)) return rowCache.get(t.id);
-    const rows = t.unit === 'dyad-year' ? buildDyadRows(t) : buildActorRows(t);
+    const rows = rowsOf(t);
     rowCache.set(t.id, rows); return rows;
   }
 
@@ -169,7 +220,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
 
   // ---------------------------------------------------------------- one template
   function fitTemplate(t, { maxYear = null, splitOverride = null, holdout = true, ablation = true } = {}) {
-    if (t.status === 'candidate' || ['chokepoint-year', 'corridor-year'].includes(t.unit) || t.sample === 'latent_only')
+    if (t.status === 'candidate' || t.sample === 'latent_only')
       return { fit: { status: 'unfitted', reason: 'no panel sample yet; using literature prior' }, line: `${t.id.padEnd(24)} unfitted (prior only)` };
     let rows = rowsFor(t);
     if (maxYear != null) rows = rows.filter(r => labelYear(t, r) <= maxYear);
@@ -205,7 +256,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
       const splitA = t.candidates.find(c => c.holdout_split)?.holdout_split ?? split;
       for (const [name, extra] of variants) {
         const tv = { ...t, covariates: [...t.covariates, ...extra] };
-        let rowsV = t.unit === 'dyad-year' ? buildDyadRows(tv) : buildActorRows(tv);
+        let rowsV = rowsOf(tv);
         if (maxYear != null) rowsV = rowsV.filter(r => labelYear(tv, r) <= maxYear);
         const trainV = rowsV.filter(r => r.year < splitA), testV = rowsV.filter(r => r.year >= splitA);
         if (trainV.filter(r => r.y).length < 5 || testV.filter(r => r.y).length < 5) { ablationOut.push({ variant: name, n: rowsV.length, note: 'insufficient events' }); continue; }
@@ -243,7 +294,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
     return { fits, lines };
   }
 
-  return { fitAll, fitTemplate, rowsFor, templates };
+  return { fitAll, fitTemplate, rowsFor, encode, templates };
 }
 
 // ---------------------------------------------------------------- MAP logistic regression (IRLS), Gaussian prior on slopes
