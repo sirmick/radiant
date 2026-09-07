@@ -172,7 +172,7 @@ export function corridorStateAt(rec, year) {
 }
 /**
  * The years in [from, to] in which the record's status OR controller changed — the label of the two templates.
- * Control is half of what the layer is for (Suez 1882 and 1956 are control changes at constant status), and a
+ * Control is half of what the layer is for (a record can change hands at constant status), and a
  * change that reverses inside one year is still a transition in that year: the unit is the record-year.
  */
 export function corridorTransitionYears(rec, from, to) {
@@ -188,8 +188,8 @@ export function corridorTransitionYears(rec, from, to) {
 /**
  * The record's transit states as they stand this year: a transit that is not a live actor is followed through the
  * successor chain (an empire's corridor is its successor's corridor), and the controller counts as a transit — which
- * is what keeps a corridor scorable through a period when no state on it is in the system (Suez 1883–1921 transits
- * EGY, out of the system under occupation, and is held by GBR).
+ * is what keeps a record scorable through a period when no state on it is in the international system (a transit
+ * out of the system under occupation, with an occupier holding the record). The cases are in docs/refine-log.md.
  */
 export function corridorTransits(rec, state, look) {
   const out = [];
