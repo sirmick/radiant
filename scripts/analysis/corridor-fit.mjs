@@ -3,7 +3,7 @@
 // it, and the same fit with the falsifier record-years dropped — the test of whether a case the covariate set cannot
 // see is distorting the coefficients or merely sitting in the residual.
 // Run: node scripts/corridor-fit.mjs [--as-of YEAR] [--case id:year ...]
-import { createFitter, loadFitInputs, fitLogistic, predict, auc } from './lib/fit.mjs';
+import { createFitter, loadFitInputs, fitLogistic, predict, auc } from '../lib/fit.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const AS_OF = arg('as-of', null) ? +arg('as-of') : null;

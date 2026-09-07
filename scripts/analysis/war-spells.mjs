@@ -3,9 +3,9 @@
 // one year whatever it was; era-1914-1945/engine-5 gives a fired mid_war a duration drawn from this same distribution.
 // Run: node scripts/war-spells.mjs [--as-of 1920] [--runs 100] [--horizon 20]
 import { readFileSync } from 'node:fs';
-import { readCsv, Y, loadActors, makeCodeMap } from './lib/hist.mjs';
-import { createFitter } from './lib/fit.mjs';
-import { createWorld, stepYear, mulberry32, warRunLengths } from '../src/engine/core.js';
+import { readCsv, Y, loadActors, makeCodeMap } from '../lib/hist.mjs';
+import { createFitter } from '../lib/fit.mjs';
+import { createWorld, stepYear, mulberry32, warRunLengths } from '../../src/engine/core.js';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? +process.argv[i + 1] : d; };
 const AS_OF = arg('as-of', 1920), RUNS = arg('runs', 100), H = arg('horizon', 20);

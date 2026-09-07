@@ -199,3 +199,10 @@ A field is a continuous geographic overlay: `{ label, note, paint: 'dominant'|'h
 ## Ensembles (`public/forecast*.json`, `public/forecasts.json`)
 
 `run-forward.mjs` writes `{ meta: { asOf, from, to, runs, horizon, fit_source, templates }, actors: { id: { regime0, p: { template: cumulative P by year }, regime: [[p0,p1,p2,p3] per year], gdp_pc: [[q10,q50,q90]], info_access } }, dyads: { "A|B": { template: { pAny, curve } } } }`. With `--as-of Y < 2025` the coefficients are refit on labels ≤ Y (`scripts/lib/fit.mjs`), and the index `forecasts.json` lists every ensemble for the viewer's *forecast from* menu.
+
+
+## Cleanup 2026-09-07
+
+- `data/variables.yaml`: entries with `model: false` are display-only snapshot estimates (fiscal breakeven, desalination dependence, food self-sufficiency, mineral refining share, reserve-currency share, refining coverage, STEM inflow, openness, war losses, chokepoint exposure, and every `cap_*` level). The viewer shows them labelled as estimates; `build-world.mjs` fails if any template covariate reads one. The scenario latents were deleted (nothing read them; the originals are in `docs/origin/`).
+- `data/templates.yaml` has a top-level `retired:` list (ERT episode templates, `autocratize_step`, `sovereign_default`) that no script loads; `templates:` is the active set. Switched-off candidates (coalition joining, war duration) stay declared on their templates with their numbers.
+- `scripts/analysis/` holds the implementation one-offs; `scripts/shot.mjs` is gone (`shot2.mjs`).

@@ -14,6 +14,8 @@
 
 **CINC** — CoW composite index of national capability (share of world). Ends 2001; carried forward.
 
+**Display-only** — a registry variable with `model: false`: shown in the viewer as an estimate, never read by the fitter or engine.
+
 **Dyad** — an unordered pair of actors. *Politically relevant* dyads (contiguous or involving a great power) are the sample for dispute/war templates.
 
 **Escalation** — a proposal that adds a new variable, effect or mechanism; agents may not implement it, they write it to `docs/escalations.md` for the operator.

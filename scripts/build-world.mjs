@@ -118,7 +118,7 @@ for (const a of actors) {
 const varIds = new Set(registry.variables.map(v => v.id));
 const hazardIds = new Set(hazards.map(h => h.id));
 const terrIds = new Set(territories.map(t => t.id)), corrIds = new Set(corridors.map(c => c.id));
-const latentIds = new Set(registry.latents.map(l => l.id));
+const latentIds = new Set((registry.latents ?? []).map(l => l.id));
 function checkPath(p, ctx) {
   const [root, id, ...rest] = p.split('.');
   const ok =
@@ -154,6 +154,8 @@ for (const c of claims) {
   for (const m of c.query.matchAll(/state0?\(([\w.]+)\)/g)) checkPath(m[1], `claim ${c.id}`);
   for (const d of [...(c.depends_on ?? []), ...(c.antagonists ?? [])]) if (!claimIds.has(d)) errors.push(`claim ${c.id}: ref ${d} unknown`);
 }
+// display-only variables (model: false) must not be read by any template covariate
+{ const displayOnly = new Set(registry.variables.filter(v => v.model === false).map(v => v.id)); const tpl = parseYaml(readFileSync('data/templates.yaml', 'utf8')); for (const t of tpl.templates ?? []) for (const c of [...(t.covariates ?? []), ...(t.candidates ?? [])]) if (displayOnly.has(c.var)) errors.push(`template ${t.id} reads display-only variable ${c.var}`); }
 if (existsSync('src/engine/equations.js')) {
   const eq = readFileSync('src/engine/equations.js', 'utf8');
   for (const v of registry.variables) if (v.equation && !new RegExp(`export function ${v.equation}\\b|${v.equation}\\s*[:(]`).test(eq)) warn.push(`equation ${v.equation} (for ${v.id}) not found in equations.js`);
@@ -163,7 +165,7 @@ if (existsSync('src/engine/equations.js')) {
 mkdirSync('public', { recursive: true });
 const world = {
   meta: { built: new Date().toISOString(), t0: '2026Q3', t0_year: T0_YEAR, steps: STEPS },
-  registry: { groups: registry.groups, variables: registry.variables, latents: registry.latents },
+  registry: { groups: registry.groups, variables: registry.variables, latents: registry.latents ?? [] },
   actors: compiledActors, world: worldVars, territories, corridors, hazards, claims,
 };
 writeFileSync('public/world.json', JSON.stringify(world));

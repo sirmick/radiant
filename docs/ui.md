@@ -40,7 +40,7 @@ The **legend** shows only what is on the map: the variable's key with real categ
 
 ## Screenshots (for verification)
 
-`node scripts/shot2.mjs out.png <year> "<btn1>,<btn2>" [actor] [tab] [x,y]` toggles header buttons by label, selects an actor, opens a tab, hovers a point. `scripts/shot.mjs` is the older form.
+`node scripts/shot2.mjs out.png <year> "<btn1>,<btn2>" [actor] [tab] [x,y]` toggles header buttons by label, selects an actor, opens a tab, hovers a point. `scripts/shot.mjs` was removed; use `shot2.mjs`.
 
 ## Known limits
 

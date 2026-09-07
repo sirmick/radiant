@@ -64,41 +64,6 @@ templates:
       - { id: year_trend, var: year, transform: z, prior: 0, hypothesis: "null: an unexplained secular trend" }
       - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "urban mass publics make seizures contestable" }
 
-  - id: autocratization_onset
-    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
-    status: monitored                  # fitted and backtested, not simulated: superseded by autocratize_step
-    label: Autocratization episode begins
-    unit: actor-year
-    event: autocratization_onset
-    window: [1900, 2024]
-    holdout_split: 1990
-    sample: { regime_min: 1 }          # closed autocracies can't autocratize further
-    covariates:
-      - { var: regime, transform: cat, prior: { 0: -0.5, 1: 0.6, 2: 0.4, 3: -0.6 } }   # partial regimes are least stable
-      - { var: polyarchy, transform: z, prior: 0 }
-      - { var: log_gdp_pc, transform: z, prior: -0.5 }
-      - { var: gdp_growth, transform: z, prior: -0.3 }
-      - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
-    sources: ["Maerz et al. 2024 (ERT)", "Przeworski et al. 2000", "Goldstone et al. 2010"]
-
-  - id: democratization_onset
-    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
-    status: monitored                  # superseded by democratize_step (holdout AUC 0.47 vs 0.77)
-    label: Democratization episode begins
-    unit: actor-year
-    event: democratization_onset
-    window: [1900, 2024]
-    holdout_split: 1990
-    sample: { regime_max: 1 }          # at-risk set: autocracies
-    covariates:
-      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.5, 2: 0.3, 3: -2 } }
-      - { var: log_gdp_pc, transform: z, prior: 0.3 }
-      - { var: gdp_growth, transform: z, prior: -0.3 }             # crises open windows
-      - { var: at_war, transform: lag1, prior: 0.2 }
-      - { var: leader_exit_recent, transform: win5, prior: 0.5 }
-    sources: ["Boix & Stokes 2003", "Maerz et al. 2024 (ERT)", "Geddes, Wright & Frantz 2014"]
-
   - id: democratize_step
     lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
     label: Regime category moves up (V-Dem RoW), autocracies at risk
@@ -128,25 +93,6 @@ templates:
       - { id: nbr_conflict_count, evidence: "≈0" }
     sources: ["Gleditsch & Ward 2006", "V-Dem RoW via OWID"]
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "category-step target beats ERT episodes on holdout: AUC 0.47→0.77; engine uses this for regime dynamics" }
-
-  - id: autocratize_step
-    status: monitored                  # superseded by liberal_erosion + autocratic_closure (different mechanisms, see docs/system.md bucket C)
-    lead: 1
-    label: Regime category moves down (V-Dem RoW), any
-    unit: actor-year
-    event: regime_change
-    event_filter: { direction: autocratize, cause: null }   # conquest/occupation steps excluded (see democratize_step)
-    window: [1900, 2024]
-    holdout_split: 1990
-    sample: { regime_min: 1 }
-    covariates:
-      - { var: regime, transform: cat, prior: { 1: 0, 2: 0.3, 3: -0.8 } }
-      - { var: log_gdp_pc, transform: z, prior: -0.5 }
-      - { var: gdp_growth, transform: z, prior: -0.3 }
-      - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
-    sources: ["Goldstone et al. 2010", "V-Dem RoW via OWID"]
-    lifecycle: { phase: active, promoted: 2026-09-06, reason: "holdout AUC 0.74; NOTE under-predicts post-1990 autocratization 5× (exp/obs 0.21) — open era shock" }
 
   - id: democratic_deepening
     lead: 1
@@ -285,9 +231,9 @@ templates:
       source: "data/panel.json at_war run lengths as observed at the as-of year (data/history/events.yaml hand-coded interstate wars, per-participant entry/exit): 139 completed spells 1816–2025, mean 3.0 years, 49% of them one year. Set status: active to reproduce the measured run; src/engine/core.js reads this field and ENGINE_ABLATE=war_duration forces it off."
     rejected:                          # tested 2026-09-07 (era-1914-1945/engine-5, engine-1); kept so the loop does not re-propose them unchanged
       - { id: coalition_join, evidence: "Coalition joining (p_join per defence-pact ally of each side, calibrated at 0.094 on the sides: lists) plus the war-linked relevance set fixes the pre-war half of its test and fails its post-war guard by 7x. Backtest 1910-1940 +20y 100 runs all states, off -> on: mid_war n_structural_miss 81 -> 70 at as-of 1930 and 87 -> 54 at as-of 1940 (the test asked for below 20), auc_at_risk 0.729 -> 0.78 and 0.776 -> 0.82, pooled exp/obs 0.39 -> 0.60 and skill 0.092 -> 0.13; mid_force miss 105 -> 93 and 128 -> 88, pooled 0.50 -> 0.64 and 0.122 -> 0.15. Guard, 1950-2000: mid_war exp/obs 2.61 -> 28.00 and mid_force 1.17 -> 6.39. The relevance half alone (COALITION_P_JOIN=0) does not rescue it: it carries most of the structural gain (mid_war miss 81 -> 77 at 1930 and 87 -> 57 at 1940, mid_force 105 -> 96 and 128 -> 96, pooled 0.45 and 0.54) and still takes the guard to 4.85 / 1.69, while as-of 1940 auc_at_risk falls 0.776 -> 0.704, below the guard's 0.74 - the pairs it opens are mostly ones that never fight, and each of them carries lag1(at_war_any) = +1.92 because a war is what opened it. The two halves amplify separately (1950-1980, 20 runs, mid_war exp/obs 3.10 with the mechanism off): joining alone 12.96, joining at p=0.005 with the relevance set on 6.78, both at the calibrated p 33.58. p_join sweep with relevance off: 0.094 -> 12.96, 0.046 -> 7.36, 0.0145 -> 4.19, 0.005 -> 3.42; with the tighter both_at_war relevance, 0.094 -> 17.10 and 0.0145 -> 4.26. Every run above is reproducible with COALITION_ON=1 [COALITION_P_JOIN=<p>] [COALITION_RELEVANCE=both_at_war] [ENGINE_ABLATE=coalition_relevance] on scripts/backtest.mjs, which writes each ablation to its own scores/...-abl-<switches>.json. No setting of p_join is neutral post-1945. Diagnosis, measured: p_join is a per-war rate applied per dyadic war-year draw, and the engine fires 2.6x too many of those post-1945 into blocs an order of magnitude larger than the historical at-risk set of 3.91 allies per dyadic war-year (2.13 of them still out of the war) (1,016 dyadic war-years, 3,973 ally-draws counting every ally of the pair - the engine's own denominator - or 2,160 counting only the allies still out of the war, against 28 joiners: 0.0070 to 0.0130 per draw, against 0.094 per ally per war; node scripts/coalition-calib.mjs). The relevance half amplifies for a second reason: it admits a pair *because* one side is at war, so every pair it admits carries lag1(at_war_any) = +1.92. On the observed record the rule is small — 854 extra dyad-years 1886-2001 (69,099 -> 69,953), 397 of them pre-1946 carrying 29 wars (7.3%) and 457 post-1946 carrying 4 (0.9%), so the fit does see that the post-war ones are cold — but in simulation at as-of 1970 it opens about 5,000 extra at-risk pairs (mid_war n_at_risk 749 -> 5,186, mid_force 816 -> 5,297), because every one of the engine's too-many wars opens its belligerents' whole alliance neighbourhood. Re-propose against a war process that is calibrated post-1945, with p_join calibrated per dyadic war-year (0.0070 to 0.0130) rather than per war, or with the joining draw made once per war component per year rather than once per fired dyad." }
-      - { id: war_duration, evidence: "Holding at_war on both belligerents for a drawn duration fixes the spell shape and fails on every calibration number. Spell shape, as-of 1920, 100 runs (node scripts/war-spells.mjs --as-of 1920): one-year spells 70% -> 24% and mean length 1.51 -> 3.91 years, against the panel's 49% / 2.99 over all years and 26% / 2.91 for the spells a forecaster at 1920 has seen. Calibration, backtest 1870-2010 +20y 100 runs all states: pooled mid_war exp/obs 1.03 -> 1.50 and Brier skill -0.035 -> -0.176, mid_force 0.84 -> 1.08 and +0.069 -> 0.000, AUC unchanged at 0.77; 1950-2000 mid_war 3.89 -> 5.58 (the test asked for below 1.5) and mid_force 1.32 -> 1.65; 1910-1940, where the model under-predicts, it helps: mid_war 0.39 -> 0.60 and mid_force 0.50 -> 0.69, skill 0.092 -> 0.090 and 0.122 -> 0.109. Diagnosis, measured: the amplification is not repeated draws inside the same dyad (those are suppressed) but lag1(at_war_any) = +2.13 reaching the belligerents' other dyads, so a longer spell is a longer exposure and the simulated war count at as-of 1920 doubles, 5,610 -> 10,352. The two at_war variables are also not the same population: the panel's at_war is the hand-coded interstate-war list (371 actor-years 1886-2001, 3.3% of live actor-years) while the engine sets at_war from any CoW hostility-5 dyad, whose onsets are 283 actor-years - 1.31 at-war years per onset year, not the 2.6-3.0 of a whole spell, because about half the dyadic onsets happen inside a war that is already running. Re-propose with the era term (era-1870-1914/statistics-6) or the coalition rule (era-1914-1945/engine-1) in place, or with the duration drawn per dyad from CoW MID endyear (396 dyadic war spells, mean 2.61, 38% of one year) and calibrated on simulated at-war exposure rather than on spell length." }
+      - { id: war_duration, evidence: "Holding at_war on both belligerents for a drawn duration fixes the spell shape and fails on every calibration number. Spell shape, as-of 1920, 100 runs (node scripts/analysis/war-spells.mjs --as-of 1920): one-year spells 70% -> 24% and mean length 1.51 -> 3.91 years, against the panel's 49% / 2.99 over all years and 26% / 2.91 for the spells a forecaster at 1920 has seen. Calibration, backtest 1870-2010 +20y 100 runs all states: pooled mid_war exp/obs 1.03 -> 1.50 and Brier skill -0.035 -> -0.176, mid_force 0.84 -> 1.08 and +0.069 -> 0.000, AUC unchanged at 0.77; 1950-2000 mid_war 3.89 -> 5.58 (the test asked for below 1.5) and mid_force 1.32 -> 1.65; 1910-1940, where the model under-predicts, it helps: mid_war 0.39 -> 0.60 and mid_force 0.50 -> 0.69, skill 0.092 -> 0.090 and 0.122 -> 0.109. Diagnosis, measured: the amplification is not repeated draws inside the same dyad (those are suppressed) but lag1(at_war_any) = +2.13 reaching the belligerents' other dyads, so a longer spell is a longer exposure and the simulated war count at as-of 1920 doubles, 5,610 -> 10,352. The two at_war variables are also not the same population: the panel's at_war is the hand-coded interstate-war list (371 actor-years 1886-2001, 3.3% of live actor-years) while the engine sets at_war from any CoW hostility-5 dyad, whose onsets are 283 actor-years - 1.31 at-war years per onset year, not the 2.6-3.0 of a whole spell, because about half the dyadic onsets happen inside a war that is already running. Re-propose with the era term (era-1870-1914/statistics-6) or the coalition rule (era-1914-1945/engine-1) in place, or with the duration drawn per dyad from CoW MID endyear (396 dyadic war spells, mean 2.61, 38% of one year) and calibrated on simulated at-war exposure rather than on spell length." }
     sources: ["Bremer 1992", "Bueno de Mesquita & Lalman 1992"]
-    notes: "mid_war nests inside mid_force: CoW hostlev is ordinal and the dyad's hostility is min(hostlev_a, hostlev_b), so a hostlev-5 pair is also a use-of-force pair. Before 2026-09-06 the two were disjoint (dispute-level max), which made observed mid_war exceed observed mid_force at as-of 1930. The engine nests the draw the same way from 2026-09-07 (era-1870-1914/engine-7): it draws mid_force first and the war only inside it, at P(war | dispute) = hz.mid_war / max(hz.mid_force, hz.mid_war) — the derived form, not a refit on the mid_force-positive subsample, which is the form these coefficients are therefore read with. The marginal is unchanged wherever p_war <= p_force and capped at the dispute's own probability where the war model runs hotter, which is where lag1(at_war_any) = +2.13 has switched on. Verified: 5,610 simulated wars at as-of 1920 over 100 runs, none in a dyad-year without a dispute (node scripts/war-spells.mjs). ENGINE_ABLATE=war_nesting restores the independent draws."
+    notes: "mid_war nests inside mid_force: CoW hostlev is ordinal and the dyad's hostility is min(hostlev_a, hostlev_b), so a hostlev-5 pair is also a use-of-force pair. Before 2026-09-06 the two were disjoint (dispute-level max), which made observed mid_war exceed observed mid_force at as-of 1930. The engine nests the draw the same way from 2026-09-07 (era-1870-1914/engine-7): it draws mid_force first and the war only inside it, at P(war | dispute) = hz.mid_war / max(hz.mid_force, hz.mid_war) — the derived form, not a refit on the mid_force-positive subsample, which is the form these coefficients are therefore read with. The marginal is unchanged wherever p_war <= p_force and capped at the dispute's own probability where the war model runs hotter, which is where lag1(at_war_any) = +2.13 has switched on. Verified: 5,610 simulated wars at as-of 1920 over 100 runs, none in a dyad-year without a dispute (node scripts/analysis/war-spells.mjs). ENGINE_ABLATE=war_nesting restores the independent draws."
     lifecycle: { phase: active, reason: "dyad labels re-derived per pair 2026-09-06: hostility = min of the pair, onset = max of the pair. The dispute-level version stamped CoW dispnum 258 (WWII) as 223 dyadic wars all dated 1939, Spain-China among them" }
 
   - id: weaponization
@@ -334,6 +280,65 @@ templates:
       - { id: transit_gdp_growth_mean, evidence: "The declared covariate (mean gdp_growth over the live transit states, z-scored, prior 0.4 for 'growth advances a corridor') is not missing at random and it buys its fit by deleting the hardest cases from the sample. Requiring it drops 168 of 3,143 corridor-years, and those 168 carry 5 of the 37 transitions — a 2.98% event rate against 1.08% in the rows it keeps, because Maddison's gaps ARE the war years (no China 1939-1950) and the record layer's transitions are the war years. The five it removes are hejaz_railway 1908 and 1917, trans_iranian_railway 1941, kirkuk_haifa_pipeline 1948, and burma_road 1940 — the last of them one of the three falsifiers this package was written around, so with the covariate in, the Burma Road closure is not a miss, it is not in the sample at all. On the same 2,975 rows the covariate is worth in-sample AUC 0.848 -> 0.870; on the full 3,143 rows the model without it scores 0.813, and the difference between 0.870 and 0.813 is mostly the selection, not the signal. Fitted -0.57 per sd (transitions happen when growth is bad), against a prior written for the opposite story. Re-propose when the growth series has no war-year holes, or with a stated imputation for a transit state with no growth observation." }
     sources: ["hand records: data/corridors.yaml dated history, 38 corridor records 1869-2026"]
     notes: "Same unit and label construction as chokepoint_status (see its notes). 3,143 corridor-years / 37 transitions over 1869-2025, every record-year in the sample: no covariate here can drop a row (see rejected: transit_gdp_growth_mean, which could)."
+
+# ---------------------------------------------------------------------------------------------------------------
+# Retired templates (2026-09-07 cleanup): kept verbatim for the record, not loaded by fit-hazards / backtest / engine.
+# autocratization_onset, democratization_onset: V-Dem ERT episodes, superseded by the RoW category-step templates.
+# autocratize_step: superseded by liberal_erosion + autocratic_closure. sovereign_default: no event source yet (see docs/data-catalogue.md).
+retired:
+  - id: autocratization_onset
+    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
+    status: monitored                  # fitted and backtested, not simulated: superseded by autocratize_step
+    label: Autocratization episode begins
+    unit: actor-year
+    event: autocratization_onset
+    window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_min: 1 }          # closed autocracies can't autocratize further
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: -0.5, 1: 0.6, 2: 0.4, 3: -0.6 } }   # partial regimes are least stable
+      - { var: polyarchy, transform: z, prior: 0 }
+      - { var: log_gdp_pc, transform: z, prior: -0.5 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
+    sources: ["Maerz et al. 2024 (ERT)", "Przeworski et al. 2000", "Goldstone et al. 2010"]
+
+  - id: democratization_onset
+    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
+    status: monitored                  # superseded by democratize_step (holdout AUC 0.47 vs 0.77)
+    label: Democratization episode begins
+    unit: actor-year
+    event: democratization_onset
+    window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_max: 1 }          # at-risk set: autocracies
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.5, 2: 0.3, 3: -2 } }
+      - { var: log_gdp_pc, transform: z, prior: 0.3 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }             # crises open windows
+      - { var: at_war, transform: lag1, prior: 0.2 }
+      - { var: leader_exit_recent, transform: win5, prior: 0.5 }
+    sources: ["Boix & Stokes 2003", "Maerz et al. 2024 (ERT)", "Geddes, Wright & Frantz 2014"]
+
+  - id: autocratize_step
+    status: monitored                  # superseded by liberal_erosion + autocratic_closure (different mechanisms, see docs/system.md bucket C)
+    lead: 1
+    label: Regime category moves down (V-Dem RoW), any
+    unit: actor-year
+    event: regime_change
+    event_filter: { direction: autocratize, cause: null }   # conquest/occupation steps excluded (see democratize_step)
+    window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_min: 1 }
+    covariates:
+      - { var: regime, transform: cat, prior: { 1: 0, 2: 0.3, 3: -0.8 } }
+      - { var: log_gdp_pc, transform: z, prior: -0.5 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
+    sources: ["Goldstone et al. 2010", "V-Dem RoW via OWID"]
+    lifecycle: { phase: active, promoted: 2026-09-06, reason: "holdout AUC 0.74; NOTE under-predicts post-1990 autocratization 5× (exp/obs 0.21) — open era shock" }
 
   - id: sovereign_default
     label: Sovereign default or restructuring

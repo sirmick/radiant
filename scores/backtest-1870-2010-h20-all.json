@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run": "2026-09-07T22:35:44.991Z",
+  "run": "2026-09-07T22:48:07.419Z",
   "from": 1870,
   "to": 2010,
   "step": 10,
@@ -24,7 +24,7 @@
    "actors": 55,
    "window_actors": 58,
    "dyad_actors": 58,
-   "ms": 1023,
+   "ms": 1063,
    "templates": {
     "mid_force": {
      "n": 0,
@@ -66,7 +66,7 @@
    "actors": 54,
    "window_actors": 54,
    "dyad_actors": 54,
-   "ms": 969,
+   "ms": 982,
    "templates": {
     "mid_force": {
      "n": 0,
@@ -108,7 +108,7 @@
    "actors": 50,
    "window_actors": 57,
    "dyad_actors": 57,
-   "ms": 1178,
+   "ms": 1186,
    "templates": {
     "mid_force": {
      "n": 0,
@@ -150,33 +150,9 @@
    "actors": 49,
    "window_actors": 67,
    "dyad_actors": 67,
-   "ms": 2229,
+   "ms": 2290,
    "templates": {
-    "autocratization_onset": {
-     "n": 0,
-     "reason": "no fit at as-of: n=0, events=0 in years ≤ 1900",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
-    },
-    "democratization_onset": {
-     "n": 0,
-     "reason": "no fit at as-of: n=0, events=0 in years ≤ 1900",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
-    },
     "democratize_step": {
-     "n": 0,
-     "reason": "no fit at as-of: n=0, events=0 in years ≤ 1900",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
-    },
-    "autocratize_step": {
      "n": 0,
      "reason": "no fit at as-of: n=0, events=0 in years ≤ 1900",
      "fit_source": "none (no training data at as-of)",
@@ -266,27 +242,11 @@
    "actors": 55,
    "window_actors": 70,
    "dyad_actors": 70,
-   "ms": 2658,
+   "ms": 2721,
    "templates": {
-    "autocratization_onset": {
-     "n": 0,
-     "reason": "no fit at as-of: n=196, events=2 in years ≤ 1910",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
-    },
     "democratize_step": {
      "n": 0,
      "reason": "no fit at as-of: n=271, events=3 in years ≤ 1910",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
-    },
-    "autocratize_step": {
-     "n": 0,
-     "reason": "no fit at as-of: n=196, events=2 in years ≤ 1910",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -396,7 +356,7 @@
    "actors": 62,
    "window_actors": 69,
    "dyad_actors": 69,
-   "ms": 3621,
+   "ms": 3690,
    "templates": {
     "democratize_step": {
      "n": 53,
@@ -540,7 +500,7 @@
    "actors": 65,
    "window_actors": 84,
    "dyad_actors": 84,
-   "ms": 3998,
+   "ms": 4060,
    "templates": {
     "democratize_step": {
      "n": 59,
@@ -685,7 +645,7 @@
    "actors": 63,
    "window_actors": 112,
    "dyad_actors": 112,
-   "ms": 4645,
+   "ms": 4723,
    "templates": {
     "democratize_step": {
      "n": 96,
@@ -831,7 +791,7 @@
    "actors": 80,
    "window_actors": 136,
    "dyad_actors": 136,
-   "ms": 6666,
+   "ms": 6759,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -987,7 +947,7 @@
    "actors": 109,
    "window_actors": 157,
    "dyad_actors": 157,
-   "ms": 10373,
+   "ms": 10725,
    "templates": {
     "leader_exit": {
      "n": 157,
@@ -1208,7 +1168,7 @@
    "actors": 135,
    "window_actors": 164,
    "dyad_actors": 164,
-   "ms": 13021,
+   "ms": 13278,
    "templates": {
     "leader_exit": {
      "n": 164,
@@ -1447,7 +1407,7 @@
    "actors": 156,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 15576,
+   "ms": 15723,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -1676,7 +1636,7 @@
    "actors": 163,
    "window_actors": 197,
    "dyad_actors": 197,
-   "ms": 17026,
+   "ms": 17525,
    "templates": {
     "leader_exit": {
      "n": 197,
@@ -1911,7 +1871,7 @@
    "actors": 192,
    "window_actors": 196,
    "dyad_actors": 196,
-   "ms": 20736,
+   "ms": 21186,
    "templates": {
     "leader_exit": {
      "n": 196,
@@ -2142,7 +2102,7 @@
    "actors": 195,
    "window_actors": 196,
    "dyad_actors": 196,
-   "ms": 17430,
+   "ms": 17756,
    "templates": {
     "leader_exit": {
      "n": 196,

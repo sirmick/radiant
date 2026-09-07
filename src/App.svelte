@@ -73,7 +73,7 @@
         <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
       {/each}
       <label class="asof" title="Continuous geographic fields, painted like weather">field
-        <select value={layers.field || ''} onchange={(e) => layers.field = e.target.value || false}><option value="">none</option><option value="influence">spheres of influence</option><option value="conflict">conflict intensity</option></select>
+        <select value={layers.field || ''} onchange={(e) => layers.field = e.target.value || false}><option value="">none</option><option value="influence">spheres of influence</option><option value="conflict">belligerents</option></select>
       </label>
       <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>
       <label>actor

@@ -13,8 +13,8 @@
 //                    the war that year (the historical rate a joining rule is trying to reproduce).
 // Run: node scripts/coalition-calib.mjs [--verbose]
 import { readFileSync } from 'node:fs';
-import { readCsv, Y, loadActors, makeCodeMap } from './lib/hist.mjs';
-import { warDyadSpans } from '../src/engine/core.js';
+import { readCsv, Y, loadActors, makeCodeMap } from '../lib/hist.mjs';
+import { warDyadSpans } from '../../src/engine/core.js';
 
 const VERBOSE = process.argv.includes('--verbose');
 const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));

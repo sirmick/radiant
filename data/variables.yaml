@@ -1,6 +1,7 @@
 # Variable registry — the single source of truth for what the model tracks.
 # Build, engine and UI all read this. Nothing else hardcodes a variable id.
 #
+# model:    false = display only (viewer), never read by the fitter or the engine; enforced by build-world.mjs
 # kind:     series  = history from data, projected forward by an equation
 #           state   = discrete/slow snapshot that hazards and rules rewrite
 #           derived = computed each step from other variables, never an input
@@ -191,6 +192,7 @@ variables:
     display: { map: true, format: ".1%" }
 
   - id: reserve_currency_share
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: macro
     label: Share of global FX reserves
     unit: fraction
@@ -226,6 +228,7 @@ variables:
     display: { map: true, format: ".0%" }
 
   - id: fiscal_breakeven
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: macro
     label: Fiscal breakeven oil price
     unit: USD/bbl
@@ -338,6 +341,7 @@ variables:
     display: { map: true, format: ".3s" }
 
   - id: refining_coverage
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: energy
     label: Refining capacity / oil demand
     unit: ratio
@@ -350,6 +354,7 @@ variables:
     display: { map: true, format: ".2f" }
 
   - id: food_self_sufficiency
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: energy
     label: Food self-sufficiency
     unit: ratio
@@ -371,6 +376,7 @@ variables:
     display: { map: true, format: ".0%" }
 
   - id: desal_dependence
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: energy
     label: Share of potable water from desalination
     unit: fraction
@@ -382,6 +388,7 @@ variables:
     display: { map: true, format: ".0%" }
 
   - id: mineral_refining_share
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: energy
     label: Share of global critical-mineral refining
     unit: fraction
@@ -417,6 +424,7 @@ variables:
     display: { map: true, format: ".1%" }
 
   - id: stem_immigration
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: human_capital
     label: Net inflow of STEM researchers
     unit: index (2025 = 100 for USA)
@@ -430,6 +438,7 @@ variables:
     display: { fan: true, map: true, format: ".0f" }
 
   - id: openness
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: human_capital
     label: Openness to migrants (policy)
     unit: index 0–1
@@ -455,6 +464,7 @@ variables:
   # Each capability is its own state variable with levels N/I/S, initialised from actors.yaml `tech.<id>`.
   # Add a capability by adding an entry here and a key in each actor's tech map (missing keys default to N).
   - id: cap_logic
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Leading-edge logic fabrication
     kind: state
@@ -465,6 +475,7 @@ variables:
     diffusion: { base_years_to_sovereign: 15, spend_elasticity: 0.5, blocmate_bonus: 0.4 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_memory
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: DRAM/HBM/NAND at scale
     kind: state
@@ -475,6 +486,7 @@ variables:
     diffusion: { base_years_to_sovereign: 12, spend_elasticity: 0.5, blocmate_bonus: 0.4 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_euv
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: EUV lithography tools
     kind: state
@@ -485,6 +497,7 @@ variables:
     diffusion: { base_years_to_sovereign: 25, spend_elasticity: 0.3, blocmate_bonus: 0.2 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_chem
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Semiconductor precursor chemistry
     kind: state
@@ -495,6 +508,7 @@ variables:
     diffusion: { base_years_to_sovereign: 10, spend_elasticity: 0.5, blocmate_bonus: 0.5 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_packaging
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Advanced packaging (CoWoS-class)
     kind: state
@@ -505,6 +519,7 @@ variables:
     diffusion: { base_years_to_sovereign: 6, spend_elasticity: 0.6, blocmate_bonus: 0.5 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_power_semis
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: SiC/IGBT power modules
     kind: state
@@ -515,6 +530,7 @@ variables:
     diffusion: { base_years_to_sovereign: 6, spend_elasticity: 0.6, blocmate_bonus: 0.5 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_ai_compute
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Frontier AI training compute
     kind: state
@@ -525,6 +541,7 @@ variables:
     diffusion: { base_years_to_sovereign: 5, spend_elasticity: 0.8, blocmate_bonus: 0.6 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_leo_isr
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Sovereign LEO ISR constellation
     kind: state
@@ -535,6 +552,7 @@ variables:
     diffusion: { base_years_to_sovereign: 8, spend_elasticity: 0.7, blocmate_bonus: 0.5 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_pnt
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Sovereign PNT
     kind: state
@@ -545,6 +563,7 @@ variables:
     diffusion: { base_years_to_sovereign: 12, spend_elasticity: 0.5, blocmate_bonus: 0.6 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_strike
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Long-range autonomous strike at scale
     kind: state
@@ -555,6 +574,7 @@ variables:
     diffusion: { base_years_to_sovereign: 4, spend_elasticity: 0.8, blocmate_bonus: 0.7 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_usv
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Unmanned surface/subsurface vessels at scale
     kind: state
@@ -565,6 +585,7 @@ variables:
     diffusion: { base_years_to_sovereign: 3, spend_elasticity: 0.8, blocmate_bonus: 0.7 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_de
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Directed energy / HPM air defence
     kind: state
@@ -575,6 +596,7 @@ variables:
     diffusion: { base_years_to_sovereign: 8, spend_elasticity: 0.6, blocmate_bonus: 0.5 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_nukes
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Deployed nuclear weapons
     kind: state
@@ -583,6 +605,7 @@ variables:
     dynamics: static                   # only weaponization hazards move it
     display: { map: true, categorical: [N, I, S] }
   - id: cap_latency
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Fuel-cycle nuclear latency
     kind: state
@@ -593,6 +616,7 @@ variables:
     diffusion: { base_years_to_sovereign: 10, spend_elasticity: 0.5, blocmate_bonus: 0.3 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_launch
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Orbital launch
     kind: state
@@ -603,6 +627,7 @@ variables:
     diffusion: { base_years_to_sovereign: 8, spend_elasticity: 0.6, blocmate_bonus: 0.4 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_refining
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Domestic crude refining ≥ 50% of demand
     kind: state
@@ -613,6 +638,7 @@ variables:
     diffusion: { base_years_to_sovereign: 6, spend_elasticity: 0.6, blocmate_bonus: 0.2 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_rail_hvdc
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Electrified rail + HVDC manufacturing
     kind: state
@@ -623,6 +649,7 @@ variables:
     diffusion: { base_years_to_sovereign: 10, spend_elasticity: 0.5, blocmate_bonus: 0.5 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_inverters
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Grid inverters / BMS (control-plane firmware)
     kind: state
@@ -633,6 +660,7 @@ variables:
     diffusion: { base_years_to_sovereign: 4, spend_elasticity: 0.7, blocmate_bonus: 0.7 }
     display: { map: true, categorical: [N, I, S] }
   - id: cap_quantum
+    model: false                     # display only until sourced series exist (cleanup 2026-09-07)
     group: capability
     label: Fault-tolerant quantum computing
     kind: state
@@ -704,6 +732,7 @@ variables:
     display: { map: true, categorical: [none, latent, weapon] }
 
   - id: war_losses
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: regime
     label: Cumulative war losses index
     unit: index 0–1
@@ -731,6 +760,7 @@ variables:
     display: { fan: true, map: true, format: ".1%" }
 
   - id: chokepoint_exposure
+    model: false                     # display only: snapshot estimate with no history (cleanup 2026-09-07)
     group: external
     label: Trade share through chokepoints
     unit: fraction per chokepoint
@@ -843,35 +873,3 @@ variables:
     source: { compute: true }
     dynamics: quarterly
     equation: year
-
-# ---------------------------------------------------------------- latents
-# One draw per run. Anything referencing a latent id reads the same value, so correlated beliefs move together.
-latents:
-  - id: us_reliability
-    label: US reliability as ally/supplier
-    prior: { mean: 0.45, sd: 0.2, clip: [0, 1] }
-    drives: [openness.USA, alliance_gravity, export_control_enforcement, stem_immigration]
-  - id: electrification_speed
-    label: Speed of global electrification
-    prior: { mean: 1.0, sd: 0.3, clip: [0.4, 2.0] }
-    drives: [ev_share, renewables_share, oil_demand]
-  - id: china_export_push
-    label: China doubles down on renewables/EV export
-    prior: { mean: 1.0, sd: 0.25, clip: [0.5, 1.8] }
-    drives: [ev_share, mineral_refining]
-  - id: ai_factory
-    label: AI-designed automated factories become routine
-    prior: { mean: 0.5, sd: 0.25, clip: [0, 1] }
-    drives: [productivity, tech_diffusion, mineral_refining]
-  - id: drone_commoditization
-    label: Autonomous strike/USV become commodity tech
-    prior: { mean: 0.6, sd: 0.2, clip: [0, 1] }
-    drives: [tech_diffusion, conflict]
-  - id: demographic_shock
-    label: Fertility deviation from WPP medium
-    prior: { mean: 0.0, sd: 0.15, clip: [-0.4, 0.4] }
-    drives: [fertility]
-  - id: launch_cost_decline
-    label: Annual decline in launch cost
-    prior: { mean: 0.10, sd: 0.04, clip: [0.02, 0.2] }
-    drives: [launch_cost]

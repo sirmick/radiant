@@ -79,8 +79,8 @@ export const FIELDS = {
     threshold: 0.35,
   },
   conflict: {
-    label: 'Conflict intensity',
-    note: 'estimate: interstate war (w 1.0, λ 900 km), disputes (0.4, 600), internal armed conflict (0.6 / 1.0 by intensity, 500) at the year',
+    label: 'Belligerents',
+    note: 'who is at war, not where the fighting is: interstate war (w 1.0, λ 900 km), disputes (0.4, 600), internal armed conflict (0.6 / 1.0 by intensity, 500). Battle locations need UCDP GED (1989→)',
     paint: 'heat',
     groups: () => ['conflict'],
     sources: (ctx) => [
