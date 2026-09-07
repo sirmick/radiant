@@ -1,5 +1,5 @@
 <script>
-  import { loadWorld, forecastVariables, historyVariables, readHash, writeHash } from './lib/data.js';
+  import { loadWorld, forecastVariables, historyVariables, readHash, writeHash, forecastNews } from './lib/data.js';
   import Map from './lib/Map.svelte';
   import Panel from './lib/Panel.svelte';
 
@@ -16,11 +16,19 @@
     const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
     return () => clearInterval(t);
   });
-  let layers = $state({ territories: true, corridors: true, alliances: false, labels: true, glyphs: false });
+  let layers = $state({ territories: true, corridors: true, alliances: 'major', conflicts: true, labels: true, glyphs: false });
   let selected = $state(null);
 
-  loadWorld().then(d => { data = d; const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers.includes(k); if (h.tab) tab = h.tab; }).catch(e => { error = String(e); });
+  const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; };
+  loadWorld().then(d => { data = d; const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; }).catch(e => { error = String(e); });
   let tab = $state('news');
+  const HL_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', coup: '#d95c4f', alliance: '#6cb4ff', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3' };
+  const headlines = $derived.by(() => {
+    if (!data) return []; const y = Math.round(year);
+    if (data.forecast && y >= data.forecast.meta.from) { const seen = new Set(); const out = []; for (const e of forecastNews(data.forecast, y, 60)) { if (seen.has(e.tpl)) continue; seen.add(e.tpl); out.push({ t: `${(e.p * 100).toFixed(0)}% ${e.t}`, col: HL_COL[e.k] ?? '#8b94a3' }); if (out.length === 3) break; } return out; }
+    const items = (data.news?.years?.[y] ?? []).filter(e => !e.ongoing && ['war', 'nuclear', 'territory', 'corridor', 'coup', 'alliance'].includes(e.k));
+    return items.slice(0, 3).map(e => ({ t: e.t.length > 90 ? e.t.slice(0, 88) + '…' : e.t, col: HL_COL[e.k] ?? '#8b94a3' }));
+  });
   $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab }); });
 
   const mapVars = $derived(data ? [...historyVariables(data.history), ...forecastVariables(data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
@@ -36,7 +44,7 @@
   }
 </script>
 
-<svelte:window onkeydown={onKey} />
+<svelte:window onkeydown={onKey} onhashchange={applyHash} />
 
 {#if error}
   <div class="center bad">Failed to load world.json — run <code>node scripts/build-world.mjs</code>. {error}</div>
@@ -55,9 +63,10 @@
         </select>
       </label>
       <span class="muted tiny">layers</span>
-      {#each [['territories', 'territories'], ['corridors', 'corridors'], ['alliances', 'alliances'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
+      {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
         <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
       {/each}
+      <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>
       <label>actor
         <select onchange={(e) => { if (e.target.value) { selected = { kind: 'actor', id: e.target.value }; tab = 'detail'; } }} value={selected?.kind === 'actor' ? selected.id : ''}>
           <option value="">—</option>
@@ -78,8 +87,12 @@
       </div>
       <span class="muted tiny">{year < 2026 ? 'history' : 'forecast ensemble'} · ← → step · space play</span>
     </div>
+    <div class="headlines">
+      {#each headlines as h}<span class="hl"><i style="background:{h.col}"></i>{h.t}</span>{/each}
+      {#if !headlines.length}<span class="muted tiny">no recorded headline events for {Math.round(year)}</span>{/if}
+    </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={data.forecast} history={data.history} alliances={data.alliances} {variable} {year} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
+      <Map world={data.world} geo={data.geo} forecast={data.forecast} history={data.history} alliances={data.alliances} news={data.news} {variable} {year} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
       <Panel world={data.world} forecast={data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
     </main>
   </div>
@@ -90,6 +103,9 @@
   header { display: flex; align-items: center; gap: 14px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--bg2); flex-wrap: wrap; }
   h1 { font-size: 15px; margin-right: 6px; }
   label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg2); font-size: 12px; }
+  .headlines { display: flex; gap: 18px; padding: 3px 12px 5px; background: var(--bg2); border-bottom: 1px solid var(--line); font-size: 11.5px; overflow: hidden; white-space: nowrap; }
+  .hl { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .hl i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
   .timeline { display: flex; align-items: center; gap: 12px; padding: 6px 12px 10px; background: var(--bg2); border-bottom: 1px solid var(--line); }
   .timeline .yr { font-size: 15px; font-weight: 700; width: 44px; }
   .play { width: 30px; height: 26px; padding: 0; }

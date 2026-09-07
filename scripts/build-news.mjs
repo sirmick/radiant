@@ -17,9 +17,9 @@ for (const e of events) {
     case 'autocratization_onset': push(y, { k: 'regime', y: e.year, a: [e.actor], t: `${name(e.actor)}: autocratization episode begins`, s: e.source }); break;
     case 'democratization_onset': push(y, { k: 'regime', y: e.year, a: [e.actor], t: `${name(e.actor)}: democratization episode begins`, s: e.source }); break;
     case 'intrastate_onset': push(y, { k: 'conflict', y: e.year, a: [e.actor], t: `${name(e.actor)}: internal armed conflict${e.territory ? ` over ${e.territory}` : ''}${e.intensity === 2 ? ' (war)' : ''}`, s: e.source }); break;
-    case 'interstate_onset': push(y, { k: 'conflict', y: e.year, a: [e.a, e.b], t: `${name(e.a)} – ${name(e.b)}: interstate conflict${e.intensity === 2 ? ' (war)' : ''}`, s: e.source }); break;
+    case 'interstate_onset': push(y, { k: 'conflict', y: e.year, a: [e.a, e.b], sides: [[e.a], [e.b]], t: `${name(e.a)} – ${name(e.b)}: interstate conflict${e.intensity === 2 ? ' (war)' : ''}`, s: e.source }); break;
     case 'mid_force': case 'mid_war': { const d = disputes.get(e.dispnum) ?? disputes.set(e.dispnum, { year: e.year, a: new Set(), b: new Set(), war: false }).get(e.dispnum); d.a.add(e.a); d.b.add(e.b); if (e.kind === 'mid_war') d.war = true; break; }
-    case 'war': push(y, { k: 'war', y: e.start, a: e.sides.flat(), t: `War: ${e.id.replace(/_/g, ' ')} — ${e.sides[0].map(name).join(', ')} vs ${e.sides[1].map(name).join(', ')}${e.end ? ` (to ${Math.floor(e.end)})` : ''}`, s: e.source, n: e.notes }); break;
+    case 'war': push(y, { k: 'war', y: e.start, a: e.sides.flat(), sides: e.sides, end: e.end ?? null, t: `War: ${e.id.replace(/_/g, ' ')} — ${e.sides[0].map(name).join(', ')} vs ${e.sides[1].map(name).join(', ')}${e.end ? ` (to ${Math.floor(e.end)})` : ''}`, s: e.source, n: e.notes }); break;
     case 'chokepoint': push(y, { k: 'corridor', y: e.year, c: e.id, t: `${e.id.replace(/_/g, ' ')}: ${e.status}${e.controller ? ` (${name(e.controller)})` : ''}`, s: e.source, n: e.notes }); break;
     case 'corridor': push(y, { k: 'corridor', y: e.year, c: e.id, t: `${e.id.replace(/_/g, ' ')}: ${e.status}${e.controller ? ` (${name(e.controller)})` : ''}`, s: e.source, n: e.notes }); break;
     case 'territory': push(y, { k: 'territory', y: e.year, tr: e.id, a: e.controller ? [e.controller] : [], t: `${e.id.replace(/_/g, ' ')}: ${e.status ?? ''}${e.controller ? ` → ${name(e.controller)}` : ''}`, s: e.source, n: e.notes }); break;
@@ -31,7 +31,8 @@ for (const e of events) {
     case 'leader': push(y, { k: 'leader', y: e.year, a: [e.actor], t: `${name(e.actor)}: ${e.event.replace(/_/g, ' ')}`, s: e.source, n: e.notes }); break;
   }
 }
-for (const [num, d] of disputes) { const y = Math.floor(d.year); push(y, { k: d.war ? 'war' : 'dispute', y: d.year, a: [...d.a, ...d.b], t: `${d.war ? 'Militarized dispute (war level)' : 'Militarized dispute, use of force'}: ${[...d.a].map(name).join(', ')} vs ${[...d.b].map(name).join(', ')}`, s: 'CoW MID 3.02' }); }
+for (const e of events) if (e.kind === 'war' && e.end != null) { for (let y = Math.floor(e.start) + 1; y <= Math.floor(e.end); y++) push(y, { k: 'war', y, a: e.sides.flat(), sides: e.sides, ongoing: true, t: `War continues: ${e.id.replace(/_/g, ' ')}`, s: e.source }); }
+for (const [num, d] of disputes) { const y = Math.floor(d.year); push(y, { k: d.war ? 'war' : 'dispute', y: d.year, a: [...d.a, ...d.b], sides: [[...d.a], [...d.b]], t: `${d.war ? 'Militarized dispute (war level)' : 'Militarized dispute, use of force'}: ${[...d.a].map(name).join(', ')} vs ${[...d.b].map(name).join(', ')}`, s: 'CoW MID 3.02' }); }
 const ORDER = { war: 0, nuclear: 1, territory: 2, corridor: 3, alliance: 4, coup: 5, regime: 6, conflict: 7, dispute: 8, leader: 9, capability: 10, economic: 11 };
 for (const y of Object.keys(byYear)) byYear[y].sort((p, q) => (ORDER[p.k] - ORDER[q.k]) || (p.y - q.y));
 const out = { meta: { built: new Date().toISOString(), kinds: Object.keys(ORDER) }, years: byYear };

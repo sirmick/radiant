@@ -54,10 +54,10 @@ export function alliancesAt(al, year, hubOf) {
 }
 /** URL hash <-> view state: #y=1956&v=h_regime&a=EGY&l=territories,corridors */
 export function readHash() {
-  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = h.get('l').split(',').filter(Boolean); if (h.get('t')) o.tab = h.get('t'); return o; } catch { return {}; }
+  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); return o; } catch { return {}; }
 }
 export function writeHash({ year, varId, selected, layers, tab }) {
-  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k]) => k).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
+  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
 }
 /** Regime level for an actor at a year: history panel, else the forecast's modal regime. */
 export function regimeAt(history, forecast, id, year) {

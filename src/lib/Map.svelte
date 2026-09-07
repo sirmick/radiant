@@ -3,7 +3,8 @@
   import * as topojson from 'topojson-client';
   import { valueAt, forecastAt, historyAt, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
-  let { world, geo, forecast, history, alliances, variable, year, layers, selected, onSelect } = $props();
+  let { world, geo, forecast, history, alliances, news, variable, year, layers, selected, onSelect } = $props();
+  let hover = $state(null); let mapEl = $state(null);
 
   let width = $state(800), height = $state(600);
   let gEl = $state(null), svgEl = $state(null);
@@ -83,8 +84,48 @@
 
   // ---- alliance edges at the year (great-circle arcs between centroids)
   const popAt = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.population?.[yi] ?? a.population?.at(-1) ?? 0) : (history?.actors?.[id]?.population?.at(-1) ?? 0); };
-  const allianceView = $derived(alliancesAt(alliances, year, (members) => members.reduce((best, m) => (popAt(m) > popAt(best) ? m : best), members[0])));
-  const allianceArcs = $derived.by(() => { const out = []; for (const e of allianceView.edges) { const p = lonlat(e.a), q = lonlat(e.b); if (!p || !q) continue; out.push({ ...e, d: path({ type: 'LineString', coordinates: [p, q] }) }); } return out; });
+  const isGreat = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.great_power?.[yi] ?? 0) > 0 : false; };
+  const allianceView = $derived(alliancesAt(alliances, year, (members) => { const gp = members.filter(isGreat); const pool = gp.length ? gp : members; return pool.reduce((best, m) => (popAt(m) > popAt(best) ? m : best), pool[0]); }));
+  // pact membership per actor (for the hover card)
+  const pactsOf = $derived.by(() => { const m = new Map(); if (!alliances) return m; const yy = Math.min(Math.round(year), alliances.meta.coverage[1]); for (const [pid, members] of Object.entries(alliances.years[yy] ?? {})) for (const x of members) (m.get(x) ?? m.set(x, []).get(x)).push({ pid, members }); return m; });
+  const allianceArcs = $derived.by(() => {
+    const out = []; const sel = selected?.kind === 'actor' ? selected.id : null;
+    for (const e of allianceView.edges) {
+      const mine = sel && (e.a === sel || e.b === sel);
+      if (layers.alliances === 'major' && !mine && !(isGreat(e.a) || isGreat(e.b))) continue;
+      const p = lonlat(e.a), q = lonlat(e.b); if (!p || !q) continue; out.push({ ...e, d: path({ type: 'LineString', coordinates: [p, q] }) });
+    }
+    return out;
+  });
+  // ---- conflicts: NE id -> actor id at the year; war arcs between the principal belligerents of each war/dispute this year
+  const neToActor = $derived.by(() => { const m = new Map(); if (!history || yi < 0) return m; for (const id of liveNow) m.set(neKey(id), id); return m; });
+  const actorOfNe = (neId) => neToActor.get(neId) ?? neId;
+  const intrastateOf = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.intrastate?.[yi] ?? 0) : 0; };
+  const conflictStroke = (neId) => { const id = actorOfNe(neId); if (!layers.conflicts) return null; if (atWar(id)) return { c: '#ef6a5a', w: 1.4, d: null }; const it = intrastateOf(id); if (it > 0) return { c: '#e8a04f', w: it >= 2 ? 1.2 : 0.8, d: '2 2' }; return null; };
+  const yearItems = $derived(news?.years?.[Math.round(year)] ?? []);
+  const warArcs = $derived.by(() => {
+    if (!layers.conflicts) return []; const out = []; const seen = new Set();
+    for (const it of yearItems) {
+      if (!it.sides || it.sides.length < 2) continue;
+      const hub = (side) => side.reduce((b, m) => (popAt(m) > popAt(b) ? m : b), side[0]);
+      const a = hub(it.sides[0]), b = hub(it.sides[1]); const k = a < b ? `${a}|${b}` : `${b}|${a}`; if (seen.has(k)) continue; seen.add(k);
+      const p = lonlat(a), q = lonlat(b); if (!p || !q) continue;
+      out.push({ a, b, war: it.k === 'war', ongoing: !!it.ongoing, t: it.t, d: path({ type: 'LineString', coordinates: [p, q] }) });
+    }
+    return out;
+  });
+  // ---- hover card
+  const hoverInfo = $derived.by(() => {
+    if (!hover) return null; const id = actorOfNe(hover.id); const ha = history?.actors?.[id]; const wa = world.actors[id];
+    const name = wa?.name ?? ha?.name ?? countries.find(f => f.id === hover.id)?.properties.name ?? id;
+    const rg = regimeAt(history, forecast, id, year); const pop = ha && yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? ha.population?.[yi] : (ha?.population?.at(-1) ?? null);
+    const pacts = (pactsOf.get(id) ?? []).map(p => ({ pid: p.pid, partners: p.members.filter(m => m !== id), greats: p.members.filter(m => m !== id && isGreat(m)) }));
+    const items = yearItems.filter(it => it.a?.includes(id) && !it.ongoing).slice(0, 4);
+    const conflicts = [atWar(id) ? 'at war' : null, intrastateOf(id) >= 2 ? 'civil war' : intrastateOf(id) > 0 ? 'internal armed conflict' : null].filter(Boolean);
+    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, live: ha ? (yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? !!ha.live[yi] : true) : !!wa };
+  });
+  const fmtPop = (n) => (n == null ? '—' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' bn' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' k' : String(Math.round(n)));
+  const popR = (id) => { const p = popAt(id); return Math.min(26, 2 + Math.sqrt(Math.max(0, p) / 1e6) * 1.4); };
   export function resetZoom() { if (svgEl) d3.select(svgEl).transition().duration(300).call(d3.zoom().transform, d3.zoomIdentity); transform = d3.zoomIdentity; }
 
   // ---- legend: only what is on the map right now
@@ -118,7 +159,7 @@
   const isSel = (kind, id) => selected?.kind === kind && selected?.id === id;
 </script>
 
-<div class="map" bind:clientWidth={width} bind:clientHeight={height}>
+<div class="map" bind:this={mapEl} bind:clientWidth={width} bind:clientHeight={height}>
   <svg bind:this={svgEl} {width} {height}>
     <defs>
       {#each Object.entries(STATUS_COLORS) as [s, c]}
@@ -138,10 +179,13 @@
         <path
           d={path(f)}
           fill={fillFor(f.id)}
-          stroke={isSel('actor', f.id) ? '#fff' : 'none'}
-          stroke-width={1.5 / transform.k}
+          stroke={isSel('actor', f.id) ? '#fff' : (conflictStroke(f.id)?.c ?? 'none')}
+          stroke-width={(isSel('actor', f.id) ? 1.5 : (conflictStroke(f.id)?.w ?? 0)) / transform.k}
+          stroke-dasharray={isSel('actor', f.id) ? null : conflictStroke(f.id)?.d}
           class:actor={selectable(f.id)}
           onclick={() => selectable(f.id) && onSelect({ kind: 'actor', id: f.id })}
+          onmousemove={(e) => { if (selectable(f.id)) { const r = mapEl.getBoundingClientRect(); hover = { id: f.id, x: e.clientX - r.left, y: e.clientY - r.top }; } }}
+          onmouseleave={() => { hover = null; }}
           role="button" tabindex="-1"
         ><title>{f.properties.name}</title></path>
       {/each}
@@ -201,6 +245,24 @@
         {/each}
       {/if}
 
+      <!-- conflicts: belligerent arcs -->
+      {#if layers.conflicts}
+        {#each warArcs as e (e.a + e.b)}
+          <path d={e.d} fill="none" stroke={e.war ? '#ef6a5a' : '#e8a04f'} stroke-opacity={e.ongoing ? 0.45 : 0.85} stroke-width={(e.war ? 1.4 : 0.8) / transform.k} stroke-dasharray={e.ongoing ? '4 3' : null} pointer-events="none"><title>{e.t}</title></path>
+        {/each}
+      {/if}
+
+      <!-- population bubbles -->
+      {#if layers.labels}
+        {#each featured as id (id)}
+          {@const ll = lonlat(id)}
+          {#if ll}
+            {@const [x, y] = projection(ll)}
+            <circle cx={x} cy={y} r={popR(id) / Math.sqrt(transform.k)} fill="#6cb4ff" fill-opacity="0.08" stroke="#6cb4ff" stroke-opacity="0.25" stroke-width={0.6 / transform.k} pointer-events="none" />
+          {/if}
+        {/each}
+      {/if}
+
       <!-- qualities glyphs -->
       {#if layers.glyphs}
         {#each featured as id (id)}
@@ -236,6 +298,17 @@
   </svg>
 
   <button class="reset" onclick={resetZoom} title="reset zoom">⤢</button>
+  {#if hoverInfo}
+    <div class="card" style="left:{Math.min(hover.x + 14, width - 300)}px; top:{Math.min(hover.y + 14, height - 200)}px">
+      <div class="ch">{hoverInfo.flag ?? ''} <b>{hoverInfo.name}</b> <span class="mono muted">{hoverInfo.id}</span>{#if !hoverInfo.live}<span class="muted"> · not a state in {Math.round(year)}</span>{/if}</div>
+      <div class="cr">{#if hoverInfo.rg != null}<span style="color:{REGIME_COL4[hoverInfo.rg]}">{REGIME_GLYPH[hoverInfo.rg]} {REGIME_LABELS[hoverInfo.rg]}</span>{/if} · pop {fmtPop(hoverInfo.pop)}</div>
+      {#if hoverInfo.conflicts.length}<div class="cr" style="color:#ef6a5a">{hoverInfo.conflicts.join(' · ')}</div>{/if}
+      {#if hoverInfo.pacts.length}
+        <div class="cr muted">pacts: {#each hoverInfo.pacts.slice(0, 4) as p, i}{i ? '; ' : ''}{#if p.greats.length}<span style="color:#6cb4ff">with {p.greats.join(', ')}</span>{#if p.partners.length > p.greats.length} +{p.partners.length - p.greats.length}{/if}{:else}{p.partners.length <= 2 ? p.partners.join(', ') : p.partners.length + ' partners'}{/if}{/each}{hoverInfo.pacts.length > 4 ? ` (+${hoverInfo.pacts.length - 4})` : ''}</div>
+      {:else if allianceView.pacts}<div class="cr muted">no defence pact{allianceView.carried ? ' (as of ' + allianceView.from + ')' : ''}</div>{/if}
+      {#if hoverInfo.items.length}<div class="cr ev">{Math.round(year)}: {hoverInfo.items.map(it => it.t.replace(/^[^:]+: /, '')).join(' · ')}</div>{/if}
+    </div>
+  {/if}
   <!-- legend -->
   <div class="legend">
     {#if variable}
@@ -256,11 +329,14 @@
       <div class="lt" style="margin-top:6px">Corridors <span class="muted">line · ○ chokepoint · ┄ cable</span></div>
       {#each presentStatuses.c as s}<span class="sw"><i style="background:{STATUS_COLORS[s] ?? '#8b94a3'}"></i>{s}</span>{/each}
     {/if}
+    {#if layers.conflicts}
+      <div class="lt" style="margin-top:6px">Conflicts <span class="muted">red outline at war · orange dashed internal · arcs join principal belligerents (dashed = ongoing)</span></div>
+    {/if}
     {#if layers.alliances}
-      <div class="lt" style="margin-top:6px">Alliances <span class="muted">{allianceView.pacts} defence pacts (CoW) · solid bilateral · dashed multilateral, hub = largest member{allianceView.carried ? ` · carried forward from ${allianceView.from}` : ''}{allianceView.none ? ' · none in source' : ''}</span></div>
+      <div class="lt" style="margin-top:6px">Alliances{layers.alliances === 'major' ? ' (great-power pacts)' : ''} <span class="muted">{allianceView.pacts} defence pacts (CoW) · solid bilateral · dashed multilateral, hub = largest member{allianceView.carried ? ` · carried forward from ${allianceView.from}` : ''}{allianceView.none ? ' · none in source' : ''}</span></div>
     {/if}
     {#if layers.labels}
-      <div class="lt" style="margin-top:6px">Regime</div>
+      <div class="lt" style="margin-top:6px">Regime <span class="muted">· bubble = population</span></div>
       {#each REGIME_LABELS as l, i}<span class="sw" style="color:{REGIME_COL4[i]}"><b>{REGIME_GLYPH[i]}</b> <span style="color:var(--fg)">{l}</span></span>{/each}
     {/if}
     {#if layers.glyphs}
@@ -278,6 +354,10 @@
   path[role=button], circle[role=button] { cursor: pointer; }
   path.actor:hover { filter: brightness(1.25); }
   .reset { position: absolute; right: 10px; top: 10px; }
+  .card { position: absolute; pointer-events: none; background: rgba(15,17,21,0.94); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; max-width: 300px; font-size: 11.5px; z-index: 5; }
+  .card .ch { font-size: 13px; margin-bottom: 2px; }
+  .card .cr { margin-top: 2px; }
+  .card .ev { color: var(--fg); border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
   .legend { position: absolute; left: 10px; bottom: 10px; background: rgba(15,17,21,0.85); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; max-width: 320px; font-size: 11px; }
   .lt { font-weight: 600; margin-bottom: 4px; }
   .lt .muted { font-weight: 400; }
