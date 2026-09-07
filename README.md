@@ -28,7 +28,7 @@ Historical pipeline + backtest (all offline once `data/raw/hist` is fetched — 
 node scripts/build-panel.mjs      # -> data/panel.json   actor-year covariates 1816–2025
 node scripts/build-events.mjs     # -> data/events.json  dated events (machine + data/history/events.yaml)
 node scripts/fit-hazards.mjs      # -> data/fits.json    MAP logistic per template, holdout AUC, calibration
-node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 100   # -> scores/
+node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 100   # -> scores/   (refits per as-of year; --no-refit for the leaky full-sample comparison)
 node scripts/run-forward.mjs --runs 300 --horizon 40                                # -> public/forecast.json
 ```
 

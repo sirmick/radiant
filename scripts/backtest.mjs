@@ -1,14 +1,22 @@
 // Rolling-origin backtest of the dynamic engine.
 // For each as-of year: build the world from the panel as it stood, run an ensemble H years forward, and score
 // P(event within H) per actor/template against what actually happened (data/events.json).
-// Run: node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 200 [--no-dyads]
+//
+// Rolling-origin applies to the coefficients too (default; --no-refit for the old behaviour): each as-of year gets its
+// own fit, estimated only on rows whose *label year* is at or before the as-of date, so no forecast is made with
+// coefficients estimated on the events it is scored against. Every scored row carries fit_split / fit_source / leaky.
+// A template with too little training data at an as-of year is reported with n=0 and a reason and is kept out of the
+// pooled summary — an unfitted model is a miss, not a clean score.
+// Run: node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 200 [--no-dyads] [--no-refit]
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap } from './lib/hist.mjs';
+import { createFitter } from './lib/fit.mjs';
 import { createWorld, runEnsemble } from '../src/engine/core.js';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const FROM = +arg('from', 1870), TO = +arg('to', 2000), STEP = +arg('step', 10), H = +arg('horizon', 20), RUNS = +arg('runs', 200);
 const skipDyads = process.argv.includes('--no-dyads');
+const REFIT = !process.argv.includes('--no-refit');
 const UNIVERSE = arg('universe', 'modeled');   // modeled (67 simulated actors) | all (every state)
 const contiguityFile = JSON.parse(readFileSync('data/contiguity.json', 'utf8'));
 const contiguity = contiguityFile.pairs; const contiguityFrom = contiguityFile.meta?.years?.[0] ?? null;
@@ -27,6 +35,15 @@ const liveAt = (id, y) => panel.actors[id]?.live?.[y - Y0] === 1;
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const pacts = new Set();
 for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
+
+// ---- rolling-origin coefficients: one fits object per as-of year, cached (the design matrices are built once).
+const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, pacts }) : null;
+const fitCache = new Map();
+function fitsAt(asOf) {
+  if (!REFIT) return fits;
+  if (!fitCache.has(asOf)) fitCache.set(asOf, fitter.fitAll({ maxYear: asOf, holdout: false, ablation: false }).fits);
+  return fitCache.get(asOf);
+}
 
 // events actually observed in (asOf, asOf+H] per key
 function realized(asOf, horizon) {
@@ -48,10 +65,11 @@ const auc = (pairs) => { // [[p, y]]
 const fmt = (x, d = 2) => (x == null ? '   —' : x.toFixed(d).padStart(5));
 
 const results = []; const pooled = {};
-console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}\n`);
+console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}, coefficients=${REFIT ? 'refit per as-of year' : 'full-sample (leaky)'}\n`);
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
-  const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom });
+  const F = fitsAt(asOf);
+  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom });
   const t0 = Date.now();
   const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads });
   const real = realized(asOf, horizon);
@@ -65,11 +83,15 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const dyadIds = windowIds;
   const row = { asOf, horizon, actors: ids.length, window_actors: windowIds.length, dyad_actors: dyadIds.length, ms: Date.now() - t0, templates: {} };
   for (const t of templates) {
-    if (fits[t.id]?.status !== 'fitted') continue;
+    if (fits[t.id]?.status !== 'fitted') continue;   // never fitted on the full sample: out of scope for scoring entirely
     const kind = t.event; const pairs = [];
     const cov = COVERAGE[kind]; if (cov && (asOf + 1 < cov[0] || asOf + 1 > cov[1])) continue;
     const covYears = cov ? Math.max(0, Math.min(asOf + horizon, cov[1]) - Math.max(asOf, cov[0] - 1)) : horizon;
     if (covYears < horizon) { /* truth truncated: compare against the ensemble's P(event within covYears) instead */ }
+    // a forecaster standing at asOf may hold no fitted model for this template at all (no training year before the
+    // as-of date). That is reported as a row with n=0 and a reason, and kept out of pooled — not silently dropped.
+    const f = F[t.id];
+    if (f?.status !== 'fitted') { row.templates[t.id] = { n: 0, reason: `no fit at as-of: ${f?.reason ?? 'unfitted'}`, fit_source: 'none (no training data at as-of)', fit_split: null, leaky: false, scored_years: covYears }; continue; }
     let excluded = 0, excludedWithEvent = 0; const excludedVars = {};
     if (t.unit === 'actor-year') {
       if (t.status === 'monitored') continue;
@@ -102,6 +124,11 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     const at = pairs.filter(x => x[0] > 0);
     const structuralMiss = pairs.filter(x => x[0] === 0 && x[1] === 1).length;
     const rec = { n: pairs.length, n_at_risk: at.length, n_structural_miss: structuralMiss, predicted, observed, observed_at_risk: at.reduce((s, [, y]) => s + y, 0), brier, auc: auc(pairs), auc_at_risk: auc(at), scored_years: covYears };
+    // provenance of the coefficients this row was forecast with: the last label year in their training sample, where
+    // they came from, and whether that sample reaches past the as-of date (leaky = the fit saw what it is scored on).
+    rec.fit_split = f.trained_through ?? null; rec.fit_n = f.n; rec.fit_events = f.events;
+    rec.fit_source = REFIT ? `refit on labels ≤ ${f.trained_through} (n=${f.n}, events=${f.events})` : 'full-sample fit (data/fits.json)';
+    rec.leaky = rec.fit_split == null ? null : rec.fit_split > asOf;
     if (t.unit === 'actor-year') { rec.n_excluded_no_covariate = excluded; rec.n_excluded_with_event = excludedWithEvent; rec.excluded_vars = excludedVars; }
     if (t.unit === 'actor-year' && at.length < MIN_AT_RISK) rec.underpowered = true;
     row.templates[t.id] = rec;
@@ -111,7 +138,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   console.log(`as-of ${asOf} (+${horizon}y, ${ids.length} actors, ${(row.ms / 1000).toFixed(1)}s)`);
   for (const [id, s] of Object.entries(row.templates)) {
     if (!s.n) { console.log(`   ${id.padEnd(22)}      ${s.reason}`); continue; }
-    console.log(`   ${id.padEnd(22)}${s.scored_years < horizon ? `[${s.scored_years}y]` : '     '} n=${String(s.n).padStart(5)}  atrisk=${String(s.n_at_risk).padStart(5)}  exp=${s.predicted.toFixed(1).padStart(6)}  obs=${String(s.observed).padStart(4)}  miss0=${String(s.n_structural_miss).padStart(3)}${s.n_excluded_no_covariate ? `  nocov=${String(s.n_excluded_no_covariate).padStart(3)}` : ''}  ratio=${fmt(s.observed ? s.predicted / s.observed : null)}  brier=${fmt(s.brier, 3)}  auc=${fmt(s.auc)}  auc@risk=${fmt(s.auc_at_risk)}${s.underpowered ? '  [underpowered, out of pooled]' : ''}`);
+    console.log(`   ${id.padEnd(22)}${s.scored_years < horizon ? `[${s.scored_years}y]` : '     '} n=${String(s.n).padStart(5)}  atrisk=${String(s.n_at_risk).padStart(5)}  exp=${s.predicted.toFixed(1).padStart(6)}  obs=${String(s.observed).padStart(4)}  miss0=${String(s.n_structural_miss).padStart(3)}${s.n_excluded_no_covariate ? `  nocov=${String(s.n_excluded_no_covariate).padStart(3)}` : ''}  ratio=${fmt(s.observed ? s.predicted / s.observed : null)}  brier=${fmt(s.brier, 3)}  auc=${fmt(s.auc)}  auc@risk=${fmt(s.auc_at_risk)}  fit≤${s.fit_split}${s.leaky ? ' LEAKY' : ''}${s.underpowered ? '  [underpowered, out of pooled]' : ''}`);
   }
 }
 /** Which of a template's covariates the world cannot supply for this actor (empty = fully covered). */
@@ -153,6 +180,7 @@ for (const [id, pairs] of Object.entries(pooled)) {
   console.log(`   ${id.padEnd(22)} n=${String(pairs.length).padStart(6)}  exp/obs=${(predicted / Math.max(1, observed)).toFixed(2).padStart(5)}  brier=${brier.toFixed(3)} (base ${brierBase.toFixed(3)}, skill ${fmt(1 - brier / brierBase)})  auc=${fmt(auc(pairs))}  cal: ${cal.map(([p, o]) => `${(p * 100).toFixed(0)}→${(o * 100).toFixed(0)}`).join(' ')}`);
 }
 mkdirSync('scores', { recursive: true });
-const out = { meta: { run: new Date().toISOString(), from: FROM, to: TO, step: STEP, horizon: H, runs: RUNS, skipDyads }, byAsOf: results, pooled: summary };
-writeFileSync(`scores/backtest-${FROM}-${TO}-h${H}-${UNIVERSE}.json`, JSON.stringify(out, null, 1));
-console.log(`\nwrote scores/backtest-${FROM}-${TO}-h${H}-${UNIVERSE}.json`);
+const out = { meta: { run: new Date().toISOString(), from: FROM, to: TO, step: STEP, horizon: H, runs: RUNS, skipDyads, refit: REFIT, fit_source: REFIT ? 'rolling-origin: refit per as-of year on labels ≤ as-of' : 'full-sample data/fits.json (leaks past the as-of date)' }, byAsOf: results, pooled: summary };
+const file = `scores/backtest-${FROM}-${TO}-h${H}-${UNIVERSE}${REFIT ? '' : '-norefit'}.json`;
+writeFileSync(file, JSON.stringify(out, null, 1));
+console.log(`\nwrote ${file}`);

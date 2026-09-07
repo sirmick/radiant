@@ -1,6 +1,6 @@
 {
  "meta": {
-  "built": "2026-09-07T05:26:27.516Z"
+  "built": "2026-09-07T05:58:50.756Z"
  },
  "fits": {
   "leader_exit": {
@@ -13,6 +13,11 @@
    "base_rate": 0.16883116883116883,
    "window": [
     1950,
+    2021
+   ],
+   "trained_through": 2021,
+   "train_years": [
+    1951,
     2021
    ],
    "intercept": -2.115940144476561,
@@ -138,6 +143,11 @@
    "base_rate": 0.020332126889503938,
    "window": [
     1950,
+    2021
+   ],
+   "trained_through": 2021,
+   "train_years": [
+    1951,
     2021
    ],
    "intercept": -2.9198628029136326,
@@ -357,6 +367,11 @@
     1950,
     2021
    ],
+   "trained_through": 2001,
+   "train_years": [
+    1951,
+    2001
+   ],
    "intercept": -3.5483513196840897,
    "coefs": {
     "regime=1": {
@@ -499,6 +514,11 @@
     1900,
     2024
    ],
+   "trained_through": 2023,
+   "train_years": [
+    1901,
+    2023
+   ],
    "intercept": -4.686146670513911,
    "coefs": {
     "regime=1": {
@@ -624,6 +644,11 @@
    "window": [
     1900,
     2024
+   ],
+   "trained_through": 2023,
+   "train_years": [
+    1901,
+    2023
    ],
    "intercept": -3.401985933670122,
    "coefs": {
@@ -787,6 +812,11 @@
     1900,
     2024
    ],
+   "trained_through": 2023,
+   "train_years": [
+    1901,
+    2023
+   ],
    "intercept": -3.1925586483373882,
    "coefs": {
     "regime=1": {
@@ -909,6 +939,11 @@
     1900,
     2024
    ],
+   "trained_through": 2023,
+   "train_years": [
+    1901,
+    2023
+   ],
    "intercept": -3.4517394242976245,
    "coefs": {
     "regime=2": {
@@ -1022,6 +1057,11 @@
    "window": [
     1900,
     2024
+   ],
+   "trained_through": 2023,
+   "train_years": [
+    1901,
+    2023
    ],
    "intercept": -4.536883710549324,
    "coefs": {
@@ -1168,6 +1208,11 @@
     1900,
     2024
    ],
+   "trained_through": 2023,
+   "train_years": [
+    1901,
+    2023
+   ],
    "intercept": -4.979740745082667,
    "coefs": {
     "z(log_gdp_pc)": {
@@ -1310,6 +1355,11 @@
    "window": [
     1900,
     2024
+   ],
+   "trained_through": 2023,
+   "train_years": [
+    1901,
+    2023
    ],
    "intercept": -3.340278101729496,
    "coefs": {
@@ -1465,6 +1515,11 @@
     1946,
     2024
    ],
+   "trained_through": 2022,
+   "train_years": [
+    1946,
+    2022
+   ],
    "intercept": -4.012430617613218,
    "coefs": {
     "regime=1": {
@@ -1590,6 +1645,11 @@
     1816,
     2001
    ],
+   "trained_through": 2001,
+   "train_years": [
+    1886,
+    2001
+   ],
    "intercept": -5.434448478601149,
    "coefs": {
     "contiguous": {
@@ -1701,6 +1761,11 @@
    "base_rate": 0.003285141608416909,
    "window": [
     1816,
+    2001
+   ],
+   "trained_through": 2001,
+   "train_years": [
+    1886,
     2001
    ],
    "intercept": -7.55278658620535,

@@ -26,6 +26,54 @@ Proposals from the refinement loop that add a new effect, variable or mechanism.
 
 **Test that decides it.** Every `byAsOf[].templates[]` row carries `fit_split <= asOf`; as-of years with too few training events report `fit_source: 'literature prior'` or are excluded from `pooled`. Direction check: the refit era AUCs must be ≤ the current ones.
 
+**Status:** implemented (2026-09-07).
+
+**Implemented as.** The whole fitting layer moved to `scripts/lib/fit.mjs` (`createFitter({panel, events, templates, contiguity, pacts})` → `fitAll({ maxYear, only, splitOverride, holdout, ablation })`); `scripts/fit-hazards.mjs` is now a thin CLI over it and reproduces `data/fits.json` byte for byte (two additive fields, `trained_through` and `train_years`). `scripts/backtest.mjs` takes `--refit` (**default**, per the operator note of 2026-09-07) and `--no-refit`; the no-refit path reproduces the pre-change run digit for digit, and writes to `scores/…-norefit.json` so the published file stays the refit one.
+
+Two deviations from the package as written, both recorded here:
+- **The information set is the label year, not the row year.** A row is in the training sample iff `year + (lead ?? 0) <= asOf` — a `lead: 1` template's row for year *y* is labelled by an event in *y+1*, so a fit at as-of 1940 may use rows up to 1939 and a dyad row up to 1940. Filtering on the row year alone would have kept rows whose outcome the forecaster cannot have seen. Standardisation means and sds (`z`, `log` centring) are recomputed on each training subset for the same reason.
+- **No literature-prior fallback.** The package offered `fit_source: 'literature prior'` *or* exclusion from `pooled` for as-of years with too little training data. There is no sourced base rate in `data/templates.yaml` to put in the intercept, so inventing one would be a hand-typed number driving the engine — the thing `docs/system.md` "Faithful first" retires. Such a template is instead reported as a row with `n: 0`, `fit_source: 'none (no training data at as-of)'` and the count that failed (`n=1080, events=2 in years ≤ 1890`), the engine simulates nothing for it, and it is out of `pooled`. Thirty-eight of the 110 template × as-of rows in the 1870–2010 run are now of this kind.
+
+Each scored row carries `fit_split` (last training label year), `fit_n`, `fit_events`, `fit_source` and `leaky`.
+
+**Test result.** `node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all`: 72 scored rows, **all with `fit_split <= asOf`, 0 leaky**, 38 no-fit rows reported and excluded from `pooled`. The same run with `--no-refit`: 104 scored rows, **103 leaky** (the exception is `coup_attempt` at as-of 2010, whose training sample ends 2001).
+
+Direction check on the era rows (before = full-sample fit, after = refit), `auc` / `auc_at_risk` / exp:obs:
+
+| as-of | mid_force before | mid_force after | mid_war before | mid_war after |
+|---|---|---|---|---|
+| 1870 | 0.83 / 0.79 / 3.51 | **no fit** (0 training rows) | 0.87 / 0.53 / 3.63 | **no fit** |
+| 1880 | 0.81 / 0.82 / 2.71 | **no fit** (0 training rows) | 0.70 / 0.76 / 3.21 | **no fit** |
+| 1890 | 0.81 / 0.71 / 1.63 | **no fit** (n=1080, 2 events) | 0.73 / 0.66 / 2.39 | **no fit** (0 events) |
+| 1900 | 0.78 / 0.77 / 0.77 | 0.75 / 0.73 / 0.28 | 0.77 / 0.76 / 0.82 | 0.76 / 0.75 / 0.26 |
+| 1910 | 0.81 / 0.72 / 0.71 | 0.80 / 0.68 / 0.28 | 0.85 / 0.63 / 0.80 | 0.80 / 0.57 / 0.19 |
+| 1920 | 0.89 / 0.77 / 1.08 | 0.89 / 0.74 / 1.07 | 0.88 / 0.75 / 0.97 | 0.87 / 0.66 / 0.94 |
+| 1930 | 0.77 / 0.75 / 0.33 | 0.76 / 0.73 / 0.31 | 0.78 / 0.75 / 0.23 | 0.77 / 0.72 / 0.18 |
+| 1940 | 0.71 / 0.72 / 0.53 | 0.71 / **0.75** / 0.68 | 0.73 / 0.74 / 0.43 | 0.73 / **0.77** / 0.59 |
+
+The check holds everywhere it can be evaluated except as-of 1940, where `auc_at_risk` *rises* 0.03 on both templates. That is reproducible, not noise: re-run at as-of 1940 with 400 runs, refit 0.75 / 0.78 against full-sample 0.72 / 0.75, headline AUC identical at 0.71 / 0.73 both ways, and exp/obs moves toward 1 (0.53 → 0.68, 0.43 → 0.59). The reading: the full-sample fit is pulled toward the 1946–2001 process, which discriminates the 1940–1960 horizon *worse* than a fit that stops in 1940 — leakage inflates in-sample fit but does not have to help out of sample when the eras differ. The three as-of years the package was written about (1870/1880/1890) are the strongest form of the result: they had no fittable dyad sample at all, so their 0.79–0.82 `auc_at_risk` was entirely a report on data the forecaster could not have.
+
+Cost of the honesty, post-1946: over-prediction that the full sample was hiding. `mid_war` exp/obs at as-of 1950/1960/1970/1980 goes 1.88 → 3.95, 2.82 → 5.21, 3.19 → 5.14, 3.63 → 4.75 — a forecaster standing in 1950 has WW1 and WW2 in the sample and nothing after, and the engine has no war duration to damp it (`era-1914-1945 / engine-5`).
+
+**Scores: before → after** (pooled, as-of 1870…2010, +20y, 100 runs, all states; exp/obs · Brier skill · AUC):
+
+| template | before (full-sample fit) | after (`--refit`) |
+|---|---|---|
+| mid_force | n=113,477 · 0.90 · +0.09 · 0.77 | n=108,797 · 0.95 · +0.03 · 0.77 |
+| mid_war | n=113,477 · 0.97 · +0.03 · 0.78 | n=108,797 · 1.10 · −0.06 · 0.77 |
+| coup_attempt | n=1,241 · 0.84 · +0.15 · 0.73 | n=1,105 · 0.89 · +0.18 · 0.76 |
+| intrastate_onset | n=1,241 · 0.95 · +0.20 · 0.77 | n=1,241 · 1.02 · +0.12 · 0.74 |
+| leader_exit | n=1,241 · 0.84 · −0.68 · 0.76 | n=1,105 · 0.85 · −0.82 · 0.74 |
+| irregular_exit | n=1,241 · 1.49 · −0.11 · 0.69 | n=1,105 · 2.06 · −0.47 · 0.71 |
+| democratize_step | n=1,065 · 0.96 · −0.19 · 0.56 | n=942 · 0.97 · −0.20 · 0.54 |
+| autocratic_closure | n=749 · 0.80 · −0.08 · 0.60 | n=696 · 0.66 · −0.15 · 0.60 |
+| democratic_deepening | n=186 · 1.09 · +0.06 · 0.72 | n=169 · 1.51 · −0.10 · 0.69 |
+| liberal_erosion | n=185 · 1.08 · −0.08 · 0.35 | **gone** — 3 training events by 2010, never fittable at any as-of year |
+
+Era rows this package targets, pooled: 1870–1910 `mid_force` 0.28 · +0.10 · 0.78 and `mid_war` 0.23 · +0.05 · 0.78 (both were unscorable-as-forecasts before); 1910–1940 `mid_force` 0.53 · +0.12 · 0.76, `mid_war` 0.41 · +0.09 · 0.76 (was 0.44 · +0.117 · 0.76).
+
+**What this means for every later package.** The published numbers are now the `--refit` ones, and the guards written into the packages below were measured under the old full-sample fit. Restated where they moved (`--refit`, same commands): 1910–1940 pooled `mid_war` skill **0.094** (was 0.117) and exp/obs **0.41** (was 0.44); as-of 1930/1940 `mid_war` `n_structural_miss` **79 / 87** with `auc_at_risk` **0.72 / 0.77** (was 75 / 87 and 0.75 / 0.74); 1950–2000 pooled `mid_war` exp/obs **4.18** (was 2.62) and `mid_force` **1.53** (was 1.16); as-of 1940 `democratize_step` `auc_at_risk` **0.38** (was 0.44) with 1910–1940 pooled skill **−0.274** (was −0.25). Two tests are no longer measurable as written: `engine-6` and `engine-7` are scored at as-of 1870/1880/1890, where there is now no fitted dyad model at all — they need restating against as-of 1900–1930, or a `mid_force` sample that reaches behind 1886 (CoW Direct Contiguity, `docs/refine-log.md` *Deferred*).
+
 ## era-1870-1914 / statistics-6 — a pre-1946 era term on the dyadic templates
 
 **Adds.** A dyad-level constant `pre_1946` in `scripts/build-panel.mjs` and a `candidates:` entry on `mid_war` (and `mid_force`) with `holdout_split: 1946` so the term is identified with the era partly in training.
