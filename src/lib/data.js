@@ -44,7 +44,7 @@ export function actualWithin(news, id, template, asOf, years) {
 /** Pseudo-variables exposed by the forecast ensemble: cumulative event probabilities and regime expectation. */
 export function forecastVariables(fc) {
   if (!fc) return [];
-  const vars = fc.meta.templates.filter(t => t.unit === 'actor-year').map(t => ({ id: `fc_${t.id}`, group: 'forecast', label: `P(${t.label}) by year`, unit: 'cumulative since 2026', kind: 'forecast', scope: 'actor', template: t.id, display: { map: true, format: '.0%' } }));
+  const vars = fc.meta.templates.filter(t => t.unit === 'actor-year').map(t => ({ id: `fc_${t.id}`, group: 'forecast', label: `P(${t.label})`, unit: 'within the horizon', kind: 'forecast', scope: 'actor', template: t.id, display: { map: true, format: '.0%' } }));
   vars.unshift({ id: 'fc_regime_mean', group: 'forecast', label: 'Expected regime level (0 closed … 3 liberal)', unit: 'ensemble mean', kind: 'forecast', scope: 'actor', display: { map: true, format: '.2f' } });
   vars.push({ id: 'fc_regime_uncertainty', group: 'forecast', label: 'Regime uncertainty (entropy)', unit: 'bits', kind: 'forecast', scope: 'actor', display: { map: true, format: '.2f' } });
   return vars;
@@ -71,10 +71,10 @@ export function alliancesAt(al, year, hubOf) {
 }
 /** URL hash <-> view state: #y=1956&v=h_regime&a=EGY&l=territories,corridors */
 export function readHash() {
-  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); if (h.get('f')) o.asOf = +h.get('f'); return o; } catch { return {}; }
+  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); if (h.get('f')) o.asOf = +h.get('f'); if (h.get('h')) o.horizon = +h.get('h'); return o; } catch { return {}; }
 }
-export function writeHash({ year, varId, selected, layers, tab, asOf }) {
-  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
+export function writeHash({ year, varId, selected, layers, tab, asOf, horizon }) {
+  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (horizon) h.set('h', String(horizon)); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
 }
 /** Regime level for an actor at a year: history panel, else the forecast's modal regime. */
 export function regimeAt(history, forecast, id, year) {
@@ -113,14 +113,18 @@ export function statusAt(rec, year) {
 }
 
 /** Forecast value for an actor at a calendar year (years before the forecast start return the 2025 state). */
-export function forecastAt(fc, variable, id, year) {
+export function forecastAt(fc, variable, id, year, horizon = 0) {
   const a = fc?.actors?.[id]; if (!a) return { value: null };
   const k = Math.round(year) - fc.meta.from;          // 0-based year offset
   if (k < 0) return { value: variable.id === 'fc_regime_mean' ? a.regime0 : (variable.id === 'fc_regime_uncertainty' ? 0 : 0), year, forecast: false };
   const i = Math.min(k, fc.meta.horizon - 1);
   if (variable.id === 'fc_regime_mean') { const d = a.regime?.[i]; return { value: d ? d.reduce((s, p, l) => s + p * l, 0) : null, year, forecast: true, dist: d }; }
   if (variable.id === 'fc_regime_uncertainty') { const d = a.regime?.[i]; return { value: d ? -d.reduce((s, p) => s + (p > 0 ? p * Math.log2(p) : 0), 0) : null, year, forecast: true, dist: d }; }
-  const c = a.p?.[variable.template]; return { value: c ? c[i] : null, year, forecast: true };
+  const c = a.p?.[variable.template]; if (!c) return { value: null, year, forecast: true };
+  if (!horizon) return { value: c[i], year, forecast: true };                       // cumulative since the forecast start
+  // P(first occurrence within the next `horizon` years | none so far): (c[i+H] - c[i-1]) / (1 - c[i-1]); the year itself counts
+  const before = i > 0 ? c[i - 1] : 0; const end = c[Math.min(c.length - 1, i - 1 + horizon)];
+  return { value: before >= 1 ? 0 : (end - before) / (1 - before), year, forecast: true, horizon };
 }
 
 /** Value of a compiled variable record at a year. Returns { value, year, extrapolated, projected }. */

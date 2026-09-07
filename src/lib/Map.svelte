@@ -3,7 +3,7 @@
   import * as topojson from 'topojson-client';
   import { valueAt, forecastAt, historyAt, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
-  let { world, geo, forecast, history, alliances, news, presence, variable, year, layers, selected, onSelect } = $props();
+  let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, selected, onSelect } = $props();
   let hover = $state(null); let mapEl = $state(null);
 
   let width = $state(800), height = $state(600);
@@ -40,7 +40,7 @@
   const values = $derived.by(() => {
     const out = {};
     if (!variable) return out;
-    if (variable.kind === 'forecast') { for (const id of Object.keys(forecast?.actors ?? {})) out[id] = forecastAt(forecast, variable, id, year); return out; }
+    if (variable.kind === 'forecast') { for (const id of Object.keys(forecast?.actors ?? {})) out[id] = forecastAt(forecast, variable, id, year, variable.template ? horizon : 0); return out; }
     if (variable.kind === 'history') return historyAt(history, variable, year);
     for (const [id, a] of Object.entries(world.actors)) out[id] = valueAt(a.vars[variable.id], year);
     return out;
@@ -346,7 +346,7 @@
         <div class="bar" style="background: linear-gradient(90deg, {d3.range(0, 1.01, 0.1).map(t => scale.scale(scale.log ? Math.exp(Math.log(scale.domain[0]) + t * (Math.log(scale.domain[1]) - Math.log(scale.domain[0]))) : scale.domain[0] + t * (scale.domain[1] - scale.domain[0]))).join(',')})"></div>
         <div class="ticks"><span>{d3.format('.3~s')(scale.domain[0])}</span><span>{d3.format('.3~s')(scale.domain[1])}</span></div>
       {/if}
-      <div class="muted small">{variable.kind === 'forecast' ? (year >= (forecast?.meta.from ?? 2026) ? `ensemble of ${forecast?.meta.runs} runs · generic templates only` : 'before forecast start: 2025 state') : variable.kind === 'history' ? (year > (history?.meta.y1 ?? 2025) ? 'past the panel: nothing shown' : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''}`) : year > 2026 ? 'projection / extrapolation' : 'historical'} · grey = no data</div>
+      <div class="muted small">{variable.kind === 'forecast' ? (year >= (forecast?.meta.from ?? 2026) ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs · generic templates only` : 'before forecast start: 2025 state') : variable.kind === 'history' ? (year > (history?.meta.y1 ?? 2025) ? 'past the panel: nothing shown' : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''}`) : year > 2026 ? 'projection / extrapolation' : 'historical'} · grey = no data</div>
     {/if}
     {#if presentStatuses.t.length}
       <div class="lt" style="margin-top:6px">Territories <span class="muted">hatched · ◇ point</span></div>

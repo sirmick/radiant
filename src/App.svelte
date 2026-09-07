@@ -4,6 +4,7 @@
   import Panel from './lib/Panel.svelte';
 
   let data = $state(null), error = $state(null);
+  let horizon = $state(10);          // forecast window shown on the map: P(within the next H years)
   let asOf = $state(null);           // null = the current (2025) ensemble; a year = a past forecast made as of that year
   let ensemble = $state(null);       // the active ensemble object
   $effect(() => { if (!data) return; if (asOf == null) { ensemble = data.forecast; return; } const e = data.forecastIndex?.ensembles.find(x => x.asOf === asOf); if (!e) { ensemble = data.forecast; return; } loadEnsemble(e.file).then(f => { if (asOf === e.asOf) ensemble = f; }); });
@@ -23,7 +24,7 @@
   let layers = $state({ territories: true, corridors: true, alliances: 'major', conflicts: true, presence: true, labels: true, glyphs: false });
   let selected = $state(null);
 
-  const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; };
+  const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; if (h.horizon) horizon = h.horizon; };
   loadWorld().then(d => { data = d; applyHash(); }).catch(e => { error = String(e); });
   let tab = $state('news');
   const HL_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', coup: '#d95c4f', alliance: '#6cb4ff', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3' };
@@ -34,7 +35,7 @@
     const items = (data.news?.years?.[y] ?? []).filter(e => !e.ongoing && ['war', 'nuclear', 'territory', 'corridor', 'coup', 'alliance'].includes(e.k));
     return items.slice(0, 3).map(e => ({ t: e.t.length > 90 ? e.t.slice(0, 88) + '…' : e.t, col: HL_COL[e.k] ?? '#8b94a3' }));
   });
-  $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab, asOf }); });
+  $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab, asOf, horizon }); });
 
   const mapVars = $derived(data ? [...historyVariables(data.history), ...forecastVariables(ensemble ?? data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
   const groups = $derived(data ? [['history', 'History (panel 1870–2025)'], ['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
@@ -90,6 +91,9 @@
         </div>
         <div class="fcband" style="left:{(fcFrom - Y0) / (Y1 - Y0) * 100}%; right:{asOf != null ? (Y1 - (ensemble?.meta.to ?? Y1)) / (Y1 - Y0) * 100 : 0}%" title="forecast window"></div>
       </div>
+      <label class="asof" title="Window for forecast probabilities on the map: P(event within the next H years from the slider year, given it has not happened yet)">horizon
+        <select bind:value={horizon}>{#each [1, 2, 5, 10, 20, 40] as h}<option value={h}>{h} y</option>{/each}</select>
+      </label>
       <label class="asof" title="Run the forecast as of a past year: coefficients refit on data up to that year, then compared with what happened">forecast from
         <select value={asOf ?? ''} onchange={(e) => { asOf = e.target.value === '' ? null : +e.target.value; if (asOf != null) year = Math.max(year, asOf + 1); }}>
           <option value="">2025 (now)</option>
@@ -103,7 +107,7 @@
       {#if !headlines.length}<span class="muted tiny">no recorded headline events for {Math.round(year)}</span>{/if}
     </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
+      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {horizon} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
       <Panel world={data.world} forecast={ensemble ?? data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
     </main>
   </div>
