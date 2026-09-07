@@ -10,7 +10,9 @@ const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 
 const FROM = +arg('from', 1870), TO = +arg('to', 2000), STEP = +arg('step', 10), H = +arg('horizon', 20), RUNS = +arg('runs', 200);
 const skipDyads = process.argv.includes('--no-dyads');
 const UNIVERSE = arg('universe', 'modeled');   // modeled (67 simulated actors) | all (every state)
-const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
+const contiguityFile = JSON.parse(readFileSync('data/contiguity.json', 'utf8'));
+const contiguity = contiguityFile.pairs; const contiguityFrom = contiguityFile.meta?.years?.[0] ?? null;
+const MIN_AT_RISK = 10;   // a template scored on fewer at-risk units than this is reported but kept out of the pooled summary
 // ground-truth coverage per event kind: score only inside these windows (the datasets end; absence past the end is not a non-event)
 const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1900, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001] };
 
@@ -19,6 +21,9 @@ const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
 const { fits } = JSON.parse(readFileSync('data/fits.json', 'utf8'));
 const templates = Y('data/templates.yaml').templates;
 const actors = loadActors(); const code = makeCodeMap(actors);
+const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
+const Y0 = panel.meta.y0;
+const liveAt = (id, y) => panel.actors[id]?.live?.[y - Y0] === 1;
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const pacts = new Set();
 for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
@@ -46,12 +51,15 @@ const results = []; const pooled = {};
 console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}\n`);
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
-  const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE });
+  const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom });
   const t0 = Date.now();
   const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads });
   const real = realized(asOf, horizon);
   const w0 = make(); const ids = Object.keys(w0.actors);
-  const row = { asOf, horizon, actors: ids.length, ms: Date.now() - t0, templates: {} };
+  // dyads are scored over every actor the engine can hold during the horizon, including ones born inside it
+  // (the engine introduces and retires actors from the same dated system membership the panel carries)
+  const dyadIds = Object.keys(panel.actors).filter(id => (UNIVERSE !== 'modeled' || panel.actors[id].modeled?.[asOf - Y0]) && (() => { for (let y = asOf; y <= asOf + horizon; y++) if (liveAt(id, y)) return true; return false; })());
+  const row = { asOf, horizon, actors: ids.length, dyad_actors: dyadIds.length, ms: Date.now() - t0, templates: {} };
   for (const t of templates) {
     if (fits[t.id]?.status !== 'fitted') continue;
     const kind = t.event; const pairs = [];
@@ -69,20 +77,38 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
         pairs.push([covYears < horizon ? ens.pAnyWithin(key, covYears) : (p ?? 0), real.any.has(key) ? 1 : 0, id]);
       }
     } else if (!skipDyads) {
-      for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const k = `${kind}|${pairKey(ids[i], ids[j])}`; pairs.push([covYears < horizon ? ens.pAnyWithin(k, covYears) : (ens.pAnyDyad[k] ?? 0), real.dy.has(k) ? 1 : 0, k]); }
+      for (let i = 0; i < dyadIds.length; i++) for (let j = i + 1; j < dyadIds.length; j++) { const k = `${kind}|${pairKey(dyadIds[i], dyadIds[j])}`; pairs.push([covYears < horizon ? ens.pAnyWithin(k, covYears) : (ens.pAnyDyad[k] ?? 0), real.dy.has(k) ? 1 : 0, k]); }
     }
-    if (!pairs.length) continue;
+    // a template that never fires is reported, not dropped: silence about a dead template reads as a clean score
+    if (!pairs.length) { row.templates[t.id] = { n: 0, reason: 'no at-risk unit with complete covariates', scored_years: covYears }; continue; }
     const brier = pairs.reduce((s, [p, y]) => s + (p - y) ** 2, 0) / pairs.length;
     const predicted = pairs.reduce((s, [p]) => s + p, 0), observed = pairs.reduce((s, [, y]) => s + y, 0);
-    row.templates[t.id] = { n: pairs.length, predicted, observed, brier, auc: auc(pairs), scored_years: covYears };
-    (pooled[t.id] ??= []).push(...pairs.map(([p, y]) => [p, y]));
+    // the at-risk split: units the model can ever put mass on (p>0) versus the ones its relevance filter zeroes out.
+    // AUC over all units mostly measures that filter; auc_at_risk is what the fitted coefficients actually do.
+    const at = pairs.filter(x => x[0] > 0);
+    const structuralMiss = pairs.filter(x => x[0] === 0 && x[1] === 1).length;
+    const rec = { n: pairs.length, n_at_risk: at.length, n_structural_miss: structuralMiss, predicted, observed, observed_at_risk: at.reduce((s, [, y]) => s + y, 0), brier, auc: auc(pairs), auc_at_risk: auc(at), scored_years: covYears };
+    if (t.unit === 'actor-year' && at.length < MIN_AT_RISK) rec.underpowered = true;
+    row.templates[t.id] = rec;
+    if (!rec.underpowered) (pooled[t.id] ??= []).push(...pairs.map(([p, y]) => [p, y]));
   }
   results.push(row);
   console.log(`as-of ${asOf} (+${horizon}y, ${ids.length} actors, ${(row.ms / 1000).toFixed(1)}s)`);
-  for (const [id, s] of Object.entries(row.templates)) console.log(`   ${id.padEnd(22)}${s.scored_years < horizon ? `[${s.scored_years}y]` : '     '} n=${String(s.n).padStart(5)}  exp=${s.predicted.toFixed(1).padStart(6)}  obs=${String(s.observed).padStart(4)}  ratio=${fmt(s.observed ? s.predicted / s.observed : null)}  brier=${fmt(s.brier, 3)}  auc=${fmt(s.auc)}`);
+  for (const [id, s] of Object.entries(row.templates)) {
+    if (!s.n) { console.log(`   ${id.padEnd(22)}      ${s.reason}`); continue; }
+    console.log(`   ${id.padEnd(22)}${s.scored_years < horizon ? `[${s.scored_years}y]` : '     '} n=${String(s.n).padStart(5)}  atrisk=${String(s.n_at_risk).padStart(5)}  exp=${s.predicted.toFixed(1).padStart(6)}  obs=${String(s.observed).padStart(4)}  miss0=${String(s.n_structural_miss).padStart(3)}  ratio=${fmt(s.observed ? s.predicted / s.observed : null)}  brier=${fmt(s.brier, 3)}  auc=${fmt(s.auc)}  auc@risk=${fmt(s.auc_at_risk)}${s.underpowered ? '  [underpowered, out of pooled]' : ''}`);
+  }
 }
 function hasCoverage(world, t, id) {
-  const a = world.actors[id]; return t.covariates.every(c => { const v = c.var; if (c.transform === 'win5') return true; const src = (c.lag ?? (c.transform === 'lag1' ? 1 : 0)) ? a.prev : a.cur; if (v === 'milper_share') return src.milper != null && src.tpop; if (v === 'leader_exit_recent' || v === 'regime_change') return true; return src[v] != null; });
+  const a = world.actors[id]; if (!a) return false;
+  return t.covariates.every(c => {
+    const v = c.var; if (c.transform === 'win5') return true;
+    const lag = c.lag ?? (c.transform === 'lag1' ? 1 : 0); const src = lag ? a.prev : a.cur;
+    if (v === 'milper_share') return src.milper != null && src.tpop;
+    if (v === 'leader_exit_recent' || v === 'regime_change') return true;
+    if (src[v] == null && c.default_outside) { const [w0, w1] = c.default_outside.window; const yy = world.year - lag; if (yy < w0 || yy > w1) return true; }
+    return src[v] != null;
+  });
 }
 
 console.log('\npooled across as-of years:');

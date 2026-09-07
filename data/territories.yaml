@@ -2,6 +2,8 @@
 # geometry.ne_ids reference features in the Natural Earth 10m disputed-areas layer (data/geo/world.topo.json, object "disputed").
 # geometry.sketch is a hand-drawn lon/lat ring, tagged so the UI renders it as an approximation. Replace with ISW/DeepState GeoJSON when wired.
 # stakes: 0-1 per side, how much it would pay to hold/take (estimate). hazard: id in hazards.yaml (omit = static).
+# history: dated control list — [{ year, controller, status, source }]. controller/status at the top of a record are the
+# 2026 snapshot; history is what a backtest as-of a historical year reads.
 # Snapshot: 2026-09-06.
 
 # ---------------------------------------------------------------- Ukraine
@@ -14,6 +16,8 @@
   geometry: { ne_ids: [1159321217] }
   hazard: ukraine_territory
   notes: "Annexed 2014. No plausible path back to Kyiv inside the model horizon except Russian state failure."
+  history:
+    - { year: 2014.2, controller: RUS, status: occupied, source: "data/history/events.yaml" }
 
 - id: donbas
   name: Donetsk & Luhansk (Russian-held)
@@ -24,6 +28,8 @@
   geometry: { ne_ids: [1763286545, 1763286547] }
   hazard: ukraine_territory
   notes: "NE breakaway polygons are the 2014-22 'republics'; the 2026 line runs west of them. Sketch below carries the rest."
+  history:
+    - { year: 2014.3, controller: RUS, status: contested_active, source: "data/history/events.yaml" }
 
 - id: ukraine_south_occupied
   name: Zaporizhzhia & Kherson (Russian-held, land bridge)
@@ -36,6 +42,8 @@
     geometry_source: sketch (ISW control-of-terrain, Sept 2026, approximate)
   hazard: ukraine_territory
   notes: "Includes the ZNPP. The land bridge to Crimea is the thing Moscow will not trade."
+  history:
+    - { year: 2022.2, controller: RUS, status: contested_active, source: "data/history/events.yaml" }
 
 # ---------------------------------------------------------------- Levant
 - id: golan
@@ -46,6 +54,8 @@
   stakes: { ISR: 0.9, SYR: 0.6 }
   geometry: { ne_ids: [1159320905] }
   notes: "Annexed 1981; US-recognised 2019. Static in the model — a Syria treaty codifies it, it doesn't return it."
+  history:
+    - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: syria_buffer
   name: Israeli buffer zone in southern Syria (post-Dec 2024)
@@ -59,6 +69,8 @@
     geometry_source: sketch (UNDOF zone + IDF positions on Hermon and east of the line, approximate)
   hazard: syria_buffer_control
   notes: "The 1974 disengagement zone Israel entered after Assad fell. A Syria–Israel treaty (hazard israel_syria_treaty) returns it to a demilitarised SYR/UN status."
+  history:
+    - { year: 2024.95, controller: ISR, status: buffer, source: "data/history/events.yaml" }
 
 - id: syria_north_turkish
   name: Turkish-controlled / Turkish-backed zone (Idlib, Afrin, Euphrates Shield, Peace Spring)
@@ -71,6 +83,8 @@
     geometry_source: sketch (approximate; Turkish zones are now formally under Damascus with Turkish forces present)
   hazard: syria_zones
   notes: "Abu al-Duhur is here. Where Turkish AD arrives first and Israel strikes runways. Transitioning to 'Turkish garrison inside Syrian sovereignty'."
+  history:
+    - { year: 2026.68, controller: TUR, status: buffer, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: syria_northeast_sdf
   name: Northeast Syria (SDF / integration zone)
@@ -83,6 +97,8 @@
     geometry_source: sketch (approximate; March 2025 integration agreement partially implemented)
   hazard: syria_zones
   notes: "Controller nominally SYR after the SDF integration deal; contested because integration is incomplete and Turkey wants the YPG gone. Oil fields and the Euphrates crossings are here — the rail route to the Mediterranean runs through it."
+  history:
+    - { year: 2026.68, controller: SYR, status: contested_active, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: gaza
   name: Gaza
@@ -92,6 +108,8 @@
   stakes: { ISR: 0.6 }
   geometry: { ne_ids: [1159320901] }
   notes: "Static in M1. Matters to the model through Saudi normalisation and IMEC, not through control change."
+  history:
+    - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: west_bank
   name: West Bank
@@ -101,6 +119,8 @@
   stakes: { ISR: 0.7 }
   geometry: { ne_ids: [1159320903, 1746265961] }
   notes: "Static in M1."
+  history:
+    - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: shebaa
   name: Shebaa Farms
@@ -110,6 +130,8 @@
   stakes: { ISR: 0.3 }
   geometry: { ne_ids: [1159320907] }
   notes: "Static."
+  history:
+    - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- Iraq / Kurdistan
 - id: kurdistan_region
@@ -122,6 +144,8 @@
     sketch: [[42.4, 37.3], [43.5, 37.4], [44.8, 37.2], [45.5, 36.5], [46.0, 35.8], [45.9, 35.1], [45.5, 34.8], [45.0, 35.2], [44.3, 35.5], [43.6, 36.0], [43.0, 36.5], [42.5, 36.9]]
     geometry_source: sketch (KRG-administered governorates, approximate; disputed territories excluded)
   notes: "Autonomous under Baghdad. Turkey and Iran compete here; the Development Road skirts it. Static in M1, a hazard candidate in M2."
+  history:
+    - { year: 2026.68, controller: IRQ, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- Caucasus
 - id: zangezur_syunik
@@ -135,6 +159,8 @@
     geometry_source: sketch (Meghri district strip along the Araxes, approximate)
   hazard: zangezur_control
   notes: "TRIPP (Aug 2025) makes it a US-managed transit route under Armenian sovereignty. Iran's red line is a change of controller, not a road. Control hazard is low but the stakes are the corridor."
+  history:
+    - { year: 2026.68, controller: ARM, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: nagorno_karabakh
   name: Nagorno-Karabakh (former)
@@ -144,6 +170,8 @@
   stakes: { AZE: 0.9 }
   geometry: { ne_ids: [1159320385] }
   notes: "Resolved by force Sept 2023; NE polygon is the pre-2023 breakaway. Kept for history rendering. Static."
+  history:
+    - { year: 2023.7, controller: AZE, status: frozen, source: "data/history/events.yaml" }
 
 - id: abkhazia
   name: Abkhazia
@@ -153,6 +181,8 @@
   stakes: { RUS: 0.7 }
   geometry: { ne_ids: [1159320785] }
   notes: "Russian-garrisoned. Moves only on Russian state failure."
+  history:
+    - { year: 2026.68, controller: RUS, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: south_ossetia
   name: South Ossetia
@@ -161,6 +191,8 @@
   status: breakaway
   stakes: { RUS: 0.6 }
   geometry: { ne_ids: [1159320787] }
+  history:
+    - { year: 2026.68, controller: RUS, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: transnistria
   name: Transnistria
@@ -170,6 +202,8 @@
   stakes: { RUS: 0.4, UKR: 0.5 }
   geometry: { ne_ids: [1159321047] }
   notes: "Isolated since 2022; the first thing that flips if Russia fragments."
+  history:
+    - { year: 2026.68, controller: RUS, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- East Asia
 - id: taiwan
@@ -181,6 +215,8 @@
   geometry: { ne_ids: [1159321335] }
   hazard: taiwan_control
   notes: "The contested middle of both systems. Control hazard is conditioned on the taiwan_blockade hazard, not independent of it."
+  history:
+    - { year: 2026.68, controller: TWN, status: disputed, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: senkaku
   name: Senkaku / Diaoyu (Nansei-shotō disputed subset)
@@ -190,6 +226,8 @@
   stakes: { JPN: 0.6, CHN: 0.5 }
   geometry: { ne_ids: [1159320959] }
   notes: "NE polygon covers the whole Nansei chain; the dispute is the Senkakus only. Static in M1."
+  history:
+    - { year: 2026.68, controller: JPN, status: disputed, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: paracels
   name: Paracel Islands
@@ -198,6 +236,8 @@
   status: occupied
   stakes: { CHN: 0.7, VNM: 0.6 }
   geometry: { ne_ids: [1159320477] }
+  history:
+    - { year: 2026.68, controller: CHN, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: spratlys
   name: Spratly Islands
@@ -208,6 +248,8 @@
   geometry: { ne_ids: [1159321165] }
   hazard: scs_incident
   notes: "Controller MIXED = feature-by-feature occupation. The naval-drone scenario makes every reef a Houthi."
+  history:
+    - { year: 2026.68, controller: MIXED, status: contested_active, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: scarborough
   name: Scarborough Shoal
@@ -217,6 +259,8 @@
   stakes: { CHN: 0.6, PHL: 0.7, USA: 0.4 }
   geometry: { ne_ids: [1159321227] }
   hazard: scs_incident
+  history:
+    - { year: 2026.68, controller: CHN, status: contested_active, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: korean_dmz
   name: Korean DMZ
@@ -226,6 +270,8 @@
   stakes: { KOR: 0.9, PRK: 0.9 }
   geometry: { ne_ids: [1159320991, 1159321183] }
   notes: "Static; the reference case for what a Ukraine armistice looks like."
+  history:
+    - { year: 2026.68, controller: UN, status: buffer, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: dokdo
   name: Dokdo / Takeshima
@@ -235,6 +281,8 @@
   stakes: { KOR: 0.5, JPN: 0.2 }
   geometry: { ne_ids: [1159320995] }
   notes: "The irritant inside the Japan–Korea alliance the model needs to hold."
+  history:
+    - { year: 2026.68, controller: KOR, status: disputed, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- South Asia
 - id: kashmir_pak
@@ -245,6 +293,8 @@
   stakes: { PAK: 0.9, IND: 0.6 }
   geometry: { ne_ids: [1159321155, 1159321157] }
   notes: "CPEC runs through Gilgit-Baltistan. Static in M1."
+  history:
+    - { year: 2026.68, controller: PAK, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: siachen
   name: Siachen Glacier
@@ -253,6 +303,8 @@
   status: frozen
   stakes: { IND: 0.5, PAK: 0.5 }
   geometry: { ne_ids: [1159320963] }
+  history:
+    - { year: 2026.68, controller: IND, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- Gulf / Africa
 - id: abu_musa_tunbs
@@ -263,6 +315,8 @@
   stakes: { IRN: 0.8, ARE: 0.4 }
   geometry: { ne_ids: [1159320883] }
   notes: "Sit in the Hormuz approaches; IRGC Navy bases. Static unless Iran state-fails."
+  history:
+    - { year: 2026.68, controller: IRN, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: northern_cyprus
   name: Northern Cyprus
@@ -272,6 +326,8 @@
   stakes: { TUR: 0.8 }
   geometry: { ne_ids: [1159320531, 1159320511] }
   notes: "Turkey's EU/SAFE candidacy runs into this. Static in M1."
+  history:
+    - { year: 2026.68, controller: TUR, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: western_sahara
   name: Western Sahara
@@ -281,6 +337,8 @@
   stakes: { MAR: 0.9 }
   geometry: { ne_ids: [1159321223] }
   notes: "Static; included so the Africa map isn't wrong."
+  history:
+    - { year: 2026.68, controller: MAR, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: somaliland
   name: Somaliland
@@ -290,3 +348,185 @@
   stakes: { ARE: 0.4, ETH: 0.5 }
   geometry: { ne_ids: [1159321259] }
   notes: "Berbera — UAE/Ethiopian port on the Bab al-Mandab approaches. Static in M1."
+  history:
+    - { year: 2026.68, controller: SOM_L, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
+
+# ---------------------------------------------------------------- historical territories (1870–1914)
+# Added 2026-09-06 (turn era-1870-1914). controller/status are the 2026 snapshot; `history` carries the dated changes.
+# Geometry is a point estimate: there is no historical polygon layer in the model, and a point is enough to place the
+# territory on a map without pretending to a border. stakes are estimates.
+
+- id: alsace_lorraine
+  name: Alsace-Lorraine
+  controller: FRA
+  claimants: []
+  status: settled
+  stakes: { FRA: 0.8, DEU: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [7.3, 48.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1871.36, controller: DEU, status: annexed, source: "Treaty of Frankfurt 10 May 1871" }
+    - { year: 1918.87, controller: FRA, status: annexed, source: "Armistice 11 Nov 1918; confirmed at Versailles" }
+    - { year: 1940.50, controller: DEU, status: annexed, source: "1940 armistice" }
+    - { year: 1944.95, controller: FRA, status: settled, source: "liberation 1944" }
+  notes: "The standing grievance in the FRA|DEU dyad the mid_force/mid_war templates are fitted across, and the reason the 1871–1914 peace between them is not evidence of contentment."
+
+- id: bosnia_herzegovina
+  name: Bosnia and Herzegovina (Ottoman → Austro-Hungarian)
+  controller: BIH
+  claimants: []
+  status: settled
+  stakes: { AUT_HUN: 0.7, OTTOMAN: 0.5, SRB: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [17.8, 44.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1878.55, controller: AUT_HUN, status: occupied, source: "Congress of Berlin, Jul 1878" }
+    - { year: 1908.76, controller: AUT_HUN, status: annexed, source: "annexation 6 Oct 1908 — the Bosnian crisis" }
+    - { year: 1918.95, controller: SRB, status: annexed, source: "Kingdom of Serbs, Croats and Slovenes, Dec 1918" }
+    - { year: 1992.20, controller: BIH, status: settled, source: "independence 1992" }
+  notes: "The territory that runs from the 1878 occupation through 1908 to Sarajevo: the chain the model should be able to see."
+
+- id: cyprus
+  name: Cyprus (Ottoman → British administration)
+  controller: CYP
+  claimants: [TUR]
+  status: settled
+  stakes: { GBR: 0.5, OTTOMAN: 0.4 }
+  stakes_source: estimate
+  geometry: { point: [33.4, 35.1], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1878.42, controller: GBR, status: occupied, source: "Cyprus Convention 4 Jun 1878 — leased to Britain against a Russian threat to Ottoman Asia" }
+    - { year: 1914.87, controller: GBR, status: annexed, source: "annexed on Ottoman entry into the war" }
+    - { year: 1960.62, controller: CYP, status: settled, source: "independence 16 Aug 1960" }
+
+- id: tunisia
+  name: Tunisia (Ottoman regency → French protectorate)
+  controller: TUN
+  claimants: []
+  status: settled
+  stakes: { FRA: 0.6, ITA: 0.6, OTTOMAN: 0.3 }
+  stakes_source: estimate
+  geometry: { point: [10.2, 34.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1881.36, controller: FRA, status: protectorate, source: "Treaty of Bardo 12 May 1881" }
+    - { year: 1956.20, controller: TUN, status: settled, source: "independence 20 Mar 1956" }
+  notes: "Italy's grievance here is what buys the Triple Alliance in 1882 — a territory transfer that shows up as an alliance edge."
+
+- id: egypt_british_occupation
+  name: Egypt under British occupation
+  controller: EGY
+  claimants: []
+  status: settled
+  stakes: { GBR: 0.8, OTTOMAN: 0.5, EGY: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [31.2, 30.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1882.70, controller: GBR, status: occupied, source: "Tel el-Kebir 13 Sep 1882" }
+    - { year: 1914.90, controller: GBR, status: protectorate, source: "protectorate declared Dec 1914" }
+    - { year: 1922.16, controller: EGY, status: settled, source: "nominal independence 28 Feb 1922 (EGY re-enters the actor set)" }
+  notes: "The corridor-driven intervention of the era: Britain occupies the state the Suez Canal transits, and stays 74 years."
+
+- id: heligoland
+  name: Heligoland
+  controller: DEU
+  claimants: []
+  status: settled
+  stakes: { DEU: 0.6, GBR: 0.3 }
+  stakes_source: estimate
+  geometry: { point: [7.9, 54.2], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1890.50, controller: DEU, status: annexed, source: "Heligoland–Zanzibar treaty 1 Jul 1890" }
+  notes: "Traded for colonial claims and turned into the seaward anchor of the Kiel Canal position — a territory whose value is a corridor's."
+
+- id: kiaochow
+  name: Kiaochow Bay / Tsingtao
+  controller: CHN
+  claimants: []
+  status: settled
+  stakes: { DEU: 0.6, CHN: 0.7, JPN: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [120.4, 36.1], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1898.18, controller: DEU, status: leased, source: "99-year lease, Mar 1898" }
+    - { year: 1914.87, controller: JPN, status: occupied, source: "siege of Tsingtao, Nov 1914" }
+    - { year: 1922.90, controller: CHN, status: settled, source: "Washington conference restitution, Dec 1922" }
+
+- id: liaodong_port_arthur
+  name: Liaodong / Port Arthur lease
+  controller: CHN
+  claimants: []
+  status: settled
+  stakes: { RUS: 0.8, JPN: 0.9, CHN: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [121.2, 38.9], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1898.24, controller: RUS, status: leased, source: "Russian lease 27 Mar 1898 — the warm-water terminus of the Manchurian rail complex" }
+    - { year: 1905.68, controller: JPN, status: leased, source: "Treaty of Portsmouth 5 Sep 1905" }
+    - { year: 1945.65, controller: RUS, status: leased, source: "Soviet occupation Aug 1945" }
+    - { year: 1955.40, controller: CHN, status: settled, source: "Soviet withdrawal 1955" }
+
+- id: weihaiwei
+  name: Weihaiwei lease
+  controller: CHN
+  claimants: []
+  status: settled
+  stakes: { GBR: 0.4, CHN: 0.6 }
+  stakes_source: estimate
+  geometry: { point: [122.1, 37.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1898.50, controller: GBR, status: leased, source: "lease Jul 1898, taken to balance the Russian and German leases" }
+    - { year: 1930.79, controller: CHN, status: settled, source: "returned Oct 1930" }
+
+- id: philippines
+  name: Philippines (Spanish → American)
+  controller: PHL
+  claimants: []
+  status: settled
+  stakes: { USA: 0.6, ESP: 0.5, PHL: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [121.0, 14.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1898.94, controller: USA, status: annexed, source: "Treaty of Paris 10 Dec 1898" }
+    - { year: 1946.53, controller: PHL, status: settled, source: "independence 4 Jul 1946" }
+  notes: "The acquisition that makes the USA a Pacific power and puts it on the CoW major-power list from 1898."
+
+- id: panama_canal_zone
+  name: Panama Canal Zone
+  controller: PAN
+  claimants: []
+  status: settled
+  stakes: { USA: 0.9, COL: 0.6, PAN: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [-79.7, 9.1], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1903.88, controller: USA, status: leased, source: "Hay–Bunau-Varilla treaty 18 Nov 1903, after the US-backed secession from Colombia" }
+    - { year: 1979.75, controller: PAN, status: leased, source: "Torrijos–Carter treaties enter force 1 Oct 1979" }
+    - { year: 1999.99, controller: PAN, status: settled, source: "full handover 31 Dec 1999" }
+  notes: "A territory created to hold a corridor; the USA|COL mid_force of 1903 is the same event."
+
+- id: korea
+  name: Korea (Joseon → Japanese protectorate → annexation)
+  controller: KOR
+  claimants: []
+  status: settled
+  stakes: { JPN: 0.9, RUS: 0.6, CHN: 0.6, KOREA: 1.0 }
+  stakes_source: estimate
+  geometry: { point: [127.0, 37.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1905.88, controller: JPN, status: protectorate, source: "Eulsa treaty Nov 1905" }
+    - { year: 1910.64, controller: JPN, status: annexed, source: "annexation 22 Aug 1910" }
+    - { year: 1945.65, controller: USA, status: occupied, source: "surrender Aug 1945; partition at the 38th parallel" }
+    - { year: 1948.62, controller: KOR, status: settled, source: "ROK founded 15 Aug 1948" }
+
+- id: libya_dodecanese
+  name: Libya and the Dodecanese (Ottoman → Italian)
+  controller: LBY
+  claimants: []
+  status: settled
+  stakes: { ITA: 0.7, OTTOMAN: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [13.2, 32.9], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1912.80, controller: ITA, status: annexed, source: "Treaty of Ouchy 18 Oct 1912" }
+    - { year: 1951.99, controller: LBY, status: settled, source: "independence 24 Dec 1951" }
+  notes: "The war that produces this is also the war that closes the Dardanelles in Apr 1912 — one Italian campaign, two corridor facts."

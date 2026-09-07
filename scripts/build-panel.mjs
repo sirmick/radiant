@@ -144,12 +144,36 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.great_game = YEARS.map((y, i) => (vars.bipolar[i] && vars.sp_client_any[i] ? 1 : 0));
   // external-influence channels: patron regime, unipolar democracy-promotion era, aid conditionality
   vars.unipolar_us = YEARS.map(y => (y >= 1992 && y <= 2016 ? 1 : 0));
-  vars.aid_conditionality = YEARS.map((y, i) => (vars.aid_gni?.[i] != null ? (vars.unipolar_us[i] ? Math.min(vars.aid_gni[i], 30) / 10 : 0) : null));   // ODA/GNI (capped 30%) in tens, only during the promotion era
+  // ODA/GNI (capped 30%) in tens, only during the promotion era. Outside 1992–2016 the variable is 0 by construction —
+  // a structural zero, not a missing value: there was no ODA-conditionality regime, so a null there would silently drop
+  // every pre-1960 actor-year from the regime templates (World Bank aid_gni starts 1960).
+  vars.aid_conditionality = YEARS.map((y, i) => (vars.unipolar_us[i] ? (vars.aid_gni?.[i] != null ? Math.min(vars.aid_gni[i], 30) / 10 : null) : 0));
   vars.patron_regime = YEARS.map((y, i) => { const usa = panel.USA?.regime?.[i], rus = panel.RUS?.regime?.[i]; if (vars.pact_usa?.[i] && !vars.pact_rus?.[i]) return usa ?? null; if (vars.pact_rus?.[i] && !vars.pact_usa?.[i]) return rus ?? null; if (vars.pact_usa?.[i] && vars.pact_rus?.[i]) return ((usa ?? 0) + (rus ?? 0)) / 2; return 0; });
   vars.hegemon_x_client = YEARS.map((y, i) => (vars.pact_usa?.[i] ? (panel.USA?.regime?.[i] ?? 3) : 0));   // US clients see the hegemon's own regime score; others 0
   vars.hegemon_regime = YEARS.map((y, i) => (y >= 1946 ? (panel.USA?.regime?.[i] ?? null) : (panel.GBR?.regime?.[i] ?? null)));
   vars.cold_war = YEARS.map(y => (y <= 1991 ? 1 : 0));
   vars.anticoup_norm = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
+}
+
+// ---- empires on successor-state borders: drop the OWID/Maddison population series where it is a modern-borders series
+// for a multinational empire (CoW NMC tpop is genuinely empire-wide and stays). Declared per actor in data/history/actors.yaml
+// as `successor_borders_until: <year>`; gdp_pc has the same problem and is NOT dropped (it would remove the empire from every
+// regime template) — see docs/escalations.md for the empire-wide series that would fix it.
+{
+  let dropped = 0;
+  for (const [id, vars] of Object.entries(panel)) {
+    const until = actors.get(id)?.successor_borders_until; if (!until || !vars.population) continue;
+    YEARS.forEach((y, i) => { if (y < until && vars.population[i] != null) { vars.population[i] = null; dropped++; } });
+  }
+  // consistency report: population (modern borders) vs tpop (CoW NMC, contemporaneous borders)
+  let viol = 0, rows = 0; const worst = [];
+  for (const [id, vars] of Object.entries(panel)) {
+    if (!vars.population || !vars.tpop) continue;
+    YEARS.forEach((y, i) => { const a = vars.population[i], b = vars.tpop[i]; if (a == null || b == null || !vars.live?.[i]) return; rows++; const r = Math.abs(Math.log(a / b)); if (r > 0.3) { viol++; worst.push([id, y, r]); } });
+  }
+  worst.sort((a, b) => b[2] - a[2]);
+  console.log(`population/tpop: dropped ${dropped} successor-border actor-years; ${viol}/${rows} remaining rows disagree by >30% (worst: ${worst.slice(0, 5).map(([id, y, r]) => `${id} ${y} ${(r * 100).toFixed(0)}%`).join(', ')})`);
+  sources.population += '; successor-borders series dropped before `successor_borders_until` (data/history/actors.yaml)';
 }
 
 // ---- neighbourhood covariates from CShapes contiguity (1886+): who your neighbours are and what just happened to them

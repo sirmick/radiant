@@ -129,8 +129,90 @@
 - { kind: leader, actor: SYR, year: 2024.93, event: irregular_exit }
 - { kind: leader, actor: IRN, year: 2026.2, event: irregular_exit, notes: "Khamenei killed" }
 - { kind: leader, actor: USA, year: 2025.05, event: regular_exit }
-- { kind: territory, id: golan_buffer_2025, year: 2024.95, controller: ISR, status: buffer }
+- { kind: territory, id: syria_buffer, year: 2024.95, controller: ISR, status: buffer }   # id must resolve in data/territories.yaml
 - { kind: territory, id: nagorno_karabakh, year: 2023.7, controller: AZE, status: frozen }
 - { kind: territory, id: crimea, year: 2014.2, controller: RUS, status: occupied }
 - { kind: territory, id: donbas, year: 2014.3, controller: RUS, status: contested_active }
 - { kind: territory, id: ukraine_south_occupied, year: 2022.2, controller: RUS, status: contested_active }
+
+# ---------------------------------------------------------------- 1870–1914 corridor, chokepoint and territory history
+# Added 2026-09-06 (turn era-1870-1914). Every id below resolves to a record in data/corridors.yaml / data/territories.yaml;
+# scripts/build-events.mjs fails the build if one does not.
+
+# Suez: the share purchase, the occupation that the canal caused, and the convention that fixed passage
+- { kind: chokepoint, id: suez, year: 1875.86, status: open, controller: OTTOMAN, notes: "Britain buys the Khedive's 44% stake, Nov 1875" }
+- { kind: chokepoint, id: suez, year: 1882.70, status: open, controller: GBR, notes: "Tel el-Kebir 13 Sep 1882; British occupation of Egypt — the corridor-driven intervention of the era" }
+- { kind: chokepoint, id: suez, year: 1888.82, status: open, controller: GBR, notes: "Convention of Constantinople 29 Oct 1888: free passage in war and peace" }
+- { kind: chokepoint, id: suez, year: 1904.29, status: open, controller: GBR, notes: "Entente Cordiale ratifies the British position in Egypt" }
+
+# Turkish Straits: the closures the model had no record of
+- { kind: chokepoint, id: bosphorus, year: 1877.30, status: contested, notes: "Russo-Turkish war; Straits restricted" }
+- { kind: chokepoint, id: bosphorus, year: 1878.20, status: open }
+- { kind: chokepoint, id: bosphorus, year: 1912.30, status: closed, notes: "Ottoman closure of the Dardanelles 18 Apr–19 May 1912 during the Italo-Turkish war; Russian grain exports collapse — the precedent Russia cites in 1914" }
+- { kind: chokepoint, id: bosphorus, year: 1912.38, status: open }
+- { kind: chokepoint, id: bosphorus, year: 1912.80, status: contested, notes: "First Balkan War; Bulgarian advance to Chatalja" }
+- { kind: chokepoint, id: bosphorus, year: 1913.45, status: open, notes: "Treaty of London" }
+
+# Panama and Kiel
+- { kind: chokepoint, id: panama, year: 1881.0, status: building, notes: "Compagnie Universelle work begins Jan 1881" }
+- { kind: chokepoint, id: panama, year: 1889.1, status: abandoned, notes: "liquidation 4 Feb 1889 — the era's largest corridor failure" }
+- { kind: chokepoint, id: panama, year: 1904.4, status: building, transits: [USA], notes: "US takes over after the 1903 Canal Zone treaty" }
+- { kind: chokepoint, id: kiel, year: 1907.0, status: building, notes: "widening for dreadnought draught begins" }
+- { kind: chokepoint, id: kiel, year: 1914.48, status: open, notes: "widening complete 24 Jun 1914" }
+
+# Manchurian rail complex — the object of the CHN|RUS and JPN|RUS dyads
+- { kind: corridor, id: trans_siberian, year: 1891.4, status: building, transits: [RUS], notes: "construction begins May 1891" }
+- { kind: corridor, id: trans_siberian, year: 1916.0, status: built, transits: [RUS], notes: "Amur line + double track: capacity 0.3 → 0.7 (estimate)" }
+- { kind: corridor, id: chinese_eastern_railway, year: 1896.70, status: planned, transits: [RUS, CHN], notes: "Li–Lobanov concession Sep 1896" }
+- { kind: corridor, id: chinese_eastern_railway, year: 1903.54, status: built, transits: [RUS, CHN], notes: "through service Jul 1903" }
+- { kind: corridor, id: chinese_eastern_railway, year: 1905.68, status: built, transits: [RUS, CHN], notes: "Portsmouth: Russia keeps the line north of Changchun" }
+- { kind: corridor, id: south_manchuria_railway, year: 1898.24, status: building, transits: [RUS, CHN], notes: "Russian Liaodong lease 27 Mar 1898" }
+- { kind: corridor, id: south_manchuria_railway, year: 1903.54, status: built, transits: [RUS, CHN] }
+- { kind: corridor, id: south_manchuria_railway, year: 1905.68, status: built, transits: [JPN, CHN], notes: "Portsmouth 5 Sep 1905 transfers Changchun–Port Arthur to Japan" }
+- { kind: corridor, id: south_manchuria_railway, year: 1906.87, status: built, transits: [JPN, CHN], notes: "SMR Co. chartered" }
+
+# Berlin–Baghdad: the dated record the dampener claim needs
+- { kind: corridor, id: berlin_baghdad, year: 1888.90, status: planned, transits: [DEU, OTTOMAN], notes: "Anatolian Railway concession, Deutsche Bank" }
+- { kind: corridor, id: berlin_baghdad, year: 1896.0, status: building, transits: [DEU, OTTOMAN], notes: "Konya reached" }
+- { kind: corridor, id: berlin_baghdad, year: 1911.87, status: building, transits: [DEU, OTTOMAN], notes: "Potsdam agreement with Russia" }
+- { kind: corridor, id: berlin_baghdad, year: 1914.45, status: building, transits: [DEU, OTTOMAN], notes: "Anglo-German convention 15 Jun 1914 — Britain accepts; the dispute is settled six weeks before the war" }
+- { kind: corridor, id: berlin_baghdad, year: 1914.70, status: closed, transits: [DEU, OTTOMAN], notes: "construction halted by the war" }
+- { kind: corridor, id: hejaz_railway, year: 1900.7, status: building, transits: [OTTOMAN], notes: "construction begins Sep 1900" }
+
+# Cables: routing concentration and the two clean denial events
+- { kind: corridor, id: eastern_telegraph, year: 1870.45, status: built, transits: [GBR], notes: "London–Bombay working Jun 1870" }
+- { kind: corridor, id: eastern_telegraph, year: 1871.00, status: built, transits: [GBR], notes: "Singapore–Hong Kong 1871" }
+- { kind: corridor, id: eastern_telegraph, year: 1872.60, status: built, transits: [GBR], notes: "Australia via Darwin — the imperial spine complete" }
+- { kind: corridor, id: german_atlantic_cables, year: 1900.6, status: built, transits: [DEU, USA], notes: "Emden–Azores–New York: the bypass build" }
+- { kind: corridor, id: german_atlantic_cables, year: 1904.6, status: built, transits: [DEU, USA], notes: "second cable" }
+- { kind: corridor, id: german_atlantic_cables, year: 1914.60, status: closed, transits: [DEU, USA], notes: "cut by CS Alert 5 Aug 1914" }
+- { kind: corridor, id: spanish_colonial_cables, year: 1898.35, status: closed, transits: [ESP], notes: "US Navy cuts Manila 2 May and Cienfuegos 11 May 1898" }
+- { kind: corridor, id: all_red_pacific, year: 1902.83, status: built, transits: [CAN, GBR, AUS, NZL], notes: "first message 31 Oct 1902; routed to touch no foreign soil" }
+
+# Other corridors of the era
+- { kind: corridor, id: trans_caspian, year: 1888.5, status: built, transits: [RUS], notes: "Krasnovodsk–Samarkand; the Panjdeh-crisis corridor" }
+- { kind: corridor, id: trans_caspian, year: 1898.0, status: built, transits: [RUS], notes: "Tashkent branch" }
+- { kind: corridor, id: uganda_railway, year: 1901.98, status: built, transits: [GBR], notes: "Mombasa–Kisumu Dec 1901" }
+- { kind: corridor, id: cape_bulawayo, year: 1897.83, status: built, transits: [GBR] }
+- { kind: corridor, id: gotthard_tunnel, year: 1882.4, status: built, transits: [CHE, ITA, DEU] }
+- { kind: corridor, id: simplon_tunnel, year: 1906.4, status: built, transits: [CHE, ITA] }
+- { kind: corridor, id: baku_batumi_rail, year: 1883.7, status: built, transits: [RUS], notes: "the rail predecessor of the 1906 pipeline" }
+
+# Territorial changes of the turn
+- { kind: territory, id: alsace_lorraine, year: 1871.36, controller: DEU, status: annexed, claimants: [FRA], notes: "Treaty of Frankfurt 10 May 1871 — the standing grievance in the FRA|DEU dyad" }
+- { kind: territory, id: bosnia_herzegovina, year: 1878.55, controller: AUT_HUN, status: occupied, claimants: [OTTOMAN, SRB], notes: "Congress of Berlin, Jul 1878" }
+- { kind: territory, id: bosnia_herzegovina, year: 1908.76, controller: AUT_HUN, status: annexed, claimants: [OTTOMAN, SRB], notes: "annexation 6 Oct 1908 — the crisis chain to 1914" }
+- { kind: territory, id: cyprus, year: 1878.42, controller: GBR, status: occupied, claimants: [OTTOMAN], notes: "Cyprus Convention 4 Jun 1878" }
+- { kind: territory, id: tunisia, year: 1881.36, controller: FRA, status: protectorate, claimants: [OTTOMAN, ITA], notes: "Treaty of Bardo 12 May 1881 — the grievance that sends Italy to the Triple Alliance" }
+- { kind: territory, id: egypt_british_occupation, year: 1882.70, controller: GBR, status: occupied, claimants: [OTTOMAN, EGY], notes: "Tel el-Kebir 13 Sep 1882; the Suez corridor is the reason" }
+- { kind: territory, id: egypt_british_occupation, year: 1914.9, controller: GBR, status: protectorate, claimants: [OTTOMAN, EGY], notes: "protectorate declared Dec 1914" }
+- { kind: territory, id: heligoland, year: 1890.50, controller: DEU, status: annexed, claimants: [GBR], notes: "Heligoland–Zanzibar treaty 1 Jul 1890; load-bearing on the Kiel/North Sea position" }
+- { kind: territory, id: kiaochow, year: 1898.18, controller: DEU, status: leased, claimants: [CHN], notes: "99-year lease, Mar 1898" }
+- { kind: territory, id: liaodong_port_arthur, year: 1898.24, controller: RUS, status: leased, claimants: [CHN], notes: "Russian lease 27 Mar 1898" }
+- { kind: territory, id: liaodong_port_arthur, year: 1905.68, controller: JPN, status: leased, claimants: [CHN], notes: "Treaty of Portsmouth 5 Sep 1905" }
+- { kind: territory, id: weihaiwei, year: 1898.50, controller: GBR, status: leased, claimants: [CHN], notes: "lease Jul 1898" }
+- { kind: territory, id: philippines, year: 1898.94, controller: USA, status: annexed, claimants: [ESP, PHL], notes: "Treaty of Paris 10 Dec 1898" }
+- { kind: territory, id: panama_canal_zone, year: 1903.88, controller: USA, status: leased, claimants: [COL, PAN], notes: "Hay–Bunau-Varilla 18 Nov 1903 — matches the USA|COL mid_force of 1903" }
+- { kind: territory, id: korea, year: 1905.88, controller: JPN, status: protectorate, claimants: [KOREA], notes: "Eulsa treaty Nov 1905" }
+- { kind: territory, id: korea, year: 1910.64, controller: JPN, status: annexed, claimants: [KOREA], notes: "annexation 22 Aug 1910; KOREA retires in data/history/actors.yaml at 1910" }
+- { kind: territory, id: libya_dodecanese, year: 1912.80, controller: ITA, status: annexed, claimants: [OTTOMAN], notes: "Treaty of Ouchy 18 Oct 1912" }

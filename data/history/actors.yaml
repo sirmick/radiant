@@ -8,13 +8,13 @@
 
 - { id: GBR, name: United Kingdom, introduced: 1816, gw: 200, owid: GBR, great_power: [1816, null] }
 - { id: FRA, name: France, introduced: 1816, gw: 220, owid: FRA, great_power: [1816, null] }
-- { id: PRUSSIA, name: Prussia, introduced: 1816, retired: 1871, successor: DEU, gw: 255, owid: DEU, great_power: [1816, 1871], series_note: "OWID Germany series used" }
+- { id: PRUSSIA, name: Prussia, introduced: 1816, retired: 1871, successor: DEU, gw: 255, owid: DEU, great_power: [1816, 1871], successor_borders_until: 1871, series_note: "OWID Germany series used; modern-borders population dropped (NMC tpop is the contemporaneous one)" }
 - { id: DEU, name: Germany, introduced: 1871, gw: 255, owid: DEU, great_power: [1871, 1945, 1991, null], notes: "1949-90 split: model keeps DEU as West Germany (gw 260) and adds DDR" }
 - { id: DDR, name: East Germany, introduced: 1949, retired: 1990, successor: DEU, gw: 265, owid: null }
-- { id: AUT_HUN, name: Austria-Hungary, introduced: 1816, retired: 1918, successor: AUT, gw: 300, owid: AUT, great_power: [1816, 1918], series_note: "OWID Austria series understates the empire" }
+- { id: AUT_HUN, name: Austria-Hungary, introduced: 1816, retired: 1918, successor: AUT, gw: 300, owid: AUT, great_power: [1816, 1918], successor_borders_until: 1918, series_note: "OWID Austria series understates the empire: population 4.5M in 1870 against an NMC tpop of 35.7M (7.9x). The population series is dropped; gdp_pc is still Austria-only and overstates the empire — see docs/escalations.md" }
 - { id: AUT, name: Austria, introduced: 1918, gw: 305, owid: AUT }
 - { id: HUN, name: Hungary, introduced: 1918, gw: 310, owid: HUN }
-- { id: RUS, name: Russia / USSR, introduced: 1816, gw: 365, owid: RUS, great_power: [1816, 1917, 1922, null], notes: "USSR 1922-91 kept under RUS; successor states introduced 1991" }
+- { id: RUS, name: Russia / USSR, introduced: 1816, gw: 365, owid: RUS, great_power: [1816, 1917, 1922, null], successor_borders_until: 1918, notes: "USSR 1922-91 kept under RUS; successor states introduced 1991", series_note: "OWID Russia population is modern-borders: 49.5M in 1870 against an NMC tpop of 84.5M for the empire; dropped before 1918" }
 - { id: ITA, name: Italy, introduced: 1861, gw: 325, owid: ITA, great_power: [1860, 1943] }
 - { id: ESP, name: Spain, introduced: 1816, gw: 230, owid: ESP }
 - { id: PRT, name: Portugal, introduced: 1816, gw: 235, owid: PRT }
@@ -31,10 +31,10 @@
 - { id: BGR, name: Bulgaria, introduced: 1908, gw: 355, owid: BGR }
 - { id: SRB, name: Serbia / Yugoslavia, introduced: 1878, gw: 345, owid: SRB, notes: "Yugoslavia 1918-92 under SRB" }
 - { id: UKR, name: Ukraine, introduced: 1991, gw: 369, owid: UKR }
-- { id: OTTOMAN, name: Ottoman Empire, introduced: 1816, retired: 1922, successor: TUR, gw: 640, owid: TUR, series_note: "OWID Turkey series used" }
+- { id: OTTOMAN, name: Ottoman Empire, introduced: 1816, retired: 1922, successor: TUR, gw: 640, owid: TUR, successor_borders_until: 1922, series_note: "OWID Turkey series used: population 11.8M in 1870 against an NMC tpop of 33.7M (2.9x). Population dropped; gdp_pc is Turkey-borders and mostly null 1871-1914" }
 - { id: TUR, name: Turkey, introduced: 1922, gw: 640, owid: TUR }
 - { id: IRN, name: Persia / Iran, introduced: 1816, gw: 630, owid: IRN }
-- { id: EGY, name: Egypt, introduced: 1922, gw: 651, owid: EGY, notes: "Khedivate/British protectorate before; Suez matters from 1869 regardless — corridors don't need an actor" }
+- { id: EGY, name: Egypt, spans: [[1855, 1883], [1922, null]], gw: 651, cow: 651, owid: EGY, notes: "Khedivate 1855-1882 is a CoW/GW system member (CoW 651, 13 NMC capability rows 1870-1882); British occupation from Sep 1882; protectorate 1914-22. Suez transits EGY, so the corridor covariates need the actor." }
 - { id: IRQ, name: Iraq, introduced: 1932, gw: 645, owid: IRQ }
 - { id: SAU, name: Saudi Arabia, introduced: 1932, gw: 670, owid: SAU }
 - { id: SYR, name: Syria, introduced: 1946, gw: 652, owid: SYR }
@@ -70,3 +70,10 @@
 - { id: KAZ, name: Kazakhstan, introduced: 1991, gw: 705, owid: KAZ }
 - { id: AZE, name: Azerbaijan, introduced: 1991, gw: 373, owid: AZE }
 - { id: ARM, name: Armenia, introduced: 1991, gw: 371, owid: ARM }
+
+# Universe-only lifecycle corrections (modeled: false — fit sample and dyad universe, not simulated).
+# The codelist's GW spans keep these entities alive years past annexation; CoW system membership ends at the annexation.
+- { id: HANOVER, name: Hanover, spans: [[1837, 1867]], successor: PRUSSIA, modeled: false, cow: 240, gw: 240, owid: null, notes: "CoW membership 1837-1866 (annexed by Prussia 1866); the codelist's GW span runs to 1871" }
+- { id: SAXONY, name: Saxony, spans: [[1816, 1868]], successor: PRUSSIA, modeled: false, cow: 269, gw: 269, owid: null, notes: "CoW membership ends 1867 (North German Confederation); GW span runs to 1871" }
+- { id: MECKLENBURG_SCHWERIN, name: Mecklenburg Schwerin, spans: [[1843, 1868]], successor: PRUSSIA, modeled: false, cow: 280, gw: 280, owid: null, notes: "CoW membership 1843-1867" }
+- { id: VAT, name: Papal States / Vatican City, spans: [[1816, 1861]], modeled: false, cow: 327, gw: 327, owid: VAT, notes: "The 1816-1860 entity is the Papal States (CoW 327), annexed by Italy in 1860; the codelist reuses the iso3c VAT of Vatican City, which is not a system member. Id kept as VAT to avoid rekeying the panel." }

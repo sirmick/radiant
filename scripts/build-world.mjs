@@ -193,6 +193,13 @@ for (const h of hazards) {
 }
 for (const t of territories) if (t.hazard && !hazardIds.has(t.hazard)) errors.push(`territory ${t.id}: hazard ${t.hazard} unknown`);
 for (const c of corridors) if (c.hazard && !hazardIds.has(c.hazard)) errors.push(`corridor ${c.id}: hazard ${c.hazard} unknown`);
+// referential integrity: every dated corridor/chokepoint/territory event must resolve to a record
+for (const e of Y('history/events')) {
+  if ((e.kind === 'corridor' || e.kind === 'chokepoint') && !corrIds.has(e.id)) errors.push(`events.yaml ${e.kind} ${e.id} @${e.year}: no record in data/corridors.yaml`);
+  if (e.kind === 'territory' && !terrIds.has(e.id)) errors.push(`events.yaml territory ${e.id} @${e.year}: no record in data/territories.yaml`);
+}
+for (const c of corridors) if (!c.history?.length) errors.push(`corridor ${c.id}: no dated history (a 2026 snapshot alone cannot be read as-of a historical year)`);
+for (const t of territories) if (!t.history?.length) errors.push(`territory ${t.id}: no dated history`);
 const claimIds = new Set(claims.map(c => c.id));
 for (const c of claims) {
   for (const m of c.query.matchAll(/fired\((\w+)/g)) if (!hazardIds.has(m[1])) errors.push(`claim ${c.id}: hazard ${m[1]} unknown`);

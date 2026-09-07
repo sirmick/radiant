@@ -3,9 +3,9 @@ export const meta = {
   description: 'Adversary/fixer/checker refinement loop over turns (eras or weeks): attack the model, fix it, verify, commit',
   whenToUse: 'Run with args {turns:[{id,from,to,focus}]} to refine the model turn by turn; each turn commits.',
   phases: [
-    { title: 'Attack', detail: 'four adversaries per turn, one lens each' },
-    { title: 'Fix', detail: 'one fixer per turn applies, rebuilds, backtests, commits' },
-    { title: 'Check', detail: 'independent checker audits the commit and scores' },
+    { title: 'Attack', detail: 'four adversaries per turn, one lens each', model: 'opus' },
+    { title: 'Fix', detail: 'one fixer per turn applies, rebuilds, backtests, commits', model: 'opus' },
+    { title: 'Check', detail: 'independent checker audits the commit and scores', model: 'opus' },
   ],
 }
 
@@ -17,6 +17,7 @@ const turns = (args && args.turns) || [
   { id: 'era-1991-2026', from: 1990, to: 2010, focus: 'unipolarity, aid conditionality, the 2010s autocratisation wave, BTC/Nord Stream/BRI/Middle Corridor, Ukraine 2014/2022, present-day wiring of corridors and territories' },
 ]
 const LENSES = ['data', 'corridors', 'statistics', 'engine']
+const MODEL = (args && args.model) || 'opus'
 
 const FINDINGS = {
   type: 'object',
@@ -70,7 +71,7 @@ Turn: ${turn.id} (as-of years ${turn.from}–${turn.to}, each +20y). Your lens: 
 Turn focus from the operator: ${turn.focus}
 Standing instruction from the operator: corridors, chokepoints and territories are under-built for every era — the corridors lens must produce concrete dated entries; other lenses should flag corridor-related gaps they notice too.
 Return up to 8 findings ranked by expected backtest impact, ids like "${turn.id}/${lens}/1".`,
-    { label: `attack:${turn.id}:${lens}`, phase: 'Attack', schema: FINDINGS },
+    { label: `attack:${turn.id}:${lens}`, phase: 'Attack', schema: FINDINGS, model: MODEL },
   )))
   const found = attacks.filter(Boolean).flatMap(r => r.findings)
   const seen = new Set(); const fresh = []
@@ -85,7 +86,7 @@ Return up to 8 findings ranked by expected backtest impact, ids like "${turn.id}
 Turn: ${turn.id}; backtest as-of range --from ${turn.from} --to ${turn.to}. Today's date for the log: ${args && args.date ? args.date : '2026-09-06'}.
 Findings (ranked; apply in this order, skip with a reason if not fixable this turn):
 ${JSON.stringify(fresh, null, 1)}`,
-    { label: `fix:${turn.id}`, phase: 'Fix', schema: FIX_RESULT },
+    { label: `fix:${turn.id}`, phase: 'Fix', schema: FIX_RESULT, model: MODEL },
   )
   log(`turn ${turn.id}: fixer applied ${fix ? fix.applied.length : 0}, skipped ${fix ? fix.skipped.length : 0}, deferred ${fix ? fix.deferred.length : 0}, escalated ${fix ? fix.escalations.length : 0}; commit ${fix ? fix.commit : 'none'}`)
 
@@ -94,7 +95,7 @@ ${JSON.stringify(fresh, null, 1)}`,
 Turn: ${turn.id}; as-of range ${turn.from}–${turn.to}; the fixer's scores file: ${fix ? fix.scores_file : 'unknown'}; commit: ${fix ? fix.commit : 'unknown'}.
 Fixer's own report (do not trust it, verify it): ${JSON.stringify(fix)}
 Findings the fixer received (rerun at least two of the applied ones' tests): ${JSON.stringify(fresh.map(f => ({ id: f.id, test: f.test })), null, 1)}`,
-    { label: `check:${turn.id}`, phase: 'Check', schema: CHECK },
+    { label: `check:${turn.id}`, phase: 'Check', schema: CHECK, model: MODEL },
   )
   log(`turn ${turn.id}: check ${check && check.ok ? 'OK' : 'FAILED'}${check && check.reverted ? ' (reverted)' : ''} — ${check ? check.summary.slice(0, 160) : ''}`)
   results.push({ turn: turn.id, findings: fresh.length, high: fresh.filter(f => f.severity === 'high').length, fix, check })

@@ -19,7 +19,9 @@ Everything is reproducible offline: `./scripts/fetch-raw.sh` (once), then `node 
 
 ## The three honesty mechanisms
 
-**As-of dating.** `createWorld({asOf})` builds the world from the panel as it stood that year. Same code, different date = a backtest. Ground truth is scored only inside each dataset's coverage window (`COVERAGE` in `backtest.mjs`); absence past a dataset's end is not a non-event.
+**As-of dating.** `createWorld({asOf})` builds the world from the panel as it stood that year: state, the alliance graph and the border graph are all frozen at `asOf`, and actors are introduced and retired during the run from their dated system membership. Same code, different date = a backtest — **for the state, not yet for the coefficients**: `backtest.mjs` loads one full-sample `data/fits.json` for every as-of year, so an as-of-1870 row forecasts with coefficients estimated on 1886–2001, including the disputes it is scoring. Until `--refit` lands (see `docs/escalations.md`), the pre-1946 rows are in-sample numbers presented as forecasts. Ground truth is scored only inside each dataset's coverage window (`COVERAGE` in `backtest.mjs`); absence past a dataset's end is not a non-event.
+
+**At-risk scoring.** Each `byAsOf[].templates[]` row carries `n_at_risk` (units the model can put any mass on), `auc_at_risk` and `n_structural_miss` (observed events in units the relevance filter zeroes out forever). The headline `auc` over all dyads mostly measures the politically-relevant-dyad filter; `auc_at_risk` is what the fitted coefficients do. A template with no at-risk unit is reported with `n: 0` and a reason rather than being dropped from the score.
 
 **Lifecycles.** Actors (`data/history/actors.yaml`: `introduced` / `retired` / `successor`), capability waves (`data/waves.yaml`: `introduced` / `saturates` / `retired`), and variables (`introduced`, `lifecycle.phase`, `influence.window`) all carry dates. A saturated variable stops discriminating on its own (no cross-actor variance); an explicit window handles factors whose relevance ends before their variance does. Retired ≠ deleted — backtests need the data.
 

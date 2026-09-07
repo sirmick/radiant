@@ -79,7 +79,7 @@ templates:
       - { var: log_gdp_pc, transform: z, prior: -0.5 }
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: intrastate, transform: lag1, prior: 0.4 }
+      - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
     sources: ["Maerz et al. 2024 (ERT)", "Przeworski et al. 2000", "Goldstone et al. 2010"]
 
   - id: democratization_onset
@@ -144,7 +144,7 @@ templates:
       - { var: log_gdp_pc, transform: z, prior: -0.5 }
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: intrastate, transform: lag1, prior: 0.4 }
+      - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
     sources: ["Goldstone et al. 2010", "V-Dem RoW via OWID"]
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "holdout AUC 0.74; NOTE under-predicts post-1990 autocratization 5× (exp/obs 0.21) — open era shock" }
 
@@ -161,7 +161,7 @@ templates:
       - { var: log_gdp_pc, transform: z, prior: 0.5 }
       - { var: gdp_growth, transform: z, prior: 0.2 }
       - { var: at_war, transform: lag1, prior: -0.3 }
-      - { var: intrastate, transform: lag1, prior: -0.3 }
+      - { var: intrastate, transform: lag1, prior: -0.3, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
       - { var: aid_conditionality, transform: none, prior: 0.3 }
       - { var: pact_usa, transform: none, prior: 0.3 }
     sources: ["Przeworski et al. 2000 (income and democratic survival/consolidation)"]
@@ -203,7 +203,7 @@ templates:
       - { var: log_gdp_pc, transform: z, prior: -0.5 }
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: intrastate, transform: lag1, prior: 0.4 }
+      - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
       - { var: coup_attempt, transform: win5, prior: 0.8 }
       - { var: aid_conditionality, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "conditionality deters closure: holdout≥2005 AUC 0.565→0.617, coef −0.61" } }
       - { var: great_game, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Cold War superpower clients close more (+0.62, AUC +0.02); bare pact_* ≈0 once this is in" } }
@@ -244,7 +244,7 @@ templates:
       - { var: mid_force, transform: win5, prior: 1.5 }            # rivalry / recurrence
       - { var: at_war_any, transform: lag1, prior: 0.5 }
     sources: ["Bremer 1992", "Oneal & Russett 1999", "Jones, Bremer & Singer 1996"]
-    notes: "Dyad sample: politically relevant dyads (contiguous or ≥1 major power), all states, 1886–2001. Corridor dampener and chokepoint stakes enter as extra dyad covariates once corridors carry historical status."
+    notes: "Dyad sample: politically relevant dyads (contiguous or ≥1 major power), all states, 1886–2001. The declared window is [1816, 2001] but the estimation sample starts at 1886: CShapes 2.0 has no polygons before it, and fit-hazards drops dyad-years with no contiguity value, so 134 mid_force and 106 mid_war events dated 1816–1885 are outside the fit (CoW Direct Contiguity 3.2 would fix it — deferred, see docs/refine-log.md). The engine freezes the border graph at as-of and, for an as-of before 1886, uses the 1886 snapshot as a documented stand-in. Corridor dampener and chokepoint stakes enter as extra dyad covariates once corridors carry historical status."
 
   - id: mid_war
     label: Dyadic war (hostility level 5)

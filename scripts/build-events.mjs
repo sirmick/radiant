@@ -70,8 +70,19 @@ const H = 'data/raw/hist/'; const events = [];
   }
 }
 
-// ---- hand events pass through
-for (const e of Y('data/history/events.yaml')) events.push({ ...e, source: e.source ?? 'data/history/events.yaml' });
+// ---- hand events pass through, after checking every corridor/chokepoint/territory id resolves to a record
+{
+  const hand = Y('data/history/events.yaml');
+  const corrIds = new Set(Y('data/corridors.yaml').map(c => c.id));
+  const terrIds = new Set(Y('data/territories.yaml').map(t => t.id));
+  const bad = [];
+  for (const e of hand) {
+    if ((e.kind === 'corridor' || e.kind === 'chokepoint') && !corrIds.has(e.id)) bad.push(`${e.kind} ${e.id} @${e.year} — no record in data/corridors.yaml`);
+    if (e.kind === 'territory' && !terrIds.has(e.id)) bad.push(`territory ${e.id} @${e.year} — no record in data/territories.yaml`);
+  }
+  if (bad.length) { console.error(`build-events: ${bad.length} unresolvable event ids\n  ${[...new Set(bad)].join('\n  ')}`); process.exit(1); }
+  for (const e of hand) events.push({ ...e, source: e.source ?? 'data/history/events.yaml' });
+}
 
 events.sort((a, b) => (a.year ?? a.start) - (b.year ?? b.start));
 const counts = {}; for (const e of events) counts[e.kind] = (counts[e.kind] ?? 0) + 1;

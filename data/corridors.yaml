@@ -1,6 +1,9 @@
 # Corridors and chokepoints — the load-bearing infrastructure that turns transit into alliance.
-# kind: chokepoint | corridor.  mode: sea | rail | pipeline | hvdc | multimodal.
-# status: open | contested | closed | planned | building | built.
+# kind: chokepoint | corridor.  mode: sea | rail | pipeline | hvdc | cable | multimodal.
+# status: open | contested | closed | planned | building | built | abandoned.
+# history: dated status list — [{ year, status, controller?, capacity?, completion?, source }] — the as-of record.
+#   `status`/`controller`/`completion` at the top of a record are the 2026 snapshot; `history` is what a backtest reads.
+# controller: the state that actually holds it (Suez 1882-1956 is the case the field exists for). sponsor: who is building it.
 # load_bearing_for: 0-1 per dependent state (estimate). For planned/building corridors this is the value once built;
 # the engine scales it by completion. This number is the corridor-dampener term in the dyadic conflict hazard.
 # Geometry is rough lon/lat; chokepoints are points, corridors are polylines through the cities they connect.
@@ -17,6 +20,10 @@
   load_bearing_for: { QAT: 0.95, IRQ: 0.9, IRN: 0.85, KWT: 0.9, ARE: 0.6, SAU: 0.55, IND: 0.5, JPN: 0.7, KOR: 0.65, CHN: 0.35, TWN: 0.4, THA: 0.4 }
   hazard: hormuz_reopens
   notes: "Effectively shut since Feb 2026 (tanker war). Reopening is a hazard; the transcript's modal path is a Hormuz-for-blockade swap."
+  history:
+    - { year: 1984.0, status: contested, source: "Iran-Iraq tanker war" }
+    - { year: 1988.6, status: open, source: "ceasefire Aug 1988" }
+    - { year: 2026.2, status: closed, source: "2026 tanker war (data/history/events.yaml)" }
 
 - id: bab_al_mandab
   name: Bab al-Mandab
@@ -27,6 +34,8 @@
   transits: [YEM, DJI, ERI]
   load_bearing_for: { EGY: 0.6, SAU: 0.3, ISR: 0.3, IND: 0.3, CHN: 0.25, DEU: 0.2, NLD: 0.2, ITA: 0.25 }
   notes: "Houthi preview of the every-coast-is-a-Houthi world. Contested = insurance-priced, not closed."
+  history:
+    - { year: 2023.9, status: contested, source: "Houthi campaign from Nov 2023" }
 
 - id: suez
   name: Suez Canal
@@ -37,6 +46,18 @@
   transits: [EGY]
   load_bearing_for: { EGY: 0.7, ITA: 0.3, DEU: 0.25, NLD: 0.25, CHN: 0.25, IND: 0.3, SAU: 0.25 }
   notes: "Traffic halved by Bab al-Mandab; Egypt's fiscal stress reads this."
+  controller: EGY
+  history:
+    - { year: 1869.87, status: open, controller: OTTOMAN, source: "opened 17 Nov 1869; Suez Canal Co. Franco-Egyptian, Egypt an Ottoman khedivate" }
+    - { year: 1875.86, status: open, controller: OTTOMAN, source: "Britain buys the Khedive's 44% stake, Nov 1875 (Disraeli share purchase)" }
+    - { year: 1882.70, status: open, controller: GBR, source: "Tel el-Kebir 13 Sep 1882; British occupation of Egypt — the corridor-driven intervention of the era" }
+    - { year: 1888.82, status: open, controller: GBR, source: "Convention of Constantinople 29 Oct 1888: free passage in war and peace" }
+    - { year: 1904.29, status: open, controller: GBR, source: "Entente Cordiale 8 Apr 1904 ratifies the British position in Egypt" }
+    - { year: 1956.8, status: closed, controller: EGY, source: "nationalisation Jul 1956; Suez crisis" }
+    - { year: 1957.3, status: open, controller: EGY, source: "reopened Apr 1957" }
+    - { year: 1967.4, status: closed, controller: EGY, source: "Six-Day War; closed 8 years" }
+    - { year: 1975.4, status: open, controller: EGY, source: "reopened 5 Jun 1975" }
+    - { year: 2023.9, status: contested, controller: EGY, source: "Houthi campaign halves traffic" }
 
 - id: malacca
   name: Strait of Malacca
@@ -47,6 +68,9 @@
   transits: [MYS, IDN, SGP]
   load_bearing_for: { SGP: 1.0, CHN: 0.6, JPN: 0.7, KOR: 0.65, TWN: 0.6, MYS: 0.9, IDN: 0.5, VNM: 0.4, AUS: 0.4, IND: 0.3 }
   notes: "China's Malacca dilemma. The rail corridors exist to make this number smaller."
+  history:
+    - { year: 1942.1, status: closed, source: "Japanese occupation" }
+    - { year: 1945.7, status: open, source: "Japanese surrender" }
 
 - id: bosphorus
   name: Turkish Straits
@@ -57,6 +81,18 @@
   transits: [TUR]
   load_bearing_for: { RUS: 0.5, UKR: 0.8, KAZ: 0.4, AZE: 0.3, ROU: 0.5, BGR: 0.5 }
   notes: "Montreux. Turkey is the gatekeeper of the Black Sea in every scenario."
+  controller: TUR
+  history:
+    - { year: 1841.0, status: open, controller: OTTOMAN, source: "London Straits Convention: closed to warships" }
+    - { year: 1877.30, status: contested, controller: OTTOMAN, source: "Russo-Turkish war 1877-78; wartime restriction of the Straits" }
+    - { year: 1878.20, status: open, controller: OTTOMAN, source: "Treaty of San Stefano Mar 1878 / Berlin Jul 1878" }
+    - { year: 1912.30, status: closed, controller: OTTOMAN, source: "Ottoman closure of the Dardanelles 18 Apr - 19 May 1912 during the Italo-Turkish war; Russian Black Sea grain exports collapse — the precedent Russia cites in 1914" }
+    - { year: 1912.38, status: open, controller: OTTOMAN, source: "reopened 19 May 1912" }
+    - { year: 1912.80, status: contested, controller: OTTOMAN, source: "First Balkan War; Bulgarian advance to the Chatalja lines" }
+    - { year: 1913.45, status: open, controller: OTTOMAN, source: "Treaty of London 30 May 1913" }
+    - { year: 1914.80, status: closed, controller: OTTOMAN, source: "Ottoman entry into WW1 seals Russia's grain exit" }
+    - { year: 1918.80, status: open, controller: GBR, source: "Armistice of Mudros 30 Oct 1918; Allied occupation of the Straits" }
+    - { year: 1936.50, status: open, controller: TUR, source: "Montreux Convention 20 Jul 1936" }
 
 - id: taiwan_strait
   name: Taiwan Strait / Luzon Strait
@@ -68,6 +104,9 @@
   load_bearing_for: { TWN: 1.0, JPN: 0.6, KOR: 0.6, CHN: 0.3, USA: 0.4, PHL: 0.3 }
   hazard: taiwan_blockade
   notes: "The blockade hazard closes this and the Taiwan control hazard reads it."
+  history:
+    - { year: 1996.2, status: contested, source: "third Taiwan Strait crisis, missile tests" }
+    - { year: 1996.4, status: open, source: "crisis ends" }
 
 # ---------------------------------------------------------------- Eurasian land corridors
 - id: instc
@@ -81,6 +120,8 @@
   load_bearing_for: { IND: 0.3, IRN: 0.6, RUS: 0.4, AZE: 0.4 }
   hazard: corridor_build
   notes: "Rasht–Astara is the missing link. Bypasses Suez for India–Russia; the Russia terminus is why it's the corridor the allied bloc likes least."
+  history:
+    - { year: 2026.68, status: building, completion: 0.6, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: middle_corridor
   name: Middle Corridor (China–Kazakhstan–Caspian–Caucasus–Turkey)
@@ -93,6 +134,9 @@
   transits: [CHN, KAZ, AZE, GEO, TUR]
   load_bearing_for: { KAZ: 0.6, AZE: 0.7, GEO: 0.6, TUR: 0.4, CHN: 0.2 }
   notes: "Operating at low capacity; the Caspian ferry leg is the bottleneck. Bypasses Russia and Iran both."
+  history:
+    - { year: 2017.8, status: built, source: "BTK railway opens Oct 2017" }
+    - { year: 2026.68, status: built, capacity: 0.3, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: china_iran_turkey
   name: China–Central Asia–Iran–Turkey rail
@@ -105,6 +149,8 @@
   load_bearing_for: { IRN: 0.7, TUR: 0.5, CHN: 0.35, TKM: 0.6, UZB: 0.5 }
   hazard: corridor_build
   notes: "The 'Iran paid to be boring' corridor. Its load_bearing_for CHN is the number that makes Beijing care whether Iran gets bombed."
+  history:
+    - { year: 2026.68, status: building, completion: 0.5, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: iran_iraq_syria_med
   name: Iran–Iraq–Syria–Mediterranean rail
@@ -117,6 +163,8 @@
   load_bearing_for: { IRN: 0.5, IRQ: 0.4, SYR: 0.6 }
   hazard: corridor_build
   notes: "The land bridge Israel exists to prevent. Requires Syrian stability and an Iran nobody's bombing; both are hazards."
+  history:
+    - { year: 2026.68, status: planned, completion: 0.0, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: development_road
   name: Iraq Development Road (Faw–Turkey)
@@ -129,6 +177,8 @@
   load_bearing_for: { IRQ: 0.6, TUR: 0.5, QAT: 0.3, ARE: 0.2 }
   hazard: corridor_build
   notes: "Bypasses Israel completely; Ankara is building it. The competitor to IMEC."
+  history:
+    - { year: 2026.68, status: building, completion: 0.25, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: imec
   name: IMEC (India–Gulf–Jordan–Israel–Europe)
@@ -142,6 +192,8 @@
   hazard: corridor_build
   requires: [saudi_normalization]
   notes: "Israel's only path to being on the map rather than around it. Gated on Saudi normalisation."
+  history:
+    - { year: 2026.68, status: planned, completion: 0.1, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: gulf_landbridge
   name: Gulf rail spine (Etihad Rail + Saudi Landbridge to Red Sea)
@@ -154,6 +206,8 @@
   load_bearing_for: { ARE: 0.5, SAU: 0.6, QAT: 0.3 }
   hazard: corridor_build
   notes: "Exports west without Hormuz. With Yanbu, this is why Hormuz denial hurts Iran and Qatar more than Saudi."
+  history:
+    - { year: 2026.68, status: building, completion: 0.5, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: zangezur
   name: Zangezur / TRIPP corridor
@@ -167,6 +221,8 @@
   hazard: corridor_build
   territory: zangezur_syunik
   notes: "Links Turkey to the Caspian without Iran or Georgia. Iran's strategic nightmare; a bridge that 'collapses' is the covert option."
+  history:
+    - { year: 2026.68, status: building, completion: 0.2, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: gulf_europe_hvdc
   name: Gulf–Jordan–Egypt/Turkey–Europe HVDC
@@ -179,6 +235,8 @@
   load_bearing_for: { SAU: 0.4, JOR: 0.5, EGY: 0.4, GRC: 0.3 }
   hazard: corridor_build
   notes: "The Gulf's next product is electrons. Same territorial-integrity incentive as rail, same transit states."
+  history:
+    - { year: 2026.68, status: planned, completion: 0.05, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: north_american_spine
   name: North American rail + HVDC spine
@@ -192,3 +250,399 @@
   hazard: corridor_build
   requires: [us_reliability_reversal_up]
   notes: "The resurgent-US continental system. Gated on the US deciding it needs neighbours."
+  history:
+    - { year: 2026.68, status: planned, completion: 0.1, source: "data/corridors.yaml snapshot 2026-09-06" }
+
+# ---------------------------------------------------------------- historical corridors and chokepoints (1816–1945)
+# Added 2026-09-06 for the 1870–1914 turn: every id that data/history/events.yaml fires against now resolves to a record
+# (scripts/build-events.mjs fails the build otherwise). `load_bearing_for` on historical records is an estimate —
+# a judgement about how much of a state's trade, mobilisation or revenue rode on the link — flagged per record.
+
+- id: panama
+  name: Panama Canal
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: PAN
+  geometry: { point: [-79.6, 9.1] }
+  transits: [PAN, USA]
+  load_bearing_for: { PAN: 0.9, USA: 0.5, CHL: 0.4, PER: 0.4, ECU: 0.4, COL: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1881.00, status: building, source: "Compagnie Universelle du Canal Interocéanique begins work Jan 1881" }
+    - { year: 1889.10, status: abandoned, source: "liquidation 4 Feb 1889 — the era's largest corridor failure (~22,000 dead, the Panama scandal)" }
+    - { year: 1904.40, status: building, controller: USA, source: "US takes over May 1904 after the Hay–Bunau-Varilla treaty of 18 Nov 1903" }
+    - { year: 1914.60, status: open, controller: USA, source: "SS Ancon transits 15 Aug 1914" }
+    - { year: 1999.99, status: open, controller: PAN, source: "Torrijos–Carter handover 31 Dec 1999" }
+  notes: "The 1881–1889 French attempt is the model's only abandoned corridor: a corridor can fail without anyone fighting over it."
+
+- id: kiel
+  name: Kiel Canal (Kaiser-Wilhelm-Kanal)
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: DEU
+  geometry: { point: [9.5, 54.3] }
+  transits: [DEU]
+  load_bearing_for: { DEU: 0.7, SWE: 0.2, DNK: 0.2, RUS: 0.15 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1895.50, status: open, controller: DEU, source: "opened 21 Jun 1895" }
+    - { year: 1907.00, status: building, controller: DEU, source: "widening for dreadnought draught begins" }
+    - { year: 1914.48, status: open, controller: DEU, source: "widening complete 24 Jun 1914 — four days before Sarajevo; the fleet can move between the North Sea and the Baltic" }
+  notes: "The corridor fact most often cited as an input to German war timing in 1914. Recorded so the claim is datable, not asserted."
+
+- id: us_transcontinental
+  name: US transcontinental railroad
+  kind: corridor
+  mode: rail
+  status: built
+  geometry: { line: [[-95.9, 41.3], [-104.8, 41.1], [-112.0, 41.6], [-119.8, 39.5], [-122.4, 37.8]] }
+  transits: [USA]
+  load_bearing_for: { USA: 0.6 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1869.35, status: built, source: "golden spike, Promontory Summit, 10 May 1869" }
+  notes: "Rail as state-making: the continental market and the army that closed the frontier ride on it."
+
+- id: canadian_pacific
+  name: Canadian Pacific Railway
+  kind: corridor
+  mode: rail
+  status: built
+  geometry: { line: [[-73.6, 45.5], [-79.4, 43.7], [-97.1, 49.9], [-106.6, 52.1], [-114.1, 51.0], [-123.1, 49.3]] }
+  transits: [CAN]
+  load_bearing_for: { CAN: 0.8, GBR: 0.2 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1885.86, status: built, source: "last spike, Craigellachie, 7 Nov 1885" }
+  notes: "Built to hold British Columbia — the promise that bought the province into confederation."
+
+- id: trans_siberian
+  name: Trans-Siberian Railway
+  kind: corridor
+  mode: rail
+  status: built
+  controller: RUS
+  geometry: { line: [[37.6, 55.8], [60.6, 56.8], [73.4, 55.0], [82.9, 55.0], [92.9, 56.0], [104.3, 52.3], [113.5, 52.0], [127.5, 50.3], [135.1, 48.5], [131.9, 43.1]] }
+  transits: [RUS]
+  load_bearing_for: { RUS: 0.8 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1891.40, status: building, controller: RUS, source: "construction begins May 1891" }
+    - { year: 1904.70, status: built, controller: RUS, capacity: 0.3, source: "Circum-Baikal line complete Sep 1904; single track — the capacity that decided the Russo-Japanese war" }
+    - { year: 1916.00, status: built, controller: RUS, capacity: 0.7, source: "Amur line complete 1916, all-Russian route, double-tracked" }
+  notes: "capacity is the through-traffic share the line can actually carry (estimate); the 1904 single track is the war variable."
+
+- id: chinese_eastern_railway
+  name: Chinese Eastern Railway (Chita–Harbin–Vladivostok)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: CHN
+  sponsor: RUS
+  geometry: { line: [[113.5, 52.0], [117.4, 49.6], [124.4, 45.4], [126.6, 45.8], [130.3, 45.8], [131.9, 43.1]] }
+  transits: [RUS, CHN]
+  load_bearing_for: { RUS: 0.7, CHN: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1896.70, status: planned, controller: CHN, source: "Li–Lobanov concession, Sep 1896" }
+    - { year: 1903.54, status: built, controller: RUS, source: "through service Jul 1903 — the shortcut that shortens the Trans-Siberian by 900 km" }
+    - { year: 1905.68, status: built, controller: RUS, source: "Treaty of Portsmouth 5 Sep 1905: Russia keeps the CER north of Changchun" }
+  notes: "The densest dyad of the turn (CHN|RUS: 8 mid_force, 2 mid_war 1870–1914) is about this line and the lease at its end."
+
+- id: south_manchuria_railway
+  name: South Manchuria Railway (Harbin–Changchun–Port Arthur)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: CHN
+  sponsor: JPN
+  geometry: { line: [[126.6, 45.8], [125.3, 43.9], [123.4, 41.8], [121.6, 38.9]] }
+  transits: [RUS, CHN, JPN]
+  load_bearing_for: { JPN: 0.6, RUS: 0.4, CHN: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1898.24, status: building, controller: RUS, source: "Russian Liaodong lease 27 Mar 1898; branch to Port Arthur begun" }
+    - { year: 1903.54, status: built, controller: RUS, source: "through service Jul 1903" }
+    - { year: 1905.68, status: built, controller: JPN, source: "Treaty of Portsmouth 5 Sep 1905 transfers Changchun–Port Arthur to Japan" }
+    - { year: 1906.87, status: built, controller: JPN, source: "South Manchuria Railway Co. chartered Nov 1906 — a corridor operating as a colonial state" }
+  notes: "A corridor changing hands as a war outcome: the clearest case in the dataset."
+
+- id: berlin_baghdad
+  name: Berlin–Baghdad railway
+  kind: corridor
+  mode: rail
+  status: built
+  sponsor: DEU
+  geometry: { line: [[13.4, 52.5], [16.4, 48.2], [21.0, 44.8], [28.98, 41.0], [32.5, 37.9], [37.2, 36.9], [40.0, 35.0], [44.4, 33.3], [47.8, 30.5]] }
+  transits: [DEU, AUT_HUN, OTTOMAN]
+  load_bearing_for: { DEU: 0.4, OTTOMAN: 0.6, AUT_HUN: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1888.90, status: planned, sponsor: DEU, source: "Anatolian Railway concession, Deutsche Bank, Oct 1888" }
+    - { year: 1896.00, status: building, source: "Konya reached 1896" }
+    - { year: 1903.18, status: building, source: "Baghdad Railway concession 5 Mar 1903" }
+    - { year: 1911.87, status: building, source: "Potsdam agreement with Russia, Nov 1911" }
+    - { year: 1914.45, status: building, source: "Anglo-German convention 15 Jun 1914: Britain accepts the line, Basra terminus, no Gulf extension — the corridor dispute is settled six weeks before the DEU|GBR war" }
+    - { year: 1914.70, status: closed, source: "construction halted by the war" }
+    - { year: 1940.50, status: built, controller: TUR, source: "through service 1940, after the empires that fought over it were gone" }
+  notes: "The stated test for the corridor dampener: if a contested corridor raises dyadic tension, DEU|GBR hazard should rise 1903–1914 and fall after Jun 1914. The 1914.45 settlement six weeks before the war is evidence against the dampener as written in docs/schema.md — the test, not the conclusion."
+
+- id: hejaz_railway
+  name: Hejaz railway (Damascus–Medina)
+  kind: corridor
+  mode: rail
+  status: closed
+  geometry: { line: [[36.3, 33.5], [35.9, 31.9], [36.6, 29.5], [37.3, 27.4], [39.6, 24.5]] }
+  transits: [OTTOMAN]
+  load_bearing_for: { OTTOMAN: 0.5 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1900.70, status: building, source: "construction begins Sep 1900, funded by subscription across the Muslim world" }
+    - { year: 1908.70, status: built, source: "Medina reached Sep 1908" }
+    - { year: 1917.00, status: closed, source: "Arab Revolt sabotage 1916-18 — the first modern rail-cutting campaign" }
+  notes: "Pilgrimage cover for a troop-movement line; its destruction is the era's cleanest corridor-denial campaign."
+
+- id: cape_to_cairo
+  name: Cape-to-Cairo railway
+  kind: corridor
+  mode: rail
+  status: abandoned
+  geometry: { line: [[18.4, -33.9], [28.0, -26.2], [28.6, -20.2], [28.3, -15.4], [31.0, -8.9], [29.4, -1.9], [32.6, 0.3], [32.5, 15.6], [31.2, 30.0]] }
+  transits: [GBR]
+  load_bearing_for: { GBR: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1900.00, status: planned, source: "Rhodes's project; the northern and southern ends were built, the middle never was" }
+    - { year: 1926.00, status: abandoned, source: "estimate: no through line was ever built; the Benguela route (1931) took the traffic the middle section would have carried" }
+  notes: "The counterfactual corridor — kept as a negative case for corridor_status: most planned corridors are never built."
+
+- id: cape_bulawayo
+  name: Cape–Bulawayo railway
+  kind: corridor
+  mode: rail
+  status: built
+  geometry: { line: [[18.4, -33.9], [24.8, -28.7], [25.6, -25.8], [27.5, -22.6], [28.6, -20.2]] }
+  transits: [GBR]
+  load_bearing_for: { GBR: 0.25 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1897.83, status: built, source: "Bulawayo reached Nov 1897 — the southern half of the Cape-to-Cairo project" }
+
+- id: uganda_railway
+  name: Uganda railway (Mombasa–Kisumu)
+  kind: corridor
+  mode: rail
+  status: built
+  geometry: { line: [[39.7, -4.1], [37.1, -2.4], [36.8, -1.3], [35.3, -0.4], [34.8, -0.1]] }
+  transits: [GBR]
+  load_bearing_for: { GBR: 0.2 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1901.98, status: built, source: "Kisumu reached Dec 1901" }
+  notes: "Built to reach the Nile headwaters — the corridor rationale for the British position in Uganda and, through it, Egypt."
+
+- id: trans_caspian
+  name: Trans-Caspian railway (Krasnovodsk–Samarkand–Tashkent)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: RUS
+  geometry: { line: [[53.0, 40.0], [58.4, 37.9], [62.2, 39.1], [64.6, 39.8], [66.9, 39.7], [69.2, 41.3]] }
+  transits: [RUS]
+  load_bearing_for: { RUS: 0.5 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1888.50, status: built, controller: RUS, source: "Samarkand reached May 1888" }
+    - { year: 1898.00, status: built, controller: RUS, source: "Tashkent branch 1898" }
+  notes: "The corridor behind the Panjdeh crisis and the Anglo-Russian Great Game: Russian troops within rail reach of Herat."
+
+- id: baku_batumi_rail
+  name: Baku–Batumi railway
+  kind: corridor
+  mode: rail
+  status: built
+  controller: RUS
+  geometry: { line: [[49.9, 40.4], [46.0, 41.3], [44.8, 41.7], [43.0, 42.0], [41.6, 41.6]] }
+  transits: [RUS]
+  load_bearing_for: { RUS: 0.4 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1883.70, status: built, controller: RUS, source: "through service 1883 — the rail predecessor of the 1906 pipeline" }
+
+- id: baku_batumi_pipeline
+  name: Baku–Batumi kerosene pipeline
+  kind: corridor
+  mode: pipeline
+  status: built
+  controller: RUS
+  geometry: { line: [[49.9, 40.4], [46.0, 41.3], [44.8, 41.7], [43.0, 42.0], [41.6, 41.6]] }
+  transits: [RUS]
+  load_bearing_for: { RUS: 0.4 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1906.00, status: built, controller: RUS, source: "completed 1906; the world's first long-distance product pipeline" }
+
+- id: gotthard_tunnel
+  name: Gotthard rail tunnel
+  kind: corridor
+  mode: rail
+  status: built
+  geometry: { line: [[8.6, 46.6], [8.6, 46.5], [8.8, 46.2]] }
+  transits: [CHE, ITA, DEU]
+  load_bearing_for: { CHE: 0.6, ITA: 0.3, DEU: 0.2 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1882.40, status: built, source: "opened 1 Jun 1882" }
+  notes: "Alpine transit as neutrality's product: Swiss neutrality is load-bearing for its neighbours because of the tunnels."
+
+- id: simplon_tunnel
+  name: Simplon rail tunnel
+  kind: corridor
+  mode: rail
+  status: built
+  geometry: { line: [[7.9, 46.3], [8.1, 46.2]] }
+  transits: [CHE, ITA]
+  load_bearing_for: { CHE: 0.4, ITA: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1906.40, status: built, source: "opened 1 Jun 1906" }
+
+# ---- cables: routing concentration is a corridor property, not a diffusion property (see data/waves.yaml telegraph_cable)
+- id: eastern_telegraph
+  name: Eastern Telegraph imperial cable spine
+  kind: corridor
+  mode: cable
+  status: built
+  controller: GBR
+  geometry: { line: [[-0.1, 51.5], [-5.4, 36.1], [14.5, 35.9], [29.9, 31.2], [45.0, 12.8], [72.8, 19.0], [103.8, 1.3], [114.2, 22.3]] }
+  transits: [GBR, OTTOMAN, IND]
+  load_bearing_for: { GBR: 0.9, IND: 0.8, AUS: 0.9, JPN: 0.4 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1870.45, status: built, controller: GBR, source: "London–Bombay working Jun 1870" }
+    - { year: 1871.00, status: built, controller: GBR, source: "Singapore–Hong Kong 1871" }
+    - { year: 1872.60, status: built, controller: GBR, source: "Australia via Darwin, Aug 1872" }
+  notes: "The British cable monopoly is the ISR chokepoint of the era: almost every foreign ministry's traffic lands on British-owned cable at some point."
+
+- id: all_red_pacific
+  name: All-Red Pacific cable (Vancouver–Fanning–Fiji–Norfolk–Australia/NZ)
+  kind: corridor
+  mode: cable
+  status: built
+  controller: GBR
+  geometry: { line: [[-123.1, 49.3], [-159.4, 3.9], [178.4, -18.1], [167.9, -29.0], [151.2, -33.9]] }
+  transits: [CAN, GBR, AUS, NZL]
+  load_bearing_for: { GBR: 0.5, CAN: 0.4, AUS: 0.6, NZL: 0.6 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1902.83, status: built, controller: GBR, source: "first message 31 Oct 1902 — routed to touch no foreign soil: the deliberate bypass" }
+  notes: "A corridor built to remove a dependency rather than to carry trade. The bypass response is what corridor_status should predict."
+
+- id: german_atlantic_cables
+  name: German transatlantic cables (Emden–Azores–New York)
+  kind: corridor
+  mode: cable
+  status: closed
+  controller: DEU
+  geometry: { line: [[7.2, 53.4], [-2.0, 49.5], [-25.7, 37.7], [-74.0, 40.7]] }
+  transits: [DEU, USA]
+  load_bearing_for: { DEU: 0.8 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1900.60, status: built, controller: DEU, source: "Emden–Azores–New York, 1900" }
+    - { year: 1904.60, status: built, controller: DEU, source: "second cable, 1904" }
+    - { year: 1914.60, status: closed, source: "cut by CS Alert in the Channel, 5 Aug 1914 — Germany's direct link to neutral opinion severed on day one" }
+  notes: "Built as a bypass of the British spine and cut anyway: bypass reduces exposure only where the bypass avoids the adversary's water."
+
+- id: spanish_colonial_cables
+  name: Spanish colonial cables (Cuba, Philippines)
+  kind: corridor
+  mode: cable
+  status: closed
+  controller: ESP
+  geometry: { line: [[-80.4, 22.1], [-82.4, 23.1], [120.98, 14.6]] }
+  transits: [ESP, USA, PHL]
+  load_bearing_for: { ESP: 0.7 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1898.35, status: closed, source: "US Navy cuts the Manila cable 2 May and the Cienfuegos cable 11 May 1898 — the first deliberate infrastructure denial of a war" }
+  notes: "With spanish_american already in events.yaml, this and german_atlantic_cables are the two cleanest cut-the-cable observations in the dataset."
+
+# ---------------------------------------------------------------- pipelines with dated histories already in events.yaml
+- id: kirkuk_haifa_pipeline
+  name: Kirkuk–Haifa oil pipeline
+  kind: corridor
+  mode: pipeline
+  status: closed
+  geometry: { line: [[44.4, 35.5], [40.0, 34.0], [36.3, 32.6], [35.0, 32.8]] }
+  transits: [IRQ, JOR, ISR]
+  load_bearing_for: { IRQ: 0.5, GBR: 0.4, JOR: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1935.00, status: built, source: "opened 1935 (Iraq Petroleum Company)" }
+    - { year: 1948.40, status: closed, source: "closed on the founding of Israel, 1948 — a corridor killed by a new border" }
+
+- id: tapline
+  name: Trans-Arabian Pipeline
+  kind: corridor
+  mode: pipeline
+  status: closed
+  geometry: { line: [[48.5, 27.5], [44.0, 30.0], [38.0, 32.0], [35.6, 33.3]] }
+  transits: [SAU, JOR, SYR, LBN]
+  load_bearing_for: { SAU: 0.5, LBN: 0.4, JOR: 0.4, SYR: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1950.00, status: built, source: "Sidon terminal opens 1950" }
+    - { year: 1976.00, status: closed, source: "transit disputes and the Lebanese civil war" }
+
+- id: druzhba_pipeline
+  name: Druzhba (Friendship) oil pipeline
+  kind: corridor
+  mode: pipeline
+  status: built
+  controller: RUS
+  geometry: { line: [[52.6, 55.8], [48.4, 54.3], [37.6, 55.8], [30.5, 50.4], [23.0, 52.2], [14.5, 51.9]] }
+  transits: [RUS, UKR, POL, DDR]
+  load_bearing_for: { POL: 0.6, DEU: 0.4, HUN: 0.6, SVK: 0.8, CZE: 0.6 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1964.00, status: built, controller: RUS, source: "opened 1964 — the corridor that made the Warsaw Pact an energy system" }
+
+- id: btc_pipeline
+  name: Baku–Tbilisi–Ceyhan pipeline
+  kind: corridor
+  mode: pipeline
+  status: built
+  geometry: { line: [[49.9, 40.4], [44.8, 41.7], [41.0, 40.0], [35.8, 37.0]] }
+  transits: [AZE, GEO, TUR]
+  load_bearing_for: { AZE: 0.8, GEO: 0.6, TUR: 0.4 }
+  load_bearing_source: estimate
+  history:
+    - { year: 2006.40, status: built, source: "first oil at Ceyhan Jun 2006 — the first post-Soviet corridor that bypasses Russia and Iran" }
+
+- id: nord_stream
+  name: Nord Stream 1/2
+  kind: corridor
+  mode: pipeline
+  status: closed
+  geometry: { line: [[28.8, 60.1], [20.0, 56.5], [13.6, 54.1]] }
+  transits: [RUS, DEU]
+  load_bearing_for: { DEU: 0.5, RUS: 0.5 }
+  load_bearing_source: estimate
+  history:
+    - { year: 2011.90, status: built, source: "Nord Stream 1 opens Nov 2011" }
+    - { year: 2022.70, status: closed, source: "sabotage 26 Sep 2022" }
+
+- id: power_of_siberia
+  name: Power of Siberia
+  kind: corridor
+  mode: pipeline
+  status: built
+  geometry: { line: [[113.5, 60.0], [127.5, 50.3], [126.6, 45.8], [116.4, 39.9]] }
+  transits: [RUS, CHN]
+  load_bearing_for: { RUS: 0.4, CHN: 0.15 }
+  load_bearing_source: estimate
+  history:
+    - { year: 2019.90, status: built, source: "gas flows from Dec 2019" }

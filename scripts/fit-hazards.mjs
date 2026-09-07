@@ -49,6 +49,8 @@ function rawValue(actor, c, y) {
   if (c.transform === 'win5') return derived[v] ? (derived[v](actor, y) ?? 0) : win5(actor, v, y);
   const yy = y - (c.lag ?? (c.transform === 'lag1' ? 1 : 0));
   const x = derived[v] ? derived[v](actor, yy) : pv(actor, v, yy);
+  // outside its source's coverage a covariate may carry a declared structural default instead of killing the row
+  if (x == null && c.default_outside) { const [w0, w1] = c.default_outside.window; if (yy < w0 || yy > w1) return c.default_outside.value; }
   if (x == null) return null;
   return x;
 }

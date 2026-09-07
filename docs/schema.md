@@ -63,13 +63,20 @@ Any polygon whose controller is not its sole claimant. This is where the dice ge
   controller: ISR
   claimants: [SYR]
   status: occupied         # occupied | disputed | breakaway | buffer | contested_active | frozen
+                           #  historical records also use: annexed | leased | protectorate | settled
   stakes: { ISR: 0.6, SYR: 0.7 }   # 0-1, how much each side would pay to hold/take it (estimate)
+  stakes_source: estimate
   geometry:
     ne_ids: [1159320905]   # reference Natural Earth disputed-area features, and/or
     sketch: [[lon,lat], ...]   # a hand-drawn polygon (tagged so the UI can render it as a sketch)
+    point: [35.9, 33.1]    # historical territories with no polygon layer: a point, tagged geometry_source
+  history:                 # REQUIRED: dated control record; controller/status above are the 2026 snapshot
+    - { year: 1882.70, controller: GBR, status: occupied, source: "Tel el-Kebir 13 Sep 1882" }
   hazard: golan_buffer_control   # id of the control-change hazard (optional; static if absent)
   notes: ...
 ```
+
+A `kind: territory` event in `data/history/events.yaml` must name a record here; the build fails otherwise.
 
 Control change is a competing-risks hazard over claimants (plus `status` transitions like `contested_active → frozen`). Its covariates come from the dyadic conflict hazard between controller and claimant, the military layer, and treaty hazards (`israel_syria_treaty` firing moves this to `buffer` with controller `UN`).
 
@@ -81,13 +88,26 @@ Chokepoints and land corridors — the load-bearing infrastructure that turns tr
 - id: hormuz
   name: Strait of Hormuz
   kind: chokepoint         # chokepoint | corridor
-  mode: sea                # sea | rail | pipeline | hvdc | multimodal
-  status: closed           # open | contested | closed | planned | building | built
+  mode: sea                # sea | rail | pipeline | hvdc | cable | multimodal
+  status: closed           # open | contested | closed | planned | building | built | abandoned
+  controller: IRN          # optional: who actually holds it (Suez 1882–1956 is why this exists)
+  sponsor: DEU             # optional: who is building/financing it (corridor_status reads sponsor_great_power)
   geometry: { point: [56.3, 26.5] }        # or  { line: [[lon,lat], ...] }
   transits: [IRN, IRQ, SAU, ARE, QAT]      # states whose territory/coast it runs through
   load_bearing_for: { CHN: 0.5, JPN: 0.6, QAT: 0.9 }   # 0-1 per dependent state; for planned corridors, the value once built
+  load_bearing_source: estimate            # every hand number carries a source or the literal `estimate`
+  history:                 # REQUIRED: the dated status record. status/controller/completion above are the 2026 snapshot.
+    - { year: 1869.87, status: open, controller: OTTOMAN, source: "opened 17 Nov 1869" }
+    - { year: 1882.70, status: open, controller: GBR, capacity: 0.5, source: "..." }
   notes: ...
 ```
+
+`status` values: `abandoned` is a corridor that was started and given up (Panama 1881–1889, Cape-to-Cairo) — distinct from
+`planned` (never started) and `closed` (built, then shut). `mode: cable` covers telegraph/data cables, where the
+load-bearing property is routing concentration rather than throughput.
+
+Every `kind: corridor` / `kind: chokepoint` event in `data/history/events.yaml` must name a record here, and every record
+must carry a non-empty `history`; `scripts/build-events.mjs` and `scripts/build-world.mjs` fail the build otherwise.
 
 `load_bearing_for` is the corridor-dampener term in the dyadic conflict hazard: a dyad whose shared infrastructure is load-bearing for a third party gets its dispute hazard multiplied down, weighted by that third party's alliance edge to each side. "China won't let the rail through Iran be bombed" is this one number.
 

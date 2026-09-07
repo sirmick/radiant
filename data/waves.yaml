@@ -21,10 +21,10 @@ waves:
     introduced: 1844
     first_sovereign: GBR
     diffusion: { median_years_to_S: 15, spread: 10 }
-    saturates: 1880
+    saturates: 1910
     retired: 1930
     sovereign_by: { GBR: 1850, USA: 1850, FRA: 1855, DEU: 1855, RUS: 1865, JPN: 1880, ITA: 1865 }
-    notes: "First ISR/comms chokepoint: British cable monopoly ~1900 is the Starlink of its day. The satellite/constellation wave is its descendant."
+    notes: "First ISR/comms chokepoint: British cable monopoly ~1900 is the Starlink of its day. The satellite/constellation wave is its descendant. `saturates` moved 1880 → 1910 on 2026-09-06: the technology was non-discriminating long before the ROUTING was, and routing concentration is a corridor property, not a diffusion one — it is now carried by the cable corridors in data/corridors.yaml (eastern_telegraph, all_red_pacific, german_atlantic_cables, spanish_colonial_cables), including the two cable cuts of 1898 and 1914."
 
   - id: steel
     label: Bessemer/open-hearth steel at scale

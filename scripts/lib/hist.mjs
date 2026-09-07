@@ -35,33 +35,41 @@ const slug = (name) => name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^
 /**
  * The state universe: every state in the countrycode panel (CoW / GW system membership) 1816–2025,
  * merged with the hand-coded historical entities (data/history/actors.yaml) and the modern model actors (data/actors.yaml).
- * id -> { id, name, introduced, retired, successor, gw, cow, owid, great_power, modeled }
+ * id -> { id, name, spans, introduced, retired, successor, gw, cow, owid, great_power, modeled }
+ * `spans` = [[from, to|null], ...] system-membership intervals; the codelist's interior gaps are kept (a colonised
+ * state is not an actor while it is a colony), so `isLive` is span membership, not [min, max].
  * `modeled` = simulated by the engine (hand/modern sets); everything else is fit-only.
  */
 export function loadActors() {
   const hist = Y('data/history/actors.yaml');
   const modern = Y('data/actors.yaml');
-  const byId = new Map(hist.map(a => [a.id, { ...a, modeled: true }]));
+  const byId = new Map(hist.map(a => [a.id, { ...a, modeled: a.modeled ?? true }]));
   for (const m of modern) {
     if (!byId.has(m.id)) byId.set(m.id, { id: m.id, name: m.name, introduced: 1991, gw: null, owid: m.id, modeled: true });
     byId.get(m.id).modern = m; byId.get(m.id).modeled = true;
   }
   // universe from the countrycode panel: iso3c when present, else a slug of the English name
   const panelPath = 'data/raw/hist/codelist_panel.csv';
-  const span = new Map();   // id -> { y0, y1, gw, cow, name, iso }
+  const span = new Map();   // id -> { years: Set, gw, cow, name, iso }
   const cowRows = [], gwRows = [];
   if (existsSync(panelPath)) for (const r of csvRows(readFileSync(panelPath, 'utf8'))) {
     const y = +r.year, cow = r.cown ? +r.cown : null, gw = r.gwn ? +r.gwn : null; if (cow == null && gw == null) continue;
     const iso = r.iso3c || null; const id = iso ?? slug(r['country.name.en']);
-    const s = span.get(id) ?? span.set(id, { y0: y, y1: y, gw, cow, name: r['country.name.en'], iso }).get(id);
-    s.y0 = Math.min(s.y0, y); s.y1 = Math.max(s.y1, y); s.gw ??= gw; s.cow ??= cow;
+    const s = span.get(id) ?? span.set(id, { years: new Set(), gw, cow, name: r['country.name.en'], iso }).get(id);
+    s.years.add(y); s.gw ??= gw; s.cow ??= cow;
     if (cow != null) cowRows.push([cow, y, id]); if (gw != null) gwRows.push([gw, y, id]);
   }
+  const runs = (years) => { const ys = [...years].sort((a, b) => a - b); const out = []; for (const y of ys) { const last = out[out.length - 1]; if (last && y === last[1] + 1) last[1] = y; else out.push([y, y]); } return out; };
   for (const [id, s] of span) {
     if (byId.has(id)) { const a = byId.get(id); a.cow ??= s.cow; a.gw ??= s.gw; continue; }
-    byId.set(id, { id, name: s.name, introduced: s.y0, retired: s.y1 >= 2020 ? null : s.y1 + 1, gw: s.gw, cow: s.cow, owid: s.iso ?? null, modeled: false, universe: true });
+    const iv = runs(s.years).map(([a, b]) => [a, b >= 2020 ? null : b + 1]);   // [from, to) — `to` null = still live
+    byId.set(id, { id, name: s.name, spans: iv, introduced: iv[0][0], retired: iv[iv.length - 1][1], gw: s.gw, cow: s.cow, owid: s.iso ?? null, modeled: false, universe: true });
   }
-  for (const a of byId.values()) { a.introduced ??= 1816; a.retired ??= null; a.owid ??= a.id; a.modeled ??= false; }
+  for (const a of byId.values()) {
+    a.introduced ??= a.spans?.[0]?.[0] ?? 1816; a.retired ??= a.spans?.[a.spans.length - 1]?.[1] ?? null; a.owid ??= a.id; a.modeled ??= false;
+    // hand entries may declare `spans: [[from, to|null], ...]` (to is exclusive) where the codelist's [min,max] would be wrong
+    a.spans ??= [[a.introduced, a.retired]];
+  }
   byId.cowRows = cowRows; byId.gwRows = gwRows;
   return byId;
 }
@@ -79,7 +87,7 @@ export function makeCodeMap(actors, system = 'cow') {
     const c = +code; const k = `${c}|${year}`; if (cache.has(k)) return cache.get(k);
     let out = null;
     const list = byCode.get(c);
-    if (list) { const live = list.filter(a => year >= a.introduced && (a.retired == null || year < a.retired)); out = (live[0] ?? list[0]).id; }
+    if (list) { const live = list.filter(a => isLive(a, year)); out = (live[0] ?? list[0]).id; }
     else if (extra[c]) out = extra[c];
     else { const rows = panelByCode.get(c); if (rows) { let best = null, bd = Infinity; for (const [y, id] of rows) { const d = Math.abs(y - year); if (d < bd) { bd = d; best = id; } } out = best; } }
     cache.set(k, out); return out;
@@ -92,9 +100,10 @@ export function makeOwidMap(actors) {
   for (const a of actors.values()) if (a.owid) (m.get(a.owid) ?? m.set(a.owid, []).get(a.owid)).push(a);
   return (code, year) => {
     const list = m.get(code); if (!list) return null;
-    const live = list.filter(a => year >= a.introduced && (a.retired == null || year < a.retired));
+    const live = list.filter(a => isLive(a, year));
     return (live[0] ?? list[0]).id;
   };
 }
 
-export const isLive = (a, year) => year >= a.introduced && (a.retired == null || year < a.retired);
+/** System membership: any span contains `year` ([from, to) with to null = open). */
+export const isLive = (a, year) => (a.spans ?? [[a.introduced, a.retired]]).some(([f, t]) => year >= (f ?? 1816) && (t == null || year < t));
