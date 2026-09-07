@@ -11,27 +11,179 @@
 - { id: PRUSSIA, name: Prussia, introduced: 1816, retired: 1871, successor: DEU, gw: 255, owid: DEU, great_power: [1816, 1871], successor_borders_until: 1871, series_note: "OWID Germany series used; modern-borders population dropped (NMC tpop is the contemporaneous one)" }
 - { id: DEU, name: Germany, spans: [[1871, 1946], [1949, null]], gw: 255, owid: DEU, great_power: [1871, 1945, 1991, null], notes: "1949-90 split: model keeps DEU as West Germany (gw 260) and adds DDR. CoW system membership ends with the surrender 8 May 1945 and resumes with the Federal Republic 1949 (CoW dates the FRG 1955; the model uses the Basic Law, 23 May 1949, because the state exists from then); the 1946-48 gap is Allied military government, not a state." }
 - { id: DDR, name: East Germany, introduced: 1949, retired: 1990, successor: DEU, gw: 265, owid: null }
-- { id: AUT_HUN, name: Austria-Hungary, introduced: 1816, retired: 1918, successor: AUT, gw: 300, owid: AUT, great_power: [1816, 1918], successor_borders_until: 1918, series_note: "OWID Austria series understates the empire: population 4.5M in 1870 against an NMC tpop of 35.7M (7.9x). The population series is dropped; gdp_pc is still Austria-only and overstates the empire — see docs/escalations.md" }
+
+- id: AUT_HUN
+  name: Austria-Hungary
+  introduced: 1816
+  retired: 1918
+  successor: AUT
+  gw: 300
+  owid: AUT
+  great_power: [1816, 1918]
+  successor_borders_until: 1918
+  series_note: "OWID Austria series understates the empire: population 4.5M in 1870 against an NMC tpop of 35.7M (7.9x). Both series are now derived as a successor-state sum (derived_series below); the Austria-only join is suppressed inside the window."
+  derived_series:
+    window: [1816, 1918]
+    min_gdp_coverage: 0.5
+    source: "Constituent set = the Habsburg crown lands, mapped to the modern successor codes that hold them. Whole-country parts are inside the empire in full; a partly-inside successor carries a share = the Habsburg portion's 1910 population over that successor's 1910 population (1910 census: Cisleithania 28.57M, Transleithania 20.89M, Bosnia-Herzegovina 1.93M, total 51.39M; Galicia 8.03M split west/east 3.7/4.3, Bukovina 0.80M, Zakarpattia 0.60M, Transylvania+Banat+Crisana+Maramures 5.26M, Vojvodina 1.51M, Trentino+Trieste+Gorizia+Istria 0.93M, Lombardy-Venetia 4.3M in 1816). Shares are held constant over the window - estimate."
+    parts:
+      - { pop: AUT, gdp: AUT, note: "Austrian lands" }
+      - { pop: HUN, gdp: HUN, note: "Hungary proper" }
+      - { pop: CZE, gdp: OWID_CZS, note: "Bohemia, Moravia, Austrian Silesia" }
+      - { pop: SVK, gdp: OWID_CZS, note: "Upper Hungary" }
+      - { pop: SVN, gdp: OWID_YGS, note: "Carniola, Styria, Carinthia" }
+      - { pop: HRV, gdp: OWID_YGS, note: "Croatia-Slavonia, Dalmatia" }
+      - { pop: BIH, gdp: OWID_YGS, from: 1878, note: "occupied 1878, annexed 1908" }
+      - { pop: OWID_YGS, gdp: OWID_YGS, share: 0.11, note: "Vojvodina (no successor code of its own; 1.51M of Yugoslavia's 13.59M in 1913)" }
+      - { pop: POL, gdp: POL, share: 0.15, note: "western Galicia" }
+      - { pop: UKR, gdp: POL, share: 0.21, note: "eastern Galicia, Bukovina, Zakarpattia; Galicia's own series as the gdp proxy" }
+      - { pop: ROU, gdp: ROU, share: 0.44, note: "Transylvania, Banat, Crisana, Maramures" }
+      - { pop: ITA, gdp: ITA, share: 0.21, to: 1859, note: "Lombardy-Venetia" }
+      - { pop: ITA, gdp: ITA, share: 0.11, from: 1859, to: 1866, note: "Venetia" }
+      - { pop: ITA, gdp: ITA, share: 0.025, from: 1866, note: "Trentino, Trieste, Gorizia, Istria" }
 - { id: AUT, name: Austria, spans: [[1918, 1938], [1955, null]], gw: 305, owid: AUT, notes: "Anschluss 12 Mar 1938 ends system membership; restored by the State Treaty 15 May 1955. Occupied years carry no capabilities and no dispute non-events." }
 - { id: HUN, name: Hungary, introduced: 1918, gw: 310, owid: HUN }
-- { id: RUS, name: Russia / USSR, introduced: 1816, gw: 365, owid: RUS, owid_alt: [{ code: OWID_USS, from: 1922, to: 1992, source: "Maddison/OWID 'USSR' entity: gdp_pc 2308 and population 151.1M in 1930 against modern-borders RUS 1345 and 85.2M; NMC tpop for the same year is 154.9M" }], great_power: [1816, 1917, 1922, null], successor_borders_until: 1918, notes: "USSR 1922-91 kept under RUS; successor states introduced 1991", series_note: "OWID Russia population is modern-borders: 49.5M in 1870 against an NMC tpop of 84.5M for the empire; dropped before 1918. 1922-91 gdp_pc and population come from the USSR-wide OWID_USS series (owid_alt); 1918-21 is still modern-borders." }
+
+- id: RUS
+  name: Russia / USSR
+  introduced: 1816
+  gw: 365
+  owid: RUS
+  owid_alt: [{ code: OWID_USS, from: 1922, to: 1991, source: "Maddison/OWID 'USSR' entity: gdp_pc 2308 and population 151.1M in 1930 against modern-borders RUS 1345 and 85.2M; NMC tpop for the same year is 154.9M. The window ends in 1991 because the panel introduces the 14 successor actors that year and NMC's 1991 tpop for ccode 365 is Russia alone (148.3M against the union's 292.7M)" }]
+  great_power: [1816, 1917, 1922, null]
+  successor_borders_until: 1918
+  notes: "USSR 1922-91 kept under RUS; successor states introduced 1991"
+  series_note: "OWID Russia population is modern-borders: 49.5M in 1870 against an NMC tpop of 84.5M for the empire. 1816-1921 is now the derived successor-state sum below (the OWID_USS entity is the sum of the 15 union republics, so the empire is that entity minus the parts not yet or no longer Russian, plus Finland and Congress Poland); 1922-91 comes from OWID_USS through owid_alt."
+  derived_series:
+    window: [1816, 1922]
+    min_gdp_coverage: 0.5
+    source: "The Maddison/OWID USSR entity (OWID_USS) is exactly the sum of the 15 union republics (87.82M in 1870 = RUS+UKR+BLR+MDA+GEO+ARM+AZE+KAZ+UZB+TKM+TJK+KGZ+LTU+LVA+EST), so the Russian Empire is written as that entity with the not-yet-conquered or already-lost republics subtracted (share -1) and Finland (1809-1917) and Congress Poland added. Central Asian dates: Kokand/Semirechye 1876, Transcaspia 1885, the Pamirs 1895. Congress Poland's share 0.36 of modern Poland is its 6.1M of 1870 over Poland's 16.8M - estimate. Cross-check against NMC tpop: 1870 91.3/84.5M, 1900 127.7/132.9M."
+    parts:
+      - { pop: OWID_USS, gdp: OWID_USS, note: "the 15 union republics" }
+      - { pop: UZB, gdp: OWID_USS, share: -1, to: 1876 }
+      - { pop: KGZ, gdp: OWID_USS, share: -1, to: 1876 }
+      - { pop: TKM, gdp: OWID_USS, share: -1, to: 1885 }
+      - { pop: TJK, gdp: OWID_USS, share: -1, to: 1895 }
+      - { pop: LTU, gdp: OWID_USS, share: -1, from: 1918, note: "independent 1918" }
+      - { pop: LVA, gdp: OWID_USS, share: -1, from: 1918 }
+      - { pop: EST, gdp: OWID_USS, share: -1, from: 1918 }
+      - { pop: MDA, gdp: OWID_USS, share: -1, from: 1918, note: "Bessarabia to Romania 1918" }
+      - { pop: FIN, gdp: FIN, to: 1918, note: "Grand Duchy 1809-1917" }
+      - { pop: POL, gdp: POL, share: 0.36, to: 1916, note: "Congress Poland" }
 - { id: ITA, name: Italy, introduced: 1861, gw: 325, owid: ITA, great_power: [1860, 1943] }
 - { id: ESP, name: Spain, introduced: 1816, gw: 230, owid: ESP }
 - { id: PRT, name: Portugal, introduced: 1816, gw: 235, owid: PRT }
-- { id: NLD, name: Netherlands, introduced: 1816, gw: 210, owid: NLD }
+
+- id: NLD
+  name: Netherlands
+  introduced: 1816
+  gw: 210
+  owid: NLD
+  series_note: "NMC tpop is the United Kingdom of the Netherlands (5.61M in 1816 = 2.21 + 3.40 + 0.13) until the Belgian secession; those years are a derived three-part sum."
+  derived_series:
+    window: [1816, 1831]
+    min_gdp_coverage: 0.5
+    source: "United Kingdom of the Netherlands 1815-1830 (Belgium secedes 1830; NMC tpop drops from 6.43M in 1830 to 2.71M in 1831). Luxembourg is in personal union to 1839 and is carried to the same date as Belgium."
+    parts:
+      - { pop: NLD, gdp: NLD }
+      - { pop: BEL, gdp: BEL }
+      - { pop: LUX, gdp: LUX }
 - { id: BEL, name: Belgium, introduced: 1830, gw: 211, owid: BEL }
 - { id: CHE, name: Switzerland, introduced: 1816, gw: 225, owid: CHE }
-- { id: SWE, name: Sweden, introduced: 1816, gw: 380, owid: SWE }
+
+- id: SWE
+  name: Sweden
+  introduced: 1816
+  gw: 380
+  owid: SWE
+  series_note: "NMC tpop is the Sweden-Norway union (3.44M in 1816 = 2.50 + 0.94) while the OWID series is Sweden alone; the union years are a derived two-part sum."
+  derived_series:
+    window: [1816, 1905]
+    min_gdp_coverage: 0.5
+    source: "Union of Sweden and Norway 1814-1905 (dissolved 7 June 1905; NMC tpop drops from 7.51M in 1904 to 5.28M in 1905). Population and gdp_pc are the two members' population-weighted sum/mean."
+    parts:
+      - { pop: SWE, gdp: SWE }
+      - { pop: NOR, gdp: NOR }
 - { id: NOR, name: Norway, introduced: 1905, gw: 385, owid: NOR }
-- { id: DNK, name: Denmark, introduced: 1816, gw: 390, owid: DNK }
+
+- id: DNK
+  name: Denmark
+  introduced: 1816
+  gw: 390
+  owid: DNK
+  series_note: "NMC tpop includes the duchies of Schleswig, Holstein and Lauenburg until 1864 (2.34M in 1850 against 1.50M for Denmark proper); those years are a derived sum."
+  derived_series:
+    window: [1816, 1864]
+    min_gdp_coverage: 0.5
+    source: "The duchies have no successor code of their own - they are inside modern Germany - so they enter as a share of the German series: about 0.93M of Germany's 34M in 1850, share 0.027, held constant to the Second Schleswig War (NMC tpop drops from 2.69M in 1863 to 1.72M in 1864) - estimate."
+    parts:
+      - { pop: DNK, gdp: DNK }
+      - { pop: DEU, gdp: DEU, share: 0.027, note: "Schleswig, Holstein, Lauenburg" }
 - { id: FIN, name: Finland, introduced: 1917, gw: 375, owid: FIN }
 - { id: POL, name: Poland, spans: [[1918, 1940], [1945, null]], gw: 290, owid: POL, notes: "Fourth partition 28 Sep 1939 (Molotov-Ribbentrop); the state is gone 1940-44 and returns 1945. 1939 is kept live: Poland fought that year." }
-- { id: GRC, name: Greece, introduced: 1828, gw: 350, owid: GRC }
-- { id: ROU, name: Romania, introduced: 1878, gw: 360, owid: ROU }
+- id: GRC
+  name: Greece
+  introduced: 1828
+  gw: 350
+  owid: GRC
+  series_note: "The OWID series is modern-borders Greece; the kingdom held about a third of that territory until 1881 and about half until the Balkan-war settlements (population 2.75M against an NMC tpop of 0.82M in 1839). The population is a dated share of the modern series - see derived_series."
+  derived_series:
+    window: [1816, 1914]
+    min_gdp_coverage: 0.5
+    source: "A predecessor smaller than its own modern borders, written in the same constituent-set form with one part: the 1832 kingdom (Peloponnese, Attica, Boeotia, Euboea, the Cyclades) is about 0.35 of the population inside modern Greek borders, and 0.48 after Thessaly and Arta in 1881; NMC dates the Balkan-war gains to 1914 (tpop 2.74M in 1913, 4.60M in 1914), so the share is 1 from then. The shares are the complement of the Ottoman set's Greek parts, so the two partition modern Greece - estimate. gdp_pc is unchanged by this (one part, so the weighted mean is the part's own series)."
+    parts:
+      - { pop: GRC, gdp: GRC, share: 0.35, to: 1881, note: "the 1832 kingdom" }
+      - { pop: GRC, gdp: GRC, share: 0.48, from: 1881, note: "after Thessaly and Arta 1881" }
+- id: ROU
+  name: Romania
+  introduced: 1878
+  gw: 360
+  owid: ROU
+  series_note: "The OWID series is modern-borders Romania, which includes Transylvania (Habsburg until 1918); the Old Kingdom is the complement of the Habsburg share - see derived_series."
+  derived_series:
+    window: [1816, 1918]
+    min_gdp_coverage: 0.5
+    source: "Wallachia, Moldavia and Dobruja are 0.56 of the population inside modern Romanian borders - the complement of the 0.44 that Austria-Hungary's constituent set claims for Transylvania, Banat, Crisana and Maramures. The union of 1918 makes the share 1 (NMC tpop 9.47M in 1918 against 12.23M modern-borders, inside the guard), so the derived window ends there - estimate."
+    parts:
+      - { pop: ROU, gdp: ROU, share: 0.56, note: "the Old Kingdom" }
 - { id: BGR, name: Bulgaria, introduced: 1908, gw: 355, owid: BGR }
-- { id: SRB, name: Serbia / Yugoslavia, introduced: 1878, gw: 345, owid: SRB, owid_alt: [{ code: OWID_YGS, from: 1918, to: 1993, source: "Maddison/OWID 'Yugoslavia' entity: gdp_pc 1935 and population 14.41M in 1930 against modern-Serbia 3.99M; NMC tpop 13.78M" }], successor_borders_until: 1918, notes: "Yugoslavia 1918-92 under SRB", series_note: "Modern-Serbia population understates the Kingdom of Yugoslavia 3.4x; 1918-92 gdp_pc and population come from OWID_YGS (owid_alt), pre-1918 modern-borders population dropped" }
+- { id: SRB, name: Serbia / Yugoslavia, introduced: 1878, gw: 345, owid: SRB, owid_alt: [{ code: OWID_YGS, from: 1918, to: 1992, source: "Maddison/OWID 'Yugoslavia' entity: gdp_pc 1935 and population 14.41M in 1930 against modern-Serbia 3.99M; NMC tpop 13.78M. The window ends in 1992: from then NMC's ccode 345 is FR Yugoslavia (10.45M), not the SFRY (23.09M)" }], successor_borders_until: 1918, notes: "Yugoslavia 1918-92 under SRB", series_note: "Modern-Serbia population understates the Kingdom of Yugoslavia 3.4x; 1918-92 gdp_pc and population come from OWID_YGS (owid_alt), pre-1918 modern-borders population dropped" }
 - { id: UKR, name: Ukraine, introduced: 1991, gw: 369, owid: UKR }
-- { id: OTTOMAN, name: Ottoman Empire, introduced: 1816, retired: 1922, successor: TUR, gw: 640, owid: TUR, successor_borders_until: 1922, series_note: "OWID Turkey series used: population 11.8M in 1870 against an NMC tpop of 33.7M (2.9x). Population dropped; gdp_pc is Turkey-borders and mostly null 1871-1914" }
+
+- id: OTTOMAN
+  name: Ottoman Empire
+  introduced: 1816
+  retired: 1922
+  successor: TUR
+  gw: 640
+  owid: TUR
+  successor_borders_until: 1922
+  series_note: "OWID Turkey series is modern-Turkey borders: population 11.8M in 1870 against an NMC tpop of 33.7M (2.9x), and gdp_pc has only the 1820/1870/1913 Maddison benchmarks. Both are now derived as a dated successor-state sum (derived_series below)."
+  derived_series:
+    window: [1816, 1922]
+    min_gdp_coverage: 0.5
+    source: "Constituent set = the territory under Ottoman sovereignty or suzerainty in each year, mapped to modern successor codes, with the losses dated (Serbia/Romania/Montenegro/Bulgaria/Bosnia/Cyprus at the Congress of Berlin, July 1878 - the parts run through 1878, Thessaly 1881, Libya 1912, Albania/Macedonia/Aegean/Crete 1913, the Arab provinces at San Remo in April 1920 - occupied from 1918 but not detached before it). Shares: Hejaz+Al-Hasa 0.3 of modern Saudi Arabia; Wallachia+Moldavia 0.56 of modern Romania (the complement of the Habsburg 0.44); modern Greece outside the 1832 kingdom 0.65, and 0.52 after Thessaly 1881 (the complement of the shares in Greece's own derived_series). Yemen is excluded - Ottoman authority there was nominal (Zaydi imamate, Daan 1911) and it is not in the empire's own counts; Egypt is excluded because the khedivate is its own actor in the panel. Cross-check against NMC tpop: 1816 28.4/25.2M, 1870 32.1/33.7M, 1913 21.9/21.3M - estimate."
+    parts:
+      - { pop: TUR, gdp: TUR, note: "Anatolia and eastern Thrace" }
+      - { pop: IRQ, gdp: IRQ, to: 1920, note: "Baghdad, Basra, Mosul" }
+      - { pop: SYR, gdp: SYR, to: 1920 }
+      - { pop: LBN, gdp: LBN, to: 1920 }
+      - { pop: JOR, gdp: JOR, to: 1920 }
+      - { pop: ISR, gdp: SYR, to: 1920, note: "Palestine; no Maddison series before 1950, Levant proxy" }
+      - { pop: PSE, gdp: SYR, to: 1920 }
+      - { pop: SAU, gdp: SAU, share: 0.3, to: 1920, note: "Hejaz and Al-Hasa" }
+      - { pop: ALB, gdp: ALB, to: 1913 }
+      - { pop: MKD, gdp: OWID_YGS, to: 1913 }
+      - { pop: LBY, gdp: EGY, to: 1912, note: "Tripolitania and Cyrenaica; Egypt as the North African gdp proxy" }
+      - { pop: CYP, gdp: GRC, to: 1879, note: "British administration from 1878" }
+      - { pop: BGR, gdp: BGR, to: 1879 }
+      - { pop: BIH, gdp: OWID_YGS, to: 1879 }
+      - { pop: MNE, gdp: OWID_YGS, to: 1879 }
+      - { pop: SRB, gdp: OWID_YGS, to: 1879, note: "autonomous principality under suzerainty until 1878" }
+      - { pop: ROU, gdp: ROU, share: 0.56, to: 1879, note: "Wallachia and Moldavia under suzerainty" }
+      - { pop: GRC, gdp: GRC, to: 1830, note: "all of modern Greece is Ottoman before independence" }
+      - { pop: GRC, gdp: GRC, share: 0.65, from: 1830, to: 1881, note: "modern-Greece territory outside the 1832 kingdom (the complement of the kingdom's own 0.35)" }
+      - { pop: GRC, gdp: GRC, share: 0.52, from: 1881, to: 1914, note: "after Thessaly and Arta 1881; the rest is ceded in the 1913 settlements, which NMC dates to 1914" }
 - { id: TUR, name: Turkey, introduced: 1922, gw: 640, owid: TUR }
 - { id: IRN, name: Persia / Iran, introduced: 1816, gw: 630, owid: IRN }
 - { id: EGY, name: Egypt, spans: [[1855, 1883], [1922, null]], gw: 651, cow: 651, owid: EGY, notes: "Khedivate 1855-1882 is a CoW/GW system member (CoW 651, 13 NMC capability rows 1870-1882); British occupation from Sep 1882; protectorate 1914-22. Suez transits EGY, so the corridor covariates need the actor." }

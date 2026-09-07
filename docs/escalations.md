@@ -207,6 +207,45 @@ Era rows this package and `engine-7` target: **1910–1940** `mid_force` 0.53 ·
 
 **Test that decides it.** `AUT_HUN.population[1870] > 30,000,000`, `OTTOMAN.population[1870] > 25,000,000`, `OTTOMAN.gdp_pc` non-null for ≥30 of 1870–1914, and the build guard passing at the 30% threshold.
 
+**Status:** implemented (2026-09-07).
+
+**Implemented as.** A general constituent-set mechanism rather than a per-empire patch. An actor may declare `derived_series` in `data/history/actors.yaml`: a window, a `min_gdp_coverage`, a `source`, and `parts` of the form `{ pop, gdp, share, from, to, note }`. `population` is the share-weighted sum of the parts' OWID population series; `gdp_pc` is the population-weighted mean of the parts' Maddison series, emitted only where the parts that *have* a series cover `min_gdp_coverage` (0.5) of the derived population. A part's `gdp` code may differ from its `pop` code, which is how a crown land with no series of its own borrows the entity-wide one (Bohemia and Slovakia take `OWID_CZS`, the South Slav lands `OWID_YGS`) and how the eastern Galician and Levantine parts take a neighbour's. Eight actors declare one: **AUT_HUN, OTTOMAN, RUS** (the empires the package names), **SWE** (the Sweden-Norway union), **NLD** (the United Kingdom of the Netherlands), **DNK** (the duchies), and — the same machinery run the other way, for a predecessor *smaller* than its modern borders — **GRC** (the 1832 kingdom) and **ROU** (the Old Kingdom). The shares partition: the Habsburg set's 0.44 of Romania and the Ottoman set's 0.56 are complements, as are the Ottoman and Greek shares of modern Greece.
+
+Four decisions the package did not fix, recorded here:
+
+1. **Maddison is benchmark years before 1950, so the parts are log-linearly interpolated between their own observed years** (never extrapolated, never across a gap > 60 years). Without it the Ottoman set has 1820, 1870 and 1913 and nothing else, and the test's "non-null for ≥ 30 of 1870–1914" is unreachable from `data/raw/hist/maddison.csv` — Turkey has two observations in that window and every Arab successor has one. The interpolation is flagged, not hidden: `gdp_pc_interp` is the share of the year's gdp weight that came from an interpolated value (Ottoman 1900 = 0.83, Austria-Hungary 1900 = 0), and a year at 1 has no annual observation behind it, so its `gdp_growth` is a smooth fill rather than a measurement. `gdp_pc_derived` / `population_derived` flag the actor-years this block wrote (531 and 592).
+
+2. **The hard guard is real: the build now exits non-zero.** `|log(population/tpop)| > 0.3` on a live actor-year means the row has joined two different states. Every remaining violation has to be declared in the new `data/history/population_guard.yaml` as `{ id, spans, prefer: tpop|population|none, reason, source }` — `tpop` drops the modern-borders value, `population` drops NMC's, `none` is a declared, unresolved disagreement that keeps both. Undeclared → build failure with the list.
+
+3. **Not every disagreement is a borders join, and those are not "fixed" by dropping data.** 405 actor-years across 24 actors are declared `prefer: none`: CoW NMC and HYDE/Gapminder are two independent estimates for states without a census (Ethiopia 7.10M vs 17.68M in 1903, Liberia, Morocco, Guatemala, Paraguay, Peru, Saudi Arabia, Jordan, Bhutan, Eritrea, Somalia 1992, Rwanda 1993). Two are actor-definition problems escalated rather than excused: **VNM** 1954–75 (the model's VNM is CoW 816, the DRV, for capabilities and 19.94M of population, while every OWID-coded series joined to it is whole Vietnam at 46.48M — the fix is to split the actor) and **SRB** 1996–2001 (NMC 345 is FR Yugoslavia, the OWID series is Serbia without Montenegro and Kosovo). Three are resolved: the Papal States (`VAT`, whose OWID series is Vatican City), Pakistan 1947–70 (NMC counts both wings, OWID only the west), and Haiti 2001, where NMC's tpop jumps from 8,222 to 82,248 thousand — a misplaced decimal, so `tpop` is dropped for that year.
+
+4. **Two entity-window boundaries moved with it**, because they are the same double-counting bug: the USSR series (`owid_alt` OWID_USS) now ends in 1991, not 1992, since the panel introduces the 14 successor actors in 1991 and NMC's ccode 365 is Russia alone that year (148.3M against the union's 292.7M); the Yugoslav series ends in 1992, from when NMC's ccode 345 is FR Yugoslavia (10.45M) rather than the SFRY (23.09M). Prussia is **not** derived: CoW's tpop for it is the North German Confederation from 1867 (16.6M in 1850 → 31.2M in 1870) and a constituent set for that needs dated shares of modern Germany, Poland and Russia. Its population stays dropped.
+
+**Test result.** `node scripts/build-panel.mjs`:
+- `AUT_HUN.population[1870]` = **35.22M** (> 30M; NMC tpop 35.7M, and 50.4M in 1913 against the 1910 census's 51.4M). Its `gdp_pc` in 1870 goes 2,970 → **1,733**, i.e. −0.54 in logs — the Austria-only overstatement the package estimated at +0.4.
+- `OTTOMAN.population[1870]` = **32.00M** (> 25M; NMC tpop 33.7M). The dated losses track NMC's own series: 1913 24.8M against 21.3M, 1918 21.9M against 18.9M.
+- `OTTOMAN.gdp_pc` non-null **45 of 45** years 1870–1914 (was 2). Austria-Hungary is 45/45 too.
+- Build guard: **0 undeclared violations** over 12,095 compared live actor-years (was 757 of 11,854, reported and ignored), 405 declared exemptions across 24 actors, 226 actor-years dropped.
+- Also derived: RUS 1816–1921 (population 90.5M in 1870 against NMC's 84.5M; `gdp_pc` 789 → 1,599, the modern-Russia series replaced by the empire-wide one), SWE 1816–1904 (3.44M in 1816 = 2.50 + 0.94, exactly NMC's), NLD 1816–30, DNK 1816–63, GRC 1828–1913, ROU 1878–1917.
+
+**Scores: before → after** (`node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all`, pooled, exp/obs · skill · auc):
+| template | before | after |
+|---|---|---|
+| democratize_step | 0.97 · −0.174 · 0.554 | 0.95 · −0.189 · 0.548 |
+| autocratic_closure | 0.66 · −0.138 · 0.605 | 0.65 · −0.143 · 0.602 |
+| intrastate_onset | 1.01 · +0.120 · 0.741 | 1.02 · +0.113 · 0.738 |
+| coup_attempt | 0.89 · +0.182 · 0.759 | 0.89 · +0.177 · 0.758 |
+| leader_exit | 0.85 · −0.826 · 0.738 | 0.86 · −0.829 · 0.736 |
+| irregular_exit | 2.05 · −0.471 · 0.697 | 2.05 · −0.472 · 0.698 |
+| democratic_deepening | 1.50 · −0.080 · 0.694 | 1.50 · −0.073 · 0.704 |
+| mid_force | 0.78 · +0.081 · 0.766 | 0.78 · +0.085 · 0.767 |
+| mid_war | 0.81 · −0.013 · 0.771 | 0.80 · −0.008 · 0.770 |
+| chokepoint_status | 0.97 · +0.111 · 0.740 | 0.96 · +0.140 · 0.759 |
+| corridor_status | 1.09 · +0.076 · 0.675 | 1.13 · +0.062 · 0.664 |
+
+**The era rows this package targets did not move at all, and that is the finding.** Every `byAsOf` row at as-of 1870–1910 is identical before and after, to the digit: the only templates fitted before 1900 are the two dyad ones, and they carry `cinc`, not `gdp_pc`. The regime ladder's window starts in 1900 and its first fittable as-of year is 1920. So the empire series buys nothing *today* in the 1870–1914 score — it removes a covariate error (an empire entering every actor-year template at its richest province's income, or with no income at all) that only becomes scorable when a template reaches behind 1900. The rows that did move are 1920 onward, where the changed inputs are the guard's resolutions (Pakistan, Haiti, the Papal States) and the two entity-window boundaries; the movements are within run-to-run noise of the pooled numbers above.
+
+
 ## era-1914-1945 / engine-1 + statistics-3 — coalition joining, and a dyad relevance set that is not frozen at as-of
 
 **Adds.** (a) A coalition step in `stepYear`: when a `mid_war` fires between a and b, form sides, then draw each defence-pact neighbour of each side into the war with probability `p_join`, emitting every joiner × opposing-side pair as a `mid_war` and writing it into `world.dyadRecent`. (b) A relevance rule that is evaluated at the simulated year rather than frozen at as-of: a dyad is at risk if contiguous *now*, or either side is a great power, **or** either side is at war with a state allied to the other. Both `src/engine/core.js:dyadHazards` and `scripts/fit-hazards.mjs:buildDyadRows` must change together, or the fit and the simulation stop being the same model.

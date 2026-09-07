@@ -152,6 +152,71 @@ for (const [id, vars] of Object.entries(panel)) {
   sources.at_war += '; occupied years (data/history/events.yaml kind: occupation) are null, not 0';
 }
 
+// ---- empire-wide series: gdp_pc and population as a successor-state sum (data/history/actors.yaml `derived_series`)
+// A multinational empire has no series of its own in Maddison/OWID: joining it to one modern successor gives that
+// successor's borders (Austria-Hungary = Austria, 4.5M against an NMC tpop of 35.7M in 1870) and, for the Ottoman
+// Empire, a gdp_pc that is null in 43 of the 45 years 1870-1914. An actor may instead declare the constituent set
+// that made it up — modern successor codes with an optional population `share` of the successor that was inside the
+// empire, and dated `from`/`to` for territory gained or lost. Population is the share-weighted sum of the parts,
+// gdp_pc the population-weighted mean over the parts that have a series (emitted only where those parts cover
+// `min_gdp_coverage` of the derived population). Maddison is benchmark years before 1950, so a part's series is
+// log-linearly interpolated between its own observed years (never extrapolated, never across a gap > MAXGAP);
+// `gdp_pc_derived` / `population_derived` flag the actor-years this block wrote, and `gdp_pc_interp` the share of
+// the gdp weight that came from an interpolated year — a year with gdp_pc_interp = 1 has no annual observation
+// behind it and its gdp_growth is a smooth fill, not a measurement.
+{
+  const MAXGAP = 60;
+  const byCode = (file, col) => {
+    const m = new Map();
+    for (const r of readCsv(H + file)) { if (!r[col]) continue; const y = +r.year; if (!Number.isFinite(y)) continue; (m.get(r.code) ?? m.set(r.code, new Map()).get(r.code)).set(y, +r[col]); }
+    for (const s of m.values()) { const ks = [...s.keys()].sort((a, b) => a - b); s.keys_sorted = ks; }
+    return m;
+  };
+  const mad = byCode('maddison.csv', 'gdp_per_capita'), pops = byCode('population.csv', 'population_historical');
+  /** Value of `code` in `year`: observed, else log-linear between the nearest observed years on either side. */
+  const at = (m, code, y) => {
+    const s = m.get(code); if (!s) return null;
+    if (s.has(y)) return { v: s.get(y), interp: 0 };
+    const ks = s.keys_sorted; let lo = null, hi = null;
+    for (const k of ks) { if (k < y) lo = k; else { hi = k; break; } }
+    if (lo == null || hi == null || hi - lo > MAXGAP) return null;
+    const a = s.get(lo), b = s.get(hi); if (!(a > 0) || !(b > 0)) return null;
+    return { v: Math.exp(Math.log(a) + (Math.log(b) - Math.log(a)) * (y - lo) / (hi - lo)), interp: 1 };
+  };
+  const rep = [];
+  for (const a of actors.values()) {
+    const d = a.derived_series; if (!d) continue;
+    const [w0, w1] = d.window ?? [Y0, Y1 + 1];
+    const minCov = d.min_gdp_coverage ?? 0.5;
+    const vars = (panel[a.id] ??= {});
+    for (const v of ['gdp_pc', 'population', 'gdp_pc_derived', 'population_derived', 'gdp_pc_interp']) vars[v] ??= new Array(YEARS.length).fill(null);
+    let ny = 0, ng = 0;
+    for (let y = Math.max(w0, Y0); y < Math.min(w1, Y1 + 1); y++) {
+      const i = y - Y0;
+      vars.gdp_pc[i] = null; vars.population[i] = null;   // the modern-successor join does not own these years
+      if (!isLive(a, y)) continue;
+      let pop = 0, gsum = 0, gw = 0, gi = 0;
+      for (const p of d.parts) {
+        if (p.from != null && y < p.from) continue;
+        if (p.to != null && y >= p.to) continue;
+        const pv = at(pops, p.pop, y); if (!pv) continue;
+        const w = pv.v * (p.share ?? 1); pop += w;
+        const g = at(mad, p.gdp ?? p.pop, y); if (!g) continue;
+        gsum += w * g.v; gw += w; gi += w * g.interp;
+      }
+      if (!(pop > 0)) continue;
+      vars.population[i] = pop; vars.population_derived[i] = 1; ny++;
+      if (gw / pop >= minCov) { vars.gdp_pc[i] = gsum / gw; vars.gdp_pc_derived[i] = 1; vars.gdp_pc_interp[i] = gi / gw; ng++; }
+    }
+    rep.push(`${a.id} ${ny}y population, ${ng}y gdp_pc`);
+  }
+  sources.gdp_pc += '; empire-wide actors (data/history/actors.yaml `derived_series`) are the population-weighted mean of their constituent successor-state series, log-linearly interpolated between Maddison benchmark years';
+  sources.population += '; empire-wide actors are the share-weighted sum of their constituent successor-state series';
+  sources.gdp_pc_derived = sources.population_derived = 'derived (successor-state sum), see data/history/actors.yaml `derived_series`';
+  sources.gdp_pc_interp = 'share of the derived gdp_pc weight that came from a log-linear interpolation between Maddison benchmark years (1 = no annual observation behind the value)';
+  console.log(`derived empire series: ${rep.join('; ')}`);
+}
+
 // ---- derived: gdp growth, log gdp pc, milex share proxy, great power flag
 for (const [id, vars] of Object.entries(panel)) {
   const a = actors.get(id);
@@ -184,23 +249,61 @@ for (const [id, vars] of Object.entries(panel)) {
 
 // ---- empires on successor-state borders: drop the OWID/Maddison population series where it is a modern-borders series
 // for a multinational empire (CoW NMC tpop is genuinely empire-wide and stays). Declared per actor in data/history/actors.yaml
-// as `successor_borders_until: <year>`; gdp_pc has the same problem and is NOT dropped (it would remove the empire from every
-// regime template) — see docs/escalations.md for the empire-wide series that would fix it.
+// as `successor_borders_until: <year>`; where the actor also declares a `derived_series` the empire-wide sum built above
+// owns those years and is kept.
 {
   let dropped = 0;
   for (const [id, vars] of Object.entries(panel)) {
-    const until = actors.get(id)?.successor_borders_until; if (!until || !vars.population) continue;
-    YEARS.forEach((y, i) => { if (y < until && vars.population[i] != null) { vars.population[i] = null; dropped++; } });
+    const a = actors.get(id); const until = a?.successor_borders_until; if (!until || !vars.population) continue;
+    YEARS.forEach((y, i) => { if (y < until && vars.population[i] != null && !vars.population_derived?.[i]) { vars.population[i] = null; dropped++; } });
   }
-  // consistency report: population (modern borders) vs tpop (CoW NMC, contemporaneous borders)
-  let viol = 0, rows = 0; const worst = [];
+
+  // ---- hard guard: population (modern-successor borders) and tpop (CoW NMC, contemporaneous borders) are two
+  // measurements of one quantity. Where they disagree by more than 30% in logs for a live actor-year, one of them is
+  // describing a different territory and the panel is joining two states in one row — the failure this whole block
+  // exists to stop. The build FAILS on any such row that is not declared in data/history/population_guard.yaml
+  // (`{ id, spans, prefer, reason, source }`):
+  //   prefer: tpop        the OWID modern-borders value is dropped for those years (the actor is bigger than its successor)
+  //   prefer: population  the NMC value is dropped (NMC is the one measuring something else)
+  //   prefer: none        a declared, unresolved disagreement — two independent estimates of the same territory, kept
+  //                       and exempted with a reason. It is not a borders join and neither series is demonstrably wrong.
+  const GUARD = 0.3;
+  const decl = new Map();
+  for (const g of Y('data/history/population_guard.yaml')) {
+    const spans = g.spans ?? [[g.from ?? Y0, g.until ?? Y1 + 1]];
+    const d = decl.get(g.id) ?? decl.set(g.id, { spans: [], prefer: g.prefer ?? 'none' }).get(g.id);
+    d.spans.push(...spans); d.prefer = g.prefer ?? d.prefer;
+    if (!g.reason) throw new Error(`population_guard ${g.id}: every declaration needs a reason`);
+  }
+  for (const [id, d] of decl) {
+    const vars = panel[id]; if (!vars) continue;
+    if (d.prefer === 'none') continue;
+    const v = d.prefer === 'tpop' ? 'population' : 'tpop';
+    YEARS.forEach((y, i) => { if (d.spans.some(([f, t]) => y >= f && y < t) && vars[v]?.[i] != null && vars.population?.[i] != null && vars.tpop?.[i] != null && Math.abs(Math.log(vars.population[i] / vars.tpop[i])) > GUARD) { vars[v][i] = null; dropped++; } });
+  }
+  const bad = [], exempt = new Map();
+  let rows = 0;
   for (const [id, vars] of Object.entries(panel)) {
     if (!vars.population || !vars.tpop) continue;
-    YEARS.forEach((y, i) => { const a = vars.population[i], b = vars.tpop[i]; if (a == null || b == null || !vars.live?.[i]) return; rows++; const r = Math.abs(Math.log(a / b)); if (r > 0.3) { viol++; worst.push([id, y, r]); } });
+    const d = decl.get(id);
+    YEARS.forEach((y, i) => {
+      const a = vars.population[i], b = vars.tpop[i]; if (a == null || b == null || !vars.live?.[i]) return;
+      rows++; const r = Math.abs(Math.log(a / b)); if (r <= GUARD) return;
+      if (d && d.spans.some(([f, t]) => y >= f && y < t)) { const e = exempt.get(id) ?? exempt.set(id, { n: 0, worst: 0 }).get(id); e.n++; e.worst = Math.max(e.worst, r); return; }
+      bad.push([id, y, r]);
+    });
   }
-  worst.sort((a, b) => b[2] - a[2]);
-  console.log(`population/tpop: dropped ${dropped} successor-border actor-years; ${viol}/${rows} remaining rows disagree by >30% (worst: ${worst.slice(0, 5).map(([id, y, r]) => `${id} ${y} ${(r * 100).toFixed(0)}%`).join(', ')})`);
-  sources.population += '; successor-borders series dropped before `successor_borders_until` (data/history/actors.yaml)';
+  bad.sort((x, y) => y[2] - x[2]);
+  console.log(`population/tpop guard: ${rows} rows compared, ${bad.length} undeclared violations, ${[...exempt.values()].reduce((n, e) => n + e.n, 0)} declared exemptions across ${exempt.size} actors (${[...exempt].map(([id, e]) => `${id} ${e.n}y up to ${(Math.exp(e.worst) * 100).toFixed(0)}%`).join(', ')}); ${dropped} actor-years dropped`);
+  if (bad.length) {
+    console.error(`population/tpop guard FAILED: ${bad.length} live actor-years where |log(population/tpop)| > ${GUARD} and no declaration in data/history/population_guard.yaml:`);
+    const byActor = new Map();
+    for (const [id, y, r] of bad) { const g = byActor.get(id) ?? byActor.set(id, { ys: [], worst: 0, wy: 0 }).get(id); g.ys.push(y); if (r > g.worst) { g.worst = r; g.wy = y; } }
+    for (const [id, g] of [...byActor].sort((a, b) => b[1].ys.length - a[1].ys.length))
+      console.error(`  ${id} ${g.ys.length}y ${Math.min(...g.ys)}-${Math.max(...g.ys)}: worst ${g.wy} population ${(panel[id].population[g.wy - Y0] / 1e6).toFixed(2)}M vs tpop ${(panel[id].tpop[g.wy - Y0] / 1e6).toFixed(2)}M (x${Math.exp(g.worst).toFixed(2)})`);
+    process.exit(1);
+  }
+  sources.population += '; successor-borders series dropped before `successor_borders_until` (data/history/actors.yaml); build guard |log(population/tpop)| <= 0.3 on every live actor-year, exemptions declared in data/history/population_guard.yaml';
 }
 
 // ---- neighbourhood covariates from CShapes contiguity (1886+): who your neighbours are and what just happened to them

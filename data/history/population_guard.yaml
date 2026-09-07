@@ -1,0 +1,54 @@
+# Declared exemptions and resolutions for the population/tpop build guard in scripts/build-panel.mjs.
+#
+# The panel carries two population series: `population` (OWID/HYDE, on the modern successor's borders) and `tpop`
+# (CoW NMC, contemporaneous). They are two measurements of one quantity, so a live actor-year where they disagree by
+# more than 30% in logs is a row that has joined two different states — the failure that put Austria's 4.5M and the
+# Habsburg empire's 35.7M in the same 1870 row. The build FAILS on any such row that is not declared here.
+#
+# The first answer to a disagreement is a constituent set (`derived_series` in actors.yaml), which fixes the row
+# instead of excusing it: that is what Austria-Hungary, the Ottoman Empire, Russia, Sweden-Norway, the United
+# Kingdom of the Netherlands, Denmark's duchies, the Greek kingdom and the Romanian Old Kingdom now use. What is
+# left here is what a constituent set cannot fix.
+#
+# spans: [[from, to)] years the declaration covers. prefer:
+#   tpop        the modern-borders `population` is dropped for those years (the actor is bigger than its successor)
+#   population  the NMC `tpop` is dropped (NMC is measuring something else, or is wrong)
+#   none        a declared, unresolved disagreement: two independent estimates of the same territory, both kept.
+#               Not a borders join — recording it is what keeps the guard hard for everything undeclared.
+
+# ---- resolved: the actor is not its modern successor
+- { id: VAT, spans: [[1816, 1861]], prefer: tpop, reason: "The 1816-1860 entity is the Papal States (CoW 327, tpop 3.16M in 1860); the id's OWID series is Vatican City, which is not a system member. The iso3c collision is documented in data/history/actors.yaml.", source: "CoW NMC 3.02 ccode 327" }
+- { id: PAK, spans: [[1947, 1971]], prefer: tpop, reason: "CoW ccode 770 is Pakistan including the eastern wing until 1971 (110.0M in 1964); the OWID PAK series is modern Pakistan alone (50.8M), with the east in BGD. The contemporaneous series is the actor's.", source: "CoW NMC 3.02 ccode 770; Bangladesh independent 1971" }
+
+# ---- resolved: an NMC data error
+- { id: HTI, spans: [[2001, 2002]], prefer: population, reason: "NMC tpop for Haiti jumps 8,222 (2000) to 82,248 (2001) thousand — a misplaced decimal in the last year of the series, not a population.", source: "CoW NMC 3.02 ccode 41, rows 1997-2001" }
+
+# ---- declared and unresolved: two independent estimates of the same territory
+# CoW NMC's pre-census figures for states without a census, against HYDE/Gapminder back-projections. Neither is
+# demonstrably wrong; both are kept and the row is flagged rather than silently reconciled.
+- { id: GTM, spans: [[1868, 1911]], prefer: none, reason: "NMC 0.50M against HYDE 1.07M in 1868; the series converge by 1911.", source: "estimate dispute, no borders change" }
+- { id: MAR, spans: [[1847, 1886]], prefer: none, reason: "NMC 1.59M against HYDE 2.83M in 1847 for the pre-protectorate sultanate.", source: "estimate dispute" }
+- { id: HTI, spans: [[1859, 1896]], prefer: none, reason: "NMC runs about half of HYDE through the second half of the 19th century.", source: "estimate dispute" }
+- { id: ETH, spans: [[1898, 1934]], prefer: none, reason: "NMC 7.10M against HYDE 17.68M in 1903; Ethiopia had no census before 1984 and the pre-war estimates range from 8M to 20M.", source: "estimate dispute" }
+- { id: LBR, spans: [[1920, 1965]], prefer: none, reason: "NMC 0.22M against HYDE 0.58M in 1920: NMC appears to count the Americo-Liberian settled counties, HYDE the whole territory. Liberia's first census is 1962.", source: "estimate dispute" }
+- { id: PRY, spans: [[1869, 1896]], prefer: none, reason: "The decade after the War of the Triple Alliance; the post-war population is disputed by a factor of two in the sources themselves.", source: "estimate dispute" }
+- { id: PER, spans: [[1842, 1855]], prefer: none, reason: "NMC 1.85M against HYDE 3.09M in 1848, before the 1876 census.", source: "estimate dispute" }
+- { id: AFG, spans: [[1920, 1924], [1982, 1984]], prefer: none, reason: "1920-23 is a pre-census estimate dispute; 1982-83 is the refugee exodus, which the two series time differently.", source: "estimate dispute" }
+- { id: SAU, spans: [[1950, 2000]], prefer: none, reason: "NMC 3.20M against the UN's 1.70M in 1950; Saudi Arabia's own pre-1974 figures are administrative estimates that the UN series does not follow.", source: "estimate dispute" }
+- { id: JOR, spans: [[1946, 1987]], prefer: none, reason: "NMC 1.09M against 0.35M in 1946 and about 1.4x through the 1980s; the NMC series appears to include the West Bank and the registered refugee population.", source: "estimate dispute" }
+- { id: BTN, spans: [[1971, 2002]], prefer: none, reason: "NMC 2.12M against the UN's 0.60M in 2000 — Bhutan's own official figure before the 2005 census was around 1.9M and the UN series was revised down after it.", source: "estimate dispute" }
+- { id: GNQ, spans: [[1990, 2002]], prefer: none, reason: "NMC 0.45M against 0.75M in 2001; no census between 1983 and 2001.", source: "estimate dispute" }
+- { id: ERI, spans: [[1993, 2002]], prefer: none, reason: "Post-independence Eritrea has no census; NMC and the UN back-projections differ by 60%.", source: "estimate dispute" }
+- { id: SDN, spans: [[1956, 1960]], prefer: none, reason: "NMC 10.35M against 7.40M at independence, the years around Sudan's first census.", source: "estimate dispute" }
+- { id: LBN, spans: [[1988, 1994]], prefer: none, reason: "The end of the civil war; Lebanon has held no census since 1932 and the wartime series diverge.", source: "estimate dispute" }
+- { id: ARE, spans: [[1999, 2002]], prefer: none, reason: "The migrant-labour population: NMC 2.44M against 3.72M in 2001.", source: "estimate dispute" }
+- { id: SOM, spans: [[1992, 1994]], prefer: none, reason: "State collapse and famine; no administration was counting.", source: "estimate dispute" }
+- { id: RWA, spans: [[1993, 1994]], prefer: none, reason: "The genocide year: the two series place the population loss in different years.", source: "estimate dispute" }
+- { id: KWT, spans: [[1991, 1992]], prefer: none, reason: "The occupation and the expulsion of the Palestinian community; NMC 2.10M against 1.35M.", source: "estimate dispute" }
+- { id: ISR, spans: [[1948, 1949]], prefer: none, reason: "The entry year: NMC 0.87M is the state at independence, the OWID series 1.18M is the modern-borders territory including the population that became Palestinian refugees.", source: "estimate dispute" }
+- { id: EGY, spans: [[1882, 1883]], prefer: none, reason: "The last year of the khedivate before the British occupation; NMC 5.67M against 7.78M.", source: "estimate dispute" }
+- { id: FIN, spans: [[1917, 1918]], prefer: none, reason: "The entry year: NMC 2.23M against 3.07M, which is Finland's own figure for 1917.", source: "estimate dispute" }
+
+# ---- declared and unresolved: the actor's own definition is the problem (escalated, not excused)
+- { id: VNM, spans: [[1954, 1976]], prefer: none, reason: "The model's VNM is CoW ccode 816, the DRV (19.94M in 1975), while every OWID-coded series joined to it is whole Vietnam (46.48M). The row is two states until the actor is split into DRV and RVN; dropping either series would lose the covariates or the war.", source: "CoW NMC 3.02 ccode 816/817" }
+- { id: SRB, spans: [[1996, 2002]], prefer: none, reason: "NMC ccode 345 is FR Yugoslavia (10.64M in 2001: Serbia, Montenegro and Kosovo) while the OWID SRB series is Serbia without them (7.65M). Same problem as VNM: an actor whose extent changed inside its own life.", source: "CoW NMC 3.02 ccode 345" }
