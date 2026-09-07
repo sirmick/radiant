@@ -1,5 +1,5 @@
 <script>
-  import { valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, flagEmoji, regimeAt, REGIME_GLYPH, REGIME_COL4, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
+  import { valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, actualWithin, flagEmoji, regimeAt, REGIME_GLYPH, REGIME_COL4, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
 
   let { world, forecast, history, news, scores, selected, year, onSelect, onPickVariable, tab = $bindable('news') } = $props();
   const hSpark = (v, w = 160, h = 34) => { if (!histActor?.[v]) return null; const ys = [], vs = []; histActor[v].forEach((x, i) => { if (x != null) { ys.push(history.meta.y0 + i); vs.push(x); } }); if (vs.length < 2) return null; const lo = Math.min(...vs), hi = Math.max(...vs); const sx = (yy) => 1 + (yy - history.meta.y0) / (history.meta.y1 - history.meta.y0) * (w - 2); const sy = (x) => (h - 2) - (hi === lo ? (h - 4) / 2 : (x - lo) / (hi - lo) * (h - 4)); let d = ''; let prev = null; ys.forEach((yy, i) => { d += (prev != null && yy === prev + 1 ? 'L' : 'M') + sx(yy).toFixed(1) + ',' + sy(vs[i]).toFixed(1); prev = yy; }); return { d, x: sx(Math.max(history.meta.y0, Math.min(history.meta.y1, Math.round(year)))), w, h, lo, hi }; };
@@ -19,6 +19,8 @@
   const REG_COL = ['#d95c4f', '#e8a04f', '#7fc4f0', '#4f9be8'];
   const fcYearIdx = $derived(forecast ? Math.max(0, Math.min(forecast.meta.horizon - 1, Math.round(year) - forecast.meta.from)) : 0);
   const atYears = (curve, ys) => ys.map(y => (curve && curve[y - 1] != null ? curve[y - 1] : null));
+  const pastFc = $derived(forecast && history && forecast.meta.asOf < history.meta.y1);
+  const actualCell = (id, t) => { if (!pastFc) return null; const y = actualWithin(news, id, t, forecast.meta.asOf, Math.min(forecast.meta.horizon, history.meta.y1 - forecast.meta.asOf)); return y; };
   const territory = $derived(selected?.kind === 'territory' ? world.territories.find(t => t.id === selected.id) : null);
   const corridor = $derived(selected?.kind === 'corridor' ? world.corridors.find(c => c.id === selected.id) : null);
   const actorName = (id) => world.actors[id]?.name ?? history?.actors?.[id]?.name ?? id;
@@ -99,18 +101,20 @@
 
         {#if fcActor}
           {@const d = fcActor.regime?.[fcYearIdx]}
-          <h3>Forecast · generic templates · {forecast.meta.runs} runs</h3>
+          <h3>Forecast{pastFc ? ` made in ${forecast.meta.asOf}` : ''} · generic templates · {forecast.meta.runs} runs</h3>
           {#if d}
-            <div class="tiny muted">regime distribution in {Math.max(forecast.meta.from, Math.round(year))} (2025: {REGIME_LABELS[fcActor.regime0]})</div>
+            <div class="tiny muted">regime distribution in {Math.max(forecast.meta.from, Math.round(year))} ({forecast.meta.asOf}: {REGIME_LABELS[fcActor.regime0]}){#if pastFc && histActor && Math.round(year) <= history.meta.y1} · actual: <b>{REGIME_LABELS[histActor.regime?.[Math.round(year) - history.meta.y0]] ?? '—'}</b>{/if}</div>
             <div class="regbar">{#each d as p, l}{#if p > 0.005}<i style="width:{p * 100}%;background:{REG_COL[l]}" title="{REGIME_LABELS[l]} {(p * 100).toFixed(0)}%"></i>{/if}{/each}</div>
             <div class="tiny">{#each d as p, l}{#if p > 0.02}<span class="sw"><i style="background:{REG_COL[l]}"></i>{REGIME_LABELS[l]} {(p * 100).toFixed(0)}%</span>{/if}{/each}</div>
           {/if}
           <table class="fc"><tbody>
-            <tr class="muted tiny"><td>P(at least once) within</td><td>5y</td><td>10y</td><td>20y</td><td>40y</td></tr>
+            <tr class="muted tiny"><td>P(at least once) within</td><td>5y</td><td>10y</td><td>20y</td><td>40y</td>{#if pastFc}<td>actual</td>{/if}</tr>
             {#each forecast.meta.templates.filter(t => t.unit === 'actor-year' && fcActor.p[t.id]) as t}
+              {@const act = actualCell(actor.id, t.id)}
               <tr onclick={() => onPickVariable(`fc_${t.id}`)} class="clickable">
                 <td class="lbl">{t.label}</td>
                 {#each atYears(fcActor.p[t.id], [5, 10, 20, 40]) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}
+                {#if pastFc}<td class="val mono" style="color:{act ? 'var(--bad)' : act === false ? 'var(--good)' : 'inherit'}">{act ? act : act === false ? 'no' : '—'}</td>{/if}
               </tr>
             {/each}
           </tbody></table>

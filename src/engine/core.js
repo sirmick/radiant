@@ -13,6 +13,46 @@ const sigmoid = (x) => 1 / (1 + Math.exp(-x));
 const GROWTH_MEAN = 0.0172, GROWTH_PHI = 0.85;
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
+/**
+ * Rivalry memory: an exponentially decaying trace of the pair's last militarized dispute, δ^(years since it fired),
+ * 0 for a pair that has never had one. It replaces the binary `win5(mid_force)` flag, which held a dyad at its
+ * post-dispute odds (e² = 7.5×) for five full years and re-armed itself every time a simulated dispute rewrote it.
+ * δ is declared once per dyadic template in data/templates.yaml (`decay:` on the rivalry covariate) and read by both
+ * the fitter (scripts/lib/fit.mjs) and this engine, so the two cannot drift apart.
+ */
+export const rivalryScore = (lastYear, year, decay) => (lastYear == null || lastYear >= year ? 0 : Math.pow(decay, year - lastYear));
+/** The single δ the templates declare. RIVALRY_DECAY in the environment overrides it — the ablation switch, node only. */
+export function rivalryDecay(templates) {
+  const env = (typeof process !== 'undefined' && process.env && process.env.RIVALRY_DECAY) || null;
+  const ds = new Set();
+  for (const t of templates ?? []) for (const c of t.covariates ?? []) if (c.var === 'rivalry') {
+    if (c.decay == null) throw new Error(`template '${t.id}': the rivalry covariate must declare its decay`);
+    ds.add(c.decay);
+  }
+  if (ds.size > 1) throw new Error(`rivalry is one process: templates declare decay ${[...ds].join(', ')}`);
+  if (env != null && ds.size) return +env;
+  return ds.size ? [...ds][0] : null;
+}
+
+/**
+ * The at-war run lengths the panel shows by `asOf` — the distribution a fired war's duration is drawn from.
+ * A spell still running at asOf is right-censored (its length is not yet observed) and is dropped, as is anything
+ * dated after asOf. Memoised per panel × asOf; the panel's own `at_war` is the only source, so no number is typed here.
+ */
+const warRunCache = new WeakMap();
+export function warRunLengths(panel, asOf) {
+  let m = warRunCache.get(panel); if (!m) warRunCache.set(panel, m = new Map());
+  if (m.has(asOf)) return m.get(asOf);
+  const Y0 = panel.meta.y0; const out = [];
+  for (const vars of Object.values(panel.actors)) {
+    const arr = vars.at_war; if (!arr) continue;
+    let n = 0;
+    for (let y = Y0; y <= asOf; y++) { const x = arr[y - Y0]; if (x != null && x > 0) n++; else { if (n) out.push(n); n = 0; } }
+  }
+  m.set(asOf, out); return out;
+}
+const drawWarDuration = (world, rng) => { const d = world.warDurations; return d && d.length ? d[Math.floor(rng() * d.length)] : 1; };
+
 /** Build one actor's state at year `at` from its panel row. `asOf` only marks which staleness is recorded. */
 function buildActorState({ panel, events, id, vars, at, asOf }) {
   const Y0 = panel.meta.y0;
@@ -55,9 +95,13 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     if (!vars.live?.[idx]) continue;
     actors[id] = buildActorState({ panel, events, id, vars, at: asOf, asOf });
   }
-  // dyad memory: recent disputes (win5: asOf-4..asOf, matching the fitted feature)
+  // dyad memory: the year of the pair's last militarized dispute, over the whole observed history (the rivalry trace
+  // decays, so it has no window to truncate at — and the year itself, not asOf, is what δ^(age) is measured from).
   const dyadRecent = new Map();
-  for (const e of events) if ((e.kind === 'mid_force' || e.kind === 'mid_war') && e.a && e.b && e.year <= asOf && e.year > asOf - 5) dyadRecent.set(pairKey(e.a, e.b), asOf);
+  for (const e of events) if ((e.kind === 'mid_force' || e.kind === 'mid_war') && e.a && e.b && e.year <= asOf) {
+    const k = pairKey(e.a, e.b), y = Math.floor(e.year);
+    if (y > (dyadRecent.get(k) ?? -Infinity)) dyadRecent.set(k, y);
+  }
   const nukes = new Set(); for (const e of events) if (e.kind === 'nuclear' && e.status === 'weapon' && e.year <= asOf) nukes.add(e.actor);
   // entry prior: the median live actor at asOf, used to instantiate an actor introduced inside the horizon whose panel
   // row at asOf is empty (a colony has no regime or income series). A stated, dated imputation — the alternative is a
@@ -66,6 +110,12 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   const entryPrior = Object.fromEntries(['regime', 'polyarchy', 'gdp_pc', 'log_gdp_pc', 'gdp_growth', 'population', 'tpop'].map(v => [v, med(v)]));
   return {
     year: asOf, asOf, actors, dyadRecent, nukes, entryPrior,
+    // interstate war is a spell, not a flag: warSpells holds the years left on each pair's war, warDurations is the
+    // panel's own run-length distribution as observed at asOf, and warSeed is the set of actors already at war at asOf
+    // (a war in progress gets a fresh draw from the same distribution as its residual — a stated approximation).
+    warSpells: new Map(), warDurations: warRunLengths(panel, asOf),
+    warSeed: new Set(Object.keys(actors).filter(id => actors[id].cur.at_war > 0)),
+    rivalryDecay: rivalryDecay(templates),
     allied: alliedAt(pacts, asOf), contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
     fits, templates, log: [],
@@ -147,7 +197,7 @@ export function dyadHazards(world, a, b) {
     joint_democracy: a.cur.regime >= 2 && b.cur.regime >= 2 ? 1 : 0,
     cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),
     major_power_any: (a.cur.great_power || b.cur.great_power) ? 1 : 0,
-    mid_force: (world.dyadRecent.get(pairKey(a.id, b.id)) ?? -1e9) > world.year - 6 ? 1 : 0,
+    rivalry: rivalryScore(world.dyadRecent.get(k), world.year, world.rivalryDecay),
     at_war_any: (a.prev.at_war || b.prev.at_war) ? 1 : 0,
     nuclear_both: world.nukes.has(a.id) && world.nukes.has(b.id) ? 1 : 0,
   };
@@ -214,6 +264,9 @@ export function stepYear(world, rng, opts = {}) {
   world.year += 1; const y = world.year; const fired = [];
   stepLifecycle(world, y);
   const ids = Object.keys(world.actors);
+  // a war already running at asOf keeps running: it is given a residual drawn from the same run-length distribution
+  // as a fresh war (an approximation — the panel dates the spell's start but its end is past the as-of date).
+  if (world.warSeed) { for (const id of world.warSeed) { const a = world.actors[id]; if (a) a.warLeft = drawWarDuration(world, rng); } world.warSeed = null; }
   // snapshot prev, structural drift
   for (const id of ids) {
     const a = world.actors[id]; a.prev = { ...a.cur };
@@ -250,6 +303,16 @@ export function stepYear(world, rng, opts = {}) {
     for (const v of Object.keys(a.recent)) { a.recent[v].unshift(0); a.recent[v].length = 5; }
     if (a.prev.coup_attempt) a.recent.coup_attempt[0] = 1; if (a.prev.intrastate) a.recent.intrastate[0] = 1; if (a.prev.mid_force) a.recent.mid_force[0] = 1; if (a.prev.at_war) a.recent.at_war[0] = 1;
   }
+  // interstate war duration (era-1914-1945/engine-5): at_war is a spell, not a one-year flag. The drift loop above
+  // cleared it; every war still running re-sets it on both belligerents, so lag1(at_war) and the war shock mean in
+  // simulation what they mean in the panel, whose observed spells are 3.0 years long on average.
+  for (const [k, left] of [...world.warSpells]) {
+    const i = k.indexOf('|'); const A = world.actors[k.slice(0, i)], B = world.actors[k.slice(i + 1)];
+    if (!A || !B) { world.warSpells.delete(k); continue; }
+    A.cur.at_war = 1; B.cur.at_war = 1;
+    if (left <= 1) world.warSpells.delete(k); else world.warSpells.set(k, left - 1);
+  }
+  for (const id of ids) { const a = world.actors[id]; if (a.warLeft > 0) { a.cur.at_war = 1; a.warLeft -= 1; } }
   // actor hazards
   for (const id of ids) {
     const a = world.actors[id]; const hz = actorHazards(world, a);
@@ -262,11 +325,23 @@ export function stepYear(world, rng, opts = {}) {
       }
     }
   }
-  // dyad hazards
+  // dyad hazards. A war nests inside a dispute (era-1870-1914/engine-7): CoW hostility level 5 is a subset of use of
+  // force and the labels are built that way, so the engine draws the dispute first and the war only inside it, at
+  // P(war | dispute) = p_war / max(p_force, p_war). The marginal is unchanged where p_war <= p_force and capped at
+  // the dispute's own probability where the war model runs hotter than the dispute model. A pair already at war has
+  // no fresh onset to draw: the spell it is in is the same conflict.
   if (!opts.skipDyads) for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
-    const a = world.actors[ids[i]], b = world.actors[ids[j]]; const hz = dyadHazards(world, a, b);
-    if (hz.mid_force != null && rng() < hz.mid_force) { fired.push({ kind: 'mid_force', a: a.id, b: b.id, year: y }); world.dyadRecent.set(pairKey(a.id, b.id), y); a.cur.mid_force = 1; b.cur.mid_force = 1; }
-    if (hz.mid_war != null && rng() < hz.mid_war) { fired.push({ kind: 'mid_war', a: a.id, b: b.id, year: y }); world.dyadRecent.set(pairKey(a.id, b.id), y); a.cur.at_war = 1; b.cur.at_war = 1; a.cur.mid_war = 1; b.cur.mid_war = 1; }
+    const a = world.actors[ids[i]], b = world.actors[ids[j]]; const k = pairKey(a.id, b.id);
+    if (world.warSpells.has(k)) continue;
+    const hz = dyadHazards(world, a, b);
+    if (hz.mid_force == null || !(rng() < hz.mid_force)) continue;
+    fired.push({ kind: 'mid_force', a: a.id, b: b.id, year: y }); world.dyadRecent.set(k, y); a.cur.mid_force = 1; b.cur.mid_force = 1;
+    if (hz.mid_war == null) continue;
+    if (rng() < hz.mid_war / Math.max(hz.mid_force, hz.mid_war)) {
+      fired.push({ kind: 'mid_war', a: a.id, b: b.id, year: y });
+      a.cur.at_war = 1; b.cur.at_war = 1; a.cur.mid_war = 1; b.cur.mid_war = 1;
+      const dur = drawWarDuration(world, rng); if (dur > 1) world.warSpells.set(k, dur - 1);
+    }
   }
   world.log.push(...fired);
   return fired;

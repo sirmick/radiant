@@ -3,12 +3,12 @@ import * as d3 from 'd3';
 
 export async function loadWorld() {
   const opt = (f) => fetch(`${import.meta.env.BASE_URL}${f}`).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  const [world, geo, forecast, history, news, alliances, scores] = await Promise.all([
+  const [world, geo, forecast, history, news, alliances, scores, forecasts] = await Promise.all([
     fetch(`${import.meta.env.BASE_URL}world.json`).then(r => r.json()),
     fetch(`${import.meta.env.BASE_URL}geo.topo.json`).then(r => r.json()),
-    opt('forecast.json'), opt('history.json'), opt('news.json'), opt('alliances.json'), opt('scores.json'),
+    opt('forecast.json'), opt('history.json'), opt('news.json'), opt('alliances.json'), opt('scores.json'), opt('forecasts.json'),
   ]);
-  return { world, geo, forecast, history, news, alliances, scores };
+  return { world, geo, forecast, history, news, alliances, scores, forecastIndex: forecasts };
 }
 
 /** Forecast-year "news": the ensemble's highest single-year hazards for that year (difference of cumulative curves). */
@@ -25,6 +25,20 @@ export function forecastNews(fc, year, limit = 40) {
   for (const it of items) it.surprise = it.p / med[it.tpl];
   items.sort((x, y) => y.surprise - x.surprise);
   return items.slice(0, limit);
+}
+
+/** Load one ensemble file from the index (cached). */
+const ensCache = new Map();
+export async function loadEnsemble(file) {
+  if (!ensCache.has(file)) ensCache.set(file, fetch(`${import.meta.env.BASE_URL}${file}`).then(r => (r.ok ? r.json() : null)).catch(() => null));
+  return ensCache.get(file);
+}
+/** For a past-as-of ensemble: did the template's event actually happen to `id` within k years of as-of? Reads the news feed. */
+const TEMPLATE_NEWS = { coup_attempt: (e) => e.k === 'coup', irregular_exit: (e) => e.k === 'leader' && /irregular/.test(e.t), leader_exit: (e) => e.k === 'leader', intrastate_onset: (e) => e.k === 'conflict' && /internal/.test(e.t), democratize_step: (e) => e.k === 'regime' && /→ (electoral autocracy|electoral democracy|liberal democracy)/.test(e.t) && !/liberal democracy →|electoral democracy → electoral autocracy|electoral autocracy → closed/.test(e.t), democratic_deepening: (e) => e.k === 'regime' && /electoral democracy → liberal democracy/.test(e.t), liberal_erosion: (e) => e.k === 'regime' && /liberal democracy → electoral democracy/.test(e.t), autocratic_closure: (e) => e.k === 'regime' && /(electoral democracy → electoral autocracy|→ closed autocracy)/.test(e.t) };
+export function actualWithin(news, id, template, asOf, years) {
+  const test = TEMPLATE_NEWS[template]; if (!test || !news) return null;
+  for (let y = asOf + 1; y <= asOf + years; y++) for (const e of news.years?.[y] ?? []) if (!e.ongoing && e.a?.includes(id) && test(e)) return y;
+  return false;
 }
 
 /** Pseudo-variables exposed by the forecast ensemble: cumulative event probabilities and regime expectation. */
@@ -54,10 +68,10 @@ export function alliancesAt(al, year, hubOf) {
 }
 /** URL hash <-> view state: #y=1956&v=h_regime&a=EGY&l=territories,corridors */
 export function readHash() {
-  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); return o; } catch { return {}; }
+  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); if (h.get('f')) o.asOf = +h.get('f'); return o; } catch { return {}; }
 }
-export function writeHash({ year, varId, selected, layers, tab }) {
-  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
+export function writeHash({ year, varId, selected, layers, tab, asOf }) {
+  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
 }
 /** Regime level for an actor at a year: history panel, else the forecast's modal regime. */
 export function regimeAt(history, forecast, id, year) {
