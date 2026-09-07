@@ -8,7 +8,11 @@ import { parse as parseYaml } from 'yaml';
 const T0_YEAR = 2026.5, STEPS = 160, HIST_FROM = 2000, PROJ_TO = 2066;
 const Y = (f) => parseYaml(readFileSync(`data/${f}.yaml`, 'utf8'));
 const registry = Y('variables'), actors = Y('actors'), territories = Y('territories'),
-      corridors = Y('corridors'), hazards = Y('hazards'), claims = Y('claims');
+      corridors = Y('corridors');
+// The 2026 conversation-era hazards/claims were retired to docs/origin/ (2026-09-07): the engine runs fitted templates only.
+// They load if present so the origin layer can still be compiled for reference, otherwise compile as empty.
+const hazards = existsSync('data/hazards.yaml') ? Y('hazards') : [];
+const claims = existsSync('data/claims.yaml') ? Y('claims') : [];
 const ACTORS = new Set(actors.map(a => a.id));
 const overrides = existsSync('data/overrides.yaml') ? Y('overrides') : {};
 const warn = [], errors = [];
@@ -191,8 +195,8 @@ for (const h of hazards) {
   }
   h.p10 = 1 - Math.exp(-h.base_q * 40);
 }
-for (const t of territories) if (t.hazard && !hazardIds.has(t.hazard)) errors.push(`territory ${t.id}: hazard ${t.hazard} unknown`);
-for (const c of corridors) if (c.hazard && !hazardIds.has(c.hazard)) errors.push(`corridor ${c.id}: hazard ${c.hazard} unknown`);
+for (const t of territories) if (t.hazard && hazards.length && !hazardIds.has(t.hazard)) errors.push(`territory ${t.id}: hazard ${t.hazard} unknown`);
+for (const c of corridors) if (c.hazard && hazards.length && !hazardIds.has(c.hazard)) errors.push(`corridor ${c.id}: hazard ${c.hazard} unknown`);
 // referential integrity: every dated corridor/chokepoint/territory event must resolve to a record
 for (const e of Y('history/events')) {
   if ((e.kind === 'corridor' || e.kind === 'chokepoint') && !corrIds.has(e.id)) errors.push(`events.yaml ${e.kind} ${e.id} @${e.year}: no record in data/corridors.yaml`);
@@ -223,7 +227,7 @@ copyFileSync('data/geo/world.topo.json', 'public/geo.topo.json');
 
 console.log(`actors ${actors.length}  variables ${Object.keys(compiledVars).length}  territories ${territories.length}  corridors ${corridors.length}  hazards ${hazards.length}  claims ${claims.length}`);
 console.log(`world.json ${(JSON.stringify(world).length / 1024).toFixed(0)} KB`);
-console.log('\nhazard baseline 10-yr cumulative P (no covariates, no multipliers):');
+if (hazards.length) console.log('\nhazard baseline 10-yr cumulative P (no covariates, no multipliers):');
 for (const h of hazards) console.log(`  ${h.id.padEnd(30)} base_q ${h.base_q.toFixed(4)}  ->  ${(h.p10 * 100).toFixed(0)}%`);
 if (warn.length) console.log('\nwarnings:\n  ' + warn.join('\n  '));
 if (errors.length) { console.error('\nERRORS:\n  ' + errors.join('\n  ')); process.exit(1); }

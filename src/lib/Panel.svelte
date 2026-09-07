@@ -21,7 +21,6 @@
   const atYears = (curve, ys) => ys.map(y => (curve && curve[y - 1] != null ? curve[y - 1] : null));
   const territory = $derived(selected?.kind === 'territory' ? world.territories.find(t => t.id === selected.id) : null);
   const corridor = $derived(selected?.kind === 'corridor' ? world.corridors.find(c => c.id === selected.id) : null);
-  const hazardById = $derived(Object.fromEntries(world.hazards.map(h => [h.id, h])));
   const actorName = (id) => world.actors[id]?.name ?? history?.actors?.[id]?.name ?? id;
   const tState = $derived(territory ? statusAt(territory, year) : null);
   const cState = $derived(corridor ? statusAt(corridor, year) : null);
@@ -30,13 +29,12 @@
   const hVal = (v) => (histActor && hIdx >= 0 ? histActor[v]?.[hIdx] : null);
 
   const varsInGroup = (g) => reg.variables.filter(v => v.group === g && v.scope === 'actor' && !v.id.startsWith('cap_') && actor?.vars[v.id]);
-  const p10 = (h) => 1 - Math.exp(-h.base_q * 40);
   const pct = (x) => `${Math.round(x * 100)}%`;
 </script>
 
 <div class="panel">
   <div class="tabs">
-    {#each [['news', `News · ${year}`], ['detail', 'Detail'], ['hazards', `Hazards · ${world.hazards.length}`], ['claims', `Claims · ${world.claims.length}`], ['territories', `Territories · ${world.territories.length}`], ['corridors', `Corridors · ${world.corridors.length}`]] as [id, label]}
+    {#each [['news', `News · ${year}`], ['detail', 'Detail'], ['territories', `Territories · ${world.territories.length}`], ['corridors', `Corridors · ${world.corridors.length}`]] as [id, label]}
       <button class:on={tab === id} onclick={() => tab = id}>{label}</button>
     {/each}
   </div>
@@ -168,7 +166,6 @@
           <span>claimants</span><b>{territory.claimants.map(actorName).join(', ')}</b>
           <span>stakes</span><b>{Object.entries(territory.stakes ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ')}</b>
           <span>geometry</span><b class="mono tiny">{territory.geometry.ne_ids ? `NE ${territory.geometry.ne_ids.join(', ')}` : ''}{territory.geometry.sketch ? ` sketch (${territory.geometry.geometry_source ?? 'approximate'})` : ''}</b>
-          {#if territory.hazard}<span>hazard</span><b><a href="#" onclick={(e) => { e.preventDefault(); tab = 'hazards'; }}>{territory.hazard}</a> <i class="muted">10-yr {pct(p10(hazardById[territory.hazard]))}</i></b>{/if}
         </div>
         {#if territory.history?.length}
           <h3>History</h3>
@@ -201,26 +198,6 @@
         <p class="muted">Click a country, hatched territory, corridor line, or chokepoint.</p>
         <p class="muted">Colour is the selected variable at the slider year. Dashed sparklines and "proj" are UN WPP projections; "held" means the last observed value is carried forward — the engine will replace that.</p>
       {/if}
-
-    {:else if tab === 'hazards'}
-      {#each world.hazards as h}
-        <div class="card">
-          <div class="row"><b>{h.name}</b><span class="mono muted">{h.id}</span></div>
-          <div class="row tiny"><span>base <code>{h.base_q}</code>/qtr → <b>{pct(p10(h))}</b> by 2036 (no covariates)</span><span class="muted">{h.once ? 'once' : 'recurring'}</span></div>
-          {#if h.outcomes.length > 1}<div class="tiny">outcomes: {h.outcomes.map((o, i) => `${o} ${h.outcome_weights ? pct(h.outcome_weights[i]) : ''}`).join(' · ')}</div>{/if}
-          {#if h.covariates?.length}<div class="tiny muted">covariates: {h.covariates.map(c => `${c.var} (β ${c.beta})`).join('; ')}</div>{/if}
-          {#if h.reference_class}<div class="tiny muted">ref: {h.reference_class}</div>{/if}
-        </div>
-      {/each}
-
-    {:else if tab === 'claims'}
-      {#each world.claims as c}
-        <div class="card">
-          <div class="row"><b>{c.statement}</b></div>
-          <div class="row tiny"><span>prior <b>{pct(c.prior)}</b> · horizon {c.horizon} · {c.type}</span><span class="mono muted">{c.id}</span></div>
-          <div class="tiny mono muted">{c.query}</div>
-        </div>
-      {/each}
 
     {:else if tab === 'territories'}
       {#each world.territories as t}

@@ -43,6 +43,10 @@ No country names in `data/templates.yaml`. Each template predicts one event kind
 | mid_war | dyad-year | CoW MID | 0.74 |
 | weaponization, chokepoint_status, corridor_status, sovereign_default | — | prior only (no panel sample yet) | — |
 
+## Faithful first (2026-09-07)
+
+Decision: the conversation-era layer (`hazards.yaml` with hand-typed base rates, `claims.yaml`, scenario latents) is retired to `docs/origin/`. Nothing hand-typed drives the engine. The model is one panel (1816–2025, one row of years per actor), one event log, one dated infrastructure layer (corridors, territories, waves), and fitted templates — the same `createWorld(asOf)` whether `asOf` is 1870 or 2025. Named present-day risks (a strait closing, a territory changing hands) re-enter only as instances of chokepoint/territory templates fitted on the corridor-year panel (escalated in `docs/escalations.md`). Claims return later as queries over the faithful model.
+
 ## Full scale (2026-09-06, later): fit on all 217 states, simulate 64
 
 Templates are generic, so they are fitted on every state in the CoW/GW system (countrycode panel crosswalk), and only the modeled actors are simulated. Contiguity is derived from CShapes 2.0 polygons (30 km buffer); dyads are restricted to politically relevant pairs (contiguous or ≥1 major power). Two user hypotheses were promoted through the ablation loop: `info_access` (−0.88 on coup odds per SD) and `great_game` (superpower client × bipolar era, +0.54).

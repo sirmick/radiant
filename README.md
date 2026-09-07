@@ -2,7 +2,7 @@
 
 An open, versioned world model for the next 40 years: ~44 actors, contested territories, load-bearing corridors, competing-risk hazards, and resolvable claims — all as YAML in git, compiled to one JSON, run as a Monte Carlo in the browser, with uncertainty as the primary visual.
 
-Origin: `docs/session-transcript.md` (the conversation that produced the scenario and the spec). Schema: `docs/schema.md`.
+Origin: `docs/origin/session-transcript.md` (the conversation that produced the first scenario and spec). Its hand-typed 2026 hazards and claims are retired in `docs/origin/` — the engine runs only templates fitted on the 1816–2025 panel, and the model is refined era by era by the adversary/fixer/checker loop (`docs/refine-log.md`). Schema: `docs/schema.md`; system: `docs/system.md`.
 
 ## Status
 
@@ -41,8 +41,6 @@ data/variables.yaml   the registry — every variable the model tracks; build, e
 data/actors.yaml      44 states: regime, nuclear, capability map, chokepoint exposure (hand-coded, source-tagged)
 data/territories.yaml 29 polygons whose controller ≠ sole claimant
 data/corridors.yaml   16 chokepoints + land corridors with load_bearing_for
-data/hazards.yaml     32 competing-risk hazards: base_q, covariates, reference class, fires
-data/claims.yaml      25 resolvable claims with priors and model queries
 data/overrides.yaml   hand values where datasets are silent (Taiwan, North Korea)
 data/templates.yaml   generic hazard templates (no country names): event, unit, covariates, literature priors
 data/waves.yaml       capability waves 1825→ with introduction/saturation/retirement and first-sovereign years
