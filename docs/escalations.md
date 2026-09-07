@@ -486,6 +486,64 @@ The dyadic templates gained no covariate this turn (the dampener is a candidate,
 
 **Test that decides it.** The composite tracks CINC with r ≥ 0.95 over 1990–2016; 1990–2010 dyadic backtest AUC not lower than baseline; no `cinc` value older than 5 years in the 2025 world; the staleness field present on every carried value.
 
+**Status:** implemented (2026-09-07).
+
+**Implemented as.** Three pieces.
+
+1. **NMC 7.0, not 6.0 (1816–2022).** correlatesofwar.org answers 403 to every scripted request and Harvard Dataverse carries only 3.02 (searched: the five hits for "National Material Capabilities" are 3.02 twice, ICPSR's 1816–1985 twice, and one replication archive). The copy a script can reach is the `cow_nmc` data.frame inside the R package **peacesciencer**, whose own documentation says "version 7.0 of the Correlates of War National Material Capabilities data" — six years past the 6.0 the package asked for. `scripts/fetch-nmc.mjs` downloads it and `scripts/lib/rdata.mjs` decodes R's XDR serialization (gzip + `RDX3`; ~120 lines, throws on any SEXP type it does not handle rather than parsing silently wrong) so no R is needed at build time. `scripts/build-panel.mjs` reads `nmc_7.0.csv` where the fetch has run and falls back to `nmc_3.02.csv` otherwise, printing which and writing it into `meta.sources.cinc`.
+
+   This is a revision of the whole history, not only an extension: of the 13,020 CINC values the two versions share, **153 are identical and 1,491 differ by more than 5%**. `coup_attempt` gains 3,093 actor-years and 38 events (n 5,834 → 8,927, in-sample AUC 0.814 → 0.849) because its covariates now resolve past 2001; the dyad templates gain 173 rows.
+
+2. **The composite, 2023– .** `scripts/lib/capability.mjs` rebuilds CINC's own construction — the unweighted mean of share-of-system indicators — from series that are still published: milex (WDI `MS.MIL.XPND.GD.ZS` × `NY.GDP.MKTP.CD`), GDP at PPP, OWID primary energy consumption, WDI population, WDI population × urban share. Two departures, both declared in `COMPONENTS` / `MISSING_COMPONENTS` and printed by the diagnostic rather than buried: **GDP PPP stands in for iron and steel** (no open annual series survives), and **military personnel is not represented at all** (SIPRI publishes expenditure but not personnel, IISS is not redistributable, and the World Bank's `MS.MIL.TOTL.P1` returned an HTML error page on every attempt while this was built). An actor-year needs 3 of the 5 to be scored at all; an actor missing one indicator is scored on the rest, not on a zero. Per actor the splice factor is the geometric mean of `cinc / composite` over the last 10 overlap years, and each extension year is renormalised to the share mass CINC itself carried in 2022, so the column keeps summing to ≈1 the way CINC does. `cinc_spliced` (0 = NMC's measurement, 1 = composite) is a panel column, so nothing downstream has to guess.
+
+   WDI ends 2024, so the composite extends 2023 (191 actors) and 2024 (184) and **2025 is left null** — the engine's own carry-forward covers it and records the one year of staleness. The alternative (extrapolating a year the source does not have) would be a fabricated measurement.
+
+3. **Staleness.** `buildActorState` in `src/engine/core.js` already recorded `stale[var] = years_since_observed` for carried values; two gaps are closed. It now also records the event flags reset to no-event and `gdp_growth` imputed from its trailing decade, and it carries a parallel `carry[var]` saying *how* the value was produced — `last` | `aged` (leader age and tenure, advanced by the elapsed years) | `zero` (a flag reset) | `trailing_mean`. A value the panel observes at as-of appears in neither map, so "is in `stale`" is exactly "is not a measurement of this year". `public/world.json` gains `stale` (years from the last observation to t0) on every series variable and `public/history.json` gains `last_observed: { var: year }` per actor, which is what a hover card needs to say "capability as of 2022".
+
+**Deviation from the package as written.** The package asked for the staleness to be *surfaced in the actor panel and hover card*. `src/lib/` and `src/App.svelte` are owned elsewhere this turn (implementer rule), so this package ships the fields those two views need (`world.json` `vars[].stale`, `history.json` `last_observed`) and not the markup. The wiring is one line in each view and is left to the UI turn.
+
+**Also.** NMC 7.0's 2002–2022 block carries three population series the build guard rejects, all now declared in `data/history/population_guard.yaml` with numbers: FSM 2002–2016 sits at 500–523 thousand between its own 117 (2001) and 109 (2017) — a data error, so `prefer: population`; ERI 2002–2016 extends the existing no-census dispute and adds two discontinuities of its own; GNQ extends to 2015. Three v7.0 *revisions* of pre-2002 years also trip it and are declared: PAN 1903–1913 (a flat repeated 450 thousand against the 1911 census's 336,742), CYP 2001 (revised 786 → 701 thousand — the government-controlled area — against OWID's whole-island 0.96M), AFG 1919 (one new row inside an existing declaration).
+
+**Test result.** `node scripts/analysis/capability-composite.mjs`:
+
+| test | result |
+|---|---|
+| composite vs CINC, 1990–2016 | **r = 0.961**, log r = 0.981, n = 5,021 actor-years — passes ≥ 0.95 |
+| composite vs CINC, 1990–2001 | r = 0.950, log r = 0.980, n = 2,169 |
+| composite vs CINC, 1990–2022 (whole overlap) | r = 0.964, log r = 0.981, n = 6,167 |
+| `cinc` older than 5 years in the 2025 world | **0 actors** (modeled: 56 at 1y, 2 at 2y, 1 at 3y; all 196: 1 at 0y, 184 at 1y, 7 at 2y, 4 at 3y) |
+| values at as-of the panel does not observe there and carry no staleness entry | **0** (was 519 of 8,489 before this package — every one an event flag reset to zero) |
+
+The composite is validated against NMC's own years only: `cincOf` in the test returns null wherever `cinc_spliced = 1`, so it is never compared with itself. Rank agreement is the weak spot worth stating — of the top 20 by CINC in 2016, 7 hold the same rank under the composite and the mean absolute rank shift is 2.3 places. The missing personnel indicator is the obvious suspect; the levels track (r 0.96) far better than the ordering does.
+
+`node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all`, the package's dyadic condition (auc / auc_at_risk / exp:obs):
+
+| as-of | mid_force before | mid_force after | mid_war before | mid_war after |
+|---|---|---|---|---|
+| 1990 | 0.747 / 0.878 / 0.84 | 0.747 / **0.879** / 0.84 | 0.596 / 0.546 / 0.85 | 0.596 / **0.569** / 0.85 |
+| 2000 | 0.739 / 0.644 / 0.67 | 0.739 / 0.642 / 0.67 | 0.497 / — / 0.18 | 0.497 / — / 0.18 |
+
+Not lower: headline AUC is identical to three places at both as-of years, `auc_at_risk` rises at 1990 on both templates and falls 0.002 on one row at 2000. **The honest reading is that this test cannot see what the package is for.** CoW MID ends 2001, so `COVERAGE` scores dyad-years only to 2001 and the as-of 1990/2000 horizons are scored entirely inside years where 3.02 already had measured CINC. What changed there is the *revision*, and it is worth ~0.00 of dyadic AUC. The gain the package was written for — a 2010s or 2020s dyad scored on 2010s or 2020s strengths rather than 2001's — is not scorable against any dataset in the repo, and saying so is more useful than a number that looks like a pass.
+
+**Scores: before → after** (pooled, as-of 1870…2010, +20y, 100 runs, all states; exp/obs · Brier skill · AUC):
+
+| template | before | after |
+|---|---|---|
+| mid_force | 0.78 · +0.085 · 0.767 | 0.77 · +0.085 · 0.766 |
+| mid_war | 0.80 · −0.008 · 0.770 | 0.80 · −0.008 · 0.770 |
+| coup_attempt | 0.89 · +0.177 · 0.758 | 0.90 · **+0.182** · 0.759 |
+| intrastate_onset | 1.02 · +0.113 · 0.738 | 1.02 · +0.114 · 0.739 |
+| irregular_exit | 2.05 · −0.472 · 0.698 | 2.05 · −0.468 · **0.701** |
+| leader_exit | 0.86 · −0.829 · 0.736 | 0.85 · −0.828 · 0.735 |
+| democratize_step | 0.95 · −0.189 · 0.548 | 0.95 · −0.194 · 0.546 |
+| autocratic_closure | 0.65 · −0.143 · 0.602 | 0.66 · −0.149 · 0.597 |
+| democratic_deepening | 1.50 · −0.073 · 0.704 | 1.51 · −0.085 · 0.706 |
+| chokepoint_status | 0.96 · +0.140 · 0.759 | 0.95 · +0.107 · **0.726** |
+| corridor_status | 1.13 · +0.062 · 0.664 | 1.10 · +0.048 · **0.639** |
+
+Everything moves by less than 0.006 of AUC except the two corridor templates, and those need naming rather than rounding away. Their ground-truth window is 1869–1945, so **no post-2001 capability value can reach them**; the only channel is the whole-history CINC revision moving `log(cap_ratio)` in the dyadic hazards that drive the simulated wars they read. Pooled they are n=36 (17 events) and n=83 (23 events) — one swapped pair is worth ~0.03 of AUC at that size, and the per-as-of rows show exactly that: the whole pooled move on `chokepoint_status` is the as-of 1910 row going 0.725 → 0.550 on **nine units**, while 1920 is unchanged, 1930 rises 0.800 → 0.825 and 1940 is unchanged. Reported, not defended: at n=9 neither number carries information.
+
+
 ## operator / cleanup — phase 1 (not a package: done by hand after the baseline)
 
 Registry entries that are snapshot estimates with no history are marked `model: false` (display only): `fiscal_breakeven`, `desal_dependence`, `food_self_sufficiency`, `mineral_refining_share`, `reserve_currency_share`, the `cap_*` levels, chokepoint exposure. ERT episode templates and the switched-off candidates (coalition joining, war duration) move to a `retired:` block in `data/templates.yaml`. The scenario latents in `data/variables.yaml` are deleted (nothing reads them). The conflict field is relabelled *belligerents* until UCDP GED is in. `scripts/analysis/` holds the implementer one-offs.

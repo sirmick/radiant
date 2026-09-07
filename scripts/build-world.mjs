@@ -51,6 +51,10 @@ function resolveSeries(v) {
     const last = hist.length ? hist[hist.length - 1] : null;
     out[a.id] = {
       v0: last != null ? values[values.length - 1] : null, year0: last,
+      // years between the last observation and the viewer's t0 — 0 for a current series, >0 for a value the viewer
+      // would otherwise read as current (operator / modern-capability, package 10). The engine records the same
+      // quantity per actor-year in `stale` / `carry` (src/engine/core.js buildActorState).
+      stale: last != null ? Math.max(0, Math.floor(T0_YEAR) - last) : null,
       hist: { years: hist, values },
       proj: py.length ? { years: py, values: py.map(y => proj[a.id][y]) } : null,
       source: `panel:${col} (${describeSource(v.source)})`,

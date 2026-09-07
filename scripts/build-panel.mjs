@@ -6,9 +6,10 @@
 // modern actor snapshot (data/actors.yaml capability levels, regime type, nuclear status, chokepoint exposure) at 2025.
 // Output: { meta: { y0, y1, sources, vars: { <col>: { source, introduced, last, actor_years, actors } } },
 //           years: [...], vars: [...], actors: { id: { var: [per-year value|null] } }, sources: {...} }
-import { writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/hist.mjs';
 import { MODERN_FROM, resolveFetch, describeSource, snapshotColumns, snapshotExtras } from './lib/modern.mjs';
+import { COMPONENTS, MISSING_COMPONENTS, SPLICE_YEARS, compositeShares, spliceComposite, validate } from './lib/capability.mjs';
 
 const Y0 = 1816, Y1 = 2025, YEARS = Array.from({ length: Y1 - Y0 + 1 }, (_, i) => Y0 + i);
 const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
@@ -20,14 +21,22 @@ const panel = {}; const put = (id, v, y, val) => { if (!id || y < Y0 || y > Y1 |
 const add = (id, v, y, n = 1) => { if (!id || y < Y0 || y > Y1) return; const arr = ((panel[id] ??= {})[v] ??= new Array(YEARS.length).fill(0)); arr[y - Y0] += n; };
 const sources = {};
 
-// ---- NMC
-for (const r of readCsv(H + 'nmc_3.02.csv')) {
+// ---- NMC. v7.0 (1816–2022, energy column `pec`) where the fetch has run, else the bundled 3.02 (1816–2001).
+// operator / modern-capability: 3.02 stopped in 2001, so every modern dyad was scored on 2001 strengths.
+const NMC = existsSync(H + 'nmc_7.0.csv')
+  ? { file: 'nmc_7.0.csv', energy: 'pec', label: 'CoW NMC 7.0 (1816–2022; peacesciencer distribution, scripts/fetch-nmc.mjs)' }
+  : { file: 'nmc_3.02.csv', energy: 'energy', label: 'CoW NMC 3.02 (1816–2001)' };
+let nmcLast = 0;
+for (const r of readCsv(H + NMC.file)) {
   const y = +r.year, id = code(r.ccode, y); if (!id) continue;
-  const num = (x) => (x === '-9' || x === '' ? null : +x);
-  put(id, 'cinc', y, num(r.cinc)); put(id, 'irst', y, num(r.irst)); put(id, 'milex', y, num(r.milex));
-  put(id, 'milper', y, num(r.milper)); put(id, 'energy_nmc', y, num(r.energy)); put(id, 'tpop', y, num(r.tpop) && num(r.tpop) * 1e3); put(id, 'upop', y, num(r.upop) && num(r.upop) * 1e3);
+  const num = (x) => (x === '-9' || x === '' || x == null || x === 'NA' ? null : +x);
+  const c = num(r.cinc);
+  put(id, 'cinc', y, c); put(id, 'irst', y, num(r.irst)); put(id, 'milex', y, num(r.milex));
+  put(id, 'milper', y, num(r.milper)); put(id, 'energy_nmc', y, num(r[NMC.energy])); put(id, 'tpop', y, num(r.tpop) && num(r.tpop) * 1e3); put(id, 'upop', y, num(r.upop) && num(r.upop) * 1e3);
+  if (c != null && y > nmcLast && y <= Y1) nmcLast = y;
 }
-sources.cinc = sources.irst = sources.milex = sources.milper = sources.energy_nmc = sources.tpop = sources.upop = 'CoW NMC 3.02 (1816–2001)';
+sources.cinc = sources.irst = sources.milex = sources.milper = sources.energy_nmc = sources.tpop = sources.upop = NMC.label;
+console.log(`NMC: ${NMC.file}, cinc through ${nmcLast}`);
 
 // ---- Maddison GDP pc, population
 for (const r of readCsv(H + 'maddison.csv')) { const y = +r.year, id = owidEntity(r.code, y); if (id && r.gdp_per_capita) put(id, 'gdp_pc', y, +r.gdp_per_capita); }
@@ -311,6 +320,31 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.hegemon_regime = YEARS.map((y, i) => (y >= 1946 ? (panel.USA?.regime?.[i] ?? null) : (panel.GBR?.regime?.[i] ?? null)));
   vars.cold_war = YEARS.map(y => (y <= 1991 ? 1 : 0));
   vars.anticoup_norm = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
+}
+
+// ---- modern capability: extend `cinc` past NMC's last year (operator / modern-capability, package 10).
+// NMC stops; the forecast horizon does not. Rather than carry the last CINC forward for the rest of the run, the
+// years after it are the five-indicator composite of scripts/lib/capability.mjs, spliced onto CINC per actor over
+// their overlap. `cinc_spliced` says which of the two a value is; the correlation of the composite with CINC over
+// 1990-<NMC's last year> is printed and is the package's r >= 0.95 test.
+{
+  const liveAt = (id, y) => !!panel[id]?.live?.[y - Y0];
+  const cincOf = (id, y) => panel[id]?.cinc?.[y - Y0] ?? null;
+  const { composite } = compositeShares({ from: 1960, to: Y1, idOf: owid, liveAt });
+  const check = validate({ composite, cincOf, liveAt, from: 1990, to: nmcLast });
+  const { values, factor } = spliceComposite({ composite, cincOf, liveAt, lastCinc: nmcLast, extendTo: Y1 });
+  for (const [id, vars] of Object.entries(panel)) if (vars.cinc) YEARS.forEach((y, i) => { if (vars.cinc[i] != null && y <= nmcLast) put(id, 'cinc_spliced', y, 0); });
+  const ext = [];
+  for (const y of Object.keys(values).map(Number).sort((a, b) => a - b)) {
+    let k = 0;
+    for (const [id, v] of Object.entries(values[y])) { put(id, 'cinc', y, v); put(id, 'cinc_spliced', y, 1); k++; }
+    ext.push(`${y}:${k}`);
+  }
+  const parts = COMPONENTS.map(c => `${c.stands_for}<-${c.id}`).join(' ');
+  const extLast = Object.keys(values).map(Number).sort((a, b) => a - b).pop() ?? nmcLast;
+  sources.cinc += `; ${nmcLast + 1}-${extLast} is the modern capability composite (${parts}; ${MISSING_COMPONENTS.map(m => m.stands_for).join(', ')} not represented) spliced onto CINC over the ${SPLICE_YEARS} overlap years to ${nmcLast}, scripts/lib/capability.mjs; ${extLast < Y1 ? `${extLast + 1}-${Y1} has no source and is left null — the engine carries the last value forward and records the staleness` : 'no year is carried'}`;
+  sources.cinc_spliced = `0 where cinc is CoW NMC's own measurement, 1 where it is the modern composite spliced onto it (scripts/lib/capability.mjs); composite vs CINC 1990-${nmcLast} r=${check.r?.toFixed(3)} (n=${check.n}), log r=${check.r_log?.toFixed(3)}`;
+  console.log(`capability composite: r=${check.r?.toFixed(4)} log r=${check.r_log?.toFixed(4)} against CINC 1990-${nmcLast} (n=${check.n} actor-years); ${Object.keys(factor).length} actors spliced; extended ${ext.join(' ') || 'nothing'}`);
 }
 
 // ---- empires on successor-state borders: drop the OWID/Maddison population series where it is a modern-borders series

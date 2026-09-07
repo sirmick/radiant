@@ -31,6 +31,10 @@ for (const [id, vars] of Object.entries(p.actors)) {
   if (!live?.some(x => x)) continue;
   const rec = { live: live.map(x => (x ? 1 : 0)), map_to: a?.owid && a.owid !== id ? a.owid : undefined, name: a?.name ?? id, spans: a?.spans, iso2: iso2[id] ?? null };
   for (const [v, spec] of Object.entries(VARS)) { const arr = vars[v]; if (!arr) continue; rec[v] = arr.slice(y0i).map(x => (x == null ? null : +(+x).toFixed(spec.dp))); }
+  // last year each variable was actually observed for this actor: the map paints carried-forward values (capability
+  // after the source ends, above all) and has to be able to say "as of <year>" rather than show them as current.
+  rec.last_observed = {};
+  for (const v of Object.keys(VARS)) { const arr = vars[v]; if (!arr) continue; for (let i = arr.length - 1; i >= y0i; i--) if (arr[i] != null) { rec.last_observed[v] = p.meta.y0 + i; break; } }
   out.actors[id] = rec;
 }
 writeFileSync('public/history.json', JSON.stringify(out));

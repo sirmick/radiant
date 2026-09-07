@@ -265,14 +265,23 @@ export function corridorStake(index, a, b, allied) {
 function buildActorState({ panel, events, id, vars, at, asOf }) {
   const Y0 = panel.meta.y0;
   const pv = (v, y) => { const arr = vars[v]; const i = y - Y0; return arr && i >= 0 && i < arr.length ? arr[i] : null; };
-  // carry the last observation forward where a dataset ends before `at` (leaders age; flags reset to 0); record staleness
-  const stale = {};
+  // carry the last observation forward where a dataset ends before `at` (leaders age; flags reset to 0), and record
+  // what that cost. Two maps, written for the as-of year only (operator / modern-capability, package 10):
+  //   stale[v]  years since the panel last observed v for this actor — null where it never did
+  //   carry[v]  how the value at as-of was produced when the panel does not observe it there:
+  //             'last' (last observation carried), 'aged' (carried and advanced by the elapsed years — leader age and
+  //             tenure), 'zero' (an event flag reset to no-event), 'trailing_mean' (gdp_growth from the trailing decade)
+  // A value the panel observes at as-of appears in neither map. Every value that is NOT the panel's own measurement
+  // is in both, so a viewer or a scorer can say "capability as of <asOf - stale.cinc>" instead of showing a carried
+  // number as if it were current.
+  const stale = {}, carry = {};
   const lastKnown = (v, y) => { const arr = vars[v]; for (let i = y - Y0; i >= Math.max(0, y - Y0 - 30); i--) if (arr[i] != null) return [arr[i], Y0 + i]; return [null, null]; };
   const FLAG = new Set(['coup_attempt', 'coup_success', 'mid_force', 'mid_war', 'regime_up', 'regime_down', 'interstate_ucdp']);
+  const note = (y, v, yr, how) => { if (y !== asOf) return; stale[v] = yr == null ? null : y - yr; carry[v] = how; };
   // `introduced` is the panel's own first year for a column (data/panel.json meta): below it there is nothing to carry
   // forward, so the 30-year scan is skipped. Same result, and it keeps the modern columns (2000+) free on a 1870 world.
   const intro = panel.meta.introduced ?? {};
-  const build = (y) => { const o = {}; for (const v of Object.keys(vars)) { const x = vars[v][y - Y0]; if (x != null) { o[v] = x; continue; } if (FLAG.has(v)) { o[v] = 0; continue; } if (intro[v] != null && y < intro[v]) { o[v] = null; continue; } const [val, yr] = lastKnown(v, y); if (val == null) { o[v] = null; continue; } o[v] = (v === 'leader_age' || v === 'leader_tenure') ? val + (y - yr) : val; if (y === asOf) stale[v] = y - yr; } return o; };
+  const build = (y) => { const o = {}; for (const v of Object.keys(vars)) { const x = vars[v][y - Y0]; if (x != null) { o[v] = x; continue; } if (FLAG.has(v)) { o[v] = 0; note(y, v, lastKnown(v, y)[1], 'zero'); continue; } if (intro[v] != null && y < intro[v]) { o[v] = null; continue; } const [val, yr] = lastKnown(v, y); if (val == null) { o[v] = null; continue; } const aged = (v === 'leader_age' || v === 'leader_tenure'); o[v] = aged ? val + (y - yr) : val; note(y, v, yr, aged ? 'aged' : 'last'); } return o; };
   const cur = build(at);
   // trailing growth rates for the structural layer
   const g = []; for (let k = 1; k <= 10; k++) { const x = pv('gdp_growth', at - k); if (x != null) g.push(x); }
@@ -282,8 +291,8 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
   for (const v of ['coup_attempt', 'intrastate', 'mid_force', 'at_war']) { recent[v] = []; for (let k = 1; k <= 5; k++) { const x = pv(v, at - k); recent[v].push(x != null && x > 0 ? 1 : 0); } }
   recent.leader_exit = []; for (let k = 1; k <= 5; k++) recent.leader_exit.push(events.some(e => e.kind === 'leader_exit' && e.actor === id && Math.floor(e.year) === at - k) ? 1 : 0);
   const prev = build(at - 1);
-  if (cur.gdp_growth == null && g.length) cur.gdp_growth = g.reduce((a, b) => a + b, 0) / g.length;
-  return { id, cur, prev, recent, stale, growth: g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0.015, popGrowth: pg.length ? pg.reduce((a, b) => a + b, 0) / pg.length : 0.01, fired: {} };
+  if (cur.gdp_growth == null && g.length) { cur.gdp_growth = g.reduce((a, b) => a + b, 0) / g.length; stale.gdp_growth = null; carry.gdp_growth = 'trailing_mean'; }
+  return { id, cur, prev, recent, stale, carry, growth: g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0.015, popGrowth: pg.length ? pg.reduce((a, b) => a + b, 0) / pg.length : 0.01, fired: {} };
 }
 
 /**
