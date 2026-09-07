@@ -29,7 +29,8 @@ node scripts/build-panel.mjs      # -> data/panel.json   actor-year covariates 1
 node scripts/build-events.mjs     # -> data/events.json  dated events (machine + data/history/events.yaml)
 node scripts/fit-hazards.mjs      # -> data/fits.json    MAP logistic per template, holdout AUC, calibration
 node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 100   # -> scores/   (refits per as-of year; --no-refit for the leaky full-sample comparison)
-node scripts/run-forward.mjs --runs 300 --horizon 40                                # -> public/forecast.json
+node scripts/run-forward.mjs --runs 300 --horizon 40                                # -> public/forecast.json (as of 2025)
+node scripts/run-forward.mjs --as-of 1955 --runs 200 --horizon 30                   # -> public/forecast-1955.json: coefficients refit on labels <= 1955; UI 'forecast from' menu
 ```
 
 Screenshot check: `npx vite preview` then `node scripts/shot.mjs http://localhost:4173/ out.png [actor:IRN] [2050]`.

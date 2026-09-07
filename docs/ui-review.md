@@ -13,7 +13,7 @@ What the viewer has, what it is missing, and the order to close the gaps. Verifi
 
 ## Still missing, by value
 1. **Dyad view** — click two countries: their dispute/war hazard curve, contiguity, pacts, rivalry memory, and what the fitted coefficients say. The model is largely dyadic and the UI can't show a dyad.
-2. **Time-series with the forecast fan** — the history chart stops at 2025; the forecast has 10/50/90 GDP bands and regime distributions per year. One chart, history line into a fan.
+2. **Time-series with the forecast fan** — the history chart stops at 2025; the forecast has 10/50/90 GDP bands and regime distributions per year. One chart, history line into a fan. *(Partly done 2026-09-07: past-as-of ensembles — 'forecast from 1900/1930/1955/1975/1990/2005' — with an actual-vs-forecast column per actor; the fan chart itself is still to do.)*
 3. **Bloc view** — community detection on the alliance graph per year (the Anglosphere / Warsaw Pact / GCC as coloured regions), and its evolution as you scrub. Needs the alliance layer to become a dyad state in the model, not just a picture.
 4. **Compare two years** — side-by-side or swipe, for "what changed 1989→1999".
 5. **Explain this number** — for any forecast probability, the covariate contributions (η = intercept + Σβx) so the model shows its reasoning per country.
