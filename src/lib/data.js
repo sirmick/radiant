@@ -2,12 +2,29 @@
 import * as d3 from 'd3';
 
 export async function loadWorld() {
-  const [world, geo, forecast] = await Promise.all([
+  const opt = (f) => fetch(`${import.meta.env.BASE_URL}${f}`).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  const [world, geo, forecast, history, news] = await Promise.all([
     fetch(`${import.meta.env.BASE_URL}world.json`).then(r => r.json()),
     fetch(`${import.meta.env.BASE_URL}geo.topo.json`).then(r => r.json()),
-    fetch(`${import.meta.env.BASE_URL}forecast.json`).then(r => (r.ok ? r.json() : null)).catch(() => null),
+    opt('forecast.json'), opt('history.json'), opt('news.json'),
   ]);
-  return { world, geo, forecast };
+  return { world, geo, forecast, history, news };
+}
+
+/** Forecast-year "news": the ensemble's highest single-year hazards for that year (difference of cumulative curves). */
+export function forecastNews(fc, year, limit = 40) {
+  if (!fc) return [];
+  const k = Math.round(year) - fc.meta.from; if (k < 0 || k >= fc.meta.horizon) return [];
+  const inc = (curve) => (curve ? (curve[k] ?? 0) - (k > 0 ? curve[k - 1] ?? 0 : 0) : 0);   // P(first occurrence in this year)
+  const LABEL = Object.fromEntries(fc.meta.templates.map(t => [t.id, t.label]));
+  // rank by surprise: this year's first-occurrence probability relative to the template's median across actors, so rare-but-elevated hazards outrank routine ones
+  const items = []; const byT = {};
+  for (const [id, a] of Object.entries(fc.actors)) for (const [t, curve] of Object.entries(a.p ?? {})) { const p = inc(curve); (byT[t] ??= []).push(p); if (p >= 0.02) items.push({ k: t === 'coup_attempt' || t === 'irregular_exit' ? 'coup' : t === 'intrastate_onset' ? 'conflict' : t === 'leader_exit' ? 'leader' : 'regime', y: year, a: [id], p, tpl: t, t: `${id}: ${LABEL[t] ?? t}` }); }
+  for (const [pair, d] of Object.entries(fc.dyads)) for (const [t, v] of Object.entries(d)) { const p = inc(v.curve); (byT[t] ??= []).push(p); if (p >= 0.02) items.push({ k: t === 'mid_war' ? 'war' : 'dispute', y: year, a: pair.split('|'), p, tpl: t, t: `${pair.replace('|', ' – ')}: ${LABEL[t] ?? t}` }); }
+  const med = {}; for (const [t, ps] of Object.entries(byT)) { const s = ps.sort((a, b) => a - b); med[t] = Math.max(0.005, s[Math.floor(s.length / 2)] ?? 0.005); }
+  for (const it of items) it.surprise = it.p / med[it.tpl];
+  items.sort((x, y) => y.surprise - x.surprise);
+  return items.slice(0, limit);
 }
 
 /** Pseudo-variables exposed by the forecast ensemble: cumulative event probabilities and regime expectation. */
@@ -19,6 +36,33 @@ export function forecastVariables(fc) {
   return vars;
 }
 export const REGIME_LABELS = ['closed autocracy', 'electoral autocracy', 'electoral democracy', 'liberal democracy'];
+
+/** Pseudo-variables from the historical panel slice (public/history.json). */
+export function historyVariables(h) {
+  if (!h) return [];
+  return Object.entries(h.vars).map(([id, spec]) => ({ id: `h_${id}`, group: 'history', label: spec.label, unit: spec.unit, kind: 'history', scope: 'actor', var: id, display: { map: true, format: spec.format, log: spec.log, categorical: spec.categorical } }));
+}
+/** Values per Natural-Earth id for a history variable at a year: live actors, historical entities mapped to their successor polygon when the successor is not itself live. */
+export function historyAt(h, variable, year) {
+  const out = {}; if (!h) return out;
+  const i = Math.round(year) - h.meta.y0; if (i < 0 || i > h.meta.y1 - h.meta.y0) return out;
+  const liveIds = new Set(Object.entries(h.actors).filter(([, a]) => a.live[i]).map(([id]) => id));
+  for (const [id, a] of Object.entries(h.actors)) {
+    if (!a.live[i]) continue;
+    const key = liveIds.has(a.map_to) ? null : (a.map_to ?? id);   // e.g. PRUSSIA→DEU polygon before 1871; skip if DEU is live too
+    if (!key) continue;
+    const v = a[variable.var]?.[i];
+    out[key] = { value: v ?? null, year, actor: id, name: a.name, history: true };
+  }
+  return out;
+}
+/** Latest history entry at or before `year` for a corridor/territory record; null if it does not exist yet. */
+export function statusAt(rec, year) {
+  const hist = rec.history; if (!hist?.length) return { status: rec.status, controller: rec.controller, exists: true };
+  let cur = null; for (const e of hist) { if (e.year <= year + 0.99) cur = e; else break; }
+  if (!cur) return { exists: false };
+  return { exists: true, status: cur.status ?? rec.status, controller: cur.controller ?? rec.controller, since: cur.year, source: cur.source, capacity: cur.capacity };
+}
 
 /** Forecast value for an actor at a calendar year (years before the forecast start return the 2025 state). */
 export function forecastAt(fc, variable, id, year) {
@@ -52,15 +96,17 @@ export const NUCLEAR_COLORS = { none: '#3a4050', latent: '#d9a441', weapon: '#ef
 export const STATUS_COLORS = {
   // territories
   occupied: '#ef6a5a', disputed: '#e8a04f', breakaway: '#c07ae0', buffer: '#6cb4ff', contested_active: '#ff3b3b', frozen: '#8b94a3',
+  annexed: '#ef6a5a', protectorate: '#c07ae0', leased: '#6cb4ff', settled: '#4fc27a',
   // corridors
-  open: '#4fc27a', contested: '#e8a04f', closed: '#ef6a5a', planned: '#5a6270', building: '#d9a441', built: '#4fc27a',
+  open: '#4fc27a', contested: '#e8a04f', closed: '#ef6a5a', planned: '#5a6270', building: '#d9a441', built: '#4fc27a', abandoned: '#5a6270',
 };
 
 /** Build a colour function for a variable given all actor values at the current year. */
 export function colorScale(variable, values) {
   const cat = variable?.display?.categorical;
   if (cat) {
-    const pal = variable.id.startsWith('cap_') ? LEVEL_COLORS : variable.id === 'regime_type' ? REGIME_COLORS : variable.id === 'nuclear_status' ? NUCLEAR_COLORS : null;
+    const REG4 = { 0: '#d95c4f', 1: '#e8a04f', 2: '#7fc4f0', 3: '#4f9be8' }, FLAG = { 0: '#2a3340', 1: '#ef6a5a', 2: '#b3261e' };
+    const pal = variable.id.startsWith('cap_') ? LEVEL_COLORS : variable.id === 'regime_type' ? REGIME_COLORS : variable.id === 'nuclear_status' ? NUCLEAR_COLORS : variable.id === 'h_regime' ? REG4 : variable.kind === 'history' ? FLAG : null;
     const ord = d3.scaleOrdinal().domain(cat).range(cat.map((c, i) => pal?.[c] ?? d3.schemeTableau10[i % 10]));
     return { color: v => (v == null ? null : ord(v)), kind: 'categorical', domain: cat, swatch: c => ord(c) };
   }

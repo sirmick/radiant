@@ -1,9 +1,9 @@
 <script>
   import * as d3 from 'd3';
   import * as topojson from 'topojson-client';
-  import { valueAt, forecastAt, colorScale, STATUS_COLORS } from './data.js';
+  import { valueAt, forecastAt, historyAt, statusAt, colorScale, STATUS_COLORS } from './data.js';
 
-  let { world, geo, forecast, variable, year, layers, selected, onSelect } = $props();
+  let { world, geo, forecast, history, variable, year, layers, selected, onSelect } = $props();
 
   let width = $state(800), height = $state(600);
   let gEl = $state(null), svgEl = $state(null);
@@ -40,10 +40,14 @@
     const out = {};
     if (!variable) return out;
     if (variable.kind === 'forecast') { for (const id of Object.keys(forecast?.actors ?? {})) out[id] = forecastAt(forecast, variable, id, year); return out; }
+    if (variable.kind === 'history') return historyAt(history, variable, year);
     for (const [id, a] of Object.entries(world.actors)) out[id] = valueAt(a.vars[variable.id], year);
     return out;
   });
-  const selectable = (id) => !!world.actors[id] || !!forecast?.actors?.[id];
+  const selectable = (id) => !!world.actors[id] || !!forecast?.actors?.[id] || !!history?.actors?.[id];
+  const terrState = (t) => statusAt(t, year);
+  const corrState = (c) => statusAt(c, year);
+  const pointTerritories = $derived(world.territories.filter(t => t.geometry?.point && !t.geometry.ne_ids && !t.geometry.sketch));
   const scale = $derived(colorScale(variable, Object.values(values).map(v => v.value)));
   const fillFor = (id) => {
     const v = values[id]; if (!v) return '#1c2129';
@@ -97,29 +101,45 @@
       {#if layers.territories}
         {#each disputed as f (f.id)}
           {@const t = terrByNe.get(f.id)}
-          {#if t}
-            <path d={path(f)} fill="url(#hatch-{t.status})" stroke={STATUS_COLORS[t.status]} stroke-width={(isSel('territory', t.id) ? 1.8 : 0.7) / transform.k}
-              onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name}</title></path>
+          {@const st = t ? terrState(t) : null}
+          {#if t && st.exists}
+            <path d={path(f)} fill="url(#hatch-{st.status})" stroke={STATUS_COLORS[st.status] ?? '#8b94a3'} stroke-width={(isSel('territory', t.id) ? 1.8 : 0.7) / transform.k}
+              onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></path>
           {/if}
         {/each}
         {#each sketches as { t, feature } (t.id)}
-          <path d={path(feature)} fill="url(#hatch-{t.status})" stroke={STATUS_COLORS[t.status]} stroke-dasharray="3 2" stroke-width={(isSel('territory', t.id) ? 1.8 : 0.8) / transform.k}
-            onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name} (sketch)</title></path>
+          {@const st = terrState(t)}
+          {#if st.exists}
+            <path d={path(feature)} fill="url(#hatch-{st.status})" stroke={STATUS_COLORS[st.status] ?? '#8b94a3'} stroke-dasharray="3 2" stroke-width={(isSel('territory', t.id) ? 1.8 : 0.8) / transform.k}
+              onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name} (sketch) — {st.status}</title></path>
+          {/if}
+        {/each}
+        {#each pointTerritories as t (t.id)}
+          {@const st = terrState(t)}
+          {#if st.exists && st.status !== 'settled'}
+            {@const [x, y] = projection(t.geometry.point)}
+            <rect x={x - 4 / transform.k} y={y - 4 / transform.k} width={8 / transform.k} height={8 / transform.k} transform="rotate(45 {x} {y})" fill={STATUS_COLORS[st.status] ?? '#8b94a3'} fill-opacity="0.6" stroke={STATUS_COLORS[st.status] ?? '#8b94a3'} stroke-width={1 / transform.k}
+              onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></rect>
+          {/if}
         {/each}
       {/if}
 
       <!-- corridors and chokepoints -->
       {#if layers.corridors}
         {#each world.corridors as c (c.id)}
-          {#if c.geometry.line}
-            <path d={corridorPath(c)} fill="none" stroke={STATUS_COLORS[c.status]} stroke-linecap="round"
-              stroke-width={(isSel('corridor', c.id) ? 3 : 1.6) / transform.k}
-              stroke-dasharray={c.status === 'planned' ? '2 4' : c.status === 'building' ? '6 3' : null}
-              onclick={() => onSelect({ kind: 'corridor', id: c.id })} role="button" tabindex="-1"><title>{c.name} — {c.status}</title></path>
-          {:else if c.geometry.point}
-            {@const [x, y] = pointXY(c)}
-            <circle cx={x} cy={y} r={(isSel('corridor', c.id) ? 7 : 5) / transform.k} fill={STATUS_COLORS[c.status]} fill-opacity="0.35" stroke={STATUS_COLORS[c.status]} stroke-width={1.2 / transform.k}
-              onclick={() => onSelect({ kind: 'corridor', id: c.id })} role="button" tabindex="-1"><title>{c.name} — {c.status}</title></circle>
+          {@const st = corrState(c)}
+          {#if st.exists && st.status !== 'abandoned'}
+            {@const col = STATUS_COLORS[st.status] ?? '#8b94a3'}
+            {#if c.geometry.line}
+              <path d={corridorPath(c)} fill="none" stroke={col} stroke-linecap="round"
+                stroke-width={(isSel('corridor', c.id) ? 3 : c.mode === 'cable' ? 0.9 : 1.6) / transform.k}
+                stroke-dasharray={st.status === 'planned' ? '2 4' : st.status === 'building' ? '6 3' : c.mode === 'cable' ? '1 3' : null}
+                onclick={() => onSelect({ kind: 'corridor', id: c.id })} role="button" tabindex="-1"><title>{c.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></path>
+            {:else if c.geometry.point}
+              {@const [x, y] = pointXY(c)}
+              <circle cx={x} cy={y} r={(isSel('corridor', c.id) ? 7 : 5) / transform.k} fill={col} fill-opacity="0.35" stroke={col} stroke-width={1.2 / transform.k}
+                onclick={() => onSelect({ kind: 'corridor', id: c.id })} role="button" tabindex="-1"><title>{c.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></circle>
+            {/if}
           {/if}
         {/each}
       {/if}
@@ -136,11 +156,11 @@
         <div class="bar" style="background: linear-gradient(90deg, {d3.range(0, 1.01, 0.1).map(t => scale.scale(scale.log ? Math.exp(Math.log(scale.domain[0]) + t * (Math.log(scale.domain[1]) - Math.log(scale.domain[0]))) : scale.domain[0] + t * (scale.domain[1] - scale.domain[0]))).join(',')})"></div>
         <div class="ticks"><span>{d3.format('.3~s')(scale.domain[0])}</span><span>{d3.format('.3~s')(scale.domain[1])}</span></div>
       {/if}
-      <div class="muted small">{variable.kind === 'forecast' ? (year >= (forecast?.meta.from ?? 2026) ? `ensemble of ${forecast?.meta.runs} runs · generic templates only` : 'before forecast start: 2025 state') : year > 2026 ? 'projection / extrapolation' : 'historical'} · grey = no data</div>
+      <div class="muted small">{variable.kind === 'forecast' ? (year >= (forecast?.meta.from ?? 2026) ? `ensemble of ${forecast?.meta.runs} runs · generic templates only` : 'before forecast start: 2025 state') : variable.kind === 'history' ? (year > (history?.meta.y1 ?? 2025) ? 'past the panel: nothing shown' : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''}`) : year > 2026 ? 'projection / extrapolation' : 'historical'} · grey = no data</div>
     {/if}
     {#if layers.territories || layers.corridors}
       <div class="lt" style="margin-top:6px">Status</div>
-      {#if layers.territories}{#each ['contested_active', 'occupied', 'disputed', 'breakaway', 'buffer', 'frozen'] as s}<span class="sw"><i style="background:{STATUS_COLORS[s]}"></i>{s.replace('_', ' ')}</span>{/each}{/if}
+      {#if layers.territories}{#each ['contested_active', 'occupied', 'annexed', 'disputed', 'breakaway', 'protectorate', 'leased', 'buffer', 'frozen'] as s}<span class="sw"><i style="background:{STATUS_COLORS[s]}"></i>{s.replace('_', ' ')}</span>{/each}{/if}
       {#if layers.corridors}{#each ['open', 'contested', 'closed', 'built', 'building', 'planned'] as s}<span class="sw"><i style="background:{STATUS_COLORS[s]}"></i>{s}</span>{/each}{/if}
     {/if}
   </div>

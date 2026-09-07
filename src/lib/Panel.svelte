@@ -1,8 +1,14 @@
 <script>
-  import { valueAt, fmt, sparkPath, forecastAt, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
+  import { valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
 
-  let { world, forecast, selected, year, onSelect, onPickVariable } = $props();
-  let tab = $state('detail');
+  let { world, forecast, history, news, selected, year, onSelect, onPickVariable } = $props();
+  let tab = $state('news');
+  let newsKinds = $state(new Set(['war', 'nuclear', 'territory', 'corridor', 'alliance', 'coup', 'regime', 'conflict', 'dispute', 'leader', 'capability', 'economic']));
+  const KIND_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', alliance: '#6cb4ff', coup: '#d95c4f', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3', capability: '#c07ae0', economic: '#d9a441' };
+  const yearNews = $derived.by(() => { const y = Math.round(year); if (forecast && y >= forecast.meta.from) return { mode: 'forecast', items: forecastNews(forecast, y) }; return { mode: 'history', items: news?.years?.[y] ?? [] }; });
+  const shown = $derived(yearNews.items.filter(e => newsKinds.has(e.k)));
+  const toggleKind = (k) => { const n = new Set(newsKinds); n.has(k) ? n.delete(k) : n.add(k); newsKinds = n; };
+  const goto = (e) => { if (e.c) onSelect({ kind: 'corridor', id: e.c }); else if (e.tr) onSelect({ kind: 'territory', id: e.tr }); else if (e.a?.length) onSelect({ kind: 'actor', id: e.a[0] }); tab = 'detail'; };
 
   const reg = $derived(world.registry);
   const capVars = $derived(reg.variables.filter(v => v.id.startsWith('cap_')));
@@ -16,7 +22,12 @@
   const territory = $derived(selected?.kind === 'territory' ? world.territories.find(t => t.id === selected.id) : null);
   const corridor = $derived(selected?.kind === 'corridor' ? world.corridors.find(c => c.id === selected.id) : null);
   const hazardById = $derived(Object.fromEntries(world.hazards.map(h => [h.id, h])));
-  const actorName = (id) => world.actors[id]?.name ?? id;
+  const actorName = (id) => world.actors[id]?.name ?? history?.actors?.[id]?.name ?? id;
+  const tState = $derived(territory ? statusAt(territory, year) : null);
+  const cState = $derived(corridor ? statusAt(corridor, year) : null);
+  const histActor = $derived(selected?.kind === 'actor' ? history?.actors?.[selected.id] : null);
+  const hIdx = $derived(history ? Math.round(year) - history.meta.y0 : -1);
+  const hVal = (v) => (histActor && hIdx >= 0 ? histActor[v]?.[hIdx] : null);
 
   const varsInGroup = (g) => reg.variables.filter(v => v.group === g && v.scope === 'actor' && !v.id.startsWith('cap_') && actor?.vars[v.id]);
   const p10 = (h) => 1 - Math.exp(-h.base_q * 40);
@@ -25,13 +36,28 @@
 
 <div class="panel">
   <div class="tabs">
-    {#each [['detail', 'Detail'], ['hazards', `Hazards · ${world.hazards.length}`], ['claims', `Claims · ${world.claims.length}`], ['territories', `Territories · ${world.territories.length}`], ['corridors', `Corridors · ${world.corridors.length}`]] as [id, label]}
+    {#each [['news', `News · ${year}`], ['detail', 'Detail'], ['hazards', `Hazards · ${world.hazards.length}`], ['claims', `Claims · ${world.claims.length}`], ['territories', `Territories · ${world.territories.length}`], ['corridors', `Corridors · ${world.corridors.length}`]] as [id, label]}
       <button class:on={tab === id} onclick={() => tab = id}>{label}</button>
     {/each}
   </div>
 
   <div class="body">
-    {#if tab === 'detail'}
+    {#if tab === 'news'}
+      <div class="kinds">{#each Object.keys(KIND_COL) as k}<button class="kind" class:on={newsKinds.has(k)} style="--c:{KIND_COL[k]}" onclick={() => toggleKind(k)}>{k}</button>{/each}</div>
+      {#if yearNews.mode === 'forecast'}
+        <div class="tiny muted" style="margin:6px 0">{year}: ensemble hazards — P(first occurrence in this year) from {forecast.meta.runs} runs, ranked by how far above the typical actor each one sits. Generic templates only. Not events; odds.</div>
+        {#if !shown.length}<p class="muted">Nothing above 2% for the selected kinds.</p>{/if}
+        {#each shown as e}
+          <div class="card clickable news" onclick={() => goto(e)}><span class="dot" style="background:{KIND_COL[e.k]}"></span><span class="mono pct">{(e.p * 100).toFixed(0)}%</span><span>{e.t}<div class="tiny muted">{e.surprise.toFixed(1)}× the typical actor's odds this year</div></span></div>
+        {/each}
+      {:else}
+        <div class="tiny muted" style="margin:6px 0">{year}: {yearNews.items.length} recorded events{news ? '' : ' (news.json missing — run scripts/build-news.mjs)'}. Sources: REIGN, Powell–Thyne, V-Dem, UCDP, CoW, hand log.</div>
+        {#if !shown.length}<p class="muted">No recorded events for the selected kinds. Coverage: leaders/coups 1950–2021, civil wars 1946–2024, disputes 1816–2001, regimes 1900–2025, hand events throughout.</p>{/if}
+        {#each shown as e}
+          <div class="card clickable news" onclick={() => goto(e)}><span class="dot" style="background:{KIND_COL[e.k]}"></span><span class="mono pct muted">{e.y != null ? (e.y % 1 ? 'Q' + (Math.floor((e.y % 1) * 4) + 1) : '') : ''}</span><span>{e.t}{#if e.n}<div class="tiny muted">{e.n}</div>{/if}<div class="tiny muted">{e.s}</div></span></div>
+        {/each}
+      {/if}
+    {:else if tab === 'detail'}
       {#if actor}
         <h2>{actor.name} <span class="mono muted">{actor.id}</span></h2>
         <div class="chips">
@@ -60,6 +86,14 @@
         {#if Object.keys(actor.chokepoints).length}
           <h3>Chokepoint exposure</h3>
           <div class="kv">{#each Object.entries(actor.chokepoints) as [k, v]}<span><a href="#" onclick={(e) => { e.preventDefault(); onSelect({ kind: 'corridor', id: k }); }}>{k}</a></span><b>{pct(v)}</b>{/each}</div>
+        {/if}
+
+        {#if histActor && hIdx >= 0 && hIdx <= history.meta.y1 - history.meta.y0}
+          <h3>Historical panel · {year}</h3>
+          {#if !histActor.live[hIdx]}<div class="tiny muted">not a system member in {year}</div>{/if}
+          <div class="kv">
+            {#each Object.entries(history.vars) as [v, spec]}{@const x = hVal(v)}{#if x != null}<span>{spec.label}</span><b class="mono">{v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</b>{/if}{/each}
+          </div>
         {/if}
 
         {#if fcActor}
@@ -102,9 +136,17 @@
           {/if}
         {/each}
 
-      {:else if fcOnly}
-        {@const d = fcActor.regime?.[fcYearIdx]}
-        <h2>{selected.id} <span class="muted tiny">fit-only state (not in the modern actor set)</span></h2>
+      {:else if fcOnly || (histActor && !actor)}
+        {@const d = fcActor?.regime?.[fcYearIdx]}
+        <h2>{histActor?.name ?? selected.id} <span class="mono muted">{selected.id}</span> <span class="muted tiny">fit-only state</span></h2>
+        {#if histActor && hIdx >= 0 && hIdx <= history.meta.y1 - history.meta.y0}
+          <h3>Historical panel · {year}</h3>
+          {#if !histActor.live[hIdx]}<div class="tiny muted">not a system member in {year}</div>{/if}
+          <div class="kv">
+            {#each Object.entries(history.vars) as [v, spec]}{@const x = hVal(v)}{#if x != null}<span>{spec.label}</span><b class="mono">{v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</b>{/if}{/each}
+          </div>
+        {/if}
+        {#if fcActor}
         <h3>Forecast · generic templates · {forecast.meta.runs} runs</h3>
         {#if d}
           <div class="tiny muted">regime distribution in {Math.max(forecast.meta.from, Math.round(year))} (2025: {REGIME_LABELS[fcActor.regime0]})</div>
@@ -116,21 +158,28 @@
             <tr onclick={() => onPickVariable(`fc_${t.id}`)} class="clickable"><td class="lbl">{t.label}</td>{#each atYears(fcActor.p[t.id], [5, 10, 20, 40]) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}</tr>
           {/each}
         </tbody></table>
+        {/if}
       {:else if territory}
         <h2>{territory.name}</h2>
-        <div class="chips"><span class="chip" style="border-color:{STATUS_COLORS[territory.status]}">{territory.status.replace('_', ' ')}</span></div>
+        {#if !tState.exists}<p class="muted">Does not exist yet in {year}. First entry: {territory.history[0].year} — {territory.history[0].status}.</p>{/if}
+        <div class="chips"><span class="chip" style="border-color:{STATUS_COLORS[tState.status]}">{(tState.status ?? territory.status).replace('_', ' ')}{tState.since ? ` since ${Math.floor(tState.since)}` : ''}</span></div>
         <div class="kv">
-          <span>controller</span><b>{actorName(territory.controller)}</b>
+          <span>controller in {year}</span><b>{actorName(tState.controller ?? territory.controller)}</b>
           <span>claimants</span><b>{territory.claimants.map(actorName).join(', ')}</b>
           <span>stakes</span><b>{Object.entries(territory.stakes ?? {}).map(([k, v]) => `${k} ${v}`).join(' · ')}</b>
           <span>geometry</span><b class="mono tiny">{territory.geometry.ne_ids ? `NE ${territory.geometry.ne_ids.join(', ')}` : ''}{territory.geometry.sketch ? ` sketch (${territory.geometry.geometry_source ?? 'approximate'})` : ''}</b>
           {#if territory.hazard}<span>hazard</span><b><a href="#" onclick={(e) => { e.preventDefault(); tab = 'hazards'; }}>{territory.hazard}</a> <i class="muted">10-yr {pct(p10(hazardById[territory.hazard]))}</i></b>{/if}
         </div>
+        {#if territory.history?.length}
+          <h3>History</h3>
+          <table><tbody>{#each territory.history as h}<tr class:muted={h.year > year + 0.99}><td class="mono val">{h.year.toFixed(2)}</td><td>{h.status ?? ''}{h.controller ? ` · ${actorName(h.controller)}` : ''}<div class="tiny muted">{h.source ?? ''}</div></td></tr>{/each}</tbody></table>
+        {/if}
         {#if territory.notes}<p class="notes">{territory.notes}</p>{/if}
 
       {:else if corridor}
         <h2>{corridor.name}</h2>
-        <div class="chips"><span class="chip" style="border-color:{STATUS_COLORS[corridor.status]}">{corridor.status}</span><span class="chip">{corridor.kind} · {corridor.mode}</span>{#if corridor.completion != null}<span class="chip">completion {pct(corridor.completion)}</span>{/if}</div>
+        {#if !cState.exists}<p class="muted">Does not exist yet in {year}. First entry: {corridor.history[0].year} — {corridor.history[0].status}.</p>{/if}
+        <div class="chips"><span class="chip" style="border-color:{STATUS_COLORS[cState.status]}">{cState.status ?? corridor.status}{cState.since ? ` since ${Math.floor(cState.since)}` : ''}</span><span class="chip">{corridor.kind} · {corridor.mode}</span>{#if cState.controller}<span class="chip">controller {actorName(cState.controller)}</span>{/if}{#if cState.capacity != null}<span class="chip">capacity {cState.capacity}</span>{/if}{#if corridor.completion != null}<span class="chip">completion {pct(corridor.completion)}</span>{/if}</div>
         <div class="kv">
           <span>transits</span><b>{corridor.transits.map(actorName).join(', ')}</b>
           {#if corridor.requires}<span>requires</span><b>{corridor.requires.join(', ')}</b>{/if}
@@ -142,6 +191,10 @@
             <div class="bar-row"><span class="mono">{k}</span><div class="bar"><i style="width:{v * 100}%"></i></div><span class="mono muted">{v}</span></div>
           {/each}
         </div>
+        {#if corridor.history?.length}
+          <h3>History</h3>
+          <table><tbody>{#each corridor.history as h}<tr class:muted={h.year > year + 0.99}><td class="mono val">{h.year.toFixed(2)}</td><td>{h.status ?? ''}{h.controller ? ` · ${actorName(h.controller)}` : ''}{h.capacity != null ? ` · capacity ${h.capacity}` : ''}<div class="tiny muted">{h.source ?? ''}</div></td></tr>{/each}</tbody></table>
+        {/if}
         {#if corridor.notes}<p class="notes">{corridor.notes}</p>{/if}
 
       {:else}
@@ -216,6 +269,12 @@
   .card { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
   .card.clickable { cursor: pointer; } .card.clickable:hover { background: var(--bg3); }
   .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+  .kind { font-size: 10.5px; padding: 1px 7px; border-color: var(--line); color: var(--fg2); }
+  .kind.on { border-color: var(--c); color: var(--c); }
+  .card.news { display: grid; grid-template-columns: 8px 34px 1fr; gap: 8px; align-items: start; padding: 6px 8px; margin-bottom: 4px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
+  .pct { font-size: 11px; }
   .bars { display: grid; gap: 3px; }
   .bar-row { display: grid; grid-template-columns: 36px 1fr 30px; gap: 8px; align-items: center; font-size: 11px; }
   .bar { height: 8px; background: var(--bg3); border-radius: 2px; overflow: hidden; }

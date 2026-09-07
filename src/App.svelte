@@ -1,25 +1,36 @@
 <script>
-  import { loadWorld, forecastVariables } from './lib/data.js';
+  import { loadWorld, forecastVariables, historyVariables } from './lib/data.js';
   import Map from './lib/Map.svelte';
   import Panel from './lib/Panel.svelte';
 
   let data = $state(null), error = $state(null);
-  let varId = $state('fc_regime_mean');
+  let varId = $state('h_regime');
+  // auto-switch the regime view across the history/forecast boundary
+  $effect(() => { if (varId === 'h_regime' && year >= 2026) varId = 'fc_regime_mean'; else if (varId === 'fc_regime_mean' && year < 2026) varId = 'h_regime'; });
   let year = $state(2035);
+  let playing = $state(false);
+  const Y0 = 1870, Y1 = 2066;
+  const ERAS = [{ y: 1870, label: '1870' }, { y: 1914, label: '1914' }, { y: 1945, label: '1945' }, { y: 1991, label: '1991' }, { y: 2026, label: 'now' }, { y: 2066, label: '2066' }];
+  $effect(() => {
+    if (!playing) return;
+    const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
+    return () => clearInterval(t);
+  });
   let layers = $state({ territories: true, corridors: true });
   let selected = $state(null);
 
   loadWorld().then(d => { data = d; }).catch(e => { error = String(e); });
 
-  const mapVars = $derived(data ? [...forecastVariables(data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
-  const groups = $derived(data ? [['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
+  const mapVars = $derived(data ? [...historyVariables(data.history), ...forecastVariables(data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
+  const groups = $derived(data ? [['history', 'History (panel 1870–2025)'], ['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
   const variable = $derived(mapVars.find(v => v.id === varId) ?? mapVars[0]);
   const actorList = $derived(data ? Object.values(data.world.actors).sort((a, b) => a.name.localeCompare(b.name)) : []);
 
   function onKey(e) {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-    if (e.key === 'ArrowRight') year = Math.min(2066, year + 1);
-    if (e.key === 'ArrowLeft') year = Math.max(2000, year - 1);
+    if (e.key === 'ArrowRight') year = Math.min(Y1, year + 1);
+    if (e.key === 'ArrowLeft') year = Math.max(Y0, year - 1);
+    if (e.key === ' ') { e.preventDefault(); playing = !playing; }
   }
 </script>
 
@@ -41,11 +52,6 @@
           {/each}
         </select>
       </label>
-      <label class="year">
-        <span class="mono">{year}</span>
-        <input type="range" min="2000" max="2066" step="1" bind:value={year} />
-        <span class="muted tiny">← → keys</span>
-      </label>
       <button class:on={layers.territories} onclick={() => layers.territories = !layers.territories}>territories</button>
       <button class:on={layers.corridors} onclick={() => layers.corridors = !layers.corridors}>corridors</button>
       <label>actor
@@ -56,9 +62,21 @@
       </label>
       <span class="muted tiny right">built {data.world.meta.built.slice(0, 10)} · {Object.keys(data.world.actors).length} actors · {data.world.registry.variables.length} variables</span>
     </header>
+    <div class="timeline">
+      <button class="play" onclick={() => playing = !playing} title="play / pause (space)">{playing ? '❚❚' : '▶'}</button>
+      <span class="mono yr">{year}</span>
+      <div class="track">
+        <input type="range" min={Y0} max={Y1} step="1" bind:value={year} />
+        <div class="ticks">
+          {#each ERAS as e}<span style="left:{(e.y - Y0) / (Y1 - Y0) * 100}%" class:now={e.y === 2026}>{e.label}</span>{/each}
+        </div>
+        <div class="fcband" style="left:{(2026 - Y0) / (Y1 - Y0) * 100}%" title="forecast"></div>
+      </div>
+      <span class="muted tiny">{year < 2026 ? 'history' : 'forecast ensemble'} · ← → step · space play</span>
+    </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={data.forecast} {variable} {year} {layers} {selected} onSelect={(s) => selected = s} />
-      <Panel world={data.world} forecast={data.forecast} {selected} {year} onSelect={(s) => selected = s} onPickVariable={(id) => varId = id} />
+      <Map world={data.world} geo={data.geo} forecast={data.forecast} history={data.history} {variable} {year} {layers} {selected} onSelect={(s) => selected = s} />
+      <Panel world={data.world} forecast={data.forecast} history={data.history} news={data.news} {selected} {year} onSelect={(s) => selected = s} onPickVariable={(id) => varId = id} />
     </main>
   </div>
 {/if}
@@ -68,8 +86,15 @@
   header { display: flex; align-items: center; gap: 14px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--bg2); flex-wrap: wrap; }
   h1 { font-size: 15px; margin-right: 6px; }
   label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg2); font-size: 12px; }
-  .year input { width: 260px; }
-  .year .mono { color: var(--fg); font-weight: 600; width: 36px; }
+  .timeline { display: flex; align-items: center; gap: 12px; padding: 6px 12px 10px; background: var(--bg2); border-bottom: 1px solid var(--line); }
+  .timeline .yr { font-size: 15px; font-weight: 700; width: 44px; }
+  .play { width: 30px; height: 26px; padding: 0; }
+  .track { position: relative; flex: 1; height: 30px; }
+  .track input { width: 100%; margin: 0; position: absolute; top: 0; }
+  .ticks { position: absolute; top: 18px; left: 0; right: 0; height: 12px; font-size: 10px; color: var(--fg2); }
+  .ticks span { position: absolute; transform: translateX(-50%); }
+  .ticks span.now { color: var(--accent); font-weight: 600; }
+  .fcband { position: absolute; top: 4px; right: 0; height: 8px; background: var(--accent); opacity: 0.12; pointer-events: none; border-radius: 3px; }
   .right { margin-left: auto; }
   .tiny { font-size: 10.5px; }
   main { display: grid; grid-template-columns: minmax(0, 1fr) 400px; grid-template-rows: minmax(0, 1fr); flex: 1; min-height: 0; }

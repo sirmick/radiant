@@ -1,0 +1,471 @@
+{
+ "meta": {
+  "run": "2026-09-07T04:55:09.466Z",
+  "from": 1910,
+  "to": 1940,
+  "step": 10,
+  "horizon": 20,
+  "runs": 100,
+  "skipDyads": false
+ },
+ "byAsOf": [
+  {
+   "asOf": 1910,
+   "horizon": 20,
+   "actors": 55,
+   "dyad_actors": 70,
+   "ms": 3632,
+   "templates": {
+    "democratize_step": {
+     "n": 31,
+     "n_at_risk": 31,
+     "n_structural_miss": 0,
+     "predicted": 14.909999999999998,
+     "observed": 15,
+     "observed_at_risk": 15,
+     "brier": 0.25479677419354835,
+     "auc": 0.5833333333333334,
+     "auc_at_risk": 0.5833333333333334,
+     "scored_years": 20
+    },
+    "democratic_deepening": {
+     "n": 3,
+     "n_at_risk": 3,
+     "n_structural_miss": 0,
+     "predicted": 0.53,
+     "observed": 1,
+     "observed_at_risk": 1,
+     "brier": 0.16189999999999996,
+     "auc": 1,
+     "auc_at_risk": 1,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "liberal_erosion": {
+     "n": 4,
+     "n_at_risk": 4,
+     "n_structural_miss": 0,
+     "predicted": 0.82,
+     "observed": 2,
+     "observed_at_risk": 2,
+     "brier": 0.31465,
+     "auc": 0.75,
+     "auc_at_risk": 0.75,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "autocratic_closure": {
+     "n": 19,
+     "n_at_risk": 19,
+     "n_structural_miss": 0,
+     "predicted": 10.209999999999999,
+     "observed": 6,
+     "observed_at_risk": 6,
+     "brier": 0.22121578947368423,
+     "auc": 0.8653846153846154,
+     "auc_at_risk": 0.8653846153846154,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 2415,
+     "n_at_risk": 408,
+     "n_structural_miss": 20,
+     "predicted": 88.39999999999998,
+     "observed": 114,
+     "observed_at_risk": 94,
+     "brier": 0.036440248447204955,
+     "auc": 0.8611225477862409,
+     "auc_at_risk": 0.65173126439897,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 2415,
+     "n_at_risk": 396,
+     "n_structural_miss": 11,
+     "predicted": 36.489999999999995,
+     "observed": 55,
+     "observed_at_risk": 44,
+     "brier": 0.020578095238095225,
+     "auc": 0.8413135593220339,
+     "auc_at_risk": 0.6331676136363636,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1920,
+   "horizon": 20,
+   "actors": 62,
+   "dyad_actors": 69,
+   "ms": 3986,
+   "templates": {
+    "democratize_step": {
+     "n": 38,
+     "n_at_risk": 38,
+     "n_structural_miss": 0,
+     "predicted": 17.499999999999993,
+     "observed": 15,
+     "observed_at_risk": 15,
+     "brier": 0.2566947368421053,
+     "auc": 0.5231884057971015,
+     "auc_at_risk": 0.5231884057971015,
+     "scored_years": 20
+    },
+    "democratic_deepening": {
+     "n": 6,
+     "n_at_risk": 6,
+     "n_structural_miss": 0,
+     "predicted": 0.7,
+     "observed": 0,
+     "observed_at_risk": 0,
+     "brier": 0.021366666666666662,
+     "auc": null,
+     "auc_at_risk": null,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "liberal_erosion": {
+     "n": 6,
+     "n_at_risk": 6,
+     "n_structural_miss": 0,
+     "predicted": 1.26,
+     "observed": 2,
+     "observed_at_risk": 2,
+     "brier": 0.23399999999999999,
+     "auc": 0.625,
+     "auc_at_risk": 0.625,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "autocratic_closure": {
+     "n": 31,
+     "n_at_risk": 31,
+     "n_structural_miss": 0,
+     "predicted": 19.909999999999997,
+     "observed": 18,
+     "observed_at_risk": 18,
+     "brier": 0.22995806451612902,
+     "auc": 0.7329059829059829,
+     "auc_at_risk": 0.7329059829059829,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 2346,
+     "n_at_risk": 476,
+     "n_structural_miss": 11,
+     "predicted": 127.47000000000004,
+     "observed": 105,
+     "observed_at_risk": 94,
+     "brier": 0.03308316283034952,
+     "auc": 0.900150868022354,
+     "auc_at_risk": 0.7474518213211541,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 2346,
+     "n_at_risk": 460,
+     "n_structural_miss": 71,
+     "predicted": 46.82999999999995,
+     "observed": 205,
+     "observed_at_risk": 134,
+     "brier": 0.07259236999147488,
+     "auc": 0.7743509415477153,
+     "auc_at_risk": 0.737661386319934,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1930,
+   "horizon": 20,
+   "actors": 65,
+   "dyad_actors": 84,
+   "ms": 4443,
+   "templates": {
+    "democratize_step": {
+     "n": 35,
+     "n_at_risk": 35,
+     "n_structural_miss": 0,
+     "predicted": 18.34,
+     "observed": 25,
+     "observed_at_risk": 25,
+     "brier": 0.2641028571428572,
+     "auc": 0.424,
+     "auc_at_risk": 0.424,
+     "scored_years": 20
+    },
+    "democratic_deepening": {
+     "n": 8,
+     "n_at_risk": 8,
+     "n_structural_miss": 0,
+     "predicted": 1.7099999999999997,
+     "observed": 1,
+     "observed_at_risk": 1,
+     "brier": 0.1401625,
+     "auc": 0,
+     "auc_at_risk": 0,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "liberal_erosion": {
+     "n": 9,
+     "n_at_risk": 9,
+     "n_structural_miss": 0,
+     "predicted": 1.8399999999999999,
+     "observed": 3,
+     "observed_at_risk": 3,
+     "brier": 0.26782222222222224,
+     "auc": 0.05555555555555555,
+     "auc_at_risk": 0.05555555555555555,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "autocratic_closure": {
+     "n": 23,
+     "n_at_risk": 23,
+     "n_structural_miss": 0,
+     "predicted": 11.010000000000002,
+     "observed": 15,
+     "observed_at_risk": 15,
+     "brier": 0.30298695652173924,
+     "auc": 0.2791666666666667,
+     "auc_at_risk": 0.2791666666666667,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 3486,
+     "n_at_risk": 563,
+     "n_structural_miss": 30,
+     "predicted": 105.42000000000012,
+     "observed": 192,
+     "observed_at_risk": 162,
+     "brier": 0.04309959839357431,
+     "auc": 0.8714297460028334,
+     "auc_at_risk": 0.6014747082910009,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 3486,
+     "n_at_risk": 515,
+     "n_structural_miss": 99,
+     "predicted": 39.5,
+     "observed": 240,
+     "observed_at_risk": 141,
+     "brier": 0.06032851405622498,
+     "auc": 0.7520968114602588,
+     "auc_at_risk": 0.7357207873478211,
+     "scored_years": 20
+    }
+   }
+  },
+  {
+   "asOf": 1940,
+   "horizon": 20,
+   "actors": 68,
+   "dyad_actors": 112,
+   "ms": 5594,
+   "templates": {
+    "democratize_step": {
+     "n": 44,
+     "n_at_risk": 44,
+     "n_structural_miss": 0,
+     "predicted": 26.540000000000003,
+     "observed": 32,
+     "observed_at_risk": 32,
+     "brier": 0.19935909090909093,
+     "auc": 0.6536458333333334,
+     "auc_at_risk": 0.6536458333333334,
+     "scored_years": 20
+    },
+    "democratic_deepening": {
+     "n": 5,
+     "n_at_risk": 5,
+     "n_structural_miss": 0,
+     "predicted": 0.53,
+     "observed": 1,
+     "observed_at_risk": 1,
+     "brier": 0.18445999999999999,
+     "auc": 0,
+     "auc_at_risk": 0,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "liberal_erosion": {
+     "n": 6,
+     "n_at_risk": 6,
+     "n_structural_miss": 0,
+     "predicted": 1.37,
+     "observed": 0,
+     "observed_at_risk": 0,
+     "brier": 0.05331666666666667,
+     "auc": null,
+     "auc_at_risk": null,
+     "scored_years": 20,
+     "underpowered": true
+    },
+    "autocratic_closure": {
+     "n": 23,
+     "n_at_risk": 23,
+     "n_structural_miss": 0,
+     "predicted": 8.41,
+     "observed": 17,
+     "observed_at_risk": 17,
+     "brier": 0.33804782608695655,
+     "auc": 0.5392156862745098,
+     "auc_at_risk": 0.5392156862745098,
+     "scored_years": 20
+    },
+    "mid_force": {
+     "n": 6216,
+     "n_at_risk": 707,
+     "n_structural_miss": 56,
+     "predicted": 155.09000000000003,
+     "observed": 215,
+     "observed_at_risk": 159,
+     "brier": 0.03288074324324329,
+     "auc": 0.8261301411005143,
+     "auc_at_risk": 0.5299373364550337,
+     "scored_years": 20
+    },
+    "mid_war": {
+     "n": 6216,
+     "n_at_risk": 596,
+     "n_structural_miss": 19,
+     "predicted": 47.72999999999998,
+     "observed": 53,
+     "observed_at_risk": 34,
+     "brier": 0.0085305501930502,
+     "auc": 0.7814161811663641,
+     "auc_at_risk": 0.6069447351894495,
+     "scored_years": 20
+    }
+   }
+  }
+ ],
+ "pooled": {
+  "democratize_step": {
+   "n": 148,
+   "predicted": 77.28999999999999,
+   "observed": 87,
+   "brier": 0.24100337837837835,
+   "brier_base": 0.2422845142439737,
+   "skill": 0.005287733182589238,
+   "auc": 0.6024119087996985,
+   "calibration": [
+    [
+     0.3203448275862068,
+     0.41379310344827586
+    ],
+    [
+     0.4153333333333335,
+     0.6666666666666666
+    ],
+    [
+     0.5306896551724138,
+     0.5517241379310345
+    ],
+    [
+     0.6056666666666664,
+     0.6
+    ],
+    [
+     0.7326666666666666,
+     0.7
+    ]
+   ]
+  },
+  "autocratic_closure": {
+   "n": 96,
+   "predicted": 49.54000000000002,
+   "observed": 56,
+   "brier": 0.2716208333333333,
+   "brier_base": 0.24305555555555555,
+   "skill": -0.11752571428571423,
+   "auc": 0.49955357142857143,
+   "calibration": [
+    [
+     0.3178947368421053,
+     0.6842105263157895
+    ],
+    [
+     0.4231578947368422,
+     0.5789473684210527
+    ],
+    [
+     0.508421052631579,
+     0.47368421052631576
+    ],
+    [
+     0.6005263157894739,
+     0.47368421052631576
+    ],
+    [
+     0.7195000000000001,
+     0.7
+    ]
+   ]
+  },
+  "mid_force": {
+   "n": 14463,
+   "predicted": 476.3799999999976,
+   "observed": 626,
+   "brier": 0.03597097421005327,
+   "brier_base": 0.04140945376622571,
+   "skill": 0.13133425006944088,
+   "auc": 0.8566407356670463,
+   "calibration": [
+    [
+     0,
+     0.007261410788381743
+    ],
+    [
+     0,
+     0.009332872450743173
+    ],
+    [
+     0,
+     0.009681881051175657
+    ],
+    [
+     0,
+     0.005876253024541998
+    ],
+    [
+     0.16466643622537183,
+     0.18423781541652265
+    ]
+   ]
+  },
+  "mid_war": {
+   "n": 14463,
+   "predicted": 170.55000000000035,
+   "observed": 553,
+   "brier": 0.03341830187374672,
+   "brier_base": 0.0367735442090573,
+   "skill": 0.09124065703963846,
+   "auc": 0.7759753673512102,
+   "calibration": [
+    [
+     0,
+     0.007261410788381743
+    ],
+    [
+     0,
+     0.03629450397511234
+    ],
+    [
+     0,
+     0.01970954356846473
+    ],
+    [
+     0,
+     0.0010369858278603526
+    ],
+    [
+     0.058952644313861095,
+     0.12685793294158312
+    ]
+   ]
+  }
+ }
+}

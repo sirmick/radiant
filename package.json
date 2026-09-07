@@ -8,6 +8,7 @@
     "build:data": "node scripts/build-world.mjs",
     "build:hist": "node scripts/build-panel.mjs && node scripts/build-events.mjs && node scripts/fit-hazards.mjs",
     "forecast": "node scripts/run-forward.mjs --runs 300 --horizon 40",
+    "build:ui-data": "node scripts/build-history-slice.mjs && node scripts/build-news.mjs",
     "backtest": "node scripts/backtest.mjs --from 1950 --to 2000 --step 10 --horizon 20 --runs 100 --universe all",
     "build:geo": "node scripts/build-geo.mjs",
     "fetch:wb": "node scripts/fetch-wb.mjs",
