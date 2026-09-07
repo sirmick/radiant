@@ -83,7 +83,8 @@
   const atWar = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.at_war?.[yi] ?? 0) > 0 : false; };
 
   // ---- alliance edges at the year (great-circle arcs between centroids)
-  const popAt = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.population?.[yi] ?? a.population?.at(-1) ?? 0) : (history?.actors?.[id]?.population?.at(-1) ?? 0); };
+  const lastNonNull = (arr, upto) => { if (!arr) return null; for (let i = Math.min(arr.length - 1, upto ?? arr.length - 1); i >= 0; i--) if (arr[i] != null) return arr[i]; return null; };
+  const popAt = (id) => { const a = history?.actors?.[id]; if (!a) return 0; return (yi >= 0 ? lastNonNull(a.population, yi) : lastNonNull(a.population)) ?? 0; };
   const isGreat = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.great_power?.[yi] ?? 0) > 0 : false; };
   const allianceView = $derived(alliancesAt(alliances, year, (members) => { const gp = members.filter(isGreat); const pool = gp.length ? gp : members; return pool.reduce((best, m) => (popAt(m) > popAt(best) ? m : best), pool[0]); }));
   // pact membership per actor (for the hover card)
@@ -118,7 +119,8 @@
   const hoverInfo = $derived.by(() => {
     if (!hover) return null; const id = actorOfNe(hover.id); const ha = history?.actors?.[id]; const wa = world.actors[id];
     const name = wa?.name ?? ha?.name ?? countries.find(f => f.id === hover.id)?.properties.name ?? id;
-    const rg = regimeAt(history, forecast, id, year); const pop = ha && yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? ha.population?.[yi] : (ha?.population?.at(-1) ?? null);
+    const rg = regimeAt(history, forecast, id, year); const lastPop = (arr) => { if (!arr) return null; for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return arr[i]; return null; };
+    const pop = ha && yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? (ha.population?.[yi] ?? lastPop(ha.population?.slice(0, yi + 1))) : lastPop(ha?.population);
     const pacts = (pactsOf.get(id) ?? []).map(p => ({ pid: p.pid, partners: p.members.filter(m => m !== id), greats: p.members.filter(m => m !== id && isGreat(m)) }));
     const items = yearItems.filter(it => it.a?.includes(id) && !it.ongoing).slice(0, 4);
     const conflicts = [atWar(id) ? 'at war' : null, intrastateOf(id) >= 2 ? 'civil war' : intrastateOf(id) > 0 ? 'internal armed conflict' : null].filter(Boolean);
