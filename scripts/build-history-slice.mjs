@@ -2,7 +2,7 @@
 // Actor ids are model ids; the map matches them to Natural Earth ISO3 directly, and via `map_to` for historical
 // entities that draw on a modern successor's polygon (PRUSSIA→DEU etc.) when the successor is not itself live.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { loadActors } from './lib/hist.mjs';
+import { loadActors, readCsv } from './lib/hist.mjs';
 const p = JSON.parse(readFileSync('data/panel.json', 'utf8'));
 const Y0 = 1870, y0i = Y0 - p.meta.y0;
 const VARS = {
@@ -23,11 +23,13 @@ const VARS = {
   urban_share: { label: 'Urban share', unit: '%', format: '.0f', dp: 1 },
 };
 const actors = loadActors();
+// ISO2 (for emoji flags) from the countrycode list; historical entities map to the successor's flag or none
+const iso2 = {}; try { for (const r of readCsv('data/raw/hist/codelist.csv')) if (r.iso3c && r.iso2c) iso2[r.iso3c] = r.iso2c; } catch { }
 const out = { meta: { built: new Date().toISOString(), y0: Y0, y1: p.meta.y1, sources: Object.fromEntries(Object.keys(VARS).map(v => [v, p.sources[v] ?? 'derived'])) }, vars: VARS, actors: {} };
 for (const [id, vars] of Object.entries(p.actors)) {
   const a = actors.get(id); const live = vars.live?.slice(y0i);
   if (!live?.some(x => x)) continue;
-  const rec = { live: live.map(x => (x ? 1 : 0)), map_to: a?.owid && a.owid !== id ? a.owid : undefined, name: a?.name ?? id, spans: a?.spans };
+  const rec = { live: live.map(x => (x ? 1 : 0)), map_to: a?.owid && a.owid !== id ? a.owid : undefined, name: a?.name ?? id, spans: a?.spans, iso2: iso2[id] ?? null };
   for (const [v, spec] of Object.entries(VARS)) { const arr = vars[v]; if (!arr) continue; rec[v] = arr.slice(y0i).map(x => (x == null ? null : +(+x).toFixed(spec.dp))); }
   out.actors[id] = rec;
 }

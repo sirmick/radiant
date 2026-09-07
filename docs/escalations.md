@@ -121,3 +121,15 @@ Proposals from the refinement loop that add a new effect, variable or mechanism.
 **Templates it feeds.** Every actor-year template; `mid_force`/`mid_war` if `cinc` is ever imputed too.
 
 **Test that decides it.** At as-of 1940, `democratize_step` `auc_at_risk` rises above its current 0.44 and the pooled 1910–1940 skill above −0.25, with the imputed-variable counts reported per as-of row.
+
+## operator / modern-fold — put the 2000–2025 measured series on the panel clock
+
+**Adds.** Extra columns on `data/panel.json` for every actor, 2000–2025, from the fetched modern datasets in `data/raw/` (World Bank WDI 1960+ already partly used; UN WPP 2024 `TPopulation1July`, `TFR`, `MedianAgePop`, working-age share from the age-5 file; OWID energy `oil_consumption`, `electricity_generation`, `renewables_share_elec`; IEA EV stock share), registered in `data/variables.yaml`-style metadata inside the panel (`meta.sources`, `introduced`). The modern actor snapshot (`data/actors.yaml` capability levels, nuclear status, chokepoint exposure) becomes panel columns too (`cap_*`, `nuclear_status`, `chokepoint_hormuz`…) valued at 2025 with `source` carried, so the engine's `createWorld(2025)` reads them like any other variable. `scripts/build-world.mjs` keeps producing `public/world.json` for the viewer but no longer owns any series.
+
+**Why.** Operator decision 2026-09-07 ("get a faithful model first"): one panel, one clock. Today the 2000–2025 layer lives in a second artefact the engine never sees, and the refine loop cannot attack it.
+
+**Data it needs.** None new — all in `data/raw/`.
+
+**Templates it feeds.** None directly yet; it makes the modern era attackable by the loop and gives future candidates (EV share, fertility, working-age share, renewables) a home.
+
+**Test that decides it.** `node -e` on `data/panel.json` shows `population`, `fertility`, `working_age_share`, `oil_twh`, `ev_share`, `cap_logic` … non-null for ≥ 40 actors in 2025 with `meta.sources` entries; `createWorld(2025)` exposes them on `a.cur`; the 1870–2010 backtest numbers are unchanged (the fold adds columns, changes no fitted covariate).
