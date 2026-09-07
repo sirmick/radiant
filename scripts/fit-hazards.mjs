@@ -12,7 +12,8 @@ const actors = loadActors(); const code = makeCodeMap(actors);
 const contig = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
 const isContiguous = (a, b, y) => (contig[a < b ? `${a}|${b}` : `${b}|${a}`] ?? []).some(([f, t]) => y >= f && y <= t);
 const YEARS = panel.years, Y0 = panel.meta.y0;
-const only = new Set(process.argv.slice(2));
+const splitArgI = process.argv.indexOf('--split'); const SPLIT_OVERRIDE = splitArgI >= 0 ? +process.argv[splitArgI + 1] : null;
+const only = new Set(process.argv.slice(2).filter((x, i, arr) => x !== '--split' && arr[i - 1] !== '--split'));
 
 // ---------------------------------------------------------------- event index
 const evByActorYear = new Map();   // `${kind}|${actor}|${year}` -> [events]
@@ -179,7 +180,7 @@ for (const t of templates) {
   const beta = fitLogistic(X, yv, prior);
   const pIn = predict(X, beta);
   // era holdout: split at the window midpoint (or 1946 if inside the window)
-  const [w0, w1] = t.window; const split = t.holdout_split ?? (w0 < 1946 && w1 > 1960 ? 1946 : Math.round((w0 + w1) / 2));
+  const [w0, w1] = t.window; const split = SPLIT_OVERRIDE ?? t.holdout_split ?? (w0 < 1946 && w1 > 1960 ? 1946 : Math.round((w0 + w1) / 2));
   const trainR = rows.filter(r => r.year < split), testR = rows.filter(r => r.year >= split);
   let hold = null;
   if (trainR.filter(r => r.y).length >= 5 && testR.filter(r => r.y).length >= 5) {
@@ -215,5 +216,5 @@ for (const t of templates) {
   lines.push(`${t.id.padEnd(24)} n=${rows.length} ev=${evn} rate=${(evn / rows.length * 100).toFixed(2)}%  AUC in=${fits[t.id].auc_in?.toFixed(3)} hold=${hold?.auc?.toFixed(3) ?? '—'}(≥${split})\n${''.padEnd(24)} ${top}`);
   if (ablation) for (const a of ablation) lines.push(`${''.padEnd(24)} ablation ${a.variant.padEnd(16)} ${a.note ?? `n=${a.n} ev=${a.events}  hold AUC ${a.auc_holdout?.toFixed(3)}  brier ${a.brier_holdout?.toFixed(4)}  exp/obs ${a.exp_obs_holdout?.toFixed(2)}  ${Object.entries(a.coefs).map(([k, v]) => `${k} ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join(' ')}`}`);
 }
-writeFileSync('data/fits.json', JSON.stringify({ meta: { built: new Date().toISOString() }, fits }, null, 1));
+if (SPLIT_OVERRIDE == null) writeFileSync('data/fits.json', JSON.stringify({ meta: { built: new Date().toISOString() }, fits }, null, 1));
 console.log(lines.join('\n'));

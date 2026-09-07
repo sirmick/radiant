@@ -106,7 +106,7 @@ templates:
     event: regime_change
     event_filter: { direction: democratize }
     window: [1900, 2024]
-    holdout_split: 1990
+    holdout_split: 2005                # training must include 1992–2004 so conditionality is identified
     sample: { regime_max: 1 }
     covariates:
       - { var: regime, transform: cat, prior: { 0: 0, 1: 0.5 } }
@@ -114,6 +114,12 @@ templates:
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.2 }
       - { var: leader_exit_recent, transform: win5, prior: 0.5 }
+      - { var: aid_conditionality, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "user hypothesis (external influence > neighbours): ODA/GNI × 1992–2016 promotion era; holdout≥2005 AUC 0.578→0.641, coef +0.53; largest single gain on any regime template" } }
+      - { var: pact_usa, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "US clients step up more (+0.59), identified on Cold War variation" } }
+      - { var: pact_rus, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Soviet clients held autocratic (−0.50)" } }
+    candidates:
+      - { id: patron_regime, var: patron_regime, transform: none, prior: 0, hypothesis: "clients drift toward the patron's regime type (+0.49 alone, ≈0 once pact_* are in)" }
+      - { id: hegemon_x_client, var: hegemon_x_client, transform: none, prior: 0, hypothesis: "user: hegemon's clients track the hegemon's regime score — collinear with pact_usa until the US series varies (first variation: 2025 = 2)" }
     rejected:                                                     # tested 2026-09-06 (neighbourhood diffusion); kept so the loop doesn't re-propose them
       - { id: nbr_democracy_share, evidence: "democratize_step holdout≥1990: coef −0.25 (wrong sign), Brier worse; autocratize_step: coef +0.36, AUC 0.74→0.61. Selection effect: surviving autocracies in democratic neighbourhoods are the resilient ones; 2010s backsliding happened inside democratic Europe." }
       - { id: nbr_regime_up_recent, evidence: "≈0 on all targets" }
@@ -124,8 +130,9 @@ templates:
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "category-step target beats ERT episodes on holdout: AUC 0.47→0.77; engine uses this for regime dynamics" }
 
   - id: autocratize_step
-    lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
-    label: Regime category moves down (V-Dem RoW)
+    status: monitored                  # superseded by liberal_erosion + autocratic_closure (different mechanisms, see docs/system.md bucket C)
+    lead: 1
+    label: Regime category moves down (V-Dem RoW), any
     unit: actor-year
     event: regime_change
     event_filter: { direction: autocratize }
@@ -140,6 +147,52 @@ templates:
       - { var: intrastate, transform: lag1, prior: 0.4 }
     sources: ["Goldstone et al. 2010", "V-Dem RoW via OWID"]
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "holdout AUC 0.74; NOTE under-predicts post-1990 autocratization 5× (exp/obs 0.21) — open era shock" }
+
+  - id: liberal_erosion
+    lead: 1
+    label: Liberal democracy erodes to electoral democracy (3→2)
+    unit: actor-year
+    event: regime_change
+    event_filter: { direction: autocratize, from: 3 }
+    window: [1900, 2024]
+    holdout_split: 1990
+    sample: { regime_min: 3 }
+    covariates:
+      - { var: log_gdp_pc, transform: z, prior: -0.3 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: leader_exit_recent, transform: win5, prior: 0.3 }
+    candidates:
+      - { id: info_access, var: info_access, transform: z, prior: 0, hypothesis: "information access raises erosion risk in rich democracies (polarisation channel) — the inverse of its coup effect" }
+      - { id: hegemon_x_client, var: hegemon_x_client, transform: none, prior: 0, hypothesis: "user: the hegemon's clients track the hegemon's regime score (cross-sectional form)" }
+      - { id: pact_usa, var: pact_usa, transform: none, prior: 0, hypothesis: "US allies track the US" }
+      - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "control" }
+    sources: ["Maerz et al. 2024 (ERT)", "V-Dem Democracy Report 2025"]
+    lifecycle: { phase: active, promoted: 2026-09-06, reason: "bucket C: 3→2 steps are a European/Anglosphere erosion process distinct from coups" }
+
+  - id: autocratic_closure
+    lead: 1
+    label: Electoral regime closes (2→1, 2→0, 1→0)
+    unit: actor-year
+    event: regime_change
+    event_filter: { direction: autocratize }
+    window: [1900, 2024]
+    holdout_split: 2005
+    sample: { regime_min: 1, regime_max: 2 }
+    covariates:
+      - { var: regime, transform: cat, prior: { 1: 0, 2: 0.3 } }
+      - { var: log_gdp_pc, transform: z, prior: -0.5 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: intrastate, transform: lag1, prior: 0.4 }
+      - { var: coup_attempt, transform: win5, prior: 0.8 }
+      - { var: aid_conditionality, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "conditionality deters closure: holdout≥2005 AUC 0.565→0.617, coef −0.61" } }
+      - { var: great_game, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Cold War superpower clients close more (+0.62, AUC +0.02); bare pact_* ≈0 once this is in" } }
+    candidates:
+      - { id: patron_regime, var: patron_regime, transform: none, prior: 0, hypothesis: "patron's regime type" }
+      - { id: hegemon_x_client, var: hegemon_x_client, transform: none, prior: 0, hypothesis: "hegemon's clients track the hegemon (untestable until the US series varies)" }
+    sources: ["Goldstone et al. 2010", "Powell 2012", "Levitsky & Way 2010"]
+    lifecycle: { phase: active, promoted: 2026-09-06, reason: "bucket C: closures are coup/conflict-adjacent, poor, low-information" }
 
   - id: intrastate_onset
     label: Internal armed conflict onset (≥25 deaths)

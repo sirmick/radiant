@@ -55,6 +55,14 @@ Two things the test surfaced instead:
 - **Target definition matters more than covariates.** V-Dem RoW category steps (`democratize_step`, `autocratize_step`) replace ERT "episodes" as the regime templates. An apparent AUC jump to 0.77 was leakage — events dated to the year the new regime is observed, credited to rows already in the new category. Fixed by `lead: 1` (label = next year's event; hazard from this year's state applies to the coming year, which is how the engine uses it). Honest one-year holdout AUC is 0.59 for both directions.
 - **Dynamic backtest, all states, 1950–2000 +20y:** autocratize_step skill +0.17, AUC 0.77 (calibration 17→3 30→19 43→41 55→52 67→62); democratize_step skill −0.12, AUC 0.52 — calibrated but no discrimination. Which autocracies democratize is not predictable from income, growth, war and leader turnover; Przeworski's "predicting emergence is hard" reproduces. Open: `irregular_exit` over-predicts 1.9× dynamically (coup-trap feedback needs decay).
 
+## External influence beats neighbours (2026-09-06, user hypothesis)
+
+Channels operationalised per actor: `pact_usa` / `pact_rus` (CoW alliances), `great_game` (client × bipolar era), `aid_conditionality` (ODA/GNI × 1992–2016 promotion era), `patron_regime`, `hegemon_regime`, `hegemon_x_client`. Identification lesson: era-interacted terms need a holdout that leaves the era partly in training — `holdout_split: 2005` for the regime templates (with 1990, conditionality is all-zero in training and the coefficient never leaves its prior).
+
+Promoted: on `democratize_step` aid_conditionality +0.78 (holdout AUC 0.578→0.641), pact_usa +0.90, pact_rus −0.23; on `autocratic_closure` aid_conditionality −0.59 (0.565→0.617), great_game +0.15 (+0.62 alone). Untestable for now: `hegemon_regime` (no cross-section), `hegemon_x_client` (collinear with pact_usa while the US scored 3 every year — first variation is 2025 = 2). `liberal_erosion` (3→2) split off from closures per bucket C; 28 events, model predicts 4% of post-2005 erosions, `info_access` +1.05 in-sample — the polarisation channel, unpromotable on n=28.
+
+Dynamic backtest, all states, 1950–2000 +20y: democratize_step AUC 0.52→0.67; autocratic_closure skill +0.09, AUC 0.68; coups +0.27 unchanged.
+
 ## What the first backtest said (as-of 1870…2000, +20y, 100 runs, 67 actors)
 
 - One-year fits with AUC 0.8+ become 20-year dynamic forecasts with AUC 0.65–0.8 and mostly near-zero Brier skill over the base rate. That is the honest starting point.

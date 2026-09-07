@@ -133,6 +133,10 @@ export function stepYear(world, rng, opts = {}) {
     a.cur.sp_client_any = (a.cur.pact_usa || a.cur.pact_rus) ? 1 : 0;
     a.cur.sp_client_one = ((a.cur.pact_usa ? 1 : 0) + (a.cur.pact_rus ? 1 : 0)) === 1 ? 1 : 0;
     a.cur.great_game = a.cur.bipolar && a.cur.sp_client_any ? 1 : 0;
+    // unipolar democracy-promotion era (1992–2016 historically); aid dependence held at last observed level
+    a.cur.unipolar_us = y >= 1992 && y <= 2016 ? 1 : 0;
+    if (a.cur.aid_gni != null) a.cur.aid_conditionality = a.cur.unipolar_us ? Math.min(a.cur.aid_gni, 30) / 10 : 0;
+    a.cur.hegemon_x_client = a.cur.pact_usa ? (world.actors.USA?.cur.regime ?? 3) : 0;
     if (a.cur.info_access != null) { const r = y >= 1985 ? 0.15 : 0.03; const x = Math.max(0.02, a.cur.info_access); a.cur.info_access = Math.min(1, x + r * x * (1 - x)); }
     // clear annual flags; decay conflicts
     a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0; a.cur.regime_up = 0; a.cur.regime_down = 0;

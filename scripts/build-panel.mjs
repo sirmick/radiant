@@ -98,7 +98,7 @@ sources.at_war = 'data/history/events.yaml (hand-coded interstate wars)';
 // ---- World Bank WDI 1960+ (fetched by scripts/fetch-wb.mjs): information access, infant mortality, urbanisation
 {
   const wb = (name) => JSON.parse(readFileSync(`data/raw/wb/${name}.json`, 'utf8')).data;
-  for (const [name, v] of [['internet_users', 'internet_users'], ['mobile_subs', 'mobile_subs'], ['fixed_lines', 'fixed_lines'], ['infant_mortality', 'infant_mortality'], ['urban_share', 'urban_share']]) {
+  for (const [name, v] of [['internet_users', 'internet_users'], ['mobile_subs', 'mobile_subs'], ['fixed_lines', 'fixed_lines'], ['infant_mortality', 'infant_mortality'], ['urban_share', 'urban_share'], ['aid_gni', 'aid_gni']]) {
     const d = wb(name);
     for (const [iso, years] of Object.entries(d)) for (const [y, val] of Object.entries(years)) { const id = owid(iso, +y); if (id) put(id, v, +y, +val); }
     sources[v] = `World Bank WDI (${name})`;
@@ -142,6 +142,12 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.sp_client_any = YEARS.map((y, i) => ((vars.pact_usa[i] || vars.pact_rus[i]) ? 1 : 0));
   vars.sp_client_one = YEARS.map((y, i) => ((vars.pact_usa[i] ? 1 : 0) + (vars.pact_rus[i] ? 1 : 0) === 1 ? 1 : 0));
   vars.great_game = YEARS.map((y, i) => (vars.bipolar[i] && vars.sp_client_any[i] ? 1 : 0));
+  // external-influence channels: patron regime, unipolar democracy-promotion era, aid conditionality
+  vars.unipolar_us = YEARS.map(y => (y >= 1992 && y <= 2016 ? 1 : 0));
+  vars.aid_conditionality = YEARS.map((y, i) => (vars.aid_gni?.[i] != null ? (vars.unipolar_us[i] ? Math.min(vars.aid_gni[i], 30) / 10 : 0) : null));   // ODA/GNI (capped 30%) in tens, only during the promotion era
+  vars.patron_regime = YEARS.map((y, i) => { const usa = panel.USA?.regime?.[i], rus = panel.RUS?.regime?.[i]; if (vars.pact_usa?.[i] && !vars.pact_rus?.[i]) return usa ?? null; if (vars.pact_rus?.[i] && !vars.pact_usa?.[i]) return rus ?? null; if (vars.pact_usa?.[i] && vars.pact_rus?.[i]) return ((usa ?? 0) + (rus ?? 0)) / 2; return 0; });
+  vars.hegemon_x_client = YEARS.map((y, i) => (vars.pact_usa?.[i] ? (panel.USA?.regime?.[i] ?? 3) : 0));   // US clients see the hegemon's own regime score; others 0
+  vars.hegemon_regime = YEARS.map((y, i) => (y >= 1946 ? (panel.USA?.regime?.[i] ?? null) : (panel.GBR?.regime?.[i] ?? null)));
   vars.cold_war = YEARS.map(y => (y <= 1991 ? 1 : 0));
   vars.anticoup_norm = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
 }

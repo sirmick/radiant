@@ -26,6 +26,7 @@ const IND = {
   'IT.MLT.MAIN.P2': 'fixed_lines',
   'SP.DYN.IMRT.IN': 'infant_mortality',
   'SP.URB.TOTL.IN.ZS': 'urban_share',
+  'DT.ODA.ODAT.GN.ZS': 'aid_gni',
 };
 for (const [code, name] of Object.entries(IND)) {
   const url = `https://api.worldbank.org/v2/country/all/indicator/${code}?format=json&per_page=20000&date=1960:2024`;
