@@ -268,18 +268,20 @@ for (const [id, vars] of Object.entries(panel)) {
   //   prefer: none        a declared, unresolved disagreement — two independent estimates of the same territory, kept
   //                       and exempted with a reason. It is not a borders join and neither series is demonstrably wrong.
   const GUARD = 0.3;
-  const decl = new Map();
+  const decl = new Map();      // id -> every declared span, for the exemption test (prefer is irrelevant there)
+  const rules = [];            // one entry per declaration, so an actor with two declarations keeps a `prefer` per span
   for (const g of Y('data/history/population_guard.yaml')) {
     const spans = g.spans ?? [[g.from ?? Y0, g.until ?? Y1 + 1]];
-    const d = decl.get(g.id) ?? decl.set(g.id, { spans: [], prefer: g.prefer ?? 'none' }).get(g.id);
-    d.spans.push(...spans); d.prefer = g.prefer ?? d.prefer;
+    const d = decl.get(g.id) ?? decl.set(g.id, { spans: [] }).get(g.id);
+    d.spans.push(...spans);
+    rules.push({ id: g.id, spans, prefer: g.prefer ?? 'none' });
     if (!g.reason) throw new Error(`population_guard ${g.id}: every declaration needs a reason`);
   }
-  for (const [id, d] of decl) {
+  for (const { id, spans, prefer } of rules) {
     const vars = panel[id]; if (!vars) continue;
-    if (d.prefer === 'none') continue;
-    const v = d.prefer === 'tpop' ? 'population' : 'tpop';
-    YEARS.forEach((y, i) => { if (d.spans.some(([f, t]) => y >= f && y < t) && vars[v]?.[i] != null && vars.population?.[i] != null && vars.tpop?.[i] != null && Math.abs(Math.log(vars.population[i] / vars.tpop[i])) > GUARD) { vars[v][i] = null; dropped++; } });
+    if (prefer === 'none') continue;
+    const v = prefer === 'tpop' ? 'population' : 'tpop';
+    YEARS.forEach((y, i) => { if (spans.some(([f, t]) => y >= f && y < t) && vars[v]?.[i] != null && vars.population?.[i] != null && vars.tpop?.[i] != null && Math.abs(Math.log(vars.population[i] / vars.tpop[i])) > GUARD) { vars[v][i] = null; dropped++; } });
   }
   const bad = [], exempt = new Map();
   let rows = 0;
