@@ -1,5 +1,5 @@
 <script>
-  import { loadWorld, forecastVariables, historyVariables } from './lib/data.js';
+  import { loadWorld, forecastVariables, historyVariables, readHash, writeHash } from './lib/data.js';
   import Map from './lib/Map.svelte';
   import Panel from './lib/Panel.svelte';
 
@@ -16,10 +16,12 @@
     const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
     return () => clearInterval(t);
   });
-  let layers = $state({ territories: true, corridors: true });
+  let layers = $state({ territories: true, corridors: true, alliances: false, labels: true, glyphs: false });
   let selected = $state(null);
 
-  loadWorld().then(d => { data = d; }).catch(e => { error = String(e); });
+  loadWorld().then(d => { data = d; const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers.includes(k); if (h.tab) tab = h.tab; }).catch(e => { error = String(e); });
+  let tab = $state('news');
+  $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab }); });
 
   const mapVars = $derived(data ? [...historyVariables(data.history), ...forecastVariables(data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
   const groups = $derived(data ? [['history', 'History (panel 1870–2025)'], ['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
@@ -52,10 +54,12 @@
           {/each}
         </select>
       </label>
-      <button class:on={layers.territories} onclick={() => layers.territories = !layers.territories}>territories</button>
-      <button class:on={layers.corridors} onclick={() => layers.corridors = !layers.corridors}>corridors</button>
+      <span class="muted tiny">layers</span>
+      {#each [['territories', 'territories'], ['corridors', 'corridors'], ['alliances', 'alliances'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
+        <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
+      {/each}
       <label>actor
-        <select onchange={(e) => { if (e.target.value) selected = { kind: 'actor', id: e.target.value }; }} value={selected?.kind === 'actor' ? selected.id : ''}>
+        <select onchange={(e) => { if (e.target.value) { selected = { kind: 'actor', id: e.target.value }; tab = 'detail'; } }} value={selected?.kind === 'actor' ? selected.id : ''}>
           <option value="">—</option>
           {#each actorList as a}<option value={a.id}>{a.name}</option>{/each}
         </select>
@@ -75,8 +79,8 @@
       <span class="muted tiny">{year < 2026 ? 'history' : 'forecast ensemble'} · ← → step · space play</span>
     </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={data.forecast} history={data.history} {variable} {year} {layers} {selected} onSelect={(s) => selected = s} />
-      <Panel world={data.world} forecast={data.forecast} history={data.history} news={data.news} {selected} {year} onSelect={(s) => selected = s} onPickVariable={(id) => varId = id} />
+      <Map world={data.world} geo={data.geo} forecast={data.forecast} history={data.history} alliances={data.alliances} {variable} {year} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
+      <Panel world={data.world} forecast={data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
     </main>
   </div>
 {/if}

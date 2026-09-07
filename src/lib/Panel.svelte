@@ -1,8 +1,8 @@
 <script>
-  import { valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
+  import { valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, flagEmoji, regimeAt, REGIME_GLYPH, REGIME_COL4, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
 
-  let { world, forecast, history, news, selected, year, onSelect, onPickVariable } = $props();
-  let tab = $state('news');
+  let { world, forecast, history, news, scores, selected, year, onSelect, onPickVariable, tab = $bindable('news') } = $props();
+  const hSpark = (v, w = 160, h = 34) => { if (!histActor?.[v]) return null; const ys = [], vs = []; histActor[v].forEach((x, i) => { if (x != null) { ys.push(history.meta.y0 + i); vs.push(x); } }); if (vs.length < 2) return null; const lo = Math.min(...vs), hi = Math.max(...vs); const sx = (yy) => 1 + (yy - history.meta.y0) / (history.meta.y1 - history.meta.y0) * (w - 2); const sy = (x) => (h - 2) - (hi === lo ? (h - 4) / 2 : (x - lo) / (hi - lo) * (h - 4)); let d = ''; let prev = null; ys.forEach((yy, i) => { d += (prev != null && yy === prev + 1 ? 'L' : 'M') + sx(yy).toFixed(1) + ',' + sy(vs[i]).toFixed(1); prev = yy; }); return { d, x: sx(Math.max(history.meta.y0, Math.min(history.meta.y1, Math.round(year)))), w, h, lo, hi }; };
   let newsKinds = $state(new Set(['war', 'nuclear', 'territory', 'corridor', 'alliance', 'coup', 'regime', 'conflict', 'dispute', 'leader', 'capability', 'economic']));
   const KIND_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', alliance: '#6cb4ff', coup: '#d95c4f', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3', capability: '#c07ae0', economic: '#d9a441' };
   const yearNews = $derived.by(() => { const y = Math.round(year); if (forecast && y >= forecast.meta.from) return { mode: 'forecast', items: forecastNews(forecast, y) }; return { mode: 'history', items: news?.years?.[y] ?? [] }; });
@@ -34,7 +34,7 @@
 
 <div class="panel">
   <div class="tabs">
-    {#each [['news', `News · ${year}`], ['detail', 'Detail'], ['territories', `Territories · ${world.territories.length}`], ['corridors', `Corridors · ${world.corridors.length}`]] as [id, label]}
+    {#each [['news', `News · ${year}`], ['detail', 'Detail'], ['territories', `Territories · ${world.territories.length}`], ['corridors', `Corridors · ${world.corridors.length}`], ['scores', 'Scores']] as [id, label]}
       <button class:on={tab === id} onclick={() => tab = id}>{label}</button>
     {/each}
   </div>
@@ -57,7 +57,8 @@
       {/if}
     {:else if tab === 'detail'}
       {#if actor}
-        <h2>{actor.name} <span class="mono muted">{actor.id}</span></h2>
+        {@const rg = regimeAt(history, forecast, actor.id, year)}
+        <h2>{flagEmoji(history?.actors?.[actor.id]?.iso2) ?? ''} {actor.name} <span class="mono muted">{actor.id}</span>{#if rg != null} <span style="color:{REGIME_COL4[rg]}" title={REGIME_LABELS[rg]}>{REGIME_GLYPH[rg]}</span>{/if}</h2>
         <div class="chips">
           <span class="chip" style="border-color:{REGIME_COLORS[actor.regime.type]}">{actor.regime.type.replace('_', ' ')}</span>
           <span class="chip" style="border-color:{NUCLEAR_COLORS[actor.nuclear.status]}">nuclear: {actor.nuclear.status}{actor.nuclear.warheads ? ` · ${actor.nuclear.warheads}` : ''}</span>
@@ -89,9 +90,11 @@
         {#if histActor && hIdx >= 0 && hIdx <= history.meta.y1 - history.meta.y0}
           <h3>Historical panel · {year}</h3>
           {#if !histActor.live[hIdx]}<div class="tiny muted">not a system member in {year}</div>{/if}
-          <div class="kv">
-            {#each Object.entries(history.vars) as [v, spec]}{@const x = hVal(v)}{#if x != null}<span>{spec.label}</span><b class="mono">{v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</b>{/if}{/each}
-          </div>
+          <table><tbody>
+            {#each Object.entries(history.vars) as [v, spec]}{@const x = hVal(v)}{@const sp = hSpark(v)}{#if x != null || sp}
+              <tr onclick={() => onPickVariable(`h_${v}`)} class="clickable"><td class="lbl">{spec.label}<div class="tiny muted">{spec.unit}</div></td><td class="val mono">{x == null ? '—' : v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</td><td class="spark">{#if sp}<svg width={sp.w} height={sp.h}><line x1={sp.x} x2={sp.x} y1="0" y2={sp.h} stroke="#6cb4ff" stroke-opacity="0.5" /><path d={sp.d} fill="none" stroke="#d7dce3" stroke-width="1" /></svg>{/if}</td></tr>
+            {/if}{/each}
+          </tbody></table>
         {/if}
 
         {#if fcActor}
@@ -136,7 +139,8 @@
 
       {:else if fcOnly || (histActor && !actor)}
         {@const d = fcActor?.regime?.[fcYearIdx]}
-        <h2>{histActor?.name ?? selected.id} <span class="mono muted">{selected.id}</span> <span class="muted tiny">fit-only state</span></h2>
+        {@const rg2 = regimeAt(history, forecast, selected.id, year)}
+        <h2>{flagEmoji(histActor?.iso2) ?? ''} {histActor?.name ?? selected.id} <span class="mono muted">{selected.id}</span>{#if rg2 != null} <span style="color:{REGIME_COL4[rg2]}">{REGIME_GLYPH[rg2]}</span>{/if} <span class="muted tiny">fit-only state</span></h2>
         {#if histActor && hIdx >= 0 && hIdx <= history.meta.y1 - history.meta.y0}
           <h3>Historical panel · {year}</h3>
           {#if !histActor.live[hIdx]}<div class="tiny muted">not a system member in {year}</div>{/if}
@@ -199,6 +203,23 @@
         <p class="muted">Colour is the selected variable at the slider year. Dashed sparklines and "proj" are UN WPP projections; "held" means the last observed value is carried forward — the engine will replace that.</p>
       {/if}
 
+    {:else if tab === 'scores'}
+      {#if !scores}<p class="muted">No scores.json — run <code>node scripts/build-scores-slice.mjs</code> after a backtest.</p>{:else}
+        <div class="tiny muted" style="margin-bottom:6px">Rolling-origin backtest {scores.meta.file} · {scores.meta.runs} runs · +{scores.meta.horizon}y · universe {scores.meta.universe}{scores.meta.refit ? ' · coefficients refit per as-of year' : ' · full-sample coefficients (pre-refit)'}. Skill = 1 − Brier/Brier(base rate).</div>
+        <table><tbody>
+          <tr class="tiny muted"><td>template</td><td class="val">n</td><td class="val">exp/obs</td><td class="val">skill</td><td class="val">AUC</td></tr>
+          {#each Object.entries(scores.pooled).sort((a, b) => (b[1].skill ?? -9) - (a[1].skill ?? -9)) as [t, v]}
+            <tr><td class="lbl">{t}</td><td class="val mono">{v.n}</td><td class="val mono">{v.exp_obs == null ? '—' : v.exp_obs.toFixed(2)}</td><td class="val mono" style="color:{v.skill > 0.05 ? 'var(--good)' : v.skill < -0.05 ? 'var(--bad)' : 'inherit'}">{v.skill == null ? '—' : (v.skill >= 0 ? '+' : '') + v.skill.toFixed(2)}</td><td class="val mono">{v.auc == null ? '—' : v.auc.toFixed(2)}</td></tr>
+          {/each}
+        </tbody></table>
+        <h3>By as-of year (exp/obs · AUC)</h3>
+        <div style="overflow-x:auto"><table><tbody>
+          <tr class="tiny muted"><td>as-of</td>{#each Object.keys(scores.pooled) as t}<td class="val">{t.replace(/_/g, ' ').slice(0, 10)}</td>{/each}</tr>
+          {#each scores.byAsOf as r}
+            <tr><td class="mono">{r.asOf}</td>{#each Object.keys(scores.pooled) as t}{@const c = r.templates[t]}<td class="val mono tiny" class:muted={!c || c.underpowered}>{c && c.n ? `${c.obs ? (c.exp / c.obs).toFixed(1) : '—'}·${c.auc == null ? '—' : c.auc.toFixed(2)}` : '—'}</td>{/each}</tr>
+          {/each}
+        </tbody></table></div>
+      {/if}
     {:else if tab === 'territories'}
       {#each world.territories as t}
         <div class="card clickable" onclick={() => { onSelect({ kind: 'territory', id: t.id }); tab = 'detail'; }}>
@@ -241,7 +262,7 @@
   tr.clickable { cursor: pointer; } tr.clickable:hover td { background: var(--bg3); }
   .lbl { font-size: 12px; }
   .val { text-align: right; white-space: nowrap; }
-  .spark { width: 120px; }
+  .spark { width: 160px; }
   .tiny { font-size: 10.5px; }
   .card { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; }
   .card.clickable { cursor: pointer; } .card.clickable:hover { background: var(--bg3); }

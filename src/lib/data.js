@@ -3,12 +3,12 @@ import * as d3 from 'd3';
 
 export async function loadWorld() {
   const opt = (f) => fetch(`${import.meta.env.BASE_URL}${f}`).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  const [world, geo, forecast, history, news] = await Promise.all([
+  const [world, geo, forecast, history, news, alliances, scores] = await Promise.all([
     fetch(`${import.meta.env.BASE_URL}world.json`).then(r => r.json()),
     fetch(`${import.meta.env.BASE_URL}geo.topo.json`).then(r => r.json()),
-    opt('forecast.json'), opt('history.json'), opt('news.json'),
+    opt('forecast.json'), opt('history.json'), opt('news.json'), opt('alliances.json'), opt('scores.json'),
   ]);
-  return { world, geo, forecast, history, news };
+  return { world, geo, forecast, history, news, alliances, scores };
 }
 
 /** Forecast-year "news": the ensemble's highest single-year hazards for that year (difference of cumulative curves). */
@@ -36,11 +36,42 @@ export function forecastVariables(fc) {
   return vars;
 }
 export const REGIME_LABELS = ['closed autocracy', 'electoral autocracy', 'electoral democracy', 'liberal democracy'];
+export const REGIME_GLYPH = ['◆', '▲', '●', '★'];
+export const REGIME_COL4 = ['#d95c4f', '#e8a04f', '#7fc4f0', '#4f9be8'];
+/** ISO2 -> emoji flag (regional indicator pairs); null for entities without a modern code. */
+export const flagEmoji = (iso2) => (iso2 && /^[A-Z]{2}$/.test(iso2) ? String.fromCodePoint(...[...iso2].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : null);
+/** Defence-pact edges at a year. Past the source's coverage the last graph is carried forward and flagged. */
+export function alliancesAt(al, year, hubOf) {
+  if (!al) return { edges: [], pacts: 0, carried: false, none: true };
+  const y = Math.round(year); const [c0, c1] = al.meta.coverage;
+  if (y < c0) return { edges: [], pacts: 0, carried: false, none: true };
+  const yy = Math.min(y, c1); const pacts = al.years[yy] ?? {}; const edges = []; const seen = new Set();
+  for (const [pid, members] of Object.entries(pacts)) {
+    if (members.length <= 3) { for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) { const k = members[i] < members[j] ? `${members[i]}|${members[j]}` : `${members[j]}|${members[i]}`; if (!seen.has(k)) { seen.add(k); edges.push({ a: members[i], b: members[j], pact: pid, multilateral: false }); } } }
+    else { const hub = hubOf ? hubOf(members) : members[0]; for (const m of members) if (m !== hub) { const k = m < hub ? `${m}|${hub}` : `${hub}|${m}`; if (!seen.has(k)) { seen.add(k); edges.push({ a: hub, b: m, pact: pid, multilateral: true, size: members.length }); } } }
+  }
+  return { edges, pacts: Object.keys(pacts).length, carried: y > c1, from: yy };
+}
+/** URL hash <-> view state: #y=1956&v=h_regime&a=EGY&l=territories,corridors */
+export function readHash() {
+  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = h.get('l').split(',').filter(Boolean); if (h.get('t')) o.tab = h.get('t'); return o; } catch { return {}; }
+}
+export function writeHash({ year, varId, selected, layers, tab }) {
+  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k]) => k).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
+}
+/** Regime level for an actor at a year: history panel, else the forecast's modal regime. */
+export function regimeAt(history, forecast, id, year) {
+  const y = Math.round(year);
+  if (history && y <= history.meta.y1) { const a = history.actors[id]; const i = y - history.meta.y0; const r = a?.regime?.[i]; return r == null ? null : r; }
+  const a = forecast?.actors?.[id]; if (!a) return null;
+  const i = Math.min(forecast.meta.horizon - 1, Math.max(0, y - forecast.meta.from)); const d = a.regime?.[i]; if (!d) return a.regime0 ?? null;
+  return d.indexOf(Math.max(...d));
+}
 
 /** Pseudo-variables from the historical panel slice (public/history.json). */
 export function historyVariables(h) {
   if (!h) return [];
-  return Object.entries(h.vars).map(([id, spec]) => ({ id: `h_${id}`, group: 'history', label: spec.label, unit: spec.unit, kind: 'history', scope: 'actor', var: id, display: { map: true, format: spec.format, log: spec.log, categorical: spec.categorical } }));
+  return Object.entries(h.vars).map(([id, spec]) => ({ id: `h_${id}`, group: 'history', label: spec.label, unit: spec.unit, kind: 'history', scope: 'actor', var: id, display: { map: true, format: spec.format, log: spec.log, categorical: spec.categorical, categoricalLabels: id === 'regime' ? REGIME_LABELS : id === 'intrastate' ? ['none', 'minor', 'war'] : spec.categorical ? ['no', 'yes'] : undefined } }));
 }
 /** Values per Natural-Earth id for a history variable at a year: live actors, historical entities mapped to their successor polygon when the successor is not itself live. */
 export function historyAt(h, variable, year) {
