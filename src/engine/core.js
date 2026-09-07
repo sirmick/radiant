@@ -269,7 +269,10 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
   const stale = {};
   const lastKnown = (v, y) => { const arr = vars[v]; for (let i = y - Y0; i >= Math.max(0, y - Y0 - 30); i--) if (arr[i] != null) return [arr[i], Y0 + i]; return [null, null]; };
   const FLAG = new Set(['coup_attempt', 'coup_success', 'mid_force', 'mid_war', 'regime_up', 'regime_down', 'interstate_ucdp']);
-  const build = (y) => { const o = {}; for (const v of Object.keys(vars)) { const x = vars[v][y - Y0]; if (x != null) { o[v] = x; continue; } if (FLAG.has(v)) { o[v] = 0; continue; } const [val, yr] = lastKnown(v, y); if (val == null) { o[v] = null; continue; } o[v] = (v === 'leader_age' || v === 'leader_tenure') ? val + (y - yr) : val; if (y === asOf) stale[v] = y - yr; } return o; };
+  // `introduced` is the panel's own first year for a column (data/panel.json meta): below it there is nothing to carry
+  // forward, so the 30-year scan is skipped. Same result, and it keeps the modern columns (2000+) free on a 1870 world.
+  const intro = panel.meta.introduced ?? {};
+  const build = (y) => { const o = {}; for (const v of Object.keys(vars)) { const x = vars[v][y - Y0]; if (x != null) { o[v] = x; continue; } if (FLAG.has(v)) { o[v] = 0; continue; } if (intro[v] != null && y < intro[v]) { o[v] = null; continue; } const [val, yr] = lastKnown(v, y); if (val == null) { o[v] = null; continue; } o[v] = (v === 'leader_age' || v === 'leader_tenure') ? val + (y - yr) : val; if (y === asOf) stale[v] = y - yr; } return o; };
   const cur = build(at);
   // trailing growth rates for the structural layer
   const g = []; for (let k = 1; k <= 10; k++) { const x = pv('gdp_growth', at - k); if (x != null) g.push(x); }

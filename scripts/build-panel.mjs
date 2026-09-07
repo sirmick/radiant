@@ -2,9 +2,13 @@
 // Sources: CoW NMC 3.02 (1816–2001), Maddison (OWID), OWID population, OWID regime (V-Dem RoW), V-Dem ERT (polyarchy),
 // OWID energy by source (1800+), OWID coal/oil production, REIGN (leader age/tenure 1950–2021), CoW alliances 3.03,
 // CoW MID 3.02 (1816–2001), UCDP/PRIO 25.1 (1946–2024), hand events (wars with participants).
-// Output: { years: [...], vars: [...], actors: { id: { var: [per-year value|null] } }, sources: {...} }
+// Plus the modern layer (operator / modern-fold): UN WPP, World Bank WDI, OWID energy, IEA EV 2000-2025 and the
+// modern actor snapshot (data/actors.yaml capability levels, regime type, nuclear status, chokepoint exposure) at 2025.
+// Output: { meta: { y0, y1, sources, vars: { <col>: { source, introduced, last, actor_years, actors } } },
+//           years: [...], vars: [...], actors: { id: { var: [per-year value|null] } }, sources: {...} }
 import { writeFileSync, readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/hist.mjs';
+import { MODERN_FROM, resolveFetch, describeSource, snapshotColumns, snapshotExtras } from './lib/modern.mjs';
 
 const Y0 = 1816, Y1 = 2025, YEARS = Array.from({ length: Y1 - Y0 + 1 }, (_, i) => Y0 + i);
 const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
@@ -217,6 +221,68 @@ for (const [id, vars] of Object.entries(panel)) {
   console.log(`derived empire series: ${rep.join('; ')}`);
 }
 
+// ---- the modern fold: the 2000-2025 measured layer and the 2026 actor snapshot, on the panel clock
+// (operator / modern-fold, 2026-09-07). Until now the modern layer lived only in public/world.json, a second
+// artefact the engine and the refine loop never see. It is registry-driven: every data/variables.yaml variable with
+// `source: { fetch: ... }` and scope `actor` becomes a panel column over [MODERN_FROM, Y1], and every `state`
+// variable sourced from the modern actor snapshot becomes a column valued at SNAP alone. The fetchers live in
+// scripts/lib/modern.mjs and are read by scripts/build-world.mjs too, so the viewer and the panel cannot drift.
+//
+// ADDS COLUMNS ONLY. A variable whose id already names a panel column is a collision, not a merge: the build FAILS
+// and the registry entry must declare `panel: <column>` (that is why UN WPP population is `population_wpp` and the
+// panel's OWID/Maddison `population` is untouched — `population` is a fitted covariate on intrastate_onset).
+// Nothing here is carried forward: a source that ends in 2023 leaves 2024-25 null. The engine's own
+// last-observation carry-forward (src/engine/core.js buildActorState, with the staleness recorded) is what makes
+// createWorld(2025) see them, and that is a stated approximation rather than a fabricated measurement.
+{
+  const registry = Y('data/variables.yaml');
+  const SNAP = Y1;   // the modern snapshot is dated to the panel's last year
+  const clash = (col) => Object.values(panel).some(vars => vars[col]?.some(x => x != null));
+  const wrote = [];
+
+  for (const v of registry.variables) {
+    if (v.scope !== 'actor' || !v.source?.fetch) continue;
+    const col = v.panel ?? v.id;
+    if (clash(col)) throw new Error(`modern fold: ${v.id} would write into the existing panel column '${col}' — the fold adds columns only. Declare 'panel: <new column>' on the variable in data/variables.yaml.`);
+    let n = 0, y0 = Infinity, y1 = -Infinity;
+    for (const [code, years] of Object.entries(resolveFetch(v.source, { from: MODERN_FROM, to: Y1 }))) {
+      for (const [y, val] of Object.entries(years)) {
+        const id = owid(code, +y); if (!id) continue;
+        put(id, col, +y, val); n++; y0 = Math.min(y0, +y); y1 = Math.max(y1, +y);
+      }
+    }
+    sources[col] = `${v.label ?? v.id} — ${describeSource(v.source)}${v.unit ? ` (${v.unit})` : ''}; modern fold ${MODERN_FROM}-${Y1}, observed ${n ? `${y0}-${y1}` : 'nothing'}, not carried forward`;
+    wrote.push(`${col}=${n}`);
+  }
+
+  // the modern actor snapshot (data/actors.yaml capability levels, regime type, nuclear status, chokepoint exposure,
+  // and the hand estimates declared in the registry) as columns valued at SNAP alone. Categorical levels are encoded
+  // as ordinals; the mapping is written into `sources` so the panel is readable without the registry.
+  const snapCols = new Map();
+  for (const v of registry.variables) {
+    if (v.scope !== 'actor' || v.kind !== 'state' || v.source?.fetch) continue;
+    for (const a of actors.values()) {
+      if (!a.modern) continue;
+      for (const [col, val, note] of [...snapshotColumns(v, { ...a.modern, id: a.id }), ...snapshotExtras(v, a.modern)]) {
+        if (!Number.isFinite(val)) continue;
+        if (!snapCols.has(col)) {
+          if (clash(col)) { snapCols.set(col, null); break; }   // the panel already measures this (leader_age/leader_tenure from REIGN): the snapshot does not overwrite it
+          snapCols.set(col, { v, note, n: 0 });
+        }
+        const rec = snapCols.get(col); if (!rec) continue;
+        put(a.id, col, SNAP, val); rec.n++;
+      }
+    }
+  }
+  const skipped = [...snapCols].filter(([, r]) => !r).map(([c]) => c);
+  for (const [col, rec] of snapCols) {
+    if (!rec) continue;
+    const src = rec.v.source ?? {};
+    sources[col] = `${rec.v.label ?? rec.v.id} — ${src.hand ? `data/actors.yaml ${src.field}` : 'hand estimate in data/variables.yaml'}, modern snapshot valued at ${SNAP}${rec.note ? `; ${rec.note}` : ''}`;
+  }
+  console.log(`modern fold: ${wrote.length} series columns (${wrote.join(' ')}); ${[...snapCols].filter(([, r]) => r).length} snapshot columns at ${SNAP}${skipped.length ? `; skipped ${skipped.join(' ')} (already measured in the panel)` : ''}`);
+}
+
 // ---- derived: gdp growth, log gdp pc, milex share proxy, great power flag
 for (const [id, vars] of Object.entries(panel)) {
   const a = actors.get(id);
@@ -355,8 +421,23 @@ for (const [id, vars] of Object.entries(panel)) {
 }
 
 // ---- write
+// meta.vars is the panel's own registry: for every column, where it came from, the first and last year anything was
+// measured, and how many actor-years it covers. `introduced` is what tells a reader (and src/engine/core.js, which
+// skips the carry-forward scan below it) that a column simply does not exist before a year, rather than being a gap.
 const vars = [...new Set(Object.values(panel).flatMap(v => Object.keys(v)))].sort();
-const out = { meta: { built: new Date().toISOString(), y0: Y0, y1: Y1 }, years: YEARS, vars, sources, actors: panel };
+const meta = { built: new Date().toISOString(), y0: Y0, y1: Y1, sources, vars: {}, introduced: {} };
+for (const v of vars) {
+  let first = null, last = null, n = 0, actorsWith = 0;
+  for (const a of Object.values(panel)) {
+    const col = a[v]; if (!col) continue;
+    let has = false;
+    for (let i = 0; i < col.length; i++) if (col[i] != null) { n++; has = true; if (first == null || i < first) first = i; if (last == null || i > last) last = i; }
+    if (has) actorsWith++;
+  }
+  meta.vars[v] = { source: sources[v] ?? 'derived', introduced: first == null ? null : Y0 + first, last: last == null ? null : Y0 + last, actor_years: n, actors: actorsWith };
+  meta.introduced[v] = first == null ? null : Y0 + first;
+}
+const out = { meta, years: YEARS, vars, sources, actors: panel };
 writeFileSync('data/panel.json', JSON.stringify(out));
 const cov = (v) => Object.values(panel).reduce((n, a) => n + (a[v] ? a[v].filter(x => x != null).length : 0), 0);
 console.log(`panel.json: ${Object.keys(panel).length} actors × ${YEARS.length} years, ${vars.length} vars, ${(JSON.stringify(out).length / 1024).toFixed(0)} KB`);

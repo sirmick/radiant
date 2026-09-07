@@ -1,9 +1,15 @@
-// Compile data/*.yaml + data/raw/* -> public/world.json (+ public/geo.topo.json).
+// Compile data/*.yaml + data/panel.json -> public/world.json (+ public/geo.topo.json).
 // Registry-driven: every variable in data/variables.yaml is resolved for every actor via its `source`.
-// Run: node scripts/build-world.mjs
+//
+// This script owns no series (operator / modern-fold, 2026-09-07). A series variable's HISTORY is read from
+// data/panel.json — the one clock the engine and the refine loop also read — and only the years past the panel's
+// last year are resolved from the raw projection files, through the same scripts/lib/modern.mjs fetchers the panel
+// was built with. Statics (hand snapshots, estimate maps, region-median fallbacks) are still compiled here: they are
+// viewer defaults, not measurements.
+// Run: node scripts/build-panel.mjs && node scripts/build-world.mjs
 import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
 import { parse as parseYaml } from 'yaml';
+import { resolveFetch, describeSource } from './lib/modern.mjs';
 
 const T0_YEAR = 2026.5, STEPS = 160, HIST_FROM = 2000, PROJ_TO = 2066;
 const Y = (f) => parseYaml(readFileSync(`data/${f}.yaml`, 'utf8'));
@@ -17,99 +23,37 @@ const ACTORS = new Set(actors.map(a => a.id));
 const overrides = existsSync('data/overrides.yaml') ? Y('overrides') : {};
 const warn = [], errors = [];
 
-// ---------------------------------------------------------------- fetchers: return { ISO3: { year: value } }
-const splitCsv = (line) => {
-  const out = []; let cur = '', q = false;
-  for (const ch of line) {
-    if (ch === '"') q = !q;
-    else if (ch === ',' && !q) { out.push(cur); cur = ''; }
-    else cur += ch;
-  }
-  out.push(cur); return out;
-};
-const csvRows = function* (text) {
-  const lines = text.split('\n'); const head = splitCsv(lines[0].replace(/^\uFEFF/, '').trim());
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i]) continue;
-    const cells = splitCsv(lines[i].trim()); const row = {};
-    head.forEach((h, j) => row[h] = cells[j]); yield row;
-  }
-};
-const cache = {};
-const fetchers = {
-  wb(field) { return JSON.parse(readFileSync(`data/raw/wb/${field}.json`, 'utf8')).data; },
-  wpp(field) {
-    cache.wpp ??= (() => {
-      const out = {};
-      for (const r of csvRows(gunzipSync(readFileSync('data/raw/wpp/wpp_medium.csv.gz')).toString())) {
-        if (!ACTORS.has(r.ISO3_code)) continue;
-        const y = +r.Time; if (y < HIST_FROM || y > PROJ_TO) continue;
-        (out[r.ISO3_code] ??= {})[y] = r;
-      }
-      return out;
-    })();
-    const out = {};
-    for (const [iso, years] of Object.entries(cache.wpp)) { out[iso] = {}; for (const [y, r] of Object.entries(years)) out[iso][y] = +r[field]; }
-    return out;
-  },
-  wpp_age5() {
-    cache.age5 ??= (() => {
-      const out = {};   // iso -> year -> { total, wa, old }
-      for (const r of csvRows(gunzipSync(readFileSync('data/raw/wpp/wpp_age5_medium.csv.gz')).toString())) {
-        if (!ACTORS.has(r.ISO3_code)) continue;
-        const y = +r.Time; if (y < HIST_FROM || y > PROJ_TO) continue;
-        const a = +r.AgeGrpStart, p = +r.PopTotal;
-        const o = ((out[r.ISO3_code] ??= {})[y] ??= { total: 0, wa: 0, old: 0 });
-        o.total += p; if (a >= 15 && a < 65) o.wa += p; if (a >= 65) o.old += p;
-      }
-      return out;
-    })();
-    return cache.age5;
-  },
-  owid(field) {
-    cache.owid ??= [...csvRows(readFileSync('data/raw/ei/owid-energy.csv', 'utf8'))].filter(r => ACTORS.has(r.iso_code));
-    const out = {};
-    for (const r of cache.owid) { const v = r[field]; if (v !== '' && v != null) (out[r.iso_code] ??= {})[r.year] = +v; }
-    return out;
-  },
-  iea_ev(field) {
-    const NAME = { China: 'CHN', 'United States': 'USA', USA: 'USA', India: 'IND', Japan: 'JPN', Korea: 'KOR', Germany: 'DEU', France: 'FRA', 'United Kingdom': 'GBR', Italy: 'ITA', Spain: 'ESP', Poland: 'POL', Netherlands: 'NLD', Sweden: 'SWE', Canada: 'CAN', Mexico: 'MEX', Brazil: 'BRA', Australia: 'AUS', 'New Zealand': 'NZL', Indonesia: 'IDN', Malaysia: 'MYS', Thailand: 'THA', 'Viet Nam': 'VNM', Vietnam: 'VNM', Philippines: 'PHL', Singapore: 'SGP', Israel: 'ISR', Turkiye: 'TUR', 'Türkiye': 'TUR', 'South Africa': 'ZAF', Jordan: 'JOR', Russia: 'RUS' };
-    const out = {};
-    for (const r of csvRows(readFileSync('data/raw/ei/iea-ev.csv', 'utf8'))) {
-      if (r.parameter !== field || r.powertrain !== 'EV' || r.mode !== 'Cars') continue;
-      const iso = NAME[r.region]; if (!iso) continue;
-      (out[iso] ??= {})[r.year] = +r.value;
-    }
-    return out;
-  },
-};
-const transforms = {
-  thousands: v => v * 1e3,
-  pct: v => v / 100,
-  working_age_share: (o) => o.wa / o.total,
-  old_age_share: (o) => o.old / o.total,
-};
+// ---------------------------------------------------------------- the panel is the history
+const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
+const PY0 = panel.meta.y0, PY1 = panel.meta.y1;
+const panelCol = (v) => v.panel ?? v.id;
 
 // ---------------------------------------------------------------- resolve one variable for all actors
 const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 const median = (xs) => { const s = xs.filter(Number.isFinite).sort((a, b) => a - b); return s.length ? s[(s.length - 1) >> 1] : null; };
 
 function resolveSeries(v) {
-  const src = v.source;
-  let raw = fetchers[src.fetch](src.field);
-  const tf = src.transform ? transforms[src.transform] : (x => x);
+  const col = panelCol(v);
+  // projections only: the panel stops at its last year, and WPP's medium variant is the only source that runs past it
+  let proj = {};
+  try { proj = resolveFetch(v.source, { from: PY1 + 1, to: PROJ_TO }); } catch (e) { warn.push(`${v.id}: no projection (${e.message})`); }
   const out = {};
   for (const a of actors) {
-    const rows = raw[a.id]; if (!rows) continue;
-    const years = Object.keys(rows).map(Number).sort((x, y) => x - y);
-    const values = years.map(y => tf(rows[y]));
-    const hist = years.filter(y => y <= 2026), proj = years.filter(y => y > 2026);
+    const row = panel.actors[a.id]?.[col];
+    if (!row && !proj[a.id]) continue;
+    const hist = [], values = [];
+    if (row) for (let y = HIST_FROM; y <= Math.min(PY1, 2026); y++) { const x = row[y - PY0]; if (x != null) { hist.push(y); values.push(x); } }
+    if (!row) warn.push(`${v.id}: no panel column ${col} for ${a.id}`);
+    // the viewer's t0 is 2026Q3, one year past the panel: a projection year at or before t0 is history to it
+    const ys = Object.keys(proj[a.id] ?? {}).map(Number).sort((x, y) => x - y);
+    for (const y of ys) if (y > PY1 && y <= 2026) { hist.push(y); values.push(proj[a.id][y]); }
+    const py = ys.filter(y => y > 2026);
     const last = hist.length ? hist[hist.length - 1] : null;
     out[a.id] = {
-      v0: last != null ? values[years.indexOf(last)] : null, year0: last,
-      hist: { years: hist, values: hist.map(y => values[years.indexOf(y)]) },
-      proj: proj.length ? { years: proj, values: proj.map(y => values[years.indexOf(y)]) } : null,
-      source: `${src.fetch}:${src.field ?? src.transform}`,
+      v0: last != null ? values[values.length - 1] : null, year0: last,
+      hist: { years: hist, values },
+      proj: py.length ? { years: py, values: py.map(y => proj[a.id][y]) } : null,
+      source: `panel:${col} (${describeSource(v.source)})`,
     };
   }
   return out;

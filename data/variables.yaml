@@ -9,6 +9,9 @@
 # scope:    actor | dyad | world
 # dynamics: slow (annual difference eq.) | quarterly | static (only hazards change it)
 # source:   { fetch: <fetcher id>, field, transform? } | { hand: <file>, field } | { estimate: <value or map> } | { compute: true }
+# panel:    the data/panel.json column this variable lands in (default: the variable id). The modern fold in
+#           scripts/build-panel.mjs adds columns only — a variable whose column already exists fails the build, and
+#           declaring `panel:` is how a modern measurement sits beside a historical series of the same name.
 # equation: name of an exported function in src/engine/equations.js (required when dynamics != static)
 # display:  { fan, map, format, log }  — drives the UI picker; omit to hide
 
@@ -32,6 +35,7 @@ variables:
     kind: series
     scope: actor
     source: { fetch: wpp, field: TPopulation1July, transform: thousands }
+    panel: population_wpp             # the panel's `population` is the OWID/Maddison historical series and a fitted covariate; the UN WPP measurement lands beside it, it does not overwrite it
     dynamics: slow
     equation: from_projection          # WPP medium already projects to 2100; equation only perturbs by latent fertility/migration shocks
     display: { fan: true, map: true, format: ".3s" }
