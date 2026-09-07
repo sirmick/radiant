@@ -2,11 +2,33 @@
 import * as d3 from 'd3';
 
 export async function loadWorld() {
-  const [world, geo] = await Promise.all([
+  const [world, geo, forecast] = await Promise.all([
     fetch(`${import.meta.env.BASE_URL}world.json`).then(r => r.json()),
     fetch(`${import.meta.env.BASE_URL}geo.topo.json`).then(r => r.json()),
+    fetch(`${import.meta.env.BASE_URL}forecast.json`).then(r => (r.ok ? r.json() : null)).catch(() => null),
   ]);
-  return { world, geo };
+  return { world, geo, forecast };
+}
+
+/** Pseudo-variables exposed by the forecast ensemble: cumulative event probabilities and regime expectation. */
+export function forecastVariables(fc) {
+  if (!fc) return [];
+  const vars = fc.meta.templates.filter(t => t.unit === 'actor-year').map(t => ({ id: `fc_${t.id}`, group: 'forecast', label: `P(${t.label}) by year`, unit: 'cumulative since 2026', kind: 'forecast', scope: 'actor', template: t.id, display: { map: true, format: '.0%' } }));
+  vars.unshift({ id: 'fc_regime_mean', group: 'forecast', label: 'Expected regime level (0 closed … 3 liberal)', unit: 'ensemble mean', kind: 'forecast', scope: 'actor', display: { map: true, format: '.2f' } });
+  vars.push({ id: 'fc_regime_uncertainty', group: 'forecast', label: 'Regime uncertainty (entropy)', unit: 'bits', kind: 'forecast', scope: 'actor', display: { map: true, format: '.2f' } });
+  return vars;
+}
+export const REGIME_LABELS = ['closed autocracy', 'electoral autocracy', 'electoral democracy', 'liberal democracy'];
+
+/** Forecast value for an actor at a calendar year (years before the forecast start return the 2025 state). */
+export function forecastAt(fc, variable, id, year) {
+  const a = fc?.actors?.[id]; if (!a) return { value: null };
+  const k = Math.round(year) - fc.meta.from;          // 0-based year offset
+  if (k < 0) return { value: variable.id === 'fc_regime_mean' ? a.regime0 : (variable.id === 'fc_regime_uncertainty' ? 0 : 0), year, forecast: false };
+  const i = Math.min(k, fc.meta.horizon - 1);
+  if (variable.id === 'fc_regime_mean') { const d = a.regime?.[i]; return { value: d ? d.reduce((s, p, l) => s + p * l, 0) : null, year, forecast: true, dist: d }; }
+  if (variable.id === 'fc_regime_uncertainty') { const d = a.regime?.[i]; return { value: d ? -d.reduce((s, p) => s + (p > 0 ? p * Math.log2(p) : 0), 0) : null, year, forecast: true, dist: d }; }
+  const c = a.p?.[variable.template]; return { value: c ? c[i] : null, year, forecast: true };
 }
 
 /** Value of a compiled variable record at a year. Returns { value, year, extrapolated, projected }. */

@@ -1,13 +1,18 @@
 <script>
-  import { valueAt, fmt, sparkPath, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS } from './data.js';
+  import { valueAt, fmt, sparkPath, forecastAt, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
 
-  let { world, selected, year, onSelect, onPickVariable } = $props();
+  let { world, forecast, selected, year, onSelect, onPickVariable } = $props();
   let tab = $state('detail');
 
   const reg = $derived(world.registry);
   const capVars = $derived(reg.variables.filter(v => v.id.startsWith('cap_')));
   const groups = $derived(Object.entries(reg.groups));
   const actor = $derived(selected?.kind === 'actor' ? world.actors[selected.id] : null);
+  const fcActor = $derived(selected?.kind === 'actor' ? forecast?.actors?.[selected.id] : null);
+  const fcOnly = $derived(!actor && !!fcActor);
+  const REG_COL = ['#d95c4f', '#e8a04f', '#7fc4f0', '#4f9be8'];
+  const fcYearIdx = $derived(forecast ? Math.max(0, Math.min(forecast.meta.horizon - 1, Math.round(year) - forecast.meta.from)) : 0);
+  const atYears = (curve, ys) => ys.map(y => (curve && curve[y - 1] != null ? curve[y - 1] : null));
   const territory = $derived(selected?.kind === 'territory' ? world.territories.find(t => t.id === selected.id) : null);
   const corridor = $derived(selected?.kind === 'corridor' ? world.corridors.find(c => c.id === selected.id) : null);
   const hazardById = $derived(Object.fromEntries(world.hazards.map(h => [h.id, h])));
@@ -57,11 +62,32 @@
           <div class="kv">{#each Object.entries(actor.chokepoints) as [k, v]}<span><a href="#" onclick={(e) => { e.preventDefault(); onSelect({ kind: 'corridor', id: k }); }}>{k}</a></span><b>{pct(v)}</b>{/each}</div>
         {/if}
 
+        {#if fcActor}
+          {@const d = fcActor.regime?.[fcYearIdx]}
+          <h3>Forecast · generic templates · {forecast.meta.runs} runs</h3>
+          {#if d}
+            <div class="tiny muted">regime distribution in {Math.max(forecast.meta.from, Math.round(year))} (2025: {REGIME_LABELS[fcActor.regime0]})</div>
+            <div class="regbar">{#each d as p, l}{#if p > 0.005}<i style="width:{p * 100}%;background:{REG_COL[l]}" title="{REGIME_LABELS[l]} {(p * 100).toFixed(0)}%"></i>{/if}{/each}</div>
+            <div class="tiny">{#each d as p, l}{#if p > 0.02}<span class="sw"><i style="background:{REG_COL[l]}"></i>{REGIME_LABELS[l]} {(p * 100).toFixed(0)}%</span>{/if}{/each}</div>
+          {/if}
+          <table class="fc"><tbody>
+            <tr class="muted tiny"><td>P(at least once) within</td><td>5y</td><td>10y</td><td>20y</td><td>40y</td></tr>
+            {#each forecast.meta.templates.filter(t => t.unit === 'actor-year' && fcActor.p[t.id]) as t}
+              <tr onclick={() => onPickVariable(`fc_${t.id}`)} class="clickable">
+                <td class="lbl">{t.label}</td>
+                {#each atYears(fcActor.p[t.id], [5, 10, 20, 40]) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}
+              </tr>
+            {/each}
+          </tbody></table>
+          {#if fcActor.gdp_pc?.[fcYearIdx]}<div class="tiny muted">GDP/cap {Math.max(forecast.meta.from, Math.round(year))}: {fcActor.gdp_pc[fcYearIdx].map(v => '$' + (v / 1000).toFixed(1) + 'k').join(' / ')} (10/50/90)</div>{/if}
+          <div class="tiny muted">{forecast.meta.engine}</div>
+        {/if}
+
         {#each groups as [gid, glabel]}
           {@const vs = varsInGroup(gid)}
           {#if vs.length}
             <h3>{glabel}</h3>
-            <table>
+            <table><tbody>
               {#each vs as v}
                 {@const rec = actor.vars[v.id]}
                 {@const at = valueAt(rec, year)}
@@ -72,10 +98,24 @@
                   <td class="spark">{#if sp}<svg width={sp.w} height={sp.h}><line x1={sp.x0} x2={sp.x0} y1="0" y2={sp.h} stroke="#2a303a" /><path d={sp.hist} fill="none" stroke="#6cb4ff" stroke-width="1.2" />{#if sp.proj}<path d={sp.proj} fill="none" stroke="#6cb4ff" stroke-width="1.2" stroke-dasharray="2 2" />{/if}</svg>{/if}</td>
                 </tr>
               {/each}
-            </table>
+            </tbody></table>
           {/if}
         {/each}
 
+      {:else if fcOnly}
+        {@const d = fcActor.regime?.[fcYearIdx]}
+        <h2>{selected.id} <span class="muted tiny">fit-only state (not in the modern actor set)</span></h2>
+        <h3>Forecast · generic templates · {forecast.meta.runs} runs</h3>
+        {#if d}
+          <div class="tiny muted">regime distribution in {Math.max(forecast.meta.from, Math.round(year))} (2025: {REGIME_LABELS[fcActor.regime0]})</div>
+          <div class="regbar">{#each d as p, l}{#if p > 0.005}<i style="width:{p * 100}%;background:{REG_COL[l]}"></i>{/if}{/each}</div>
+        {/if}
+        <table class="fc"><tbody>
+          <tr class="muted tiny"><td>P(at least once) within</td><td>5y</td><td>10y</td><td>20y</td><td>40y</td></tr>
+          {#each forecast.meta.templates.filter(t => t.unit === 'actor-year' && fcActor.p[t.id]) as t}
+            <tr onclick={() => onPickVariable(`fc_${t.id}`)} class="clickable"><td class="lbl">{t.label}</td>{#each atYears(fcActor.p[t.id], [5, 10, 20, 40]) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}</tr>
+          {/each}
+        </tbody></table>
       {:else if territory}
         <h2>{territory.name}</h2>
         <div class="chips"><span class="chip" style="border-color:{STATUS_COLORS[territory.status]}">{territory.status.replace('_', ' ')}</span></div>
@@ -180,4 +220,9 @@
   .bar-row { display: grid; grid-template-columns: 36px 1fr 30px; gap: 8px; align-items: center; font-size: 11px; }
   .bar { height: 8px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
   .bar i { display: block; height: 100%; background: var(--accent); }
+  .regbar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; margin: 4px 0; }
+  .regbar i { display: block; height: 100%; }
+  .sw { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }
+  .sw i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+  table.fc td.val { width: 44px; }
 </style>

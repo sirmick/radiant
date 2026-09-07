@@ -1,9 +1,9 @@
 <script>
   import * as d3 from 'd3';
   import * as topojson from 'topojson-client';
-  import { valueAt, colorScale, STATUS_COLORS } from './data.js';
+  import { valueAt, forecastAt, colorScale, STATUS_COLORS } from './data.js';
 
-  let { world, geo, variable, year, layers, selected, onSelect } = $props();
+  let { world, geo, forecast, variable, year, layers, selected, onSelect } = $props();
 
   let width = $state(800), height = $state(600);
   let gEl = $state(null), svgEl = $state(null);
@@ -39,9 +39,11 @@
   const values = $derived.by(() => {
     const out = {};
     if (!variable) return out;
+    if (variable.kind === 'forecast') { for (const id of Object.keys(forecast?.actors ?? {})) out[id] = forecastAt(forecast, variable, id, year); return out; }
     for (const [id, a] of Object.entries(world.actors)) out[id] = valueAt(a.vars[variable.id], year);
     return out;
   });
+  const selectable = (id) => !!world.actors[id] || !!forecast?.actors?.[id];
   const scale = $derived(colorScale(variable, Object.values(values).map(v => v.value)));
   const fillFor = (id) => {
     const v = values[id]; if (!v) return '#1c2129';
@@ -84,8 +86,8 @@
           fill={fillFor(f.id)}
           stroke={isSel('actor', f.id) ? '#fff' : 'none'}
           stroke-width={1.5 / transform.k}
-          class:actor={!!world.actors[f.id]}
-          onclick={() => world.actors[f.id] && onSelect({ kind: 'actor', id: f.id })}
+          class:actor={selectable(f.id)}
+          onclick={() => selectable(f.id) && onSelect({ kind: 'actor', id: f.id })}
           role="button" tabindex="-1"
         ><title>{f.properties.name}</title></path>
       {/each}
@@ -134,7 +136,7 @@
         <div class="bar" style="background: linear-gradient(90deg, {d3.range(0, 1.01, 0.1).map(t => scale.scale(scale.log ? Math.exp(Math.log(scale.domain[0]) + t * (Math.log(scale.domain[1]) - Math.log(scale.domain[0]))) : scale.domain[0] + t * (scale.domain[1] - scale.domain[0]))).join(',')})"></div>
         <div class="ticks"><span>{d3.format('.3~s')(scale.domain[0])}</span><span>{d3.format('.3~s')(scale.domain[1])}</span></div>
       {/if}
-      <div class="muted small">{year > 2026 ? 'projection / extrapolation' : 'historical'} · non-actors grey</div>
+      <div class="muted small">{variable.kind === 'forecast' ? (year >= (forecast?.meta.from ?? 2026) ? `ensemble of ${forecast?.meta.runs} runs · generic templates only` : 'before forecast start: 2025 state') : year > 2026 ? 'projection / extrapolation' : 'historical'} · grey = no data</div>
     {/if}
     {#if layers.territories || layers.corridors}
       <div class="lt" style="margin-top:6px">Status</div>

@@ -1,18 +1,18 @@
 <script>
-  import { loadWorld } from './lib/data.js';
+  import { loadWorld, forecastVariables } from './lib/data.js';
   import Map from './lib/Map.svelte';
   import Panel from './lib/Panel.svelte';
 
   let data = $state(null), error = $state(null);
-  let varId = $state('gdp_pc_ppp');
-  let year = $state(2026);
+  let varId = $state('fc_regime_mean');
+  let year = $state(2035);
   let layers = $state({ territories: true, corridors: true });
   let selected = $state(null);
 
   loadWorld().then(d => { data = d; }).catch(e => { error = String(e); });
 
-  const mapVars = $derived(data ? data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor') : []);
-  const groups = $derived(data ? Object.entries(data.world.registry.groups) : []);
+  const mapVars = $derived(data ? [...forecastVariables(data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
+  const groups = $derived(data ? [['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
   const variable = $derived(mapVars.find(v => v.id === varId) ?? mapVars[0]);
   const actorList = $derived(data ? Object.values(data.world.actors).sort((a, b) => a.name.localeCompare(b.name)) : []);
 
@@ -32,7 +32,7 @@
 {:else}
   <div class="app">
     <header>
-      <h1>Radiant <span class="muted">· world state viewer</span></h1>
+      <h1>Radiant <span class="muted">· world model</span></h1>
       <label>variable
         <select bind:value={varId}>
           {#each groups as [gid, glabel]}
@@ -57,8 +57,8 @@
       <span class="muted tiny right">built {data.world.meta.built.slice(0, 10)} · {Object.keys(data.world.actors).length} actors · {data.world.registry.variables.length} variables</span>
     </header>
     <main>
-      <Map world={data.world} geo={data.geo} {variable} {year} {layers} {selected} onSelect={(s) => selected = s} />
-      <Panel world={data.world} {selected} {year} onSelect={(s) => selected = s} onPickVariable={(id) => varId = id} />
+      <Map world={data.world} geo={data.geo} forecast={data.forecast} {variable} {year} {layers} {selected} onSelect={(s) => selected = s} />
+      <Panel world={data.world} forecast={data.forecast} {selected} {year} onSelect={(s) => selected = s} onPickVariable={(id) => varId = id} />
     </main>
   </div>
 {/if}

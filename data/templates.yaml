@@ -148,6 +148,25 @@ templates:
     sources: ["Goldstone et al. 2010", "V-Dem RoW via OWID"]
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "holdout AUC 0.74; NOTE under-predicts post-1990 autocratization 5× (exp/obs 0.21) — open era shock" }
 
+  - id: democratic_deepening
+    lead: 1
+    label: Electoral democracy deepens to liberal democracy (2→3)
+    unit: actor-year
+    event: regime_change
+    event_filter: { direction: democratize, from: 2 }
+    window: [1900, 2024]
+    holdout_split: 2005
+    sample: { regime_min: 2, regime_max: 2 }
+    covariates:
+      - { var: log_gdp_pc, transform: z, prior: 0.5 }
+      - { var: gdp_growth, transform: z, prior: 0.2 }
+      - { var: at_war, transform: lag1, prior: -0.3 }
+      - { var: intrastate, transform: lag1, prior: -0.3 }
+      - { var: aid_conditionality, transform: none, prior: 0.3 }
+      - { var: pact_usa, transform: none, prior: 0.3 }
+    sources: ["Przeworski et al. 2000 (income and democratic survival/consolidation)"]
+    lifecycle: { phase: active, promoted: 2026-09-06, reason: "closes the regime ladder: without it nothing moves an electoral democracy up" }
+
   - id: liberal_erosion
     lead: 1
     label: Liberal democracy erodes to electoral democracy (3→2)
@@ -195,7 +214,7 @@ templates:
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "bucket C: closures are coup/conflict-adjacent, poor, low-information" }
 
   - id: intrastate_onset
-    label: Internal armed conflict onset (≥25 deaths)
+    label: New internal armed-conflict episode (UCDP, ≥25 battle deaths)
     unit: actor-year
     event: intrastate_onset
     window: [1946, 2024]

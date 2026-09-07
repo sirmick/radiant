@@ -8,7 +8,9 @@ Origin: `docs/session-transcript.md` (the conversation that produced the scenari
 
 **M1 — data viewer + map** (done): scrubbable map 2000→2066 coloured by any registry variable, hatched territories, corridor/chokepoint overlay, per-actor data panel with sources and sparklines, hazard/claim/territory/corridor browsers.
 
-**M2a — historical pipeline + backtest** (done, offline in node): actor-year panel 1816–2025 for all 217 states (CoW NMC/MID/alliances, Maddison, V-Dem, UCDP, REIGN, OWID energy, World Bank), 8,071 dated events, contiguity from CShapes, 8 generic hazard templates fitted with era holdout, an annual-step engine, a rolling-origin backtest (as-of 1870…2000, +20y), and an ablation loop for candidate factors. See `docs/system.md`. Not yet wired to the map.
+**M2a — historical pipeline + backtest** (done, offline in node): actor-year panel 1816–2025 for all 217 states (CoW NMC/MID/alliances, Maddison, V-Dem, UCDP, REIGN, OWID energy, World Bank), 8,071 dated events, contiguity from CShapes, 8 generic hazard templates fitted with era holdout, an annual-step engine, a rolling-origin backtest (as-of 1870…2000, +20y), and an ablation loop for candidate factors. See `docs/system.md`.
+
+**M2b — forward ensemble on the map** (done): `scripts/run-forward.mjs` instantiates the fitted generic templates on every state's 2025 state and simulates 2026→2065 (`public/forecast.json`). The map's **Forecast** group shows expected regime level, regime uncertainty, and P(event by year) for each template; the panel shows the regime distribution at the slider year and cumulative probabilities at 5/10/20/40 years. Generic templates only — the named 2026 hazards (Taiwan, Hormuz, CRQC…) are not yet wired in.
 
 ## Run
 
@@ -27,6 +29,7 @@ node scripts/build-panel.mjs      # -> data/panel.json   actor-year covariates 1
 node scripts/build-events.mjs     # -> data/events.json  dated events (machine + data/history/events.yaml)
 node scripts/fit-hazards.mjs      # -> data/fits.json    MAP logistic per template, holdout AUC, calibration
 node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 100   # -> scores/
+node scripts/run-forward.mjs --runs 300 --horizon 40                                # -> public/forecast.json
 ```
 
 Screenshot check: `npx vite preview` then `node scripts/shot.mjs http://localhost:4173/ out.png [actor:IRN] [2050]`.

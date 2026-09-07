@@ -18,7 +18,12 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   for (const [id, vars] of Object.entries(panel.actors)) {
     if (!vars.live?.[idx]) continue;
     if (universe === 'modeled' && !vars.modeled?.[idx]) continue;
-    const cur = {}; for (const v of Object.keys(vars)) cur[v] = vars[v][idx];
+    // carry the last observation forward where a dataset ends before asOf (leaders age; flags reset to 0); record staleness
+    const stale = {};
+    const lastKnown = (v, at) => { const arr = vars[v]; for (let i = at - Y0; i >= Math.max(0, at - Y0 - 30); i--) if (arr[i] != null) return [arr[i], Y0 + i]; return [null, null]; };
+    const FLAG = new Set(['coup_attempt', 'coup_success', 'mid_force', 'mid_war', 'regime_up', 'regime_down', 'interstate_ucdp']);
+    const build = (at) => { const o = {}; for (const v of Object.keys(vars)) { const x = vars[v][at - Y0]; if (x != null) { o[v] = x; continue; } if (FLAG.has(v)) { o[v] = 0; continue; } const [val, yr] = lastKnown(v, at); if (val == null) { o[v] = null; continue; } o[v] = (v === 'leader_age' || v === 'leader_tenure') ? val + (at - yr) : val; if (at === asOf) stale[v] = at - yr; } return o; };
+    const cur = build(asOf);
     // trailing growth rates for the structural layer
     const g = []; for (let k = 1; k <= 10; k++) { const x = pv(id, 'gdp_growth', asOf - k); if (x != null) g.push(x); }
     const pg = []; for (let k = 1; k <= 10; k++) { const a = pv(id, 'population', asOf - k), b = pv(id, 'population', asOf - k - 1); if (a && b) pg.push(Math.log(a / b)); }
@@ -26,8 +31,9 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     const recent = {};
     for (const v of ['coup_attempt', 'intrastate', 'mid_force', 'at_war']) { recent[v] = []; for (let k = 1; k <= 5; k++) { const x = pv(id, v, asOf - k); recent[v].push(x != null && x > 0 ? 1 : 0); } }
     recent.leader_exit = []; for (let k = 1; k <= 5; k++) recent.leader_exit.push(events.some(e => e.kind === 'leader_exit' && e.actor === id && Math.floor(e.year) === asOf - k) ? 1 : 0);
-    const prev = {}; for (const v of Object.keys(vars)) prev[v] = pv(id, v, asOf - 1);
-    actors[id] = { id, cur, prev, recent, growth: g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0.015, popGrowth: pg.length ? pg.reduce((a, b) => a + b, 0) / pg.length : 0.01, fired: {} };
+    const prev = build(asOf - 1);
+    if (cur.gdp_growth == null && g.length) cur.gdp_growth = g.reduce((a, b) => a + b, 0) / g.length;
+    actors[id] = { id, cur, prev, recent, stale, growth: g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0.015, popGrowth: pg.length ? pg.reduce((a, b) => a + b, 0) / pg.length : 0.01, fired: {} };
   }
   // dyad memory: recent disputes, alliances at asOf
   const dyadRecent = new Map();
@@ -162,7 +168,10 @@ export function stepYear(world, rng, opts = {}) {
 }
 
 /** Run an ensemble from a world factory. Returns per-run event logs and aggregated probabilities. */
-export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false } = {}) {
+export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false, track = false } = {}) {
+  const regimeHist = {};  // actor -> Uint32Array(horizon*4): counts of regime level per year offset
+  const gdpRuns = {};     // actor -> Float32Array(runs*horizon)
+  const infoRuns = {};
   const anyBy = {};   // `${kind}|${actor}` -> count of runs with ≥1 event within horizon
   const countBy = {}; // expected counts
   const dyadAny = {};
@@ -173,6 +182,11 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
       const fired = stepYear(w, rng, { skipDyads });
+      if (track) for (const [id, a] of Object.entries(w.actors)) {
+        if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
+        if (a.cur.gdp_pc != null) (gdpRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.gdp_pc;
+        if (a.cur.info_access != null) (infoRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.info_access;
+      }
       for (const e of fired) {
         if (e.actor) { const k = `${e.template ?? e.kind}|${e.actor}`; countBy[k] = (countBy[k] ?? 0) + 1; (yearHist[k] ??= new Array(horizon).fill(0))[h - 1]++; if (!seen.has(k)) { seen.add(k); anyBy[k] = (anyBy[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
         else { const k = `${e.kind}|${pairKey(e.a, e.b)}`; if (!seenD.has(k)) { seenD.add(k); dyadAny[k] = (dyadAny[k] ?? 0) + 1; (firstBy[k] ??= new Array(horizon).fill(0))[h - 1]++; } }
@@ -181,5 +195,12 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
   }
   const norm = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v / runs]));
   const pAnyWithin = (k, years) => (firstBy[k] ?? []).slice(0, years).reduce((a, b) => a + b, 0) / runs;
-  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin };
+  const cumulative = (k) => { let c = 0; return (firstBy[k] ?? new Array(horizon).fill(0)).map(x => (c += x) / runs); };
+  const quantiles = (arr) => { const out = []; for (let h = 0; h < horizon; h++) { const col = []; for (let r = 0; r < runs; r++) { const v = arr[r * horizon + h]; if (v > 0) col.push(v); } col.sort((a, b) => a - b); out.push(col.length ? [col[Math.floor(col.length * 0.1)], col[Math.floor(col.length * 0.5)], col[Math.floor(col.length * 0.9)]] : null); } return out; };
+  const tracks = track ? {
+    regime: Object.fromEntries(Object.entries(regimeHist).map(([id, hh]) => [id, Array.from({ length: horizon }, (_, h) => { const row = [0, 1, 2, 3].map(l => hh[h * 4 + l]); const n = row.reduce((a, b) => a + b, 0) || 1; return row.map(x => +(x / n).toFixed(3)); })])),
+    gdp_pc: Object.fromEntries(Object.entries(gdpRuns).map(([id, arr]) => [id, quantiles(arr)])),
+    info_access: Object.fromEntries(Object.entries(infoRuns).map(([id, arr]) => [id, quantiles(arr)])),
+  } : null;
+  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, cumulative, firstBy, tracks };
 }
