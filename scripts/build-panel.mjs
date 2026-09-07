@@ -8,6 +8,9 @@ import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/
 
 const Y0 = 1816, Y1 = 2025, YEARS = Array.from({ length: Y1 - Y0 + 1 }, (_, i) => Y0 + i);
 const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
+// Maddison gdp_pc and OWID population are modern-borders series; where an actor declares `owid_alt` (USSR, Yugoslavia,
+// Czechoslovakia) the entity-wide series owns those years and the modern-borders one is suppressed.
+const owidEntity = makeOwidMap(actors, { preferAlt: true });
 const H = 'data/raw/hist/';
 const panel = {}; const put = (id, v, y, val) => { if (!id || y < Y0 || y > Y1 || val == null || Number.isNaN(val)) return; ((panel[id] ??= {})[v] ??= new Array(YEARS.length).fill(null))[y - Y0] = val; };
 const add = (id, v, y, n = 1) => { if (!id || y < Y0 || y > Y1) return; const arr = ((panel[id] ??= {})[v] ??= new Array(YEARS.length).fill(0)); arr[y - Y0] += n; };
@@ -23,9 +26,9 @@ for (const r of readCsv(H + 'nmc_3.02.csv')) {
 sources.cinc = sources.irst = sources.milex = sources.milper = sources.energy_nmc = sources.tpop = sources.upop = 'CoW NMC 3.02 (1816–2001)';
 
 // ---- Maddison GDP pc, population
-for (const r of readCsv(H + 'maddison.csv')) { const y = +r.year, id = owid(r.code, y); if (id && r.gdp_per_capita) put(id, 'gdp_pc', y, +r.gdp_per_capita); }
-sources.gdp_pc = 'Maddison Project 2023 via OWID (2011 intl $)';
-for (const r of readCsv(H + 'population.csv')) { const y = +r.year, id = owid(r.code, y); if (id && r.population_historical) put(id, 'population', y, +r.population_historical); }
+for (const r of readCsv(H + 'maddison.csv')) { const y = +r.year, id = owidEntity(r.code, y); if (id && r.gdp_per_capita) put(id, 'gdp_pc', y, +r.gdp_per_capita); }
+sources.gdp_pc = 'Maddison Project 2023 via OWID (2011 intl $); entity-wide series (OWID_USS/OWID_YGS/OWID_CZS) inside the owid_alt windows declared in data/history/actors.yaml';
+for (const r of readCsv(H + 'population.csv')) { const y = +r.year, id = owidEntity(r.code, y); if (id && r.population_historical) put(id, 'population', y, +r.population_historical); }
 sources.population = 'OWID population (HYDE/Gapminder/UN)';
 
 // ---- regime (RoW 0..3), polyarchy
@@ -88,12 +91,20 @@ for (const r of readCsv(H + 'UcdpPrioConflict_v25_1.csv')) {
 sources.intrastate = 'UCDP/PRIO ACD 25.1 (1946–2024), intensity 1 = 25–999 deaths, 2 = war';
 
 // ---- hand wars -> at_war flag per participant-year (covers 1816–2026 incl. pre-1946 gaps)
-for (const e of Y('data/history/events.yaml')) {
+// A war record may carry per-participant `entries:` / `exits:` maps; without them the war-level span applies. The
+// war-level span alone put the USA at war from 1914 and from 1939, Italy from 1914, Brazil from 1939 — a covariate
+// fitted at +0.63 on mid_force, pre-seeded with the thing it is supposed to predict.
+const handEvents = Y('data/history/events.yaml');
+for (const e of handEvents) {
   if (e.kind !== 'war') continue;
   const end = e.end ?? Y1;
-  for (let y = Math.floor(e.start); y <= Math.floor(end); y++) for (const side of e.sides) for (const a of side) put(a, 'at_war', y, 1);
+  for (const side of e.sides) for (const a of side) {
+    const y0 = Math.floor(e.entries?.[a] ?? e.start), y1 = Math.floor(e.exits?.[a] ?? end);
+    const act = actors.get(a);
+    for (let y = y0; y <= y1; y++) if (!act || isLive(act, y)) put(a, 'at_war', y, 1);
+  }
 }
-sources.at_war = 'data/history/events.yaml (hand-coded interstate wars)';
+sources.at_war = 'data/history/events.yaml (hand-coded interstate wars, per-participant entry/exit dates where declared)';
 
 // ---- World Bank WDI 1960+ (fetched by scripts/fetch-wb.mjs): information access, infant mortality, urbanisation
 {
@@ -123,6 +134,22 @@ for (const [id, vars] of Object.entries(panel)) {
     vars[v] ??= new Array(YEARS.length).fill(null);
     YEARS.forEach((y, i) => { if (vars[v][i] == null && y >= c0 && y <= c1 && isLive(a, y)) vars[v][i] = 0; });
   }
+}
+
+// ---- occupation: a state under foreign occupation is not producing capability figures or dispute non-events.
+// CoW NMC codes the rump regimes without a flag (France tpop 41.9M in 1939 -> 8.0M in 1941-42, a round Vichy placeholder,
+// cinc 0.0396 -> 0.0758 -> 0.0158), and the FLAGS fill above writes a 0 dispute-year for every occupied year.
+// Both are nulled for the fully occupied years (ceil(start)..floor(end)); the invasion year keeps its war.
+{
+  const OCC_NULL = ['cinc', 'irst', 'milex', 'milper', 'energy_nmc', 'tpop', 'upop', 'at_war', 'mid_force', 'mid_war', 'defence_pacts'];
+  let n = 0;
+  for (const o of handEvents) {
+    if (o.kind !== 'occupation') continue;
+    const vars = panel[o.actor]; if (!vars) continue;
+    for (let y = Math.ceil(o.start); y <= Math.floor(o.end); y++) for (const v of OCC_NULL) { const i = y - Y0; if (vars[v] && i >= 0 && i < YEARS.length && vars[v][i] != null) { vars[v][i] = null; n++; } }
+  }
+  console.log(`occupation: nulled ${n} capability/flag values across ${handEvents.filter(e => e.kind === 'occupation').length} occupation spans`);
+  sources.at_war += '; occupied years (data/history/events.yaml kind: occupation) are null, not 0';
 }
 
 // ---- derived: gdp growth, log gdp pc, milex share proxy, great power flag
@@ -208,6 +235,18 @@ for (const [id, vars] of Object.entries(panel)) {
   }
   sources.nbr_democracy_share = 'derived from CShapes contiguity + V-Dem RoW (Gleditsch & Ward 2006)';
   sources.bad_neighbourhood = 'PITF: ≥4 contiguous neighbours in armed conflict (UCDP intrastate or hand wars)';
+}
+
+// ---- duplicate-entity check: two actors that share a CoW/GW code and are live in the same year are one state counted twice
+{
+  const byCode = new Map();
+  for (const a of actors.values()) { const c = a.cow ?? a.gw; if (c == null) continue; (byCode.get(c) ?? byCode.set(c, []).get(c)).push(a); }
+  const dup = [];
+  for (const [c, list] of byCode) for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const ys = YEARS.filter(y => isLive(list[i], y) && isLive(list[j], y));
+    if (ys.length) dup.push(`code ${c}: ${list[i].id} and ${list[j].id} both live ${ys[0]}-${ys[ys.length - 1]} (${ys.length}y)`);
+  }
+  console.log(dup.length ? `duplicate entities: ${dup.length}\n  ${dup.join('\n  ')}` : 'duplicate entities: none (no two actors share a CoW/GW code in the same year)');
 }
 
 // ---- write

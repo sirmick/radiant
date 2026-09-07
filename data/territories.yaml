@@ -530,3 +530,204 @@
     - { year: 1912.80, controller: ITA, status: annexed, source: "Treaty of Ouchy 18 Oct 1912" }
     - { year: 1951.99, controller: LBY, status: settled, source: "independence 24 Dec 1951" }
   notes: "The war that produces this is also the war that closes the Dardanelles in Apr 1912 — one Italian campaign, two corridor facts."
+
+# ---------------------------------------------------------------- 1918-1945 territorial redraw (turn era-1914-1945, added 2026-09-06)
+# The event stream had one territory event between 1914.9 and 2014.2. These are the transfers the era turns on; each is a
+# corridor, a corridor's cause, or the object of a war already in data/history/events.yaml. `controller` is an actor id
+# where one exists; League administration is recorded in `status` (the League is not an actor in this model).
+- id: danzig_polish_corridor
+  name: Free City of Danzig and the Polish Corridor
+  controller: POL
+  claimants: []
+  status: settled
+  stakes: { POL: 0.9, DEU: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [18.65, 54.35], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1920.05, controller: POL, status: league_mandate, source: "Free City of Danzig under League of Nations protection 15 Nov 1920; Versailles gives Poland the corridor to the sea and customs rights in Danzig" }
+    - { year: 1926.00, controller: POL, status: league_mandate, source: "Gdynia opens as the Polish bypass port — the build-around response to a contested transit right" }
+    - { year: 1939.67, controller: DEU, status: annexed, source: "1 Sep 1939: the demand for Danzig and an extraterritorial road across the corridor is the stated casus belli" }
+    - { year: 1945.20, controller: POL, status: settled, source: "Soviet capture Mar 1945; Potsdam confirms Aug 1945" }
+  notes: "A territorial corridor: the dispute is about transit, not about the land."
+
+- id: rhineland
+  name: Rhineland (demilitarised zone)
+  controller: DEU
+  claimants: []
+  status: settled
+  stakes: { DEU: 0.9, FRA: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [7.1, 50.7], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1918.95, controller: FRA, status: occupied, source: "Allied occupation of the left bank from the Armistice, 11 Nov 1918" }
+    - { year: 1930.49, controller: DEU, status: settled, source: "Allied evacuation completed 30 Jun 1930, five years early (Young Plan)" }
+    - { year: 1936.18, controller: DEU, status: annexed, source: "remilitarisation 7 Mar 1936 — the revisionist test the Versailles system does not answer" }
+
+- id: ruhr_occupation
+  name: Ruhr (Franco-Belgian occupation)
+  controller: DEU
+  claimants: []
+  status: settled
+  stakes: { FRA: 0.7, DEU: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [7.0, 51.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1923.03, controller: FRA, status: occupied, source: "Franco-Belgian occupation 11 Jan 1923 to take reparations in kind: coal and the rail net" }
+    - { year: 1925.62, controller: DEU, status: settled, source: "evacuation completed Aug 1925 after the Dawes Plan" }
+  notes: "Seizing a coalfield and its railways to collect a debt: the interwar's clearest case of infrastructure as a reparations instrument."
+
+- id: saar
+  name: Saar Basin
+  controller: DEU
+  claimants: []
+  status: settled
+  stakes: { DEU: 0.6, FRA: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [6.9, 49.3], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1920.05, controller: FRA, status: league_mandate, source: "League of Nations administration from 10 Jan 1920; the mines to France for 15 years" }
+    - { year: 1935.16, controller: DEU, status: settled, source: "plebiscite 13 Jan 1935 (90.7% for Germany); transfer 1 Mar 1935" }
+
+- id: memel
+  name: Memelland (Klaipeda)
+  controller: LTU
+  claimants: []
+  status: settled
+  stakes: { LTU: 0.8, DEU: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [21.14, 55.7], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1923.05, controller: LTU, status: annexed, source: "Lithuanian seizure 10-15 Jan 1923; Klaipeda Convention 1924 makes it an autonomous region" }
+    - { year: 1939.22, controller: DEU, status: annexed, source: "German ultimatum 20 Mar 1939, transfer 22 Mar 1939" }
+    - { year: 1945.10, controller: LTU, status: settled, source: "Soviet capture Jan 1945; returned to the Lithuanian SSR" }
+  notes: "Lithuania's only deep-water port: the transfer costs it its sea corridor."
+
+- id: austria_anschluss
+  name: Austria (Anschluss)
+  controller: AUT
+  claimants: []
+  status: settled
+  stakes: { DEU: 0.8, AUT: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [16.37, 48.21], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1938.19, controller: DEU, status: annexed, source: "12 Mar 1938; the actor AUT leaves system membership (data/history/actors.yaml)" }
+    - { year: 1945.32, controller: USA, status: occupied, source: "Allied occupation from Apr 1945, four zones" }
+    - { year: 1955.37, controller: AUT, status: settled, source: "Austrian State Treaty 15 May 1955" }
+
+- id: sudetenland
+  name: Sudetenland
+  controller: CZE
+  claimants: []
+  status: settled
+  stakes: { DEU: 0.7, CZECHOSLOVAKIA: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [13.4, 50.4], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1938.75, controller: DEU, status: annexed, source: "Munich Agreement 30 Sep 1938; occupation 1-10 Oct 1938 — with it go the border fortifications and the Skoda works' rail approaches" }
+    - { year: 1945.35, controller: CZECHOSLOVAKIA, status: settled, source: "restored May 1945" }
+
+- id: bohemia_moravia
+  name: Bohemia and Moravia (Protectorate)
+  controller: CZE
+  claimants: []
+  status: settled
+  stakes: { DEU: 0.8, CZECHOSLOVAKIA: 0.95 }
+  stakes_source: estimate
+  geometry: { point: [14.42, 50.09], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1939.20, controller: DEU, status: protectorate, source: "occupation 15 Mar 1939; the first annexation of a non-German population, and the end of the Munich settlement" }
+    - { year: 1945.35, controller: CZECHOSLOVAKIA, status: settled, source: "liberation 9 May 1945" }
+
+- id: manchukuo
+  name: Manchuria / Manchukuo
+  controller: CHN
+  claimants: []
+  status: settled
+  stakes: { JPN: 0.9, CHN: 0.9, RUS: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [125.3, 43.9], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1931.72, controller: JPN, status: occupied, source: "Mukden Incident 18 Sep 1931 — staged on the South Manchuria Railway; the Kwantung Army occupies Manchuria" }
+    - { year: 1932.17, controller: JPN, status: protectorate, source: "Manchukuo proclaimed 1 Mar 1932; Japan leaves the League 27 Mar 1933 over the Lytton report" }
+    - { year: 1945.65, controller: RUS, status: occupied, source: "Soviet invasion 9 Aug 1945" }
+    - { year: 1946.40, controller: CHN, status: settled, source: "Soviet withdrawal, May 1946" }
+  notes: "The territorial face of the two Manchurian railway records; the corridor event and the conquest carry the same date, 1931.72."
+
+- id: hatay
+  name: Hatay (Sanjak of Alexandretta)
+  controller: TUR
+  claimants: [SYR]
+  status: settled
+  stakes: { TUR: 0.7, SYR: 0.5, FRA: 0.4 }
+  stakes_source: estimate
+  geometry: { point: [36.16, 36.2], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1938.60, controller: FRA, status: disputed, source: "autonomous Republic of Hatay under French mandate, Sep 1938" }
+    - { year: 1939.47, controller: TUR, status: annexed, source: "ceded by France 23 Jun 1939 to buy Turkish neutrality — the Mediterranean terminus of the Iraqi pipeline region" }
+
+- id: eastern_poland
+  name: Eastern Poland (Kresy)
+  controller: UKR
+  claimants: []
+  status: settled
+  stakes: { RUS: 0.8, POL: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [24.0, 51.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1939.72, controller: RUS, status: annexed, source: "Soviet invasion 17 Sep 1939 under the Molotov-Ribbentrop secret protocol" }
+    - { year: 1941.47, controller: DEU, status: occupied, source: "German invasion 22 Jun 1941" }
+    - { year: 1944.55, controller: RUS, status: annexed, source: "Soviet reconquest 1944; Curzon line confirmed at Yalta Feb 1945" }
+
+- id: bessarabia_bukovina
+  name: Bessarabia and Northern Bukovina
+  controller: MDA
+  claimants: []
+  status: settled
+  stakes: { RUS: 0.7, ROU: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [28.86, 47.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1918.30, controller: ROU, status: annexed, source: "union with Romania 9 Apr 1918" }
+    - { year: 1940.49, controller: RUS, status: annexed, source: "Soviet ultimatum 26 Jun 1940; occupation 28 Jun 1940" }
+    - { year: 1941.47, controller: ROU, status: annexed, source: "retaken with the German invasion, Jul 1941 — the reason Romania joins" }
+    - { year: 1944.65, controller: RUS, status: annexed, source: "Soviet reconquest Aug 1944" }
+
+- id: karelia_ceded
+  name: Ceded Karelia
+  controller: RUS
+  claimants: []
+  status: settled
+  stakes: { RUS: 0.6, FIN: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [28.75, 60.7], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1940.20, controller: RUS, status: annexed, source: "Moscow Peace 12 Mar 1940 ends the Winter War (war record: winter_war)" }
+    - { year: 1941.65, controller: FIN, status: annexed, source: "Finnish reconquest Aug 1941 (Continuation War)" }
+    - { year: 1944.72, controller: RUS, status: annexed, source: "Moscow Armistice 19 Sep 1944" }
+
+- id: baltic_annexation
+  name: Estonia, Latvia and Lithuania (Soviet annexation)
+  controller: EST
+  claimants: []
+  status: settled
+  stakes: { RUS: 0.8, EST: 0.95, LVA: 0.95, LTU: 0.95 }
+  stakes_source: estimate
+  geometry: { point: [24.75, 57.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1940.46, controller: RUS, status: occupied, source: "Soviet ultimatums and occupation 15-17 Jun 1940" }
+    - { year: 1940.60, controller: RUS, status: annexed, source: "incorporation as Soviet republics 3-6 Aug 1940; the three actors leave system membership until 1991" }
+    - { year: 1941.52, controller: DEU, status: occupied, source: "German occupation from Jul 1941" }
+    - { year: 1944.80, controller: RUS, status: annexed, source: "Soviet reconquest 1944-45" }
+
+- id: ethiopia_italian
+  name: Ethiopia (Italian East Africa)
+  controller: ETH
+  claimants: []
+  status: settled
+  stakes: { ITA: 0.7, ETH: 0.95 }
+  stakes_source: estimate
+  geometry: { point: [38.75, 9.03], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1936.35, controller: ITA, status: annexed, source: "Addis Ababa falls 5 May 1936; annexation 9 May 1936 (war record: italo_ethiopian) — the conquest the League does not reverse" }
+    - { year: 1941.35, controller: ETH, status: settled, source: "liberation 5 May 1941; Haile Selassie restored" }

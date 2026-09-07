@@ -29,11 +29,30 @@ const H = 'data/raw/hist/'; const events = [];
   }
 }
 
+// ---- occupation spans (hand-coded, data/history/events.yaml): a regime step under or immediately after foreign
+// occupation is not a domestic transition. `cause` is stamped on the event; the domestic regime templates filter it out
+// (data/templates.yaml event_filter: { cause: null }) and the conquest steps stay in the file under their own cause.
+const occupations = Y('data/history/events.yaml').filter(e => e.kind === 'occupation');
+function occupationCause(actor, year) {
+  for (const o of occupations) {
+    if (o.actor !== actor) continue;
+    if (year >= Math.floor(o.start) && year <= Math.floor(o.end)) return "occupation";
+    if (year > Math.floor(o.end) && year <= (o.imposed_until ?? o.end + 2)) return "imposed";
+  }
+  return null;
+}
+
 // ---- regime-type changes (RoW 0..3)
 {
   const by = new Map();
   for (const r of readCsv(H + 'regime.csv')) { const y = +r.year, id = owid(r.code, y); if (!id || r.regime_row_owid === '') continue; (by.get(id) ?? by.set(id, []).get(id)).push([y, +r.regime_row_owid]); }
-  for (const [id, arr] of by) { arr.sort((a, b) => a[0] - b[0]); for (let i = 1; i < arr.length; i++) if (arr[i][1] !== arr[i - 1][1] && arr[i][0] === arr[i - 1][0] + 1) events.push({ kind: 'regime_change', actor: id, year: arr[i][0], from: arr[i - 1][1], to: arr[i][1], direction: arr[i][1] > arr[i - 1][1] ? 'democratize' : 'autocratize', source: 'V-Dem RoW via OWID' }); }
+  for (const [id, arr] of by) {
+    arr.sort((a, b) => a[0] - b[0]);
+    for (let i = 1; i < arr.length; i++) if (arr[i][1] !== arr[i - 1][1] && arr[i][0] === arr[i - 1][0] + 1) {
+      const cause = occupationCause(id, arr[i][0]);
+      events.push({ kind: 'regime_change', actor: id, year: arr[i][0], from: arr[i - 1][1], to: arr[i][1], direction: arr[i][1] > arr[i - 1][1] ? 'democratize' : 'autocratize', cause, source: 'V-Dem RoW via OWID' + (cause ? `; cause=${cause} from data/history/events.yaml occupation spans` : '') });
+    }
+  }
 }
 
 // ---- ERT episode onsets
@@ -46,15 +65,26 @@ const H = 'data/raw/hist/'; const events = [];
   }
 }
 
-// ---- MIDs as dyads: participants on opposite sides of the same dispute, hostlev >= 4 (use of force) / 5 (war)
+// ---- MIDs as dyads: participants on opposite sides of the same dispute.
+// Hostility and onset are taken PER PAIR, not per dispute: a pair's hostility is min(hostlev_a, hostlev_b) — neither
+// side can be more engaged than the less engaged of the two — and its onset is max(styear_a, styear_b), the year both
+// are in. The dispute-level max/min used before stamped WWII's 33 participants as 223 dyadic wars all dated 1939
+// (Spain-China among them). hostlev is ordinal, so a war dyad (>=5) is also a use-of-force dyad (>=4): mid_war nests
+// inside mid_force instead of being disjoint from it.
 {
   const disp = new Map();
   for (const r of readCsv(H + 'midb_3.02.csv')) { const y = +r.styear, id = code(r.ccode, y); if (!id) continue; (disp.get(r.dispnum) ?? disp.set(r.dispnum, []).get(r.dispnum)).push({ id, side: r.sidea, y, hl: +r.hostlev }); }
   for (const [num, ps] of disp) {
     const A = ps.filter(p => p.side === '1'), B = ps.filter(p => p.side === '0');
-    const hl = Math.max(...ps.map(p => p.hl)); if (hl < 4) continue;
-    const y = Math.min(...ps.map(p => p.y));
-    for (const a of A) for (const b of B) if (a.id !== b.id) events.push({ kind: hl >= 5 ? 'mid_war' : 'mid_force', a: a.id, b: b.id, year: y, dispnum: num, source: 'CoW MID 3.02' });
+    const multilateral = ps.length > 2;
+    for (const a of A) for (const b of B) {
+      if (a.id === b.id) continue;
+      const hl = Math.min(a.hl, b.hl); if (hl < 4) continue;
+      const y = Math.max(a.y, b.y);
+      const base = { a: a.id, b: b.id, year: y, dispnum: num, hostlev: hl, n_participants: ps.length, multilateral, source: 'CoW MID 3.02 (dyad hostility = min of the pair, onset = max of the pair)' };
+      events.push({ kind: 'mid_force', ...base });
+      if (hl >= 5) events.push({ kind: 'mid_war', ...base });
+    }
   }
 }
 
@@ -73,8 +103,9 @@ const H = 'data/raw/hist/'; const events = [];
 // ---- hand events pass through, after checking every corridor/chokepoint/territory id resolves to a record
 {
   const hand = Y('data/history/events.yaml');
-  const corrIds = new Set(Y('data/corridors.yaml').map(c => c.id));
-  const terrIds = new Set(Y('data/territories.yaml').map(t => t.id));
+  const corridors = Y('data/corridors.yaml'), territories = Y('data/territories.yaml');
+  const corrIds = new Set(corridors.map(c => c.id));
+  const terrIds = new Set(territories.map(t => t.id));
   const bad = [];
   for (const e of hand) {
     if ((e.kind === 'corridor' || e.kind === 'chokepoint') && !corrIds.has(e.id)) bad.push(`${e.kind} ${e.id} @${e.year} — no record in data/corridors.yaml`);
@@ -82,6 +113,21 @@ const H = 'data/raw/hist/'; const events = [];
   }
   if (bad.length) { console.error(`build-events: ${bad.length} unresolvable event ids\n  ${[...new Set(bad)].join('\n  ')}`); process.exit(1); }
   for (const e of hand) events.push({ ...e, source: e.source ?? 'data/history/events.yaml' });
+
+  // the records' own `history:` rows ARE observations: emit any dated row that has no hand event within 0.1y,
+  // so a control change recorded in data/corridors.yaml / data/territories.yaml cannot sit unscored (the build used to
+  // validate events -> records but never records -> events; 12 dated interwar territory changes were invisible).
+  const seen = new Set(hand.filter(e => ['corridor', 'chokepoint', 'territory'].includes(e.kind)).map(e => `${e.kind}|${e.id}|${Math.round(e.year * 10)}`));
+  let derived = 0;
+  for (const c of corridors) for (const h of c.history ?? []) {
+    const k = `${c.kind}|${c.id}|${Math.round(h.year * 10)}`; if (seen.has(k)) continue; seen.add(k);
+    events.push({ kind: c.kind, id: c.id, year: h.year, status: h.status, controller: h.controller ?? null, capacity: h.capacity ?? null, transits: c.transits ?? null, source: h.source ?? 'data/corridors.yaml history' }); derived++;
+  }
+  for (const t of territories) for (const h of t.history ?? []) {
+    const k = `territory|${t.id}|${Math.round(h.year * 10)}`; if (seen.has(k)) continue; seen.add(k);
+    events.push({ kind: 'territory', id: t.id, year: h.year, controller: h.controller ?? null, status: h.status ?? null, claimants: t.claimants ?? null, source: h.source ?? 'data/territories.yaml history' }); derived++;
+  }
+  console.log(`derived ${derived} corridor/chokepoint/territory events from record histories`);
 }
 
 events.sort((a, b) => (a.year ?? a.start) - (b.year ?? b.start));

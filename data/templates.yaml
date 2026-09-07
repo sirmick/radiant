@@ -104,7 +104,7 @@ templates:
     label: Regime category moves up (V-Dem RoW), autocracies at risk
     unit: actor-year
     event: regime_change
-    event_filter: { direction: democratize }
+    event_filter: { direction: democratize, cause: null }   # cause is stamped by scripts/build-events.mjs from the occupation spans in data/history/events.yaml; a step taken under or immediately after foreign occupation is not a domestic transition
     window: [1900, 2024]
     holdout_split: 2005                # training must include 1992–2004 so conditionality is identified
     sample: { regime_max: 1 }
@@ -113,7 +113,7 @@ templates:
       - { var: log_gdp_pc, transform: z, prior: 0.3 }
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.2 }
-      - { var: leader_exit_recent, transform: win5, prior: 0.5 }
+      - { var: leader_exit_recent, transform: win5, prior: 0.5, default_outside: { window: [1946, 2021], value: 0, source: "leader exits are derived from REIGN (1950+); events.json has none before 1946, so this covariate is an imputed 0 for every pre-1950 actor-year. Imputation, not an observation" } }
       - { var: aid_conditionality, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "user hypothesis (external influence > neighbours): ODA/GNI × 1992–2016 promotion era; holdout≥2005 AUC 0.578→0.641, coef +0.53; largest single gain on any regime template" } }
       - { var: pact_usa, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "US clients step up more (+0.59), identified on Cold War variation" } }
       - { var: pact_rus, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Soviet clients held autocratic (−0.50)" } }
@@ -135,7 +135,7 @@ templates:
     label: Regime category moves down (V-Dem RoW), any
     unit: actor-year
     event: regime_change
-    event_filter: { direction: autocratize }
+    event_filter: { direction: autocratize, cause: null }   # conquest/occupation steps excluded (see democratize_step)
     window: [1900, 2024]
     holdout_split: 1990
     sample: { regime_min: 1 }
@@ -153,7 +153,7 @@ templates:
     label: Electoral democracy deepens to liberal democracy (2→3)
     unit: actor-year
     event: regime_change
-    event_filter: { direction: democratize, from: 2 }
+    event_filter: { direction: democratize, from: 2, cause: null }
     window: [1900, 2024]
     holdout_split: 2005
     sample: { regime_min: 2, regime_max: 2 }
@@ -172,7 +172,7 @@ templates:
     label: Liberal democracy erodes to electoral democracy (3→2)
     unit: actor-year
     event: regime_change
-    event_filter: { direction: autocratize, from: 3 }
+    event_filter: { direction: autocratize, from: 3, cause: null }
     window: [1900, 2024]
     holdout_split: 1990
     sample: { regime_min: 3 }
@@ -180,7 +180,7 @@ templates:
       - { var: log_gdp_pc, transform: z, prior: -0.3 }
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: leader_exit_recent, transform: win5, prior: 0.3 }
+      - { var: leader_exit_recent, transform: win5, prior: 0.3, default_outside: { window: [1946, 2021], value: 0, source: "REIGN leader exits start 1950; pre-1946 this is an imputed 0, not an observation" } }
     candidates:
       - { id: info_access, var: info_access, transform: z, prior: 0, hypothesis: "information access raises erosion risk in rich democracies (polarisation channel) — the inverse of its coup effect" }
       - { id: hegemon_x_client, var: hegemon_x_client, transform: none, prior: 0, hypothesis: "user: the hegemon's clients track the hegemon's regime score (cross-sectional form)" }
@@ -194,7 +194,7 @@ templates:
     label: Electoral regime closes (2→1, 2→0, 1→0)
     unit: actor-year
     event: regime_change
-    event_filter: { direction: autocratize }
+    event_filter: { direction: autocratize, cause: null }   # 8 of the 18 closures scored at as-of 1930 were German occupation or Soviet imposition, not domestic closure
     window: [1900, 2024]
     holdout_split: 2005
     sample: { regime_min: 1, regime_max: 2 }
@@ -204,7 +204,7 @@ templates:
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
       - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
-      - { var: coup_attempt, transform: win5, prior: 0.8 }
+      - { var: coup_attempt, transform: win5, prior: 0.8, default_outside: { window: [1950, 2021], value: 0, source: "Powell-Thyne coups via REIGN cover 1950+; the panel has zero positive coup_attempt values before 1950, so every pre-1950 actor-year enters this covariate as an imputed 0. Imputation, not an observation: essentially every interwar closure in the label set (1922, 1923, 1926, 1929, 1930, 1934, 1936) was a coup or self-coup. See docs/escalations.md for the pre-1950 coup dataset that would fix it" } }
       - { var: aid_conditionality, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "conditionality deters closure: holdout≥2005 AUC 0.565→0.617, coef −0.61" } }
       - { var: great_game, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Cold War superpower clients close more (+0.62, AUC +0.02); bare pact_* ≈0 once this is in" } }
     candidates:
@@ -244,13 +244,14 @@ templates:
       - { var: mid_force, transform: win5, prior: 1.5 }            # rivalry / recurrence
       - { var: at_war_any, transform: lag1, prior: 0.5 }
     sources: ["Bremer 1992", "Oneal & Russett 1999", "Jones, Bremer & Singer 1996"]
-    notes: "Dyad sample: politically relevant dyads (contiguous or ≥1 major power), all states, 1886–2001. The declared window is [1816, 2001] but the estimation sample starts at 1886: CShapes 2.0 has no polygons before it, and fit-hazards drops dyad-years with no contiguity value, so 134 mid_force and 106 mid_war events dated 1816–1885 are outside the fit (CoW Direct Contiguity 3.2 would fix it — deferred, see docs/refine-log.md). The engine freezes the border graph at as-of and, for an as-of before 1886, uses the 1886 snapshot as a documented stand-in. Corridor dampener and chokepoint stakes enter as extra dyad covariates once corridors carry historical status."
+    notes: "Dyad sample: politically relevant dyads (contiguous or ≥1 major power), all states, 1886–2001. The declared window is [1816, 2001] but the estimation sample starts at 1886: CShapes 2.0 has no polygons before it, and fit-hazards drops dyad-years with no contiguity value, so 134 mid_force and 106 mid_war events dated 1816–1885 are outside the fit (CoW Direct Contiguity 3.2 would fix it — deferred, see docs/refine-log.md). The engine freezes the border graph at as-of and, for an as-of before 1886, uses the 1886 snapshot as a documented stand-in. Corridor dampener and chokepoint stakes enter as extra dyad covariates once corridors carry historical status. Dyad labels are per-pair from 2026-09-06: hostility = min(hostlev_a, hostlev_b), onset = max(styear_a, styear_b), and mid_war nests inside mid_force. CoW Dyadic MID 3.1 / Maoz MIDdyadic, which ships real dyad-years instead of the coalition cross-product, is the substitution this approximates — see docs/escalations.md."
 
   - id: mid_war
     label: Dyadic war (hostility level 5)
     unit: dyad-year
     event: mid_war
     window: [1816, 2001]
+    holdout_split: 1939                # the second world war must be forecast out of sample
     covariates:
       - { var: contiguous, transform: none, prior: 1.5 }
       - { var: allied, transform: none, prior: -0.5 }
@@ -259,7 +260,10 @@ templates:
       - { var: major_power_any, transform: none, prior: 1.0 }
       - { var: mid_force, transform: win5, prior: 2.0 }
       - { var: nuclear_both, transform: none, prior: -1.5 }        # after 1945; the nuclear ceiling
+      - { var: at_war_any, transform: lag1, prior: 0.9, lifecycle: { phase: active, promoted: 2026-09-06, reason: "the feature was already computed in both scripts/fit-hazards.mjs and src/engine/core.js and used only by mid_force. Measured on the politically relevant dyad-years: P(war | either side at war last year) 0.99% vs 0.39% otherwise, log-OR +0.93. Ablation on the corrected dyad labels: holdout(>=1939) AUC 0.757 -> 0.850, in-sample 0.793 -> 0.872; backtest 1910-1940 exp/obs 0.28 -> 0.44 and skill 0.08 -> 0.12. Cost, recorded: it amplifies in simulation, because the engine has no war duration and redraws every year — backtest 1950-2000 exp/obs 1.66 -> 2.62 (the label change alone takes it from 1.15 to 1.66). Kept; the damping fix is a war-duration state, escalated as era-1914-1945/engine/5." } }
     sources: ["Bremer 1992", "Bueno de Mesquita & Lalman 1992"]
+    notes: "mid_war nests inside mid_force: CoW hostlev is ordinal and the dyad's hostility is min(hostlev_a, hostlev_b), so a hostlev-5 pair is also a use-of-force pair. Before 2026-09-06 the two were disjoint (dispute-level max), which made observed mid_war exceed observed mid_force at as-of 1930."
+    lifecycle: { phase: active, reason: "dyad labels re-derived per pair 2026-09-06: hostility = min of the pair, onset = max of the pair. The dispute-level version stamped CoW dispnum 258 (WWII) as 223 dyadic wars all dated 1939, Spain-China among them" }
 
   - id: weaponization
     label: Nuclear latency to weapon

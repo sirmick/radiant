@@ -53,6 +53,13 @@
     - { year: 1882.70, status: open, controller: GBR, source: "Tel el-Kebir 13 Sep 1882; British occupation of Egypt — the corridor-driven intervention of the era" }
     - { year: 1888.82, status: open, controller: GBR, source: "Convention of Constantinople 29 Oct 1888: free passage in war and peace" }
     - { year: 1904.29, status: open, controller: GBR, source: "Entente Cordiale 8 Apr 1904 ratifies the British position in Egypt" }
+    - { year: 1915.08, status: contested, controller: GBR, source: "Ottoman/German raid on the canal 26 Jan - 4 Feb 1915; traffic suspended during the attack" }
+    - { year: 1916.60, status: open, controller: GBR, source: "raid repulsed at Romani 3-5 Aug 1916; the Sinai campaign pushes the front away from the canal" }
+    - { year: 1922.16, status: open, controller: GBR, source: "Egypt nominally independent 28 Feb 1922; imperial communications is one of the four reserved points, so the controller stays GBR" }
+    - { year: 1936.65, status: open, controller: GBR, source: "Anglo-Egyptian Treaty 26 Aug 1936: British forces confined to the Canal Zone for 20 years — the instrument Nasser abrogates in 1956" }
+    - { year: 1940.44, status: contested, controller: GBR, source: "Italian entry 10 Jun 1940 closes the Mediterranean approach; Allied through-traffic reroutes via the Cape" }
+    - { year: 1941.10, status: contested, controller: GBR, capacity: 0.4, capacity_source: estimate, source: "Axis aerial mining of the canal and Suez roads, Jan-Jul 1941, closes it for extended periods (capacity is an estimate)" }
+    - { year: 1943.40, status: open, controller: GBR, source: "Tunis falls 13 May 1943; the Mediterranean route reopens and the mine threat lifts" }
     - { year: 1956.8, status: closed, controller: EGY, source: "nationalisation Jul 1956; Suez crisis" }
     - { year: 1957.3, status: open, controller: EGY, source: "reopened Apr 1957" }
     - { year: 1967.4, status: closed, controller: EGY, source: "Six-Day War; closed 8 years" }
@@ -91,8 +98,13 @@
     - { year: 1912.80, status: contested, controller: OTTOMAN, source: "First Balkan War; Bulgarian advance to the Chatalja lines" }
     - { year: 1913.45, status: open, controller: OTTOMAN, source: "Treaty of London 30 May 1913" }
     - { year: 1914.80, status: closed, controller: OTTOMAN, source: "Ottoman entry into WW1 seals Russia's grain exit" }
+    - { year: 1915.13, status: contested, controller: OTTOMAN, source: "Anglo-French naval attack on the Dardanelles 19 Feb - 18 Mar 1915; Gallipoli landings 25 Apr 1915 — the forcing attempt" }
+    - { year: 1916.05, status: closed, controller: OTTOMAN, source: "Allied evacuation of Gallipoli 9 Jan 1916; the closure holds to 1918" }
     - { year: 1918.80, status: open, controller: GBR, source: "Armistice of Mudros 30 Oct 1918; Allied occupation of the Straits" }
+    - { year: 1920.61, status: open, controller: GBR, source: "Treaty of Sevres 10 Aug 1920: the Straits internationalised under a Commission (never ratified)" }
+    - { year: 1923.56, status: open, controller: TUR, source: "Treaty of Lausanne 24 Jul 1923: Turkish sovereignty with demilitarised zones and an International Straits Commission chaired by Turkey; the Allied garrison leaves Constantinople 2 Oct 1923" }
     - { year: 1936.50, status: open, controller: TUR, source: "Montreux Convention 20 Jul 1936" }
+    - { year: 1939.67, status: closed, controller: TUR, source: "Montreux Art. 19: the Straits are closed to belligerent warships — the closure that makes the Persian Corridor necessary" }
 
 - id: taiwan_strait
   name: Taiwan Strait / Luzon Strait
@@ -273,6 +285,8 @@
     - { year: 1889.10, status: abandoned, source: "liquidation 4 Feb 1889 — the era's largest corridor failure (~22,000 dead, the Panama scandal)" }
     - { year: 1904.40, status: building, controller: USA, source: "US takes over May 1904 after the Hay–Bunau-Varilla treaty of 18 Nov 1903" }
     - { year: 1914.60, status: open, controller: USA, source: "SS Ancon transits 15 Aug 1914" }
+    - { year: 1915.70, status: closed, controller: USA, source: "Culebra/Cucaracha slides close the canal to traffic from Sep 1915 — the dataset's only corridor closure with no war attached" }
+    - { year: 1916.30, status: open, controller: USA, source: "traffic resumes Apr 1916 (month is an estimate; the slides recur into 1920)" }
     - { year: 1999.99, status: open, controller: PAN, source: "Torrijos–Carter handover 31 Dec 1999" }
   notes: "The 1881–1889 French attempt is the model's only abandoned corridor: a corridor can fail without anyone fighting over it."
 
@@ -290,6 +304,11 @@
     - { year: 1895.50, status: open, controller: DEU, source: "opened 21 Jun 1895" }
     - { year: 1907.00, status: building, controller: DEU, source: "widening for dreadnought draught begins" }
     - { year: 1914.48, status: open, controller: DEU, source: "widening complete 24 Jun 1914 — four days before Sarajevo; the fleet can move between the North Sea and the Baltic" }
+    - { year: 1914.62, status: closed, controller: DEU, source: "closed to non-German shipping on mobilisation, Aug 1914" }
+    - { year: 1919.49, status: open, controller: DEU, source: "Versailles Art. 380, 28 Jun 1919: free and open to the vessels of all nations at peace with Germany — the interwar internationalisation experiment" }
+    - { year: 1936.87, status: open, controller: DEU, source: "Germany repudiates the international waterway clauses, Nov 1936" }
+    - { year: 1939.67, status: closed, controller: DEU, source: "closed to belligerents on the outbreak of war" }
+    - { year: 1945.40, status: open, controller: GBR, source: "Allied control from May 1945" }
   notes: "The corridor fact most often cited as an input to German war timing in 1914. Recorded so the claim is datable, not asserted."
 
 - id: us_transcontinental
@@ -332,6 +351,8 @@
     - { year: 1891.40, status: building, controller: RUS, source: "construction begins May 1891" }
     - { year: 1904.70, status: built, controller: RUS, capacity: 0.3, source: "Circum-Baikal line complete Sep 1904; single track — the capacity that decided the Russo-Japanese war" }
     - { year: 1916.00, status: built, controller: RUS, capacity: 0.7, source: "Amur line complete 1916, all-Russian route, double-tracked" }
+    - { year: 1918.40, status: contested, controller: RUS, capacity: 0.2, capacity_source: estimate, source: "Czechoslovak Legion seizes the line May 1918; the civil war is fought along it" }
+    - { year: 1920.80, status: built, controller: RUS, capacity: 0.5, capacity_source: estimate, source: "Red Army retakes the line Oct 1920; capacity recovers slowly" }
   notes: "capacity is the through-traffic share the line can actually carry (estimate); the 1904 single track is the war variable."
 
 - id: chinese_eastern_railway
@@ -349,6 +370,12 @@
     - { year: 1896.70, status: planned, controller: CHN, source: "Li–Lobanov concession, Sep 1896" }
     - { year: 1903.54, status: built, controller: RUS, source: "through service Jul 1903 — the shortcut that shortens the Trans-Siberian by 900 km" }
     - { year: 1905.68, status: built, controller: RUS, source: "Treaty of Portsmouth 5 Sep 1905: Russia keeps the CER north of Changchun" }
+    - { year: 1917.90, status: contested, controller: RUS, source: "Russian Revolution Nov 1917; the line falls to the CER Zone administration and the Allied/Czechoslovak intervention" }
+    - { year: 1924.41, status: built, controller: RUS, source: "Sino-Soviet agreement 31 May 1924: joint Chinese-Soviet management" }
+    - { year: 1929.55, status: contested, controller: RUS, source: "Chinese seizure Jul 1929, Soviet offensive; Khabarovsk Protocol 22 Dec 1929 restores joint control — the war record cer_1929" }
+    - { year: 1935.22, status: built, controller: JPN, source: "USSR sells the CER to Manchukuo for 140m yen, 23 Mar 1935 — a corridor liquidated to avoid a war" }
+    - { year: 1945.65, status: built, controller: RUS, source: "Soviet seizure Aug 1945; merged into the Chinese Changchun Railway" }
+    - { year: 1952.99, status: built, controller: CHN, source: "transferred to the PRC, Dec 1952" }
   notes: "The densest dyad of the turn (CHN|RUS: 8 mid_force, 2 mid_war 1870–1914) is about this line and the lease at its end."
 
 - id: south_manchuria_railway
@@ -367,6 +394,12 @@
     - { year: 1903.54, status: built, controller: RUS, source: "through service Jul 1903" }
     - { year: 1905.68, status: built, controller: JPN, source: "Treaty of Portsmouth 5 Sep 1905 transfers Changchun–Port Arthur to Japan" }
     - { year: 1906.87, status: built, controller: JPN, source: "South Manchuria Railway Co. chartered Nov 1906 — a corridor operating as a colonial state" }
+    - { year: 1915.38, status: built, controller: JPN, source: "Twenty-One Demands, 25 May 1915: the Kwantung lease and the SMR extended to 99 years" }
+    - { year: 1928.43, status: built, controller: JPN, source: "Zhang Zuolin killed by a Kwantung Army bomb at the Huanggutun rail crossing, 4 Jun 1928" }
+    - { year: 1931.72, status: contested, controller: JPN, source: "Liutiaohu demolition on the SMR track 18 Sep 1931 — the pretext for the Manchurian War (war record: manchurian)" }
+    - { year: 1932.17, status: built, controller: JPN, source: "Manchukuo proclaimed 1 Mar 1932; the SMR Co. becomes the state's spine" }
+    - { year: 1945.65, status: built, controller: RUS, source: "Soviet seizure Aug 1945" }
+    - { year: 1952.99, status: built, controller: CHN, source: "transferred to the PRC, Dec 1952" }
   notes: "A corridor changing hands as a war outcome: the clearest case in the dataset."
 
 - id: berlin_baghdad
@@ -402,6 +435,7 @@
     - { year: 1900.70, status: building, source: "construction begins Sep 1900, funded by subscription across the Muslim world" }
     - { year: 1908.70, status: built, source: "Medina reached Sep 1908" }
     - { year: 1917.00, status: closed, source: "Arab Revolt sabotage 1916-18 — the first modern rail-cutting campaign" }
+    - { year: 1920.00, status: closed, source: "never restored north of Medina after the Arab Revolt; the mandate borders cut the line" }
   notes: "Pilgrimage cover for a troop-movement line; its destruction is the era's cleanest corridor-denial campaign."
 
 - id: cape_to_cairo
@@ -524,6 +558,8 @@
     - { year: 1870.45, status: built, controller: GBR, source: "London–Bombay working Jun 1870" }
     - { year: 1871.00, status: built, controller: GBR, source: "Singapore–Hong Kong 1871" }
     - { year: 1872.60, status: built, controller: GBR, source: "Australia via Darwin, Aug 1872" }
+    - { year: 1942.10, status: contested, transits: [GBR], source: "Japanese seizure of the Singapore-Hong Kong segments, Feb 1942" }
+    - { year: 1945.70, status: built, transits: [GBR], source: "segments recovered Sep 1945" }
   notes: "The British cable monopoly is the ISR chokepoint of the era: almost every foreign ministry's traffic lands on British-owned cable at some point."
 
 - id: all_red_pacific
@@ -538,6 +574,8 @@
   load_bearing_source: estimate
   history:
     - { year: 1902.83, status: built, controller: GBR, source: "first message 31 Oct 1902 — routed to touch no foreign soil: the deliberate bypass" }
+    - { year: 1914.68, status: contested, source: "SMS Nurnberg cuts the cable at Fanning Island 7 Sep 1914 — the bypass built in 1902 to touch no foreign soil is cut anyway" }
+    - { year: 1914.80, status: built, source: "service restored Oct 1914" }
   notes: "A corridor built to remove a dependency rather than to carry trade. The bypass response is what corridor_status should predict."
 
 - id: german_atlantic_cables
@@ -646,3 +684,72 @@
   load_bearing_source: estimate
   history:
     - { year: 2019.90, status: built, source: "gas flows from Dec 2019" }
+
+# ---------------------------------------------------------------- 1914-1945 corridors (turn era-1914-1945, added 2026-09-06)
+- id: narvik_ore_railway
+  name: Ofotbanen / Malmbanan (Kiruna–Narvik iron-ore railway)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: NOR
+  geometry: { line: [[22.2, 65.6], [20.2, 67.9], [18.7, 68.3], [17.4, 68.4]] }
+  transits: [SWE, NOR]
+  load_bearing_for: { DEU: 0.4, SWE: 0.5 }
+  load_bearing_source: estimate
+  notes: "Germany drew roughly 9-11 Mt/yr of Swedish iron ore, about 40% of consumption; the Gulf of Bothnia freezes, so the winter route is Narvik. The corridor is the stated object of both the Allied mining of the Norwegian Leads and the German invasion, 8-9 Apr 1940."
+  history:
+    - { year: 1902.90, status: built, controller: NOR, source: "line opened 15 Nov 1902 (Riksgransen–Narvik)" }
+    - { year: 1940.27, status: contested, controller: NOR, source: "Allied mining of the Leads 8 Apr 1940 and the German invasion 9 Apr 1940; Narvik changes hands three times" }
+    - { year: 1940.44, status: built, controller: DEU, source: "Allied evacuation of Narvik 8 Jun 1940" }
+    - { year: 1945.35, status: built, controller: NOR, source: "German capitulation in Norway 8 May 1945" }
+
+- id: trans_iranian_railway
+  name: Trans-Iranian Railway (the Persian Corridor)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: IRN
+  geometry: { line: [[49.2, 30.4], [48.7, 31.3], [50.9, 33.0], [51.4, 35.7], [53.4, 36.7], [54.0, 36.9]] }
+  transits: [IRN]
+  load_bearing_for: { IRN: 0.6, RUS: 0.25, GBR: 0.3 }
+  load_bearing_source: estimate
+  notes: "The era's cleanest instance of chokepoint closure creating a corridor: with the Turkish Straits shut to belligerents under Montreux Art. 19 and the Arctic route contested, roughly 4.16 Mt of Lend-Lease moved to the USSR through Iran. Built debt-free on sugar and tea duties, then taken by the states it was built to keep out."
+  history:
+    - { year: 1938.65, status: built, controller: IRN, source: "through service Bandar Shahpur–Tehran–Bandar Shah, Aug 1938" }
+    - { year: 1941.65, status: built, controller: GBR, source: "Anglo-Soviet invasion 25-31 Aug 1941 (war record: iran_1941); joint British/Soviet operation of the line" }
+    - { year: 1946.00, status: built, controller: IRN, source: "Allied withdrawal, spring 1946" }
+
+- id: burma_road
+  name: Burma Road (Lashio–Kunming)
+  kind: corridor
+  mode: multimodal
+  status: built
+  controller: CHN
+  geometry: { line: [[97.8, 22.9], [98.5, 24.4], [99.2, 25.1], [100.2, 25.6], [102.7, 25.0]] }
+  transits: [CHN, MMR]
+  load_bearing_for: { CHN: 0.7 }
+  load_bearing_source: estimate
+  notes: "China's last land supply route after the coast fell. The Jul-Oct 1940 closure is a corridor shut by diplomatic pressure with no war on any transit state — the second falsifier for chokepoint_status, whose covariates are all conflict terms."
+  history:
+    - { year: 1938.98, status: built, controller: CHN, source: "opened Dec 1938" }
+    - { year: 1940.55, status: closed, controller: GBR, source: "Britain closes the Burmese section to Chinese war material 18 Jul 1940 under Japanese pressure" }
+    - { year: 1940.80, status: built, controller: GBR, source: "reopened 18 Oct 1940" }
+    - { year: 1942.35, status: closed, controller: JPN, source: "Japanese conquest of Burma, Apr-May 1942; substituted by the Hump airlift" }
+    - { year: 1945.05, status: built, controller: CHN, source: "Ledo/Stilwell Road through to Kunming, Jan 1945" }
+
+- id: mediterranean_route
+  name: Mediterranean through-route (Gibraltar–Sicilian Narrows–Suez)
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: GBR
+  geometry: { point: [11.5, 36.5] }
+  transits: [ESP, ITA, EGY, GBR]
+  load_bearing_for: { GBR: 0.6, ITA: 0.5, FRA: 0.4, IND: 0.4 }
+  load_bearing_source: estimate
+  notes: "Without this record the Suez entry asserts an open canal for 1940-43, the years nobody could reach it: Allied traffic went round the Cape, adding roughly 40 days per voyage."
+  history:
+    - { year: 1904.29, status: open, controller: GBR, source: "Entente Cordiale 8 Apr 1904; the route is British-Italian-French in peacetime" }
+    - { year: 1940.44, status: closed, controller: ITA, source: "Italian entry 10 Jun 1940: Allied through-traffic reroutes via the Cape" }
+    - { year: 1943.38, status: contested, controller: GBR, source: "Tunis falls 13 May 1943" }
+    - { year: 1943.60, status: open, controller: GBR, source: "first through convoy since 1940 sails in Aug 1943 (date is an estimate)" }

@@ -8,6 +8,9 @@ export function mulberry32(seed) {
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+// Structural drift constants. GROWTH_MEAN is the panel's live-actor mean log growth 1900–2000 (n=8,453, mean 0.0172,
+// sd 0.0705); GROWTH_PHI gives the deviation from it a ~4-year half-life. Source: data/panel.json gdp_growth.
+const GROWTH_MEAN = 0.0172, GROWTH_PHI = 0.85;
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /** Build one actor's state at year `at` from its panel row. `asOf` only marks which staleness is recorded. */
@@ -41,6 +44,9 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
  */
 export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
+  // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
+  // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
+  events = events.filter(e => (e.year ?? e.start) <= asOf);
   const actors = {};
   const lifecycleIds = [];
   for (const [id, vars] of Object.entries(panel.actors)) {
@@ -53,8 +59,13 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   const dyadRecent = new Map();
   for (const e of events) if ((e.kind === 'mid_force' || e.kind === 'mid_war') && e.a && e.b && e.year <= asOf && e.year > asOf - 5) dyadRecent.set(pairKey(e.a, e.b), asOf);
   const nukes = new Set(); for (const e of events) if (e.kind === 'nuclear' && e.status === 'weapon' && e.year <= asOf) nukes.add(e.actor);
+  // entry prior: the median live actor at asOf, used to instantiate an actor introduced inside the horizon whose panel
+  // row at asOf is empty (a colony has no regime or income series). A stated, dated imputation — the alternative is a
+  // structural zero, which reads as "this state cannot have a regime transition" for the whole decolonisation cohort.
+  const med = (v) => { const xs = Object.values(actors).map(a => a.cur[v]).filter(x => x != null).sort((p, q) => p - q); return xs.length ? xs[Math.floor(xs.length / 2)] : null; };
+  const entryPrior = Object.fromEntries(['regime', 'polyarchy', 'gdp_pc', 'log_gdp_pc', 'gdp_growth', 'population', 'tpop'].map(v => [v, med(v)]));
   return {
-    year: asOf, asOf, actors, dyadRecent, nukes,
+    year: asOf, asOf, actors, dyadRecent, nukes, entryPrior,
     allied: alliedAt(pacts, asOf), contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
     fits, templates, log: [],
@@ -173,7 +184,18 @@ function stepLifecycle(world, y) {
   if (y > panel.meta.y1 || i < 0) return;   // past the panel's last year there are no dated membership facts: the universe stands as it is (a forward run is not a retirement)
   for (const id of ids) {
     const vars = panel.actors[id]; const alive = vars.live?.[i] === 1; const present = world.actors[id] != null;
-    if (alive && !present) world.actors[id] = buildActorState({ panel, events, id, vars, at: y, asOf: world.asOf });
+    // as-of dating: an actor introduced inside the horizon enters with its state as last observed at asOf, not with the
+    // panel row of the year it appears (which is an observation the forecaster cannot have). Where the panel has nothing
+    // for it at asOf its covariates are null and it simply carries no hazard — an honest miss, not a seeded truth.
+    if (alive && !present) {
+      const a = buildActorState({ panel, events, id, vars, at: Math.min(y, world.asOf), asOf: world.asOf });
+      a.imputed = [];
+      for (const [v, x] of Object.entries(world.entryPrior ?? {})) if (x != null && a.cur[v] == null) { a.cur[v] = x; a.prev[v] = x; a.imputed.push(v); }
+      if (a.cur.gdp_pc != null && a.cur.log_gdp_pc == null) a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc);
+      // flags and ties an actor that does not yet exist cannot have: a structural zero, not a missing value
+      for (const v of ['at_war', 'intrastate', 'mid_force', 'mid_war', 'coup_attempt', 'coup_success', 'interstate_ucdp', 'pact_usa', 'pact_rus', 'defence_pacts', 'sp_client_any', 'sp_client_one', 'great_game', 'aid_conditionality']) { a.cur[v] ??= 0; a.prev[v] ??= 0; }
+      world.actors[id] = a;
+    }
   }
   for (const id of ids) {
     const vars = panel.actors[id]; const alive = vars.live?.[i] === 1; const a = world.actors[id];
@@ -197,7 +219,12 @@ export function stepYear(world, rng, opts = {}) {
     const a = world.actors[id]; a.prev = { ...a.cur };
     const warShock = a.cur.at_war ? -0.04 : 0;
     const shock = (rng() - 0.5) * 0.04;
-    if (a.cur.gdp_pc != null) { const g = a.growth + warShock + shock; a.cur.gdp_pc *= Math.exp(g); a.cur.gdp_growth = g; a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc); }
+    // the trailing 10-year growth rate is a state, not a constant: it decays toward the panel's long-run mean.
+    // Freezing it for a 20-year horizon projected the 1910–20 collapse forward to 1940 (one actor's gdp_pc fell to
+    // 1/12 of the observed value, 3.3 sd on a covariate carrying −0.37 on autocratic_closure).
+    a.driftYears = (a.driftYears ?? 0) + 1;
+    const g0 = GROWTH_MEAN + (a.growth - GROWTH_MEAN) * Math.pow(GROWTH_PHI, a.driftYears);
+    if (a.cur.gdp_pc != null) { const g = g0 + warShock + shock; a.cur.gdp_pc *= Math.exp(g); a.cur.gdp_growth = g; a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc); }
     if (a.cur.population != null) a.cur.population *= Math.exp(a.popGrowth);
     if (a.cur.tpop != null) a.cur.tpop *= Math.exp(a.popGrowth);
     if (a.cur.leader_age != null) { a.cur.leader_age += 1; a.cur.leader_tenure = (a.cur.leader_tenure ?? 0) + 1; }
@@ -211,8 +238,10 @@ export function stepYear(world, rng, opts = {}) {
     a.cur.unipolar_us = y >= 1992 && y <= 2016 ? 1 : 0;
     // aid conditionality is zero by construction outside the promotion era — a structural zero, not a missing value
     a.cur.aid_conditionality = a.cur.unipolar_us ? Math.min(a.cur.aid_gni ?? 0, 30) / 10 : 0;
-    // major-power status is a dated list membership (like introduction/retirement), not a simulated outcome: read it forward
-    { const gp = world.lifecycle?.panel.actors[id]?.great_power?.[y - world.lifecycle.Y0]; if (gp != null) a.cur.great_power = gp; }
+    // major-power status is frozen at as-of, like the alliance and border graphs and like world.nukes: who stops being a
+    // great power in 1917, 1918, 1943 and 1945 is an outcome of the horizon, not a fact the forecaster holds. Reading the
+    // panel forward was worth ~0.03 of the pre-1946 dyad AUC (it gates the politically-relevant filter and carries
+    // major_power_any). Great-power entry/exit as a modelled hazard is an escalation (docs/escalations.md).
     a.cur.hegemon_x_client = a.cur.pact_usa ? (a.cur.hegemon_regime ?? 3) : 0;   // panel var: the hegemon's own regime score, no actor id in the engine
     if (a.cur.info_access != null) { const r = y >= 1985 ? 0.15 : 0.03; const x = Math.max(0.02, a.cur.info_access); a.cur.info_access = Math.min(1, x + r * x * (1 - x)); }
     // clear annual flags; decay conflicts

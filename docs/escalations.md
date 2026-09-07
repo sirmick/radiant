@@ -73,3 +73,51 @@ Proposals from the refinement loop that add a new effect, variable or mechanism.
 **Templates it feeds.** Every actor-year template carrying `log_gdp_pc` or `log(population)` — most of the regime ladder and `intrastate_onset`.
 
 **Test that decides it.** `AUT_HUN.population[1870] > 30,000,000`, `OTTOMAN.population[1870] > 25,000,000`, `OTTOMAN.gdp_pc` non-null for ≥30 of 1870–1914, and the build guard passing at the 30% threshold.
+
+## era-1914-1945 / engine-1 + statistics-3 — coalition joining, and a dyad relevance set that is not frozen at as-of
+
+**Adds.** (a) A coalition step in `stepYear`: when a `mid_war` fires between a and b, form sides, then draw each defence-pact neighbour of each side into the war with probability `p_join`, emitting every joiner × opposing-side pair as a `mid_war` and writing it into `world.dyadRecent`. (b) A relevance rule that is evaluated at the simulated year rather than frozen at as-of: a dyad is at risk if contiguous *now*, or either side is a great power, **or** either side is at war with a state allied to the other. Both `src/engine/core.js:dyadHazards` and `scripts/fit-hazards.mjs:buildDyadRows` must change together, or the fit and the simulation stop being the same model.
+
+**Why.** After this turn's label fix the residual is entirely structural: at as-of 1930 `mid_war` has 75 of 202 observed dyads at p ≡ 0, at as-of 1940 87 of 174, and `mid_force` 104 and 128. `src/engine/core.js` gates every dyad on `if (!contiguous && !major) return out;` with the border graph frozen at as-of, so a small-power pair on opposite sides of a coalition war — BEL|BGR, BRA|FIN, CAN|HUN — has probability exactly zero for all twenty years. No independent-Bernoulli dyad process can produce a coalition war either: the 1941 peak is 99 simultaneous dyadic wars. `lag1(at_war_any)` (promoted this turn, +2.12) reaches the pairs inside the gate and nothing reaches the pairs outside it.
+
+**Data it needs.** None. `p_join` is calibrated from the `sides:` lists already in `data/history/events.yaml` (ww1, ww2, korean, gulf_1991): observed joiners over allies-of-a-belligerent per war.
+
+**Templates it feeds.** `mid_war`, `mid_force`, and through `at_war` every actor-year template carrying `lag1(at_war)`.
+
+**Test that decides it.** `node scripts/backtest.mjs --from 1910 --to 1940 --step 10 --horizon 20 --runs 100 --universe all`: `n_structural_miss` for `mid_war` falls below 20 at as-of 1930 and 1940 (now 75 and 87) with `auc_at_risk` not below its current 0.75 / 0.74, and pooled `mid_war` skill above 0.117. Guard: as-of 1950–2000 `mid_war` exp/obs must not rise above its current 2.62 — a joining rule that fires in the wrong era makes the standing over-prediction worse.
+
+## era-1914-1945 / engine-5 — war duration (the damping this turn's contagion term needs)
+
+**Adds.** A `warLeft` counter for interstate war mirroring `conflictLeft`: a fired `mid_war` holds `at_war = 1` on both belligerents for a drawn duration, suppresses a duplicate draw on a dyad already at war, and applies `warShock` for the whole spell. (Supersedes the duration half of `era-1870-1914 / engine-7`; the nesting half was resolved this turn in the labels — `mid_war` now nests inside `mid_force` by construction.)
+
+**Why.** `src/engine/core.js` clears `a.cur.at_war = 0` every step and only a fresh draw re-sets it: 84% of simulated at-war spells last one year against 33% in the panel, whose mode is 7. This turn promoted `lag1(at_war_any)` to `mid_war` at +2.12 on the strength of a holdout gain (AUC 0.757 → 0.850 forecasting 1939+ out of sample), and the measured cost is amplification without duration: 1950–2000 `mid_war` exp/obs 1.66 → 2.62. A war that lasts one year cannot carry a coalition, but it can restart every year in a fresh dyad.
+
+**Data it needs.** None; the duration distribution is the panel's own `at_war` run lengths.
+
+**Templates it feeds.** `mid_war`, `mid_force`, `autocratic_closure`, `democratize_step`, `intrastate_onset`, `irregular_exit` — everything with an `at_war` term.
+
+**Test that decides it.** The simulated `at_war` run-length histogram from as-of 1920 moves from 84% one-year spells toward the panel's 33%, and 1950–2000 `mid_war` exp/obs falls from 2.62 below 1.5 without the 1910–1940 pooled exp/obs (0.44) falling below 0.35.
+
+## era-1914-1945 / statistics-8 + engine-8 + corridors-7 — make the corridor layer scorable
+
+**Adds.** The corridor-year / chokepoint-year sample this turn's data now supports: one row per record per year built from `history`, with `adjacent_war` / `transit_at_war_any` joined from the panel's `at_war` over `transits`, `sponsor_great_power` from `great_power`, and dated `transits_history` (or a fallback to the history row's `controller`) so a transit state that did not exist yet — OTTOMAN before TUR, EGY 1883–1921 — does not null the covariate. Plus the dampener `data/schema.md` already specifies as a dyad covariate.
+
+**Why.** This turn added 12 corridor/chokepoint events in 1919–1934 (there were none), 19 in 1938–45 (there were 3) and four WWII corridor records, and 53 territory events in 1914–46 (there was one). `chokepoint_status` and `corridor_status` are still `status: unfitted` in `data/fits.json` because `scripts/fit-hazards.mjs` skips every `chokepoint-year`/`corridor-year` unit outright, so none of it is scored anywhere. Two of the new rows are the falsifiers for a covariate set that is entirely conflict terms: the Panama slides of 1915 close a canal with no war attached, and Britain closes the Burma Road in Jul 1940 under diplomatic pressure with no war on any transit state.
+
+**Data it needs.** None — `data/corridors.yaml` now carries 47 records with dated histories.
+
+**Templates it feeds.** `chokepoint_status`, `corridor_status`, and as a dampener `mid_force` / `mid_war`.
+
+**Test that decides it.** `node scripts/fit-hazards.mjs chokepoint_status corridor_status` reports `fitted` with n ≥ 200 corridor-years and events ≥ 30; both templates appear in every `byAsOf` row of the 1910–1940 backtest with n > 0; the dampener is kept only on a Brier improvement in both 1910–1940 and 1950–2000.
+
+## era-1914-1945 / engine-4b — an entry state for actors born inside the horizon that is derived, not median
+
+**Adds.** Replace this turn's world-median entry prior with a derived one: an actor introduced inside the horizon inherits from its predecessor entity (`lifecycle.successors` inverted) where one exists, else from the median of its *region* at as-of rather than the world, with the imputation recorded per variable on the actor state and surfaced in the backtest row.
+
+**Why.** The leak is fixed (an introduced actor is now built from the panel at as-of, not at its birth year) but the replacement is crude: `world.entryPrior` is the median live actor at as-of for regime, polyarchy, gdp_pc, gdp_growth, population and tpop. It is the difference between scoring the decolonisation cohort and not scoring it — at as-of 1940 `democratize_step` goes from 50 units the model cannot reach to 9 — but a single world median for 44 states is a stated prior, not a forecast. `cinc` is deliberately *not* imputed, so a newborn actor still carries no dyads at all.
+
+**Data it needs.** A region field per actor (Natural Earth subregion is already in `data/geo`), or the predecessor mapping.
+
+**Templates it feeds.** Every actor-year template; `mid_force`/`mid_war` if `cinc` is ever imputed too.
+
+**Test that decides it.** At as-of 1940, `democratize_step` `auc_at_risk` rises above its current 0.44 and the pooled 1910–1940 skill above −0.25, with the imputed-variable counts reported per as-of row.

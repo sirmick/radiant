@@ -15,13 +15,31 @@
 - { kind: war, id: italo_turkish, start: 1911.7, end: 1912.8, sides: [[ITA], [OTTOMAN]] }
 - { kind: war, id: balkan_1, start: 1912.8, end: 1913.4, sides: [[SRB, BGR, GRC], [OTTOMAN]] }
 - { kind: war, id: balkan_2, start: 1913.5, end: 1913.6, sides: [[SRB, GRC, ROU, OTTOMAN], [BGR]] }
-- { kind: war, id: ww1, start: 1914.6, end: 1918.9, sides: [[FRA, GBR, RUS, ITA, JPN, USA, SRB, ROU, GRC, BEL], [DEU, AUT_HUN, OTTOMAN, BGR]] }
+- { kind: war, id: ww1, start: 1914.6, end: 1918.9, sides: [[FRA, GBR, RUS, ITA, JPN, USA, SRB, ROU, GRC, BEL], [DEU, AUT_HUN, OTTOMAN, BGR]],
+    entries: { FRA: 1914.59, GBR: 1914.59, RUS: 1914.58, SRB: 1914.57, BEL: 1914.60, DEU: 1914.58, AUT_HUN: 1914.57, JPN: 1914.64, OTTOMAN: 1914.83, ITA: 1915.39, BGR: 1915.78, ROU: 1916.65, USA: 1917.26, GRC: 1917.50 },
+    exits: { RUS: 1918.17, ROU: 1918.35, BGR: 1918.75, OTTOMAN: 1918.83, AUT_HUN: 1918.83 },
+    source: "declarations of war: Austria-Hungary–Serbia 28 Jul 1914, Germany–Russia 1 Aug, Germany–France 3 Aug, Britain 4 Aug, Japan 23 Aug, Ottoman entry 29 Oct/2 Nov 1914, Italy 23 May 1915, Bulgaria 14 Oct 1915, Romania 27 Aug 1916, USA 6 Apr 1917, Greece 2 Jul 1917. Exits: Brest-Litovsk 3 Mar 1918, Bucharest 7 May 1918, Salonica armistice 29 Sep 1918, Mudros 30 Oct 1918, Villa Giusti 3 Nov 1918",
+    notes: "Per-participant entry/exit: the war-level span used to stamp at_war=1 on the USA from 1914 and on Italy, Romania, Greece and Bulgaria before they entered" }
 - { kind: war, id: polish_soviet, start: 1919.2, end: 1920.8, sides: [[POL], [RUS]] }
 - { kind: war, id: greco_turkish, start: 1919.4, end: 1922.8, sides: [[GRC], [TUR]] }
 - { kind: war, id: chaco, start: 1932.5, end: 1935.5, sides: [[PRY], [BOL]] }
 - { kind: war, id: italo_ethiopian, start: 1935.8, end: 1936.4, sides: [[ITA], [ETH]] }
 - { kind: war, id: sino_japanese_1937, start: 1937.5, end: 1945.6, sides: [[JPN], [CHN]] }
-- { kind: war, id: ww2, start: 1939.7, end: 1945.6, sides: [[GBR, FRA, RUS, USA, CHN, CAN, AUS, NZL, ZAF, POL, GRC, NLD, BEL, NOR, BRA], [DEU, ITA, JPN, HUN, ROU, BGR, FIN]] }
+- { kind: war, id: ww2, start: 1939.7, end: 1945.6, sides: [[GBR, FRA, RUS, USA, CHN, CAN, AUS, NZL, ZAF, POL, GRC, NLD, BEL, NOR, BRA, DNK, LUX, SRB, EGY], [DEU, ITA, JPN, HUN, ROU, BGR, FIN, THA]],
+    entries: { POL: 1939.67, GBR: 1939.67, FRA: 1939.67, DEU: 1939.67, AUS: 1939.67, NZL: 1939.67, ZAF: 1939.68, CAN: 1939.69, DNK: 1940.27, NOR: 1940.27, NLD: 1940.36, BEL: 1940.36, LUX: 1940.36, ITA: 1940.44, GRC: 1940.82, SRB: 1941.26, RUS: 1941.47, FIN: 1941.48, HUN: 1941.49, ROU: 1941.47, USA: 1941.94, JPN: 1941.94, BGR: 1941.94, THA: 1942.07, BRA: 1942.64, EGY: 1945.15 },
+    exits: { ITA: 1943.69, FIN: 1944.72, ROU: 1944.64, BGR: 1944.69, HUN: 1945.30, DEU: 1945.35 },
+    source: "invasion and declaration dates: Poland 1 Sep 1939, GBR/FRA 3 Sep, Denmark/Norway 9 Apr 1940, Low Countries 10 May 1940, Italy 10 Jun 1940, Greece 28 Oct 1940, Yugoslavia 6 Apr 1941, USSR 22 Jun 1941, Finland 25 Jun 1941, Romania 22 Jun 1941, Hungary 27 Jun 1941, Pearl Harbor 7 Dec 1941 (USA/JPN), Bulgaria declares on GBR/USA 13 Dec 1941, Thailand 25 Jan 1942, Brazil 22 Aug 1942, Egypt 24 Feb 1945. Exits: Italian armistice 8 Sep 1943, Romania 23 Aug 1944, Bulgaria 9 Sep 1944, Finland 19 Sep 1944, Hungary Apr 1945, German surrender 8 May 1945",
+    notes: "China's war with Japan is carried by sino_japanese_1937 from 1937.5. France has no exit: the 1940-44 occupation years are nulled from the occupation record instead, so 1940 and 1945 stay at war and the occupied years are unknown rather than peaceful" }
+# Corridor wars of 1929-1941 the list jumped over (CoW Inter-State War 4.0 ids in `notes`); every one is fought over a line
+- { kind: war, id: cer_1929, start: 1929.60, end: 1929.97, sides: [[RUS], [CHN]], notes: "Sino-Soviet conflict over the Chinese Eastern Railway; Khabarovsk Protocol 22 Dec 1929 restores joint control", source: "CoW war 116 (Sino-Soviet)" }
+- { kind: war, id: manchurian, start: 1931.72, end: 1933.40, sides: [[JPN], [CHN]], notes: "Mukden Incident 18 Sep 1931 — a staged demolition on the South Manchuria Railway at Liutiaohu; Tanggu Truce 31 May 1933", source: "CoW war 118 (Manchurian)" }
+- { kind: war, id: saudi_yemeni, start: 1934.20, end: 1934.40, sides: [[SAU], [YEMEN_ARAB_REPUBLIC]], notes: "Treaty of Taif 20 May 1934", source: "CoW war 125 (Saudi-Yemeni)" }
+- { kind: war, id: changkufeng, start: 1938.55, end: 1938.63, sides: [[RUS], [JPN]], notes: "Lake Khasan, Jul-Aug 1938", source: "CoW war 133 (Changkufeng)" }
+- { kind: war, id: nomonhan, start: 1939.40, end: 1939.72, sides: [[RUS, MNG], [JPN]], notes: "Khalkhin Gol, May-Sep 1939 — settles the northern question and frees Japan for the south", source: "CoW war 136 (Nomonhan)" }
+- { kind: war, id: winter_war, start: 1939.92, end: 1940.20, sides: [[RUS], [FIN]], notes: "Moscow Peace 12 Mar 1940 cedes Karelia", source: "CoW war 142 (Russo-Finnish)" }
+- { kind: war, id: franco_thai, start: 1940.90, end: 1941.40, sides: [[THA], [FRA]], notes: "Tokyo mediation 9 May 1941", source: "CoW war 145 (Franco-Thai)" }
+- { kind: war, id: anglo_iraqi_1941, start: 1941.33, end: 1941.44, sides: [[GBR], [IRQ]], notes: "Rashid Ali coup; Habbaniya and the Kirkuk-Haifa pipeline corridor; armistice 31 May 1941", source: "Anglo-Iraqi War, 2-31 May 1941" }
+- { kind: war, id: iran_1941, start: 1941.65, end: 1941.67, sides: [[GBR, RUS], [IRN]], notes: "Anglo-Soviet invasion 25-31 Aug 1941 to open the Persian Corridor for Lend-Lease", source: "Operation Countenance, 25-31 Aug 1941" }
 - { kind: war, id: korean, start: 1950.5, end: 1953.6, sides: [[KOR, USA, GBR, TUR, CAN, AUS], [PRK, CHN]] }
 - { kind: war, id: suez_1956, start: 1956.8, end: 1956.9, sides: [[ISR, GBR, FRA], [EGY]] }
 - { kind: war, id: sino_indian, start: 1962.8, end: 1962.9, sides: [[CHN], [IND]] }
@@ -216,3 +234,33 @@
 - { kind: territory, id: korea, year: 1905.88, controller: JPN, status: protectorate, claimants: [KOREA], notes: "Eulsa treaty Nov 1905" }
 - { kind: territory, id: korea, year: 1910.64, controller: JPN, status: annexed, claimants: [KOREA], notes: "annexation 22 Aug 1910; KOREA retires in data/history/actors.yaml at 1910" }
 - { kind: territory, id: libya_dodecanese, year: 1912.80, controller: ITA, status: annexed, claimants: [OTTOMAN], notes: "Treaty of Ouchy 18 Oct 1912" }
+
+
+# ---------------------------------------------------------------- occupation spans (turn era-1914-1945, added 2026-09-06)
+# A state under foreign occupation is not making domestic politics. These spans do three things:
+#   1. scripts/build-events.mjs stamps `cause: occupation` on a regime_change inside [floor(start), ceil(end)] and
+#      `cause: imposed` on one in (ceil(end), imposed_until] — the restoration or the settlement written by the occupier;
+#      the domestic regime templates filter both out (data/templates.yaml `event_filter: { cause: null }`).
+#   2. scripts/build-panel.mjs nulls NMC capabilities and the dispute/alliance flags for the fully occupied years
+#      (ceil(start)..floor(end)), so an occupied year is unknown rather than a peaceful non-event.
+#   3. the occupied years are visible as data rather than as an unexplained hole in the series.
+# `imposed_until` is the end of externally-written politics; where it is not a treaty date it is an estimate.
+- { kind: occupation, actor: ETH, start: 1936.35, end: 1941.35, by: ITA, imposed_until: 1941.9, source: "Addis Ababa falls 5 May 1936, annexation 9 May 1936; liberated 5 May 1941" }
+- { kind: occupation, actor: AUT, start: 1938.19, end: 1955.37, by: DEU, imposed_until: 1955.9, source: "Anschluss 12 Mar 1938; Allied occupation 1945-55; State Treaty 15 May 1955" }
+- { kind: occupation, actor: CZECHOSLOVAKIA, start: 1939.20, end: 1945.35, by: DEU, imposed_until: 1946.9, source: "Protectorate of Bohemia and Moravia 15 Mar 1939; liberation 9 May 1945" }
+- { kind: occupation, actor: ALB, start: 1939.27, end: 1944.90, by: ITA, imposed_until: 1946.9, source: "Italian invasion and annexation 7 Apr 1939; German withdrawal Nov 1944" }
+- { kind: occupation, actor: POL, start: 1939.75, end: 1945.10, by: DEU, imposed_until: 1947.9, source: "fourth partition 28 Sep 1939; Soviet occupation from 1944; the Provisional Government of National Unity holds the 1947 elections under Soviet control (imposed_until is that election, Jan 1947)" }
+- { kind: occupation, actor: DNK, start: 1940.27, end: 1945.35, by: DEU, imposed_until: 1946.9, source: "Operation Weserübung 9 Apr 1940; German surrender in Denmark 5 May 1945" }
+- { kind: occupation, actor: NOR, start: 1940.27, end: 1945.35, by: DEU, imposed_until: 1946.9, source: "9 Apr 1940; capitulation of German forces 8 May 1945" }
+- { kind: occupation, actor: NLD, start: 1940.36, end: 1945.35, by: DEU, imposed_until: 1946.9, source: "10 May 1940; liberation 5 May 1945" }
+- { kind: occupation, actor: BEL, start: 1940.36, end: 1944.72, by: DEU, imposed_until: 1946.9, source: "10 May 1940; Brussels liberated 3 Sep 1944" }
+- { kind: occupation, actor: LUX, start: 1940.36, end: 1944.70, by: DEU, imposed_until: 1946.9, source: "10 May 1940; liberated 10 Sep 1944" }
+- { kind: occupation, actor: FRA, start: 1940.47, end: 1944.65, by: DEU, imposed_until: 1947.9, source: "armistice 22 Jun 1940; Paris liberated 25 Aug 1944; the Fourth Republic constitution 27 Oct 1946 seats its first legislature in Jan 1947 (imposed_until)" }
+- { kind: occupation, actor: SRB, start: 1941.29, end: 1945.10, by: DEU, imposed_until: 1946.9, source: "invasion of Yugoslavia 6 Apr 1941 and partition; Belgrade 20 Oct 1944, whole territory spring 1945" }
+- { kind: occupation, actor: GRC, start: 1941.31, end: 1944.79, by: DEU, imposed_until: 1947.9, source: "invasion 6 Apr 1941; Athens liberated 12 Oct 1944; the 1946 plebiscite and the civil war run under British supervision" }
+- { kind: occupation, actor: PHL, start: 1942.05, end: 1945.60, by: JPN, imposed_until: 1946.9, source: "Manila falls 2 Jan 1942; liberation 1945; independence 4 Jul 1946" }
+- { kind: occupation, actor: ITA, start: 1943.69, end: 1945.95, by: USA, imposed_until: 1947.9, source: "armistice 8 Sep 1943; Allied Military Government to 1945; the Paris peace treaty is signed 10 Feb 1947" }
+- { kind: occupation, actor: HUN, start: 1944.75, end: 1947.71, by: RUS, imposed_until: 1949.0, source: "Soviet occupation from autumn 1944; Allied Control Commission to the Paris peace treaty 15 Sep 1947" }
+- { kind: occupation, actor: BGR, start: 1944.69, end: 1947.71, by: RUS, imposed_until: 1949.9, source: "Soviet entry 8 Sep 1944; Allied Control Commission to the Paris peace treaty 15 Sep 1947; Dimitrov constitution Dec 1947 (imposed_until is an estimate)" }
+- { kind: occupation, actor: DEU, start: 1945.35, end: 1949.40, by: USA, imposed_until: 1955.4, source: "unconditional surrender 8 May 1945; Basic Law 23 May 1949; occupation statute ends 5 May 1955" }
+- { kind: occupation, actor: JPN, start: 1945.65, end: 1952.29, by: USA, imposed_until: 1952.9, source: "surrender 2 Sep 1945; SCAP to the San Francisco treaty 28 Apr 1952 — the 1946 constitution is written under occupation" }

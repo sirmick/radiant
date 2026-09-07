@@ -94,14 +94,33 @@ export function makeCodeMap(actors, system = 'cow') {
   };
 }
 
-/** OWID/ISO3 entity code -> actor id (modern successor series stand in for predecessors). */
-export function makeOwidMap(actors) {
-  const m = new Map();
-  for (const a of actors.values()) if (a.owid) (m.get(a.owid) ?? m.set(a.owid, []).get(a.owid)).push(a);
+/**
+ * OWID/ISO3 entity code -> actor id (modern successor series stand in for predecessors).
+ * An actor may declare `owid_alt: [{ code, from, to }]` — an entity-wide series (OWID_USS, OWID_YGS, OWID_CZS)
+ * that is the right series for that actor inside [from, to). With `preferAlt` (used for the borders-sensitive
+ * series: Maddison gdp_pc and OWID population) the actor's primary code returns null inside an alt window, so the
+ * modern-borders series does not overwrite the entity-wide one. Other files (V-Dem, WB, energy) keep the primary code.
+ */
+export function makeOwidMap(actors, { preferAlt = false } = {}) {
+  const m = new Map();          // code -> [actor]
+  const alt = new Map();        // code -> [{ actor, from, to }]
+  const altWindows = new Map(); // actor id -> [[from, to], ...]
+  for (const a of actors.values()) {
+    if (a.owid) (m.get(a.owid) ?? m.set(a.owid, []).get(a.owid)).push(a);
+    for (const x of a.owid_alt ?? []) {
+      (alt.get(x.code) ?? alt.set(x.code, []).get(x.code)).push({ a, from: x.from ?? 1816, to: x.to ?? null });
+      (altWindows.get(a.id) ?? altWindows.set(a.id, []).get(a.id)).push([x.from ?? 1816, x.to ?? null]);
+    }
+  }
+  const inAltWindow = (id, year) => (altWindows.get(id) ?? []).some(([f, t]) => year >= f && (t == null || year < t));
   return (code, year) => {
+    const av = alt.get(code);
+    if (av) { const hit = av.find(x => year >= x.from && (x.to == null || year < x.to)); if (hit) return hit.a.id; }
     const list = m.get(code); if (!list) return null;
     const live = list.filter(a => isLive(a, year));
-    return (live[0] ?? list[0]).id;
+    const id = (live[0] ?? list[0]).id;
+    if (preferAlt && inAltWindow(id, year)) return null;   // the entity-wide alt series owns this year
+    return id;
   };
 }
 
