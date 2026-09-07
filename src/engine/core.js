@@ -53,6 +53,19 @@ export function warRunLengths(panel, asOf) {
 }
 const drawWarDuration = (world, rng) => { const d = world.warDurations; return d && d.length ? d[Math.floor(rng() * d.length)] : 1; };
 
+// Ablation switches, node only (the browser build reads nothing here): ENGINE_ABLATE=war_duration,war_nesting turns a
+// mechanism off so the backtest can score it on its own. With both off the dyad draw is the pre-2026-09-07 one, and the
+// random stream is deliberately the same either way — two draws per dyad-year — so an ablation differs by mechanism only.
+const ABLATE = ((typeof process !== 'undefined' && process.env && process.env.ENGINE_ABLATE) || '').split(',').map(s => s.trim());
+const NO_NESTING = ABLATE.includes('war_nesting');
+/**
+ * Whether war duration is switched on. It is declared in the data, not here: `duration.status` on the dyadic war
+ * template in data/templates.yaml. It stands at `candidate` — built, measured on 2026-09-07 and not promoted, because
+ * it moves every pooled calibration number the wrong way (the numbers are in that file under `rejected:`). Flipping it
+ * to `active` reproduces the measured run; ENGINE_ABLATE=war_duration forces it off whatever the data says.
+ */
+const warDurationOn = (templates) => !ABLATE.includes('war_duration') && (templates ?? []).some(t => t.unit === 'dyad-year' && t.duration?.status === 'active');
+
 /** Build one actor's state at year `at` from its panel row. `asOf` only marks which staleness is recorded. */
 function buildActorState({ panel, events, id, vars, at, asOf }) {
   const Y0 = panel.meta.y0;
@@ -110,11 +123,12 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   const entryPrior = Object.fromEntries(['regime', 'polyarchy', 'gdp_pc', 'log_gdp_pc', 'gdp_growth', 'population', 'tpop'].map(v => [v, med(v)]));
   return {
     year: asOf, asOf, actors, dyadRecent, nukes, entryPrior,
-    // interstate war is a spell, not a flag: warSpells holds the years left on each pair's war, warDurations is the
-    // panel's own run-length distribution as observed at asOf, and warSeed is the set of actors already at war at asOf
-    // (a war in progress gets a fresh draw from the same distribution as its residual — a stated approximation).
-    warSpells: new Map(), warDurations: warRunLengths(panel, asOf),
-    warSeed: new Set(Object.keys(actors).filter(id => actors[id].cur.at_war > 0)),
+    // interstate war as a spell rather than a one-year flag: warSpells holds the years left on each pair's war,
+    // warDurations is the panel's own run-length distribution as observed at asOf, and warSeed is the set of actors
+    // already at war at asOf (a war in progress takes a fresh draw as its residual — a stated approximation).
+    // Both are null unless the data switches the mechanism on (see warDurationOn), and then warSpells stays empty.
+    warSpells: new Map(), warDurations: warDurationOn(templates) ? warRunLengths(panel, asOf) : null,
+    warSeed: warDurationOn(templates) ? new Set(Object.keys(actors).filter(id => actors[id].cur.at_war > 0)) : null,
     rivalryDecay: rivalryDecay(templates),
     allied: alliedAt(pacts, asOf), contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
@@ -332,15 +346,17 @@ export function stepYear(world, rng, opts = {}) {
   // no fresh onset to draw: the spell it is in is the same conflict.
   if (!opts.skipDyads) for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
     const a = world.actors[ids[i]], b = world.actors[ids[j]]; const k = pairKey(a.id, b.id);
-    if (world.warSpells.has(k)) continue;
     const hz = dyadHazards(world, a, b);
-    if (hz.mid_force == null || !(rng() < hz.mid_force)) continue;
-    fired.push({ kind: 'mid_force', a: a.id, b: b.id, year: y }); world.dyadRecent.set(k, y); a.cur.mid_force = 1; b.cur.mid_force = 1;
-    if (hz.mid_war == null) continue;
-    if (rng() < hz.mid_war / Math.max(hz.mid_force, hz.mid_war)) {
-      fired.push({ kind: 'mid_war', a: a.id, b: b.id, year: y });
+    const suppressed = world.warSpells.has(k);   // a pair already inside a war spell has no fresh onset to draw
+    const u1 = hz.mid_force != null ? rng() : null;
+    const force = u1 != null && u1 < hz.mid_force && !suppressed;
+    if (force) { fired.push({ kind: 'mid_force', a: a.id, b: b.id, year: y }); world.dyadRecent.set(k, y); a.cur.mid_force = 1; b.cur.mid_force = 1; }
+    const u2 = hz.mid_war != null ? rng() : null;
+    const pWar = suppressed ? 0 : NO_NESTING ? hz.mid_war : force ? hz.mid_war / Math.max(hz.mid_force ?? 0, hz.mid_war) : 0;
+    if (u2 != null && u2 < pWar) {
+      fired.push({ kind: 'mid_war', a: a.id, b: b.id, year: y }); world.dyadRecent.set(k, y);
       a.cur.at_war = 1; b.cur.at_war = 1; a.cur.mid_war = 1; b.cur.mid_war = 1;
-      const dur = drawWarDuration(world, rng); if (dur > 1) world.warSpells.set(k, dur - 1);
+      if (world.warDurations) { const dur = drawWarDuration(world, rng); if (dur > 1) world.warSpells.set(k, dur - 1); }
     }
   }
   world.log.push(...fired);

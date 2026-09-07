@@ -14,5 +14,8 @@ const only = new Set(process.argv.slice(2).filter((x, i, arr) => !FLAGS.has(x) &
 
 const fitter = createFitter(loadFitInputs());
 const { fits, lines } = fitter.fitAll({ only, splitOverride: SPLIT_OVERRIDE, maxYear: MAX_YEAR });
-if (SPLIT_OVERRIDE == null && MAX_YEAR == null) writeFileSync('data/fits.json', JSON.stringify({ meta: { built: new Date().toISOString() }, fits }, null, 1));
+// only a full, unrestricted fit may rewrite data/fits.json — a run naming one template used to overwrite the file
+// with that one template's fit and silently drop the rest.
+if (SPLIT_OVERRIDE == null && MAX_YEAR == null && !only.size) writeFileSync('data/fits.json', JSON.stringify({ meta: { built: new Date().toISOString() }, fits }, null, 1));
+else console.log(`(partial run: data/fits.json not rewritten)`);
 console.log(lines.join('\n'));

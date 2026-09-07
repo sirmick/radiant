@@ -98,6 +98,20 @@ Era rows this package targets, pooled: 1870–1910 `mid_force` 0.28 · +0.10 · 
 
 **Test that decides it.** No run may log a `mid_war` for a dyad-year without a `mid_force` in the same dyad-year; `mid_war` exp/obs at as-of 1870 falls from 2.88 toward ~1.5 and pooled `mid_war` skill rises, with `mid_force` exp/obs and AUC unchanged.
 
+**Status:** implemented (2026-09-07) — the nesting half. The duration half was split out to `era-1914-1945 / engine-5` and is *not* promoted; its numbers are there.
+
+**Implemented as.** `src/engine/core.js:stepYear` draws the dispute first and the war only inside it: `P(war | dispute) = hz.mid_war / max(hz.mid_force, hz.mid_war)` — the first of the two forms the package offered, chosen because it needs no second fit and leaves the marginal alone wherever `p_war <= p_form`, which is where the coefficients put it. Where the war model runs hotter than the dispute model (the cascade years, when `lag1(at_war_any)` = +2.13 is on for `mid_war` and +1.16 for `mid_force`) the war probability is capped at the dispute's own, and that cap is the whole effect. The two random draws per dyad-year are kept even when the dispute misses, so an ablation differs by mechanism and not by random stream. `data/templates.yaml` records the chosen form in `mid_war.notes`. `ENGINE_ABLATE=war_nesting` restores the independent draws.
+
+**Test result.** `node scripts/war-spells.mjs --as-of 1920 --runs 100`: **5,610 simulated dyadic wars, 0 of them in a dyad-year without a `mid_force` in the same dyad and year.** The as-of 1870 row the package named no longer exists (no fitted dyad model there since `statistics-4`), so the calibration half is read at the as-of years that do: `mid_war` exp/obs 4.61 (was 5.14) at as-of 1970, 4.23 (4.75) at 1980, 2.33 (2.61) at 1990, and pooled `mid_war` skill −0.058 → **−0.035** with `mid_force` skill +0.032 → **+0.069** (both measured against the same run with nesting off, so the number is the nesting's own). `mid_force` AUC 0.765 → 0.766, unchanged as required.
+
+**Scores: before → after** (the before column is this turn's rivalry-only run, so nesting is the only difference; pooled 1870–2010, +20y, 100 runs, all states):
+
+| template | rivalry only | + nesting (shipped) |
+|---|---|---|
+| mid_force | 0.94 · +0.032 · 0.765 | **0.84 · +0.069 · 0.766** |
+| mid_war | 1.10 · −0.058 · 0.769 | **1.03 · −0.035 · 0.765** |
+
+
 ## era-1870-1914 / engine-6 — rivalry decay instead of a binary recurrence flag
 
 **Adds.** Replace the binary `win5(mid_force)` memory with an exponentially decaying rivalry score `r ← max(r·δ, 1)` on firing, entered as `z(rivalry)`, with the same feature built in `scripts/fit-hazards.mjs` and `src/engine/core.js`; ablate δ ∈ {1.0, 0.85, 0.75, 0.6}.
@@ -109,6 +123,45 @@ Era rows this package targets, pooled: 1870–1910 `mid_force` 0.28 · +0.10 · 
 **Templates it feeds.** `mid_force`, `mid_war`.
 
 **Test that decides it.** As-of 1870/1880/1890 `mid_force` exp/obs moves toward 1.0 without pooled AUC or skill falling; the chosen δ is recorded with the ablation numbers.
+
+**Status:** implemented (2026-09-07), δ = 0.85.
+
+**Implemented as.** `rivalryScore(lastDisputeYear, year, δ) = δ^(year − lastDisputeYear)`, 0 for a pair that has never had a dispute — exported from `src/engine/core.js` and imported by `scripts/lib/fit.mjs`, so there is one function and not two implementations. δ is declared on the covariate in `data/templates.yaml` (`{ var: rivalry, transform: z, prior: 0.26, decay: 0.85 }`) and read by both sides through `rivalryDecay(templates)`, which throws if the two dyadic templates disagree; `RIVALRY_DECAY` in the environment overrides it, which is how the ablation below was run. Two deviations, both recorded:
+- **The form is δ^(age of the last dispute), not a running sum.** The package wrote `r ← max(r·δ, 1)` on firing, which is exactly this: the max is never binding for a trace that decays from 1. It is a recency trace, not a count — two disputes in a decade leave the same mark as one.
+- **The prior is rescaled, not carried over.** The literature prior (1.5, 2.0) is stated for the binary flag, i.e. for a *fresh* dispute. On a z-scored trace a fresh dispute is 5.80 sd above the mean (rivalry mean 0.038, sd 0.140, nonzero on 22.7% of politically relevant dyad-years), so the prior per sd is 1.5/5.80 = 0.26 and 2.0/5.80 = 0.35. It barely matters: moving the prior from 0.10 to 0.80 moves the fitted coefficient by under 0.01 on the full sample and 0.04 at as-of 1900, so the ablation below holds the prior fixed while δ moves.
+- `createWorld` now seeds `dyadRecent` with the *year* of each pair's last dispute over the whole observed history, where it used to store `asOf` for anything inside a five-year window. A decaying trace has no window to truncate at.
+
+**Test result — the δ ablation.** One-year fit (`node scripts/fit-hazards.mjs mid_force mid_war`, era holdout) and the dynamic backtest (`RIVALRY_DECAY=δ node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all`, pooled, exp/obs · Brier skill · AUC):
+
+| variant | holdout AUC mid_force (≥1946) / mid_war (≥1939) | pooled mid_force | pooled mid_war |
+|---|---|---|---|
+| `win5(mid_force)` (before) | 0.8586 / 0.8498 | 0.95 · +0.026 · 0.765 | 1.10 · −0.056 · 0.769 |
+| δ = 1.0 (no decay) | 0.8475 / 0.8447 | 1.00 · −0.013 · 0.765 | 1.13 · −0.079 · 0.767 |
+| **δ = 0.85** | **0.8613** / 0.8482 | **0.84 · +0.069 · 0.766** | **1.03 · −0.035 · 0.765** |
+| δ = 0.75 | 0.8582 / 0.8477 | 0.86 · +0.059 · 0.765 | 1.04 · −0.038 · 0.766 |
+| δ = 0.6 | 0.8531 / 0.8466 | 0.88 · +0.049 · 0.765 | 1.04 · −0.041 · 0.767 |
+
+δ = 0.85 is first on both the one-year holdout and the dynamic skill, and the ranking is single-peaked in δ, which is the shape a real parameter has. δ = 1.0 — the same feature with the decay switched off — is *worse than the binary flag it replaces*, so the decay is doing the work and not the reparameterisation. Fitted coefficient +0.40 per sd on `mid_force` against +1.81 for the binary: the trace is not weaker, it is shorter. A dispute one year old is worth 2.30 log-odds (against win5's 1.81 flat) and one five years old 1.15.
+
+**The test as written cannot be run, and what replaced it.** As-of 1870/1880/1890 have no fitted dyad model at all since `statistics-4`. Read at the as-of years that do exist, the exp/obs clause also no longer means what it meant: those rows now *under*-predict (0.28, 0.27, 0.28 at 1900/1910/1930), so any damping moves them further from 1.0, and it does — 0.28 → 0.27, 0.28 → 0.27, 0.31 → 0.28. The over-predicted rows are the ones that move toward 1: as-of 1970 `mid_force` 1.70 → 1.43, 1980 1.69 → 1.40, 1990 1.19 → **1.00**; `mid_war` 5.14 → 4.61, 4.75 → 4.23, 2.61 → 2.33. The clause that survives intact is *without pooled AUC or skill falling*, and both rise: `mid_force` skill +0.026 → +0.069, `mid_war` −0.056 → −0.035, AUC 0.765/0.769 → 0.766/0.765. Restated for the next reader: **the deciding numbers for a damping term are pooled Brier skill with AUC held, plus the over-predicted era rows moving toward 1.** (The table above is the joint rivalry + nesting effect; rivalry on its own is 0.94 · +0.032 and 1.10 · −0.058 — most of the pooled gain is the nesting, most of the δ *ranking* is the rivalry.)
+
+**Scores: before → after** — the published run, `node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all` (`scores/backtest-1870-2010-h20-all.json`), pooled, exp/obs · Brier skill · AUC. Both dyadic changes are in the after column; every actor-year template moves only through `at_war` and `mid_force` on its own covariates, and none of them moves materially:
+
+| template | n | before | after |
+|---|---|---|---|
+| mid_force | 108,797 | 0.95 · +0.026 · 0.765 | **0.84 · +0.069 · 0.766** |
+| mid_war | 108,797 | 1.10 · −0.056 · 0.769 | **1.03 · −0.035 · 0.765** |
+| democratize_step | 942 | 0.97 · −0.202 · 0.535 | 0.98 · −0.186 · 0.546 |
+| autocratic_closure | 696 | 0.66 · −0.149 · 0.597 | 0.66 · −0.143 · 0.602 |
+| intrastate_onset | 1,241 | 1.02 · +0.120 · 0.742 | 1.02 · +0.117 · 0.740 |
+| leader_exit | 1,105 | 0.85 · −0.824 · 0.739 | 0.85 · −0.823 · 0.737 |
+| irregular_exit | 1,105 | 2.06 · −0.470 · 0.706 | 2.05 · −0.465 · 0.703 |
+| coup_attempt | 1,105 | 0.89 · +0.180 · 0.757 | 0.89 · +0.180 · 0.758 |
+| democratic_deepening | 169 | 1.51 · −0.100 · 0.692 | 1.47 · −0.080 · 0.692 |
+
+Era rows this package and `engine-7` target: **1910–1940** `mid_force` 0.53 · +0.121 · 0.765 → **0.50 · +0.122 · 0.764**, `mid_war` 0.41 · +0.094 · 0.764 → **0.39 · +0.092 · 0.760** (the guard `engine-5` inherited — pooled exp/obs not below 0.35 — holds). **1950–2000** `mid_force` 1.53 · −0.125 · 0.750 → **1.32 · −0.026 · 0.751**, `mid_war` 4.18 · −0.798 · 0.727 → **3.89 · −0.670 · 0.723. The standing 1950–2000 `mid_war` over-prediction is 30% smaller and still 3.9×; nothing in this package addresses its cause, which is that a forecaster standing in 1950 has WW1 and WW2 in the training sample and no covariate that says the post-1945 process is different (`era-1870-1914 / statistics-6`).
+
+
 
 ## era-1870-1914 / data-6 — empire-wide economic series
 
@@ -145,6 +198,23 @@ Era rows this package targets, pooled: 1870–1910 `mid_force` 0.28 · +0.10 · 
 **Templates it feeds.** `mid_war`, `mid_force`, `autocratic_closure`, `democratize_step`, `intrastate_onset`, `irregular_exit` — everything with an `at_war` term.
 
 **Test that decides it.** The simulated `at_war` run-length histogram from as-of 1920 moves from 84% one-year spells toward the panel's 33%, and 1950–2000 `mid_war` exp/obs falls from 2.62 below 1.5 without the 1910–1940 pooled exp/obs (0.44) falling below 0.35.
+
+**Status:** partial (2026-09-07) — built, measured, and **not promoted**. It fixes the spell shape and fails the calibration half of its own test by a wide margin. The mechanism ships switched off in the data (`mid_war.duration.status: candidate` in `data/templates.yaml`); flipping that one word to `active` reproduces every number below, and `ENGINE_ABLATE=war_duration` forces it off whatever the data says.
+
+**Implemented as.** `world.warSpells` holds the years left on each pair's war; a fired `mid_war` draws a duration and holds `at_war = 1` on both belligerents for it, suppresses any fresh draw (dispute or war) on a pair already inside a spell, and — because the drift loop reads `at_war` before it clears it — carries `warShock` for the whole spell. The duration is resampled from `warRunLengths(panel, asOf)`, the panel's own `at_war` run lengths **as observed at the as-of year**, with a spell still open at as-of dropped as right-censored. An actor already at war at as-of gets a residual drawn from the same distribution (a stated approximation: the panel dates the spell's start, and its end is past the as-of date).
+
+**Test result.** First half passes, second half fails.
+
+- Spell shape, `node scripts/war-spells.mjs --as-of 1920 --runs 100`: one-year spells **70% → 24%**, mean length **1.51 → 3.91 years**, against the panel's 49% / 2.99 over all years and 26% / 2.91 for the 35 spells a forecaster standing in 1920 has actually seen. (The package's "84% against 33%, mode 7" does not reproduce on this measurement: the panel's spells are 49% one-year with a mode of 1, and the engine's were 70%, not 84%. Counted here as maximal runs of `at_war = 1` per actor, spells still open at the horizon's end and spells already running at as-of excluded.)
+- Calibration, `node scripts/backtest.mjs …` at three windows, `mid_war` / `mid_force` exp/obs · skill:
+  - **1950–2000: 3.89 · −0.67 → 5.58 · −1.41** and 1.32 · −0.026 → 1.65 · −0.174. The test asked for below 1.5.
+  - 1910–1940: 0.39 · +0.092 → **0.60** · +0.090 and 0.50 · +0.122 → 0.69 · +0.109. The guard holds (nothing falls below 0.35) and this is the one window where duration helps the level.
+  - pooled 1870–2010: 1.03 · −0.035 → 1.50 · −0.176 and 0.84 · +0.069 → 1.08 · 0.000. AUC unchanged at 0.77 throughout.
+
+**Why it fails, measured.** The amplification the package expected to damp does not run through repeated draws inside the same dyad — those are suppressed, and suppressing them is nearly free because the score is *any event in the pair within 20 years*. It runs through `lag1(at_war_any)` = +2.12 reaching the belligerents' **other** dyads, so a longer spell is a longer exposure and the process is supercritical: the simulated dyadic war count at as-of 1920 doubles, 5,610 → 10,352. Second, the two `at_war` variables are not the same population. The panel's `at_war` is the hand-coded interstate-war list (371 actor-years 1886–2001, 3.3% of live actor-years); the engine sets `at_war` from any CoW hostility-5 dyad, whose onsets are 283 actor-years. The observed ratio is **1.31 at-war years per onset year**, not the 2.6–3.0 of a whole spell, because about half the dyadic onsets happen inside a war that is already running. Drawing a full spell for every onset therefore roughly doubles simulated at-war exposure before any cascade.
+
+**What would make it promotable** (escalated as such): the era term (`era-1870-1914 / statistics-6`) or the coalition rule (`era-1914-1945 / engine-1`), so the level is not already 4× too high before duration multiplies it; or a duration drawn per dyad from CoW MID `endyear` (396 dyadic war spells, mean 2.61, 38% of one year — already in `data/raw/hist/midb_3.02.csv`, not yet carried into `data/events.json`) and calibrated on simulated at-war *exposure* rather than on spell length; or a decayed `at_war_any` on the dyadic templates, since the +2.12 was estimated where at-war is exogenous and is used where it is endogenous — the same trap `engine-6` just took out of `win5(mid_force)`.
+
 
 ## era-1914-1945 / statistics-8 + engine-8 + corridors-7 — make the corridor layer scorable
 

@@ -9,6 +9,7 @@
 // Nothing here knows about country names; it reads data/panel.json, data/events.json and data/templates.yaml only.
 import { readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap } from './hist.mjs';
+import { rivalryScore, rivalryDecay } from '../../src/engine/core.js';
 
 export const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -28,6 +29,8 @@ export function loadFitInputs() {
 
 export function createFitter({ panel, events, templates, contiguity, pacts }) {
   const YEARS = panel.years, Y0 = panel.meta.y0;
+  // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
+  const DECAY = rivalryDecay(templates);
   const isContiguous = (a, b, y) => (contiguity[a < b ? `${a}|${b}` : `${b}|${a}`] ?? []).some?.(([f, t]) => y >= f && y <= t) ?? false;
 
   // ---------------------------------------------------------------- event index
@@ -40,6 +43,12 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
   }
   const hasEvent = (kind, actor, y, filter) => (evByActorYear.get(`${kind}|${actor}|${y}`) ?? []).some(e => !filter || Object.entries(filter).every(([k, v]) => e[k] === v));
   const hasDyadEvent = (kind, a, b, y) => evByDyadYear.has(`${kind}|${pairKey(a, b)}|${y}`);
+  // every militarized dispute year per pair, sorted — the rivalry trace reads the last one strictly before the row's
+  // year, so it is a lagged covariate however far back it reaches and cannot see the row's own label.
+  const disputeYears = new Map();
+  for (const e of events) if ((e.kind === 'mid_force' || e.kind === 'mid_war') && e.a && e.b) { const k = pairKey(e.a, e.b); (disputeYears.get(k) ?? disputeYears.set(k, []).get(k)).push(Math.floor(e.year)); }
+  for (const ys of disputeYears.values()) ys.sort((a, b) => a - b);
+  const lastDisputeBefore = (k, y) => { const ys = disputeYears.get(k); if (!ys) return null; let lo = 0, hi = ys.length; while (lo < hi) { const m = (lo + hi) >> 1; if (ys[m] < y) lo = m + 1; else hi = m; } return lo ? ys[lo - 1] : null; };
 
   // nuclear weapon status by actor-year (hand events)
   const nukeYear = {}; for (const e of events) if (e.kind === 'nuclear' && e.status === 'weapon') nukeYear[e.actor] = Math.min(nukeYear[e.actor] ?? 9999, e.year);
@@ -86,7 +95,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
   // relabelled per template (mid_force and mid_war share 69k rows).
   const dyadCache = new Map();
   function dyadFeatureRows(w0, w1) {
-    const key = `${w0}|${w1}`; if (dyadCache.has(key)) return dyadCache.get(key);
+    const key = `${w0}|${w1}|${DECAY}`; if (dyadCache.has(key)) return dyadCache.get(key);
     const rows = []; const ids = Object.keys(panel.actors);
     for (let y = Math.max(w0, Y0 + 5); y <= Math.min(w1, panel.meta.y1); y++) {
       const live = ids.filter(id => panel.actors[id].live?.[y - Y0] && pv(id, 'cinc', y) != null && pv(id, 'regime', y) != null);
@@ -102,6 +111,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts }) {
           cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),
           major_power_any: (pv(a, 'great_power', y) || pv(b, 'great_power', y)) ? 1 : 0,
           mid_force: (() => { for (let k = 1; k <= 5; k++) if (hasDyadEvent('mid_force', a, b, y - k) || hasDyadEvent('mid_war', a, b, y - k)) return 1; return 0; })(),
+          rivalry: rivalryScore(lastDisputeBefore(pairKey(a, b), y), y, DECAY),
           at_war_any: ((pv(a, 'at_war', y - 1) ?? 0) || (pv(b, 'at_war', y - 1) ?? 0)) ? 1 : 0,
           nuclear_both: hasNukes(a, y) && hasNukes(b, y) ? 1 : 0,
         };
