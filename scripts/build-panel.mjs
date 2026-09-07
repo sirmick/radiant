@@ -9,7 +9,8 @@
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/hist.mjs';
 import { MODERN_FROM, resolveFetch, describeSource, snapshotColumns, snapshotExtras } from './lib/modern.mjs';
-import { COMPONENTS, MISSING_COMPONENTS, SPLICE_YEARS, compositeShares, spliceComposite, validate } from './lib/capability.mjs';
+import { COMPONENTS, MISSING_COMPONENTS, SPLICE_YEARS, compositeShares, componentLevels, spliceComposite, validate } from './lib/capability.mjs';
+import { POLARITY, normalise, projectionShares, smoothShares, classify, eraFlags, conditionality, greatGame, fitLogistic, fitDiffusionRate } from '../src/engine/polarity.js';
 
 const Y0 = 1816, Y1 = 2025, YEARS = Array.from({ length: Y1 - Y0 + 1 }, (_, i) => Y0 + i);
 const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
@@ -20,6 +21,7 @@ const H = 'data/raw/hist/';
 const panel = {}; const put = (id, v, y, val) => { if (!id || y < Y0 || y > Y1 || val == null || Number.isNaN(val)) return; ((panel[id] ??= {})[v] ??= new Array(YEARS.length).fill(null))[y - Y0] = val; };
 const add = (id, v, y, n = 1) => { if (!id || y < Y0 || y > Y1) return; const arr = ((panel[id] ??= {})[v] ??= new Array(YEARS.length).fill(0)); arr[y - Y0] += n; };
 const sources = {};
+let meta_polarity = null, meta_info_wave = null;   // the derived world-state series and the fitted information wave (package 9)
 
 // ---- NMC. v7.0 (1816–2022, energy column `pec`) where the fetch has run, else the bundled 3.02 (1816–2001).
 // operator / modern-capability: 3.02 stopped in 2001, so every modern dyad was scored on 2001 strengths.
@@ -305,21 +307,20 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.year = YEARS.map(y => y);
   // superpower client ties: 0 inside coverage when absent, carried forward after the alliance data ends (2000)
   for (const v of ['pact_usa', 'pact_rus']) { vars[v] ??= new Array(YEARS.length).fill(null); let last = null; YEARS.forEach((y, i) => { if (!a || !isLive(a, y)) return; if (vars[v][i] == null) vars[v][i] = y <= 2000 ? 0 : last; last = vars[v][i]; }); }
-  vars.bipolar = YEARS.map(y => (y >= 1947 && y <= 1991 ? 1 : 0));
   vars.sp_client_any = YEARS.map((y, i) => ((vars.pact_usa[i] || vars.pact_rus[i]) ? 1 : 0));
   vars.sp_client_one = YEARS.map((y, i) => ((vars.pact_usa[i] ? 1 : 0) + (vars.pact_rus[i] ? 1 : 0) === 1 ? 1 : 0));
-  vars.great_game = YEARS.map((y, i) => (vars.bipolar[i] && vars.sp_client_any[i] ? 1 : 0));
-  // external-influence channels: patron regime, unipolar democracy-promotion era, aid conditionality
-  vars.unipolar_us = YEARS.map(y => (y >= 1992 && y <= 2016 ? 1 : 0));
-  // ODA/GNI (capped 30%) in tens, only during the promotion era. Outside 1992–2016 the variable is 0 by construction —
-  // a structural zero, not a missing value: there was no ODA-conditionality regime, so a null there would silently drop
-  // every pre-1960 actor-year from the regime templates (World Bank aid_gni starts 1960).
-  vars.aid_conditionality = YEARS.map((y, i) => (vars.unipolar_us[i] ? (vars.aid_gni?.[i] != null ? Math.min(vars.aid_gni[i], 30) / 10 : null) : 0));
   vars.patron_regime = YEARS.map((y, i) => { const usa = panel.USA?.regime?.[i], rus = panel.RUS?.regime?.[i]; if (vars.pact_usa?.[i] && !vars.pact_rus?.[i]) return usa ?? null; if (vars.pact_rus?.[i] && !vars.pact_usa?.[i]) return rus ?? null; if (vars.pact_usa?.[i] && vars.pact_rus?.[i]) return ((usa ?? 0) + (rus ?? 0)) / 2; return 0; });
   vars.hegemon_x_client = YEARS.map((y, i) => (vars.pact_usa?.[i] ? (panel.USA?.regime?.[i] ?? 3) : 0));   // US clients see the hegemon's own regime score; others 0
-  vars.hegemon_regime = YEARS.map((y, i) => (y >= 1946 ? (panel.USA?.regime?.[i] ?? null) : (panel.GBR?.regime?.[i] ?? null)));
-  vars.cold_war = YEARS.map(y => (y <= 1991 ? 1 : 0));
-  vars.anticoup_norm = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
+  // the era flags these used to carry (bipolar, unipolar_us, cold_war, anticoup_norm, great_game, aid_conditionality,
+  // hegemon_regime) are now derived from world state further down — operator / derived-polarity, package 9. The typed
+  // calendar versions are kept for one run as `*_dates` so the checker can diff them.
+  vars.bipolar_dates = YEARS.map(y => (y >= 1947 && y <= 1991 ? 1 : 0));
+  vars.unipolar_us_dates = YEARS.map(y => (y >= 1992 && y <= 2016 ? 1 : 0));
+  vars.great_game_dates = YEARS.map((y, i) => (vars.bipolar_dates[i] && vars.sp_client_any[i] ? 1 : 0));
+  vars.aid_conditionality_dates = YEARS.map((y, i) => (vars.unipolar_us_dates[i] ? (vars.aid_gni?.[i] != null ? Math.min(vars.aid_gni[i], 30) / 10 : null) : 0));
+  vars.hegemon_regime_dates = YEARS.map((y, i) => (y >= 1946 ? (panel.USA?.regime?.[i] ?? null) : (panel.GBR?.regime?.[i] ?? null)));
+  vars.cold_war_dates = YEARS.map(y => (y <= 1991 ? 1 : 0));
+  vars.anticoup_norm_dates = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
 }
 
 // ---- modern capability: extend `cinc` past NMC's last year (operator / modern-capability, package 10).
@@ -345,6 +346,87 @@ for (const [id, vars] of Object.entries(panel)) {
   sources.cinc += `; ${nmcLast + 1}-${extLast} is the modern capability composite (${parts}; ${MISSING_COMPONENTS.map(m => m.stands_for).join(', ')} not represented) spliced onto CINC over the ${SPLICE_YEARS} overlap years to ${nmcLast}, scripts/lib/capability.mjs; ${extLast < Y1 ? `${extLast + 1}-${Y1} has no source and is left null — the engine carries the last value forward and records the staleness` : 'no year is carried'}`;
   sources.cinc_spliced = `0 where cinc is CoW NMC's own measurement, 1 where it is the modern composite spliced onto it (scripts/lib/capability.mjs); composite vs CINC 1990-${nmcLast} r=${check.r?.toFixed(3)} (n=${check.n}), log r=${check.r_log?.toFixed(3)}`;
   console.log(`capability composite: r=${check.r?.toFixed(4)} log r=${check.r_log?.toFixed(4)} against CINC 1990-${nmcLast} (n=${check.n} actor-years); ${Object.keys(factor).length} actors spliced; extended ${ext.join(' ') || 'nothing'}`);
+}
+
+// ---- derived world state: polarity, the hegemon and the eras (operator / derived-polarity, package 9).
+// `bipolar`, `unipolar`, `cold_war`, `anticoup_norm`, `great_game`, `aid_conditionality` and `hegemon_regime` were
+// typed calendar years (1947-1991, 1992-2016, >=2000). They are now functions of the capability distribution, the
+// hegemon's own regime and the democratic share of the system, computed by src/engine/polarity.js — the same module
+// src/engine/core.js runs forward, so a fitted era term means the same thing in the fit and in the simulation.
+// The typed versions survive one run as `*_dates` (written above) for the checker to diff.
+{
+  const at = (y) => y - Y0;
+  const liveAt = (id, y) => panel[id]?.live?.[at(y)] === 1;
+  // Military expenditure shares. CoW NMC carries milex to its own last year; past it the levels come from the same
+  // World Bank series the capability composite's milex component uses. Only the *shares* enter the construction, so
+  // the two need not be on one scale, but the join is stated in the column's source line rather than left implicit.
+  const wbMilex = componentLevels({ from: nmcLast + 1, to: Y1, idOf: owid }).milex ?? {};
+  const shareOf = (get) => (y) => { const m = new Map(); for (const id of Object.keys(panel)) { if (!liveAt(id, y)) continue; const v = get(id, y); if (v == null || !(v > 0)) continue; m.set(id, v); } return normalise(m); };
+  const cincShare = shareOf((id, y) => panel[id].cinc?.[at(y)]);
+  const milexShare = shareOf((id, y) => (y <= nmcLast ? panel[id].milex?.[at(y)] : wbMilex[id]?.[y]));
+
+  // the first year any actor has an ODA/GNI observation: before it, aid conditionality is a structural zero
+  const aidFrom = Math.min(...Object.values(panel).map(v => { const i = v.aid_gni?.findIndex(x => x != null) ?? -1; return i < 0 ? Infinity : YEARS[i]; }));
+  let sm = null;
+  const W = YEARS.map(y => {
+    const raw = projectionShares(cincShare(y), milexShare(y));
+    if (!raw.size) return null;
+    const alive = new Set(Object.keys(panel).filter(id => liveAt(id, y)));
+    sm = smoothShares(sm, raw, POLARITY.lambda, alive);
+    const st = classify(sm); if (!st) return null;
+    let n = 0, d = 0;
+    for (const id of Object.keys(panel)) { if (!liveAt(id, y)) continue; const r = panel[id].regime?.[at(y)]; if (r == null) continue; n++; if (r >= POLARITY.hegemon_regime_min) d++; }
+    const demShare = n ? d / n : null;
+    const hegRegime = panel[st.hegemon]?.regime?.[at(y)] ?? null;
+    return { y, raw, sm: new Map(sm), st, demShare, hegRegime, flags: eraFlags({ polarity: st.polarity, hegemonRegime: hegRegime, demShare }) };
+  });
+  const r9 = (v) => (v == null ? null : Math.round(v * 1e9) / 1e9);
+  for (const [id, vars] of Object.entries(panel)) {
+    vars.pol_mass = W.map(w => r9(w?.raw.get(id) ?? null));
+    vars.pol_share = W.map(w => r9(w?.sm.get(id) ?? null));
+    vars.is_hegemon = W.map(w => (w ? (w.st.hegemon === id ? 1 : 0) : null));
+    for (const f of ['bipolar', 'unipolar', 'multipolar', 'cold_war', 'anticoup_norm', 'promotion_era']) vars[f] = W.map(w => (w ? w.flags[f] : null));
+    vars.n_poles = W.map(w => w?.st.n_poles ?? null);
+    vars.hegemon_share = W.map(w => r9(w?.st.hegemon_share ?? null));
+    vars.dem_share = W.map(w => r9(w?.demShare ?? null));
+    vars.hegemon_regime = W.map(w => w?.hegRegime ?? null);
+    vars.great_game = W.map((w, i) => (w ? greatGame(vars.sp_client_any[i], w.flags.bipolar) : null));
+    vars.aid_conditionality = W.map((w, i) => (w ? conditionality(w.flags.promotion_era, vars.aid_gni?.[i] ?? null, YEARS[i] >= aidFrom) : null));
+  }
+  // the world-level series itself, for the diagnostic and for docs: one row per year, no actor lookup needed
+  meta_polarity = W.filter(Boolean).map(w => ({ year: w.y, polarity: w.st.polarity, poles: w.st.poles, hegemon: w.st.hegemon,
+    hegemon_share: r9(w.st.hegemon_share), gap1: w.st.gap1 == null ? null : +w.st.gap1.toFixed(3), gap2: w.st.gap2 == null ? null : +w.st.gap2.toFixed(3),
+    hegemon_regime: w.hegRegime, dem_share: r9(w.demShare), promotion_era: w.flags.promotion_era, anticoup_norm: w.flags.anticoup_norm }));
+
+  // the information wave: the logistic the panel's own info_access traces, fitted here and read by the engine, in
+  // place of the hand-typed rate switch at 1985 (src/engine/polarity.js).
+  const meanInfo = YEARS.map(y => { let s = 0, n = 0; for (const [id, v] of Object.entries(panel)) { if (!liveAt(id, y)) continue; const x = v.info_access?.[at(y)]; if (x == null) continue; s += x; n++; } return [y, n ? s / n : null]; });
+  meta_info_wave = fitLogistic(meanInfo);
+  // and the rate at which an actor closes its gap to that frontier, fitted against what the rule produces: the wave
+  // is run forward from five starting years and scored on the live-actor mean it makes, not on one-year differences.
+  if (meta_info_wave) {
+    const series = Object.entries(panel).filter(([, v]) => v.info_access).map(([id, v]) => new Map(YEARS.map((y, i) => [y, liveAt(id, y) ? v.info_access[i] : null]).filter(([, x]) => x != null)));
+    const infoLast = Math.max(...YEARS.filter(y => Object.values(panel).some(v => v.info_access?.[at(y)] != null)));
+    Object.assign(meta_info_wave, fitDiffusionRate(series, meta_info_wave, [1965, 1975, 1985, 1995, 2005], infoLast) ?? {});
+    meta_info_wave.source = `estimate: logistic least squares on the live-actor mean of info_access ${Y0}-${infoLast}; kappa minimises the error of the simulated mean against the observed one from 1965, 1975, 1985, 1995 and 2005 (src/engine/polarity.js)`;
+  }
+
+  const runs = []; for (const w of W) { if (!w) continue; const last = runs[runs.length - 1]; if (last && last.p === w.st.polarity) last.b = w.y; else runs.push({ p: w.st.polarity, a: w.y, b: w.y }); }
+  const era = (p) => runs.filter(r => r.p === p).sort((x, y) => (y.b - y.a) - (x.b - x.a))[0];
+  const bi = era('bipolar'), uni = era('unipolar');
+  sources.pol_mass = `projection-weighted capability share: geometric mean of the CINC share and the military-expenditure share over live actors (weight ${POLARITY.cinc_weight}); milex from ${NMC.label.split(' (')[0]} to ${nmcLast}, World Bank MS.MIL.XPND.GD.ZS x NY.GDP.MKTP.CD after (src/engine/polarity.js)`;
+  sources.pol_share = `pol_mass smoothed with an EWMA, lambda=${POLARITY.lambda} (src/engine/polarity.js) — the state polarity is classified from`;
+  sources.bipolar = sources.unipolar = sources.multipolar = sources.n_poles = sources.is_hegemon = sources.hegemon_share =
+    `derived: poles are the actors above the first gap of ${POLARITY.gap}x in the ranked pol_share; 1 pole = unipolar, 2 = bipolar, else multipolar (src/engine/polarity.js). Longest derived eras: bipolar ${bi ? `${bi.a}-${bi.b}` : 'none'}, unipolar ${uni ? `${uni.a}-${uni.b}` : 'none'}`;
+  sources.cold_war = 'derived: the world is bipolar (replaces the typed year <= 1991; cold_war_dates keeps it for one run)';
+  sources.promotion_era = `derived: unipolar and the hegemon's own regime >= ${POLARITY.hegemon_regime_min} (replaces the typed 1992-2016)`;
+  sources.anticoup_norm = `derived: at least ${POLARITY.dem_share} of live states score regime >= ${POLARITY.hegemon_regime_min} (replaces the typed year >= 2000; anticoup_norm_dates keeps it for one run)`;
+  sources.dem_share = `share of live actors with a regime score, scoring >= ${POLARITY.hegemon_regime_min} (V-Dem RoW)`;
+  sources.hegemon_regime = 'derived: the regime score of the top actor by pol_share (replaces the typed largest-power-by-date rule; hegemon_regime_dates keeps it for one run)';
+  sources.great_game = 'derived: superpower client x bipolar world (bipolar is now derived; great_game_dates keeps the typed-era version for one run)';
+  sources.aid_conditionality = `derived: ODA/GNI capped at ${POLARITY.aid_cap}% in tens during the derived promotion era, a structural zero outside it (aid_conditionality_dates keeps the typed-era version for one run)`;
+  for (const v of ['bipolar', 'unipolar_us', 'cold_war', 'anticoup_norm', 'great_game', 'aid_conditionality', 'hegemon_regime']) sources[`${v}_dates`] = 'the typed calendar-year era flag this build replaced with derived world state, kept one run for the checker to diff (operator / derived-polarity)';
+  console.log(`derived polarity: ${runs.length} states 1816-${Y1}; bipolar ${bi ? `${bi.a}-${bi.b}` : 'none'} (typed 1947-1991), unipolar ${uni ? `${uni.a}-${uni.b}` : 'none'} (typed 1992-2016); ${W.filter(w => w && w.st.polarity === 'multipolar' && w.y >= 1870 && w.y <= 1938).length}/69 of 1870-1938 multipolar; info wave L=${meta_info_wave?.L} r=${meta_info_wave?.r} t0=${meta_info_wave?.t0} rmse=${meta_info_wave?.rmse} (n=${meta_info_wave?.n}), diffusion kappa=${meta_info_wave?.kappa} rmse=${meta_info_wave?.kappa_rmse} (n=${meta_info_wave?.kappa_n})`);
 }
 
 // ---- empires on successor-state borders: drop the OWID/Maddison population series where it is a modern-borders series
@@ -459,7 +541,7 @@ for (const [id, vars] of Object.entries(panel)) {
 // measured, and how many actor-years it covers. `introduced` is what tells a reader (and src/engine/core.js, which
 // skips the carry-forward scan below it) that a column simply does not exist before a year, rather than being a gap.
 const vars = [...new Set(Object.values(panel).flatMap(v => Object.keys(v)))].sort();
-const meta = { built: new Date().toISOString(), y0: Y0, y1: Y1, sources, vars: {}, introduced: {} };
+const meta = { built: new Date().toISOString(), y0: Y0, y1: Y1, sources, vars: {}, introduced: {}, polarity: meta_polarity, info_wave: meta_info_wave };
 for (const v of vars) {
   let first = null, last = null, n = 0, actorsWith = 0;
   for (const a of Object.values(panel)) {

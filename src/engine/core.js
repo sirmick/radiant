@@ -3,6 +3,8 @@
 // events fire per actor-year / dyad-year and rewrite state; a thin structural layer drifts the slow variables.
 // No country names anywhere in this file.
 
+import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
+
 export function mulberry32(seed) {
   let a = seed >>> 0;
   return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -11,6 +13,15 @@ const sigmoid = (x) => 1 / (1 + Math.exp(-x));
 // Structural drift constants. GROWTH_MEAN is the panel's live-actor mean log growth 1900–2000 (n=8,453, mean 0.0172,
 // sd 0.0705); GROWTH_PHI gives the deviation from it a ~4-year half-life. Source: data/panel.json gdp_growth.
 const GROWTH_MEAN = 0.0172, GROWTH_PHI = 0.85;
+// Ablation switch (node only), like RIVALRY_DECAY: INFO_DIFFUSION=switch restores the hand-typed diffusion rate the
+// fitted information wave replaced (0.15/yr from 1985, 0.03 before), so the two halves of package 9 — the derived
+// eras and the derived diffusion — can be scored apart. Unset (the default) uses the fitted wave.
+const INFO_TYPED_RATE = (typeof process !== 'undefined' && process.env && process.env.INFO_DIFFUSION === 'switch') ? 0.15 : null;
+const infoDiffuse = (x, y, wave) => {
+  if (INFO_TYPED_RATE == null) return infoStep(x, y, wave);
+  const r = y >= 1985 ? INFO_TYPED_RATE : 0.03;
+  return Math.min(1, x + r * x * (1 - x));
+};
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /**
@@ -296,6 +307,87 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
 }
 
 /**
+ * The derived world state at a year: projection-weighted capability shares (raw and smoothed), the democratic share
+ * of the system, and the polarity they classify to — operator / derived-polarity (package 9). Built over every actor
+ * the panel has live at asOf and not only over the simulated universe, because a share is a share of the whole
+ * system: dropping the 130 states nobody simulates would rescale every pole. The panel's own columns are read with
+ * the same last-observation carry buildActorState uses, so an as-of year the sources do not reach yet (capability
+ * ends before the forecast does) starts from the last year they do.
+ */
+function initPolarity(panel, asOf, actors) {
+  const Y0 = panel.meta.y0;
+  const last = (vars, v) => { const arr = vars[v]; if (!arr) return null; for (let i = Math.min(asOf - Y0, arr.length - 1); i >= Math.max(0, asOf - Y0 - 30); i--) if (arr[i] != null) return arr[i]; return null; };
+  const raw = new Map(), sm = new Map(); let demShare = null;
+  for (const [id, vars] of Object.entries(panel.actors)) {
+    if (vars.live?.[asOf - Y0] !== 1) continue;
+    const r = last(vars, 'pol_mass'), k = last(vars, 'pol_share');
+    if (r != null) raw.set(id, r);
+    if (k != null) sm.set(id, k);
+    if (demShare == null) demShare = last(vars, 'dem_share');
+  }
+  const state = classify(normalise(sm));
+  if (!state) return null;
+  const hegemonRegime = last(panel.actors[state.hegemon] ?? {}, 'regime');
+  const pol = {
+    raw: normalise(raw), sm: normalise(sm), state, hegemonRegime,
+    demShare, demShare0: demShare, simDem0: simDemShare(actors),
+    simIds: new Set(Object.keys(actors)),
+    infoWave: panel.meta.info_wave ?? INFO_WAVE,
+    aidFrom: panel.meta.introduced?.aid_gni ?? 1960,
+  };
+  pol.flags = eraFlags({ polarity: state.polarity, hegemonRegime, demShare });
+  return pol;
+}
+/** Democratic share over a set of actor states — the quantity the anti-coup norm is a threshold on. */
+function simDemShare(actors) {
+  let n = 0, d = 0;
+  for (const a of Object.values(actors)) { if (a.cur.regime == null) continue; n++; if (a.cur.regime >= POLARITY.hegemon_regime_min) d++; }
+  return n ? d / n : null;
+}
+/**
+ * One year of the derived world state. Capability share follows relative output: an actor's projection mass is
+ * carried forward multiplied by its own simulated growth (an actor nobody simulates grows at the panel's long-run
+ * mean), the shares are renormalised, and the EWMA and the gap rule are the panel's. This is what lets a forecast
+ * change polarity — the typed flags could not — and it is an assumption, not a measurement: CINC and military
+ * expenditure track output only loosely, and the dyadic capability ratio still reads the carried `cinc`, not this.
+ * The democratic share is anchored at the panel's value for the whole system and moved by the simulated universe's
+ * own regime changes, so it is on the panel's scale whichever universe is being run.
+ */
+function stepPolarity(world) {
+  const p = world.pol; if (!p) return;
+  const raw = new Map();
+  for (const [id, m] of p.raw) {
+    if (p.simIds.has(id) && !world.actors[id]) continue;   // a state that has left the system leaves the distribution
+    const a = world.actors[id];
+    const g = a && a.cur.gdp_growth != null ? a.cur.gdp_growth : GROWTH_MEAN;
+    raw.set(id, m * Math.exp(g));
+  }
+  p.raw = normalise(raw);
+  p.sm = smoothShares(p.sm, p.raw, POLARITY.lambda, new Set(p.raw.keys()));
+  const st = classify(p.sm); if (st) p.state = st;
+  const heg = world.actors[p.state.hegemon];
+  if (heg && heg.cur.regime != null) p.hegemonRegime = heg.cur.regime;
+  const sim = simDemShare(world.actors);
+  if (sim != null && p.simDem0 != null && p.demShare0 != null) p.demShare = Math.max(0, Math.min(1, p.demShare0 + (sim - p.simDem0)));
+  p.flags = eraFlags({ polarity: p.state.polarity, hegemonRegime: p.hegemonRegime, demShare: p.demShare });
+}
+/** Write the derived world state onto one actor — the same columns scripts/build-panel.mjs writes into the panel. */
+function applyWorldState(world, id, a) {
+  const p = world.pol; if (!p) return;
+  for (const [k, v] of Object.entries(p.flags)) a.cur[k] = v;
+  a.cur.n_poles = p.state.n_poles;
+  a.cur.hegemon_share = p.state.hegemon_share;
+  a.cur.is_hegemon = p.state.hegemon === id ? 1 : 0;
+  a.cur.pol_mass = p.raw.get(id) ?? null;
+  a.cur.pol_share = p.sm.get(id) ?? null;
+  a.cur.dem_share = p.demShare;
+  a.cur.hegemon_regime = p.hegemonRegime;
+  a.cur.great_game = greatGame(a.cur.sp_client_any, p.flags.bipolar);
+  a.cur.aid_conditionality = conditionality(p.flags.promotion_era, a.cur.aid_gni, world.year >= p.aidFrom);
+  a.cur.hegemon_x_client = a.cur.pact_usa ? (p.hegemonRegime ?? 3) : 0;   // panel var: the hegemon's own regime score, no actor id in the engine
+}
+
+/**
  * Build a world state at `asOf` from the panel. Only actors live at asOf are included; actors whose system
  * membership starts or ends inside the horizon are introduced/retired by stepYear from the same dated lifecycle.
  * Alliance and contiguity graphs are frozen at asOf: their future values are not knowledge a forecaster has.
@@ -335,6 +427,8 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   const allied = alliedAt(pacts, asOf);
   return {
     year: asOf, asOf, actors, dyadRecent, nukes, entryPrior,
+    // the derived world state (polarity, hegemon, era flags) and the fitted information wave — package 9
+    pol: initPolarity(panel, asOf, actors),
     coalition, warPartners: coalition ? warPartnersAt(warDyadSpans(events), asOf) : new Map(),
     allyOf: coalition ? allyAdjacency(allied) : null,
     // interstate war as a spell rather than a one-year flag: warSpells holds the years left on each pair's war,
@@ -574,28 +668,26 @@ export function stepYear(world, rng, opts = {}) {
     if (a.cur.population != null) a.cur.population *= Math.exp(a.popGrowth);
     if (a.cur.tpop != null) a.cur.tpop *= Math.exp(a.popGrowth);
     if (a.cur.leader_age != null) { a.cur.leader_age += 1; a.cur.leader_tenure = (a.cur.leader_tenure ?? 0) + 1; }
-    // information access diffuses as a wave: logistic toward 1, rate from the observed 1990–2020 global trajectory (~0.15/yr), slow before 1985
-    // superpower structure: bipolarity is a world-level state (1947–1991 historically; later a function of how many actors hold >10% CINC)
-    a.cur.bipolar = y >= 1947 && y <= 1991 ? 1 : 0;
     a.cur.sp_client_any = (a.cur.pact_usa || a.cur.pact_rus) ? 1 : 0;
     a.cur.sp_client_one = ((a.cur.pact_usa ? 1 : 0) + (a.cur.pact_rus ? 1 : 0)) === 1 ? 1 : 0;
-    a.cur.great_game = a.cur.bipolar && a.cur.sp_client_any ? 1 : 0;
-    // unipolar democracy-promotion era (1992–2016 historically); aid dependence held at last observed level
-    a.cur.unipolar_us = y >= 1992 && y <= 2016 ? 1 : 0;
-    // aid conditionality is zero by construction outside the promotion era — a structural zero, not a missing value
-    a.cur.aid_conditionality = a.cur.unipolar_us ? Math.min(a.cur.aid_gni ?? 0, 30) / 10 : 0;
     // major-power status is frozen at as-of, like the alliance and border graphs and like world.nukes: who stops being a
     // great power in 1917, 1918, 1943 and 1945 is an outcome of the horizon, not a fact the forecaster holds. Reading the
     // panel forward was worth ~0.03 of the pre-1946 dyad AUC (it gates the politically-relevant filter and carries
     // major_power_any). Great-power entry/exit as a modelled hazard is an escalation (docs/escalations.md).
-    a.cur.hegemon_x_client = a.cur.pact_usa ? (a.cur.hegemon_regime ?? 3) : 0;   // panel var: the hegemon's own regime score, no actor id in the engine
-    if (a.cur.info_access != null) { const r = y >= 1985 ? 0.15 : 0.03; const x = Math.max(0.02, a.cur.info_access); a.cur.info_access = Math.min(1, x + r * x * (1 - x)); }
+    // information access diffuses toward the frontier the panel's own series traces — a logistic fitted in
+    // scripts/build-panel.mjs and carried in panel.meta.info_wave, of which the actor closes a fitted fraction of its
+    // remaining gap each year. This replaces a rate switched by hand at 1985; before 1950 the frontier is ~0, so a
+    // 19th-century run holds at the panel's floor instead of drifting up at a typed 0.03/yr.
+    if (a.cur.info_access != null) a.cur.info_access = infoDiffuse(Math.max(0.02, a.cur.info_access), y, world.pol?.infoWave ?? INFO_WAVE);
     // clear annual flags; decay conflicts
     a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0; a.cur.regime_up = 0; a.cur.regime_down = 0;
     if (a.cur.intrastate) { a.conflictLeft = (a.conflictLeft ?? 1) - 1; if (a.conflictLeft <= 0) a.cur.intrastate = 0; }
     for (const v of Object.keys(a.recent)) { a.recent[v].unshift(0); a.recent[v].length = 5; }
     if (a.prev.coup_attempt) a.recent.coup_attempt[0] = 1; if (a.prev.intrastate) a.recent.intrastate[0] = 1; if (a.prev.mid_force) a.recent.mid_force[0] = 1; if (a.prev.at_war) a.recent.at_war[0] = 1;
   }
+  // the derived world state, after the drift (it reads this year's growth) and before any hazard reads an era term
+  stepPolarity(world);
+  for (const id of ids) applyWorldState(world, id, world.actors[id]);
   // interstate war duration (era-1914-1945/engine-5): at_war is a spell, not a one-year flag. The drift loop above
   // cleared it; every war still running re-sets it on both belligerents, so lag1(at_war) and the war shock mean in
   // simulation what they mean in the panel, whose observed spells are 3.0 years long on average.

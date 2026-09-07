@@ -54,13 +54,13 @@ templates:
       - { var: leader_military, transform: none, lag: 1, prior: 0.3 }
       - { var: intrastate, transform: lag1, prior: 0.3 }
       - { var: info_access, transform: z, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "ablation: holdout exp/obs 1.70→1.42, coef −0.73, survives joint fit; user hypothesis 'seize the TV station no longer works'" } }
-      - { var: great_game, transform: none, prior: 0.3, lifecycle: { phase: active, promoted: 2026-09-06, reason: "ablation: superpower client × bipolar era, coef +0.37, best holdout AUC among mechanisms, survives joint fit while bare client status does not; user hypothesis 'both USA and USSR ran great games'" } }
+      - { var: great_game, transform: none, prior: 0.3, lifecycle: { phase: active, promoted: 2026-09-06, reason: "ablation: superpower client × bipolar era, coef +0.37, best holdout AUC among mechanisms, survives joint fit while bare client status does not; user hypothesis 'both USA and USSR ran great games'" }, note: "2026-09-07 (operator/derived-polarity): the bipolar half is now derived world state, not the typed years 1947-1991 — derived bipolar 1950-1994 and 2015-, coef +0.67 -> +0.60" }
     sources: ["Powell 2012", "Powell & Thyne 2011", "Gassebner, Gutmann & Voigt 2016"]
     notes: "Powell: military characteristics beat economic ones; wealth and growth 'perform poorly'. Priors reflect that."
     candidates:                                                    # rival explanations for the post-1990 decline; fit-hazards scores each on the holdout
-      - { id: cold_war, var: cold_war, transform: none, prior: 0, hypothesis: "superpower patronage made coups cheap; ended 1991 (era dummy — not identifiable on a temporal holdout)" }
+      - { id: cold_war, var: cold_war, transform: none, prior: 0, hypothesis: "superpower patronage made coups cheap; the flag is now the derived bipolarity of the world rather than the typed year <= 1991 (era dummy — not identifiable on a temporal holdout)" }
       - { id: sp_client_one, var: sp_client_one, transform: none, prior: 0, hypothesis: "clients of exactly one superpower are the contested ones (retained as a monitored rival; ≈0 in the joint fit)" }
-      - { id: anticoup_norm, var: anticoup_norm, transform: none, prior: 0, hypothesis: "post-2000 regional anti-coup sanctions raise the cost" }
+      - { id: anticoup_norm, var: anticoup_norm, transform: none, prior: 0, hypothesis: "regional anti-coup sanctions raise the cost; the flag is now derived (a democratic majority of live states — 2001-2023 — rather than the typed year >= 2000, so it can switch off again and does in 2024)" }
       - { id: year_trend, var: year, transform: z, prior: 0, hypothesis: "null: an unexplained secular trend" }
       - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "urban mass publics make seizures contestable" }
 
@@ -79,7 +79,7 @@ templates:
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.2 }
       - { var: leader_exit_recent, transform: win5, prior: 0.5, default_outside: { window: [1946, 2021], value: 0, source: "leader exits are derived from REIGN (1950+); events.json has none before 1946, so this covariate is an imputed 0 for every pre-1950 actor-year. Imputation, not an observation" } }
-      - { var: aid_conditionality, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "user hypothesis (external influence > neighbours): ODA/GNI × 1992–2016 promotion era; holdout≥2005 AUC 0.578→0.641, coef +0.53; largest single gain on any regime template" } }
+      - { var: aid_conditionality, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "user hypothesis (external influence > neighbours): ODA/GNI × 1992–2016 promotion era; holdout≥2005 AUC 0.578→0.641, coef +0.53; largest single gain on any regime template" }, note: "2026-09-07 (operator/derived-polarity): the promotion era is now derived (unipolar under a democratic hegemon — 1946-1948 and 1995-2014), not the typed 1992-2016; coef +0.83 -> +0.68, holdout AUC 0.604 -> 0.593" }
       - { var: pact_usa, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "US clients step up more (+0.59), identified on Cold War variation" } }
       - { var: pact_rus, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Soviet clients held autocratic (−0.50)" } }
     candidates:
@@ -151,8 +151,8 @@ templates:
       - { var: at_war, transform: lag1, prior: 0.3 }
       - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
       - { var: coup_attempt, transform: win5, prior: 0.8, default_outside: { window: [1950, 2021], value: 0, source: "Powell-Thyne coups via REIGN cover 1950+; the panel has zero positive coup_attempt values before 1950, so every pre-1950 actor-year enters this covariate as an imputed 0. Imputation, not an observation: essentially every interwar closure in the label set (1922, 1923, 1926, 1929, 1930, 1934, 1936) was a coup or self-coup. See docs/escalations.md for the pre-1950 coup dataset that would fix it" } }
-      - { var: aid_conditionality, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "conditionality deters closure: holdout≥2005 AUC 0.565→0.617, coef −0.61" } }
-      - { var: great_game, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Cold War superpower clients close more (+0.62, AUC +0.02); bare pact_* ≈0 once this is in" } }
+      - { var: aid_conditionality, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "conditionality deters closure: holdout≥2005 AUC 0.565→0.617, coef −0.61" }, note: "2026-09-07 (operator/derived-polarity): promotion era derived, coef −0.50 -> −0.43, holdout AUC 0.589 -> 0.579" }
+      - { var: great_game, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Cold War superpower clients close more (+0.62, AUC +0.02); bare pact_* ≈0 once this is in" }, note: "2026-09-07 (operator/derived-polarity): bipolarity derived, coef +0.43 -> +0.29" }
     candidates:
       - { id: patron_regime, var: patron_regime, transform: none, prior: 0, hypothesis: "patron's regime type" }
       - { id: hegemon_x_client, var: hegemon_x_client, transform: none, prior: 0, hypothesis: "hegemon's clients track the hegemon (untestable until the US series varies)" }

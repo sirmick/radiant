@@ -474,6 +474,79 @@ The dyadic templates gained no covariate this turn (the dampener is a candidate,
 
 **Test that decides it.** The derived flags reproduce the historical eras without being told them (bipolar ≈ 1947–1991 ± 3 years, unipolar ≈ 1992–2016 ± 5, promotion era ≈ 1992–2016) and the pooled backtest skill of every template that reads them does not fall by more than 0.02; in the 2025 forward run, `polarity` must be reported per year (with the 2030s share where it flips to bipolar) rather than assumed.
 
+**Status:** implemented (2026-09-07).
+
+**Implemented as.** One shared module, `src/engine/polarity.js`, imported by `scripts/build-panel.mjs` and by `src/engine/core.js`, so the era a coefficient was fitted on and the era the simulation runs forward are the same construction.
+
+1. **Projection-weighted capability, not CINC.** An actor's share of world capability is the geometric mean of its **CINC share** and its **military-expenditure share**, smoothed with an EWMA (λ = 0.75) and classified by a **gap rule**: ranked by smoothed share, the poles are the actors above the first ratio of ≥ 2.0; one pole = unipolar, two = bipolar, more (or no gap in the top five) = multipolar. Military expenditure comes from CoW NMC to 2022 and from the World Bank series the capability composite already uses (`MS.MIL.XPND.GD.ZS × NY.GDP.MKTP.CD`) after that; only shares enter, so the two need not share a scale.
+
+   The package proposed the rule on capability shares alone. **That construction fails, and the failure is worth recording**: on CINC alone the same λ and gap read 1999–2007 as bipolar and 2008–2024 as multipolar *with the wrong pole at the top* — CINC is the unweighted mean of six indicators of which four are latent mass (population, urban population, energy, iron and steel), so the largest 2016 share is 22.9% against the second's 13.2%. Military expenditure is the one indicator of the six that measures what a pole can project. On military expenditure alone the eras come out well (bipolar 1950–1992, unipolar 1993–2024) but only 59 of the 69 interwar years read multipolar and the series cannot be computed past NMC without the World Bank join. The geometric mean of the two is what reproduces all three eras at once.
+
+2. **The eras as state.** `bipolar`, `unipolar`, `multipolar`, `n_poles`, `hegemon_share`, `is_hegemon`, `dem_share`, `cold_war` (= bipolar), `promotion_era` (= unipolar and the hegemon's own regime ≥ 2), `anticoup_norm` (= at least half of live states score regime ≥ 2), `hegemon_regime` (the top pole's regime, not a named state's), `great_game` (superpower client × derived bipolar) and `aid_conditionality` (ODA/GNI in the derived promotion era) are all panel columns computed from the state. The typed versions survive one run as `bipolar_dates`, `unipolar_us_dates`, `cold_war_dates`, `anticoup_norm_dates`, `great_game_dates`, `aid_conditionality_dates` and `hegemon_regime_dates` so the checker can diff them; `scripts/analysis/polarity.mjs` prints the diff.
+
+   Forward, the engine carries each actor's projection mass and **multiplies it by that actor's own simulated growth** each year (an actor nobody simulates grows at the panel's long-run mean), renormalises, and runs the same EWMA and gap rule. That is the assumption that lets a forecast change polarity at all, and it is declared as one in the code: capability share follows relative output, loosely. The dyadic capability ratio still reads the carried `cinc` — changing *that* is a separate package. The democratic share is anchored at the panel's whole-system value and moved by the simulated universe's own regime changes, so it means the same thing whichever universe is run.
+
+3. **The information wave.** `info_access` diffused at a rate switched by hand at 1985 (0.15/yr after, 0.03 before). It is now a frontier `F(y)` — a logistic fitted by least squares to the live-actor mean of `info_access` — that each actor closes `κ` of its gap to each year, never downward. Both constants are refitted by `build-panel.mjs` on every build and carried in `panel.meta.info_wave`; `κ` is fitted against **what the rule does** (run forward from 1965/75/85/95/2005 to 2024 and scored on the live-actor mean it produces), not on one-year differences. `INFO_DIFFUSION=switch` restores the typed rate as an ablation, which is how the two halves of this package are scored apart below.
+
+**Deviation from the package as written.** The package asked for `polarity` "from capability shares"; this uses capability *and* military expenditure, for the reason in (1). It also asked for `unipolar_us` to become a derived alias — the column is now called `unipolar` (nothing referenced the old name as a covariate; `unipolar_us_dates` keeps the typed series).
+
+**Test result.** `node scripts/analysis/polarity.mjs` — the derived series, having been told nothing about any date:
+
+| | derived | asked for | |
+|---|---|---|---|
+| bipolar era | **1950–1994** | 1947–1991 ± 3 | worst end off by 3 — **pass** |
+| unipolar era | **1995–2014** | 1992–2016 ± 5 | off by 3 — **pass** |
+| promotion era | **1995–2014** (and 1946–48) | 1992–2016 | off by 3 — **pass** |
+| multipolar 1870–1938 | **69/69 years** | (not asked; the honest check) | **pass** |
+| anti-coup norm | 2001–2023 (and 1999) | typed 2000–2025 | crosses back below the majority in 2024 |
+
+The whole 1816–2025 series is six states: multipolar to 1945, unipolar 1946–48 (the atomic monopoly and a demobilised second power — the top share is 46.6%, gap1 3.01), one year of multipolarity in 1949, bipolar 1950–1994, unipolar 1995–2014, bipolar 2015–2024 with the second pole changed. 2025 has no capability measurement in any source, so the panel leaves it null and the engine carries 2024 forward with `stale = 1`.
+
+Sensitivity, since all three thresholds are estimates (the full grid is in the script):
+
+| weight · λ · gap | bipolar | unipolar | multipolar 1870–1938 | states | < 3y |
+|---|---|---|---|---|---|
+| 0.40 · 0.75 · 2.0 | 1950–1993 | 1994–2017 | 66/69 | 10 | 3 |
+| **0.50 · 0.75 · 2.0** | **1950–1994** | **1995–2014** | **69/69** | **6** | **1** |
+| 0.60 · 0.75 · 2.0 | 1950–1975 | 1996–2003 | 65/69 | 13 | 2 |
+| 0.50 · 0.60 · 2.0 | 1949–1976 | 1993–2013 | 65/69 | 15 | 7 |
+| 0.50 · 0.85 · 2.0 | 1952–1996 | 1999–2016 | 69/69 | 7 | 2 |
+| 0.50 · 0.75 · 1.9 | 1950–1993 | 1994–2014 | 66/69 | 8 | 1 |
+| 0.50 · 0.75 · 2.1 | 1951–1977 | 1996–2013 | 69/69 | 9 | 3 |
+
+The point in use is a genuine optimum in all three directions and a **sharp** one: it is the only cell that puts every interwar year in the multipolar state *and* keeps the series to six states. Two of the three values are statements rather than fits (equal weight; the package's own "twice"), λ is the one tuned knob, and the eras are stable across 1.95–2.05 of gap and 0.75–0.85 of λ. Read the table as the honest width of the claim: the eras are rediscovered, but not from any threshold.
+
+Diff against the typed flags, year by year (`*_dates`): `bipolar` agrees on 193/209 years (92.3%; differs 1947–49, 1992–94, 2015–24), `unipolar` 201/209, `anticoup_norm` 206/209, `cold_war` only 62/209 because the typed version called every year before 1992 cold war. On live actor-years: `great_game` agrees on 94.2% (non-zero 3,267 derived vs 2,534 typed), `aid_conditionality` 93.8%, `hegemon_regime` 75.8%.
+
+The information wave: frontier L = 1, r = 0.086, t0 = 2000.75 (rmse 0.0361 on 209 years of the live-actor mean); κ = 0.295 with rmse **0.0795** on 195 simulated year-points against the typed switch's **0.0822** on the same objective. Run forward from 1990 it reaches 0.875 in 2024 against an observed 0.869 (the typed rule 0.888); from 2000, 0.885 against 0.876 (typed 0.804). In a 1870 run it holds at the panel's floor of 0.020 for twenty years, where the typed 0.03/yr drifts to 0.036 against a panel that observes 0.020 throughout.
+
+Forward from 2025, 40 runs × 40 years, polarity reported per year rather than assumed: the world **starts** bipolar (poles top 25.2% and 18.4%, gap1 1.37, gap2 2.85), the hegemon scores regime 2 and the democratic share is 0.491, so `promotion_era` and `anticoup_norm` are both **off** in 2026 — the first forecast in this model's history where the promotion era is not running. It stays bipolar in 100% of run-years to 2055 and 98% to 2065; the leading pole passes from the first to the second between 2040 and 2045 (the first pole leads 100% of runs in 2030, 78% in 2035, 55% in 2040, 48% from 2045); 1 run in 40 leaves bipolarity inside the horizon. The 2030s flip the package anticipated has already happened in the measured data — 2015, not 2030.
+
+**Scores: before → after** (`node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all`; exp/obs · Brier skill · AUC). The third column is the same run with `INFO_DIFFUSION=switch`, i.e. the derived eras with the *typed* diffusion, so the two halves can be told apart:
+
+| template | before | after | derived eras only |
+|---|---|---|---|
+| mid_force | 0.77 · +0.085 · 0.766 | 0.77 · +0.088 · 0.766 | 0.77 · +0.086 · 0.765 |
+| mid_war | 0.80 · −0.008 · 0.770 | 0.79 · −0.005 · 0.771 | 0.79 · −0.004 · 0.770 |
+| chokepoint_status | 0.95 · +0.107 · 0.726 | 0.95 · +0.109 · 0.726 | 0.95 · +0.109 · 0.726 |
+| corridor_status | 1.10 · +0.048 · 0.639 | 1.11 · +0.049 · 0.640 | 1.11 · +0.049 · 0.640 |
+| democratize_step | 0.95 · −0.194 · 0.546 | 0.92 · **−0.209** · 0.530 | 0.92 · −0.207 · 0.529 |
+| autocratic_closure | 0.66 · −0.149 · 0.597 | 0.68 · −0.158 · 0.584 | 0.67 · −0.160 · 0.584 |
+| intrastate_onset | 1.02 · +0.114 · 0.739 | 1.02 · +0.120 · 0.742 | 1.01 · +0.114 · 0.740 |
+| leader_exit | 0.85 · −0.828 · 0.735 | 0.85 · −0.818 · 0.742 | 0.85 · −0.826 · 0.732 |
+| irregular_exit | 2.05 · −0.468 · 0.701 | 2.02 · −0.446 · 0.695 | 2.07 · −0.504 · 0.696 |
+| coup_attempt | 0.90 · +0.182 · 0.759 | **0.74** · +0.172 · 0.748 | 0.92 · +0.175 · 0.754 |
+| democratic_deepening | 1.51 · −0.085 · 0.706 | 1.40 · −0.087 · 0.681 | 1.39 · −0.086 · 0.665 |
+
+**The package's guard passes**: no template's pooled skill falls by more than 0.02 (worst `democratize_step` −0.015; `irregular_exit` gains 0.022). Two costs are worth naming rather than rounding away.
+
+- **`coup_attempt` calibration, 0.90 → 0.74 exp/obs**, and the third column shows it is entirely the information wave (0.92 with the typed diffusion). The fitted wave diffuses faster in the 1970s–90s than the typed switch — which is what the panel says happened: from a 1970 start the fitted rule reaches 0.291 by 1990 against an observed 0.278, the typed rule 0.225 — and `info_access` carries −0.45 on coup odds, so the model predicts fewer coups than it used to. The old calibration was closer to the observed coup count *because* its diffusion was wrong in the direction that happened to compensate. Reported, not defended: the diffusion rule is now the one that fits the diffusion data, and the coup base rate is where that shows up.
+- **The regime templates lose AUC**: `democratic_deepening` 0.706 → 0.681 (n = 169, 29 events), `democratize_step` 0.546 → 0.530, `autocratic_closure` 0.597 → 0.584. `aid_conditionality` moves from a 25-year typed window to a 20-year derived one plus 1946–48, and its coefficient falls with it (+0.83 → +0.68 on democratization, −0.50 → −0.43 on closure). `democratize_step` had no discrimination before this package and has none after it (0.55 → 0.53); `democratic_deepening`'s move is 25 events' worth of ordering.
+
+Fitted-coefficient movement on the promoted era terms, one-year holdout: `great_game` +0.67 → +0.60 on `coup_attempt` (holdout AUC 0.833 unchanged), +0.43 → +0.29 on `autocratic_closure` (0.589 → 0.579); `aid_conditionality` +0.83 → +0.68 on `democratize_step` (0.604 → 0.593), −0.50 → −0.43 on `autocratic_closure`. Every era term keeps its sign and most of its size under the derived flags, which is the substantive result: the mechanisms were not artefacts of the dates.
+
+**What this does not do.** The dyadic capability ratio still reads carried `cinc`, not the projection share — two capability numbers now live in the model and only one of them moves in a forward run. The forward drift of capability share by simulated GDP growth is an assumption with no ablation behind it (it cannot be scored: no backtest window contains a polarity transition the model could have called). And the interwar result depends on the military-expenditure share, where CoW's official-rate conversion of Soviet spending is a known artefact (3.5 bn USD in 1930 against Britain's 0.51 bn, on a CINC share of 14.9% against 7.8%) — it is the *weight* on that series, not its accuracy, that keeps 1932–34 out of the bipolar state, and a future NMC revision could move those three years.
+
 ## operator / modern-capability — capability after 2001 and staleness (package 10)
 
 **Adds.** CoW NMC 6.0 (1816–2016) replacing 3.02; a 2017→ capability composite from World Bank milex, GDP (PPP), population, energy use and SIPRI/IISS personnel where available, spliced to CINC with the overlap years; a `stale` field on every carried-forward value in `createWorld` (`{ var: years_since_observed }`), surfaced in the actor panel and hover card ("capability as of 2016").
