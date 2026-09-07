@@ -170,6 +170,7 @@ const HANDLED = new Set(['irregular_exit', 'leader_exit', 'coup', 'autocratizati
 function stepLifecycle(world, y) {
   const lc = world.lifecycle; if (!lc) return;
   const { panel, events, ids, Y0, successors } = lc; const i = y - Y0;
+  if (y > panel.meta.y1 || i < 0) return;   // past the panel's last year there are no dated membership facts: the universe stands as it is (a forward run is not a retirement)
   for (const id of ids) {
     const vars = panel.actors[id]; const alive = vars.live?.[i] === 1; const present = world.actors[id] != null;
     if (alive && !present) world.actors[id] = buildActorState({ panel, events, id, vars, at: y, asOf: world.asOf });
