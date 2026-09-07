@@ -179,9 +179,11 @@ export function snapshotColumns(v, modern) {
   return [[v.id, map[raw], ORDINAL_NOTE[v.id.startsWith('cap_') ? 'cap' : v.id]]];
 }
 
-/** Extra columns a snapshot variable carries alongside its value (nuclear warheads travel with nuclear status). */
+/** Extra columns a snapshot variable carries alongside its value (nuclear warheads travel with nuclear status).
+ *  The 4th element is the column's own `sources` line: an extra is a different measurement from its carrier and must
+ *  not inherit the carrier's source (a warhead count does not come from `nuclear.status`). */
 export function snapshotExtras(v, modern) {
   if (v.id !== 'nuclear_status') return [];
   const n = modern?.nuclear?.warheads;
-  return n == null ? [] : [['nuclear_warheads', +n, null]];
+  return n == null ? [] : [['nuclear_warheads', +n, null, 'Nuclear warheads — data/actors.yaml nuclear.warheads']];
 }

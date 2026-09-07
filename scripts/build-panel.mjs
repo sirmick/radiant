@@ -263,11 +263,11 @@ for (const [id, vars] of Object.entries(panel)) {
     if (v.scope !== 'actor' || v.kind !== 'state' || v.source?.fetch) continue;
     for (const a of actors.values()) {
       if (!a.modern) continue;
-      for (const [col, val, note] of [...snapshotColumns(v, { ...a.modern, id: a.id }), ...snapshotExtras(v, a.modern)]) {
+      for (const [col, val, note, srcLine] of [...snapshotColumns(v, { ...a.modern, id: a.id }), ...snapshotExtras(v, a.modern)]) {
         if (!Number.isFinite(val)) continue;
         if (!snapCols.has(col)) {
           if (clash(col)) { snapCols.set(col, null); break; }   // the panel already measures this (leader_age/leader_tenure from REIGN): the snapshot does not overwrite it
-          snapCols.set(col, { v, note, n: 0 });
+          snapCols.set(col, { v, note, srcLine, n: 0 });
         }
         const rec = snapCols.get(col); if (!rec) continue;
         put(a.id, col, SNAP, val); rec.n++;
@@ -278,7 +278,7 @@ for (const [id, vars] of Object.entries(panel)) {
   for (const [col, rec] of snapCols) {
     if (!rec) continue;
     const src = rec.v.source ?? {};
-    sources[col] = `${rec.v.label ?? rec.v.id} — ${src.hand ? `data/actors.yaml ${src.field}` : 'hand estimate in data/variables.yaml'}, modern snapshot valued at ${SNAP}${rec.note ? `; ${rec.note}` : ''}`;
+    sources[col] = rec.srcLine ? `${rec.srcLine}, modern snapshot valued at ${SNAP}` : `${rec.v.label ?? rec.v.id} — ${src.hand ? `data/actors.yaml ${src.field}` : 'hand estimate in data/variables.yaml'}, modern snapshot valued at ${SNAP}${rec.note ? `; ${rec.note}` : ''}`;
   }
   console.log(`modern fold: ${wrote.length} series columns (${wrote.join(' ')}); ${[...snapCols].filter(([, r]) => r).length} snapshot columns at ${SNAP}${skipped.length ? `; skipped ${skipped.join(' ')} (already measured in the panel)` : ''}`);
 }
