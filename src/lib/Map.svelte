@@ -1,10 +1,11 @@
 <script>
   import * as d3 from 'd3';
   import * as topojson from 'topojson-client';
+  import { buildGrid, FIELDS, evaluateField } from './influence.js';
   import { valueAt, forecastAt, historyAt, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
   let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, selected, onSelect } = $props();
-  let hover = $state(null); let mapEl = $state(null);
+  let hover = $state(null); let mapEl = $state(null); let canvasEl = $state(null);
 
   let width = $state(800), height = $state(600);
   let gEl = $state(null), svgEl = $state(null);
@@ -119,6 +120,45 @@
   const presenceNow = $derived(layers.presence ? presenceAt(presence, year) : []);
   const presenceCounts = $derived.by(() => { const m = {}; for (const r of presenceNow) m[r.actor] = (m[r.actor] ?? 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1]); });
 
+  // ---- sphere-of-influence raster (see influence.js)
+  const grid = $derived(countries.length ? buildGrid(countries, 2) : null);
+  const capOf = (id) => { const a = history?.actors?.[id]; if (!a) return 0; const arr = a.cinc; if (!arr) return 0; for (let i = Math.min(arr.length - 1, yi >= 0 ? yi : arr.length - 1); i >= 0; i--) if (arr[i] != null) return arr[i]; return 0; };
+  const powersNow = $derived.by(() => {
+    if (!history) return [];
+    const cands = Object.keys(POWER_COLORS).filter(id => history.actors[id] && (yi < 0 || yi > history.meta.y1 - history.meta.y0 ? true : history.actors[id].live[yi]));
+    const isGP = (id) => (yi >= 0 && yi <= history.meta.y1 - history.meta.y0) ? (history.actors[id].great_power?.[yi] ?? 0) > 0 : ['USA', 'CHN', 'RUS', 'GBR', 'FRA', 'IND', 'JPN', 'TUR'].includes(id);
+    const stations = presenceAt(presence, year);
+    return cands.filter(id => isGP(id) || stations.some(r => r.actor === id)).map(id => {
+      const key = neKey(id);
+      const partners = (pactsOf.get(id) ?? []).flatMap(p => p.members.filter(m => m !== id).map(m => ({ key: neKey(m), centroid: lonlat(m), w: p.members.length <= 3 ? 0.6 : 0.35 })));
+      const st = stations.filter(r => r.actor === id).map(r => ({ lonlat: r.geometry, w: (r.kind === 'fleet' ? 0.3 : r.kind === 'advisors' ? 0.12 : 0.25) * r.level, lambda: r.kind === 'fleet' ? 1500 : 1000 }));
+      return { id, cap: capOf(id), polygonKey: key, centroid: lonlat(id), partners, stations: st };
+    });
+  });
+  const fieldSpec = $derived(layers.field && FIELDS[layers.field] ? FIELDS[layers.field] : null);
+  const fieldCtx = $derived.by(() => {
+    if (!fieldSpec || !history) return null;
+    const live = yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? [...liveNow] : Object.keys(history.actors);
+    const atWarIds = live.filter(id => atWar(id)); const intra = live.map(id => [id, intrastateOf(id)]).filter(([, l]) => l > 0);
+    const disputeIds = [...new Set(yearItems.filter(it => it.k === 'dispute' && it.a).flatMap(it => it.a))];
+    return { powers: powersNow, colors: POWER_COLORS, lonlat, neKey, atWar: atWarIds, intrastate: intra, disputes: disputeIds };
+  });
+  const field = $derived(fieldSpec && grid && fieldCtx ? evaluateField(grid, fieldSpec, fieldCtx) : null);
+  $effect(() => {
+    if (!canvasEl) return; const ctx = canvasEl.getContext('2d'); canvasEl.width = width; canvasEl.height = height; ctx.clearRect(0, 0, width, height);
+    if (!field || !grid) return;
+    ctx.save(); ctx.translate(transform.x, transform.y); ctx.scale(transform.k, transform.k);
+    const h = grid.step / 2;
+    for (let i = 0; i < grid.cells.length; i++) {
+      const p = field.dominant[i]; const a = field.alpha[i]; if (p < 0 || a < 0.03) continue;
+      const [lon, lat] = grid.cells[i];
+      const corners = [[lon - h, lat + h], [lon + h, lat + h], [lon + h, lat - h], [lon - h, lat - h]].map(c => projection(c)); if (corners.some(c => !c)) continue;
+      ctx.beginPath(); ctx.moveTo(corners[0][0], corners[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(corners[k][0], corners[k][1]); ctx.closePath();
+      ctx.fillStyle = fieldSpec.color(fieldCtx, field.groups[p]); ctx.globalAlpha = a; ctx.fill();
+    }
+    ctx.restore();
+  });
+
   // ---- hover card
   const hoverInfo = $derived.by(() => {
     if (!hover) return null; const id = actorOfNe(hover.id); const ha = history?.actors?.[id]; const wa = world.actors[id];
@@ -167,6 +207,7 @@
 </script>
 
 <div class="map" bind:this={mapEl} bind:clientWidth={width} bind:clientHeight={height}>
+  <canvas bind:this={canvasEl} class="influence" class:on={!!field}></canvas>
   <svg bind:this={svgEl} {width} {height}>
     <defs>
       {#each Object.entries(STATUS_COLORS) as [s, c]}
@@ -176,9 +217,9 @@
         </pattern>
       {/each}
     </defs>
-    <rect {width} {height} fill="#0b0e13" />
+    <rect {width} {height} fill="#0b0e13" fill-opacity={field ? 0 : 1} />
     <g bind:this={gEl} transform={transform.toString()}>
-      <path d={path({ type: 'Sphere' })} fill="#0e131b" stroke="#2a303a" stroke-width={0.6 / transform.k} />
+      <path d={path({ type: 'Sphere' })} fill="#0e131b" fill-opacity={field ? 0 : 1} stroke="#2a303a" stroke-width={0.6 / transform.k} />
       <path d={path(d3.geoGraticule10())} fill="none" stroke="#1a2029" stroke-width={0.4 / transform.k} />
 
       <!-- countries -->
@@ -186,6 +227,7 @@
         <path
           d={path(f)}
           fill={fillFor(f.id)}
+          fill-opacity={field ? 0.55 : 1}
           stroke={isSel('actor', f.id) ? '#fff' : (conflictStroke(f.id)?.c ?? 'none')}
           stroke-width={(isSel('actor', f.id) ? 1.5 : (conflictStroke(f.id)?.w ?? 0)) / transform.k}
           stroke-dasharray={isSel('actor', f.id) ? null : conflictStroke(f.id)?.d}
@@ -359,6 +401,10 @@
     {#if layers.conflicts}
       <div class="lt" style="margin-top:6px">Conflicts <span class="muted">red outline at war · orange dashed internal · arcs join principal belligerents (dashed = ongoing)</span></div>
     {/if}
+    {#if fieldSpec}
+      <div class="lt" style="margin-top:6px">{fieldSpec.label} <span class="muted">{fieldSpec.note}</span></div>
+      {#if fieldSpec.paint === 'dominant'}{#each field?.groups ?? [] as g}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx, g)}"></i>{g}</span>{/each}{:else}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx)}"></i>intensity</span>{/if}
+    {/if}
     {#if layers.presence}
       <div class="lt" style="margin-top:6px">Military presence <span class="muted">■ base · ◆ garrison · ⚓ fleet area · • advisors · size = level</span></div>
       {#each presenceCounts as [p, n]}<span class="sw"><i style="background:{POWER_COLORS[p] ?? '#8b94a3'}"></i>{p} {n}</span>{/each}
@@ -379,7 +425,10 @@
 </div>
 
 <style>
-  .map { position: relative; width: 100%; height: 100%; overflow: hidden; }
+  .map { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0b0e13; }
+  canvas.influence { position: absolute; inset: 0; pointer-events: none; filter: blur(7px); opacity: 0; transition: opacity .2s; }
+  canvas.influence.on { opacity: 0.9; }
+  svg { position: relative; }
   svg { display: block; cursor: grab; }
   path.actor { cursor: pointer; }
   svg path, svg circle { outline: none; }

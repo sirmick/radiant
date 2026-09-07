@@ -21,7 +21,7 @@
     const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
     return () => clearInterval(t);
   });
-  let layers = $state({ territories: true, corridors: true, alliances: 'major', conflicts: true, presence: true, labels: true, glyphs: false });
+  let layers = $state({ territories: true, corridors: true, alliances: 'major', conflicts: true, presence: true, field: false, labels: true, glyphs: false });
   let selected = $state(null);
 
   const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; if (h.horizon) horizon = h.horizon; };
@@ -72,6 +72,9 @@
       {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
         <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
       {/each}
+      <label class="asof" title="Continuous geographic fields, painted like weather">field
+        <select value={layers.field || ''} onchange={(e) => layers.field = e.target.value || false}><option value="">none</option><option value="influence">spheres of influence</option><option value="conflict">conflict intensity</option></select>
+      </label>
       <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>
       <label>actor
         <select onchange={(e) => { if (e.target.value) { selected = { kind: 'actor', id: e.target.value }; tab = 'detail'; } }} value={selected?.kind === 'actor' ? selected.id : ''}>
