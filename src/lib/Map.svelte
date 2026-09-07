@@ -1,9 +1,9 @@
 <script>
   import * as d3 from 'd3';
   import * as topojson from 'topojson-client';
-  import { valueAt, forecastAt, historyAt, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
+  import { valueAt, forecastAt, historyAt, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
-  let { world, geo, forecast, history, alliances, news, variable, year, layers, selected, onSelect } = $props();
+  let { world, geo, forecast, history, alliances, news, presence, variable, year, layers, selected, onSelect } = $props();
   let hover = $state(null); let mapEl = $state(null);
 
   let width = $state(800), height = $state(600);
@@ -115,6 +115,10 @@
     }
     return out;
   });
+  // ---- military presence at the year
+  const presenceNow = $derived(layers.presence ? presenceAt(presence, year) : []);
+  const presenceCounts = $derived.by(() => { const m = {}; for (const r of presenceNow) m[r.actor] = (m[r.actor] ?? 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1]); });
+
   // ---- hover card
   const hoverInfo = $derived.by(() => {
     if (!hover) return null; const id = actorOfNe(hover.id); const ha = history?.actors?.[id]; const wa = world.actors[id];
@@ -124,7 +128,8 @@
     const pacts = (pactsOf.get(id) ?? []).map(p => ({ pid: p.pid, partners: p.members.filter(m => m !== id), greats: p.members.filter(m => m !== id && isGreat(m)) }));
     const items = yearItems.filter(it => it.a?.includes(id) && !it.ongoing).slice(0, 4);
     const conflicts = [atWar(id) ? 'at war' : null, intrastateOf(id) >= 2 ? 'civil war' : intrastateOf(id) > 0 ? 'internal armed conflict' : null].filter(Boolean);
-    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, live: ha ? (yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? !!ha.live[yi] : true) : !!wa };
+    const hosted = presenceAt(presence, year).filter(r => r.host === id).map(r => `${r.actor} ${r.kind}${r.level >= 3 ? ' (major)' : ''}`);
+    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, hosted, live: ha ? (yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? !!ha.live[yi] : true) : !!wa };
   });
   const fmtPop = (n) => (n == null ? '—' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' bn' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' k' : String(Math.round(n)));
   const popR = (id) => { const p = popAt(id); return Math.min(26, 2 + Math.sqrt(Math.max(0, p) / 1e6) * 1.4); };
@@ -254,6 +259,25 @@
         {/each}
       {/if}
 
+      <!-- military presence: bases (squares), garrisons (diamonds), fleets (dashed circles), advisors (small dots) -->
+      {#if layers.presence}
+        {#each presenceNow as r (r.id)}
+          {@const [x, y] = projection(r.geometry)}
+          {@const col = POWER_COLORS[r.actor] ?? '#8b94a3'}
+          {@const sz = (r.level === 3 ? 7 : r.level === 2 ? 5 : 3.5) / transform.k}
+          {#if r.kind === 'fleet'}
+            <circle cx={x} cy={y} r={(r.level === 3 ? 26 : r.level === 2 ? 18 : 12) / Math.sqrt(transform.k)} fill={col} fill-opacity="0.08" stroke={col} stroke-opacity={r.operator ? 0.9 : 0.6} stroke-dasharray="4 3" stroke-width={(r.operator ? 1.4 : 0.9) / transform.k}><title>{r.actor} fleet: {r.name} · since {r.from}{r.operator ? ' · operator entry, unverified' : ''}</title></circle>
+            <text x={x} y={y + 3 / transform.k} text-anchor="middle" font-size={9 / transform.k} fill={col} pointer-events="none">⚓</text>
+          {:else if r.kind === 'garrison'}
+            <rect x={x - sz} y={y - sz} width={sz * 2} height={sz * 2} transform="rotate(45 {x} {y})" fill={col} fill-opacity="0.85" stroke="#0b0e13" stroke-width={0.6 / transform.k}><title>{r.actor} garrison: {r.name} · since {r.from}{r.operator ? ' · operator entry, unverified' : ''}</title></rect>
+          {:else if r.kind === 'advisors'}
+            <circle cx={x} cy={y} r={sz * 0.7} fill={col} fill-opacity="0.9" stroke="#0b0e13" stroke-width={0.5 / transform.k}><title>{r.actor} advisors: {r.name} · since {r.from}</title></circle>
+          {:else}
+            <rect x={x - sz} y={y - sz} width={sz * 2} height={sz * 2} fill={col} fill-opacity="0.85" stroke="#0b0e13" stroke-width={0.6 / transform.k}><title>{r.actor} base: {r.name} · since {r.from}{r.operator ? ' · operator entry, unverified' : ''}</title></rect>
+          {/if}
+        {/each}
+      {/if}
+
       <!-- population bubbles -->
       {#if layers.labels}
         {#each featured as id (id)}
@@ -308,6 +332,7 @@
       {#if hoverInfo.pacts.length}
         <div class="cr muted">pacts: {#each hoverInfo.pacts.slice(0, 4) as p, i}{i ? '; ' : ''}{#if p.greats.length}<span style="color:#6cb4ff">with {p.greats.join(', ')}</span>{#if p.partners.length > p.greats.length} +{p.partners.length - p.greats.length}{/if}{:else}{p.partners.length <= 2 ? p.partners.join(', ') : p.partners.length + ' partners'}{/if}{/each}{hoverInfo.pacts.length > 4 ? ` (+${hoverInfo.pacts.length - 4})` : ''}</div>
       {:else if allianceView.pacts}<div class="cr muted">no defence pact{allianceView.carried ? ' (as of ' + allianceView.from + ')' : ''}</div>{/if}
+      {#if hoverInfo.hosted.length}<div class="cr" style="color:#ffd166">foreign forces: {hoverInfo.hosted.join(' · ')}</div>{/if}
       {#if hoverInfo.items.length}<div class="cr ev">{Math.round(year)}: {hoverInfo.items.map(it => it.t.replace(/^[^:]+: /, '')).join(' · ')}</div>{/if}
     </div>
   {/if}
@@ -333,6 +358,11 @@
     {/if}
     {#if layers.conflicts}
       <div class="lt" style="margin-top:6px">Conflicts <span class="muted">red outline at war · orange dashed internal · arcs join principal belligerents (dashed = ongoing)</span></div>
+    {/if}
+    {#if layers.presence}
+      <div class="lt" style="margin-top:6px">Military presence <span class="muted">■ base · ◆ garrison · ⚓ fleet area · • advisors · size = level</span></div>
+      {#each presenceCounts as [p, n]}<span class="sw"><i style="background:{POWER_COLORS[p] ?? '#8b94a3'}"></i>{p} {n}</span>{/each}
+      {#if !presenceCounts.length}<span class="muted">none recorded this year</span>{/if}
     {/if}
     {#if layers.alliances}
       <div class="lt" style="margin-top:6px">Alliances{layers.alliances === 'major' ? ' (great-power pacts)' : ''} <span class="muted">{allianceView.pacts} defence pacts (CoW) · solid bilateral · dashed multilateral, hub = largest member{allianceView.carried ? ` · carried forward from ${allianceView.from}` : ''}{allianceView.none ? ' · none in source' : ''}</span></div>

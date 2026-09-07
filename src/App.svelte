@@ -20,7 +20,7 @@
     const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
     return () => clearInterval(t);
   });
-  let layers = $state({ territories: true, corridors: true, alliances: 'major', conflicts: true, labels: true, glyphs: false });
+  let layers = $state({ territories: true, corridors: true, alliances: 'major', conflicts: true, presence: true, labels: true, glyphs: false });
   let selected = $state(null);
 
   const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; };
@@ -68,7 +68,7 @@
         </select>
       </label>
       <span class="muted tiny">layers</span>
-      {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
+      {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
         <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
       {/each}
       <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>
@@ -103,7 +103,7 @@
       {#if !headlines.length}<span class="muted tiny">no recorded headline events for {Math.round(year)}</span>{/if}
     </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} {variable} {year} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
+      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
       <Panel world={data.world} forecast={ensemble ?? data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
     </main>
   </div>

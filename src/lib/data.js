@@ -3,12 +3,12 @@ import * as d3 from 'd3';
 
 export async function loadWorld() {
   const opt = (f) => fetch(`${import.meta.env.BASE_URL}${f}`).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  const [world, geo, forecast, history, news, alliances, scores, forecasts] = await Promise.all([
+  const [world, geo, forecast, history, news, alliances, scores, forecasts, presence] = await Promise.all([
     fetch(`${import.meta.env.BASE_URL}world.json`).then(r => r.json()),
     fetch(`${import.meta.env.BASE_URL}geo.topo.json`).then(r => r.json()),
-    opt('forecast.json'), opt('history.json'), opt('news.json'), opt('alliances.json'), opt('scores.json'), opt('forecasts.json'),
+    opt('forecast.json'), opt('history.json'), opt('news.json'), opt('alliances.json'), opt('scores.json'), opt('forecasts.json'), opt('presence.json'),
   ]);
-  return { world, geo, forecast, history, news, alliances, scores, forecastIndex: forecasts };
+  return { world, geo, forecast, history, news, alliances, scores, forecastIndex: forecasts, presence };
 }
 
 /** Forecast-year "news": the ensemble's highest single-year hazards for that year (difference of cumulative curves). */
@@ -52,6 +52,9 @@ export function forecastVariables(fc) {
 export const REGIME_LABELS = ['closed autocracy', 'electoral autocracy', 'electoral democracy', 'liberal democracy'];
 export const REGIME_GLYPH = ['◆', '▲', '●', '★'];
 export const REGIME_COL4 = ['#d95c4f', '#e8a04f', '#7fc4f0', '#4f9be8'];
+export const POWER_COLORS = { USA: '#4f9be8', GBR: '#1f4fa3', FRA: '#7fc4f0', RUS: '#ef6a5a', CHN: '#ffd166', JPN: '#f28cb1', DEU: '#9aa4b2', ITA: '#4fc27a', TUR: '#2ec4b6', IND: '#f4a261' };
+/** Presence records active at a year (from <= y < to). */
+export function presenceAt(pr, year) { if (!pr) return []; const y = Math.round(year); return pr.records.filter(r => r.from <= y && (r.to == null || y < r.to)); }
 /** ISO2 -> emoji flag (regional indicator pairs); null for entities without a modern code. */
 export const flagEmoji = (iso2) => (iso2 && /^[A-Z]{2}$/.test(iso2) ? String.fromCodePoint(...[...iso2].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : null);
 /** Defence-pact edges at a year. Past the source's coverage the last graph is carried forward and flagged. */
