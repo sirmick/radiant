@@ -1,6 +1,6 @@
 {
  "meta": {
-  "built": "2026-09-07T23:57:02.055Z"
+  "built": "2026-09-08T00:35:33.218Z"
  },
  "fits": {
   "leader_exit": {
@@ -130,7 +130,7 @@
     "brier": 0.1382072514363373,
     "base_rate_test": 0.17114517583408476
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "irregular_exit": {
@@ -272,7 +272,7 @@
     "brier": 0.0095382406247943,
     "base_rate_test": 0.009558160504959423
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "coup_attempt": {
@@ -286,6 +286,54 @@
      "brier_holdout": 0.02024454382505913,
      "exp_obs_holdout": 1.0129712522495111,
      "coefs": {}
+    },
+    {
+     "variant": "presence_any",
+     "split": 1986,
+     "n": 8927,
+     "events": 339,
+     "auc_holdout": 0.8265518265518266,
+     "brier_holdout": 0.02047098867125304,
+     "exp_obs_holdout": 1.040828197118147,
+     "coefs": {
+      "z(presence_any)": -0.09227615641225141
+     }
+    },
+    {
+     "variant": "presence_change",
+     "split": 1986,
+     "n": 8927,
+     "events": 339,
+     "auc_holdout": 0.8333987157516569,
+     "brier_holdout": 0.020253568894361734,
+     "exp_obs_holdout": 1.0115400887606574,
+     "coefs": {
+      "presence_change": 0.25677297740586646
+     }
+    },
+    {
+     "variant": "presence_USA",
+     "split": 1986,
+     "n": 8927,
+     "events": 339,
+     "auc_holdout": 0.8310179486650074,
+     "brier_holdout": 0.020326981168631165,
+     "exp_obs_holdout": 1.0247293653339662,
+     "coefs": {
+      "z(presence_USA)": -0.04191042358642471
+     }
+    },
+    {
+     "variant": "presence_RUS",
+     "split": 1986,
+     "n": 8927,
+     "events": 339,
+     "auc_holdout": 0.8372771902183667,
+     "brier_holdout": 0.020217898342841094,
+     "exp_obs_holdout": 1.0004553563633969,
+     "coefs": {
+      "z(presence_RUS)": -0.3986118316227659
+     }
     },
     {
      "variant": "cold_war",
@@ -352,15 +400,19 @@
      "split": 1986,
      "n": 8245,
      "events": 293,
-     "auc_holdout": 0.8248698836934131,
-     "brier_holdout": 0.020609327256219667,
-     "exp_obs_holdout": 0.4663798825645753,
+     "auc_holdout": 0.8239217062746474,
+     "brier_holdout": 0.020666234918740093,
+     "exp_obs_holdout": 0.47402153224350574,
      "coefs": {
-      "cold_war": -0.3121140580211936,
-      "sp_client_one": -0.1289045818492253,
-      "anticoup_norm": 0.0354608316713783,
-      "z(year)": -0.4169371465365914,
-      "z(urban_share)": -0.019900148136100918
+      "z(presence_any)": 0.06609941941165698,
+      "presence_change": 0.2870643196751369,
+      "z(presence_USA)": -0.061581600438363145,
+      "z(presence_RUS)": -0.38945519334073997,
+      "cold_war": -0.311531735512816,
+      "sp_client_one": -0.02888394392449938,
+      "anticoup_norm": 0.01017823405761162,
+      "z(year)": -0.393012603812898,
+      "z(urban_share)": -0.028820501767536873
      }
     }
    ],
@@ -506,7 +558,7 @@
     "brier": 0.02024454382505913,
     "base_rate_test": 0.021996303142329022
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "democratize_step": {
@@ -681,7 +733,7 @@
     "brier": 0.038744605463693814,
     "base_rate_test": 0.04133545310015898
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "democratic_deepening": {
@@ -800,7 +852,7 @@
     "brier": 0.01234024346575752,
     "base_rate_test": 0.013157894736842105
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "liberal_erosion": {
@@ -935,56 +987,108 @@
     }
    ],
    "holdout": null,
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "autocratic_closure": {
    "ablation": [
     {
      "variant": "base",
-     "split": 2005,
+     "split": 1986,
      "n": 5880,
      "events": 245,
-     "auc_holdout": 0.5787103174603174,
-     "brier_holdout": 0.03346339005048296,
-     "exp_obs_holdout": 0.8625480975153249,
+     "auc_holdout": 0.5919038999506335,
+     "brier_holdout": 0.03101850602845419,
+     "exp_obs_holdout": 1.1386004716891138,
      "coefs": {}
     },
     {
-     "variant": "patron_regime",
-     "split": 2005,
+     "variant": "presence_any",
+     "split": 1986,
      "n": 5880,
      "events": 245,
-     "auc_holdout": 0.5768353174603175,
-     "brier_holdout": 0.033470660400493055,
-     "exp_obs_holdout": 0.8548030796837595,
+     "auc_holdout": 0.5914692266852127,
+     "brier_holdout": 0.03102593510707434,
+     "exp_obs_holdout": 1.1368533539078904,
+     "coefs": {
+      "z(presence_any)": -0.0038208720465809087
+     }
+    },
+    {
+     "variant": "presence_change",
+     "split": 1986,
+     "n": 5880,
+     "events": 245,
+     "auc_holdout": 0.5908389504503525,
+     "brier_holdout": 0.031055618861448055,
+     "exp_obs_holdout": 1.1388947610265512,
+     "coefs": {
+      "presence_change": 0.07440698617947684
+     }
+    },
+    {
+     "variant": "presence_USA",
+     "split": 1986,
+     "n": 5880,
+     "events": 245,
+     "auc_holdout": 0.5924907088589516,
+     "brier_holdout": 0.031026287061249953,
+     "exp_obs_holdout": 1.1392487106516134,
+     "coefs": {
+      "z(presence_USA)": -0.03487434088834776
+     }
+    },
+    {
+     "variant": "presence_RUS",
+     "split": 1986,
+     "n": 5880,
+     "events": 245,
+     "auc_holdout": 0.5920156730760274,
+     "brier_holdout": 0.031034436488555268,
+     "exp_obs_holdout": 1.1520561422982867,
+     "coefs": {
+      "z(presence_RUS)": 0.030494011903522463
+     }
+    },
+    {
+     "variant": "patron_regime",
+     "split": 1986,
+     "n": 5880,
+     "events": 245,
+     "auc_holdout": 0.5891840872327148,
+     "brier_holdout": 0.031018012547098663,
+     "exp_obs_holdout": 1.1456611480977341,
      "coefs": {
       "patron_regime": 0.07935189984978487
      }
     },
     {
      "variant": "hegemon_x_client",
-     "split": 2005,
+     "split": 1986,
      "n": 5880,
      "events": 245,
-     "auc_holdout": 0.5749603174603175,
-     "brier_holdout": 0.03347268352623412,
-     "exp_obs_holdout": 0.8449336630468142,
+     "auc_holdout": 0.5892492882225279,
+     "brier_holdout": 0.031007825169045093,
+     "exp_obs_holdout": 1.1271533166305074,
      "coefs": {
       "hegemon_x_client": 0.049380184846794996
      }
     },
     {
      "variant": "all",
-     "split": 2005,
+     "split": 1986,
      "n": 5880,
      "events": 245,
-     "auc_holdout": 0.5750992063492063,
-     "brier_holdout": 0.033472552551023334,
-     "exp_obs_holdout": 0.8457521011610489,
+     "auc_holdout": 0.5870262449508044,
+     "brier_holdout": 0.031082545021459775,
+     "exp_obs_holdout": 1.158322740914776,
      "coefs": {
-      "patron_regime": 0.09584035178258661,
-      "hegemon_x_client": -0.021589174286605523
+      "z(presence_any)": 0.03143583730285402,
+      "presence_change": 0.07581356218512643,
+      "z(presence_USA)": -0.059316275614111895,
+      "z(presence_RUS)": 0.02442071104281513,
+      "patron_regime": 0.058342186202211016,
+      "hegemon_x_client": 0.06034822694512981
      }
     }
    ],
@@ -1110,7 +1214,7 @@
     "brier": 0.03346339005048296,
     "base_rate_test": 0.034482758620689655
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "intrastate_onset": {
@@ -1138,15 +1242,41 @@
      }
     },
     {
+     "variant": "presence_any",
+     "split": 1985,
+     "n": 9855,
+     "events": 408,
+     "auc_holdout": 0.8066364960708362,
+     "brier_holdout": 0.04192452174986486,
+     "exp_obs_holdout": 0.7432878520108696,
+     "coefs": {
+      "z(presence_any)": -0.06335350189660593
+     }
+    },
+    {
+     "variant": "presence_change",
+     "split": 1985,
+     "n": 9855,
+     "events": 408,
+     "auc_holdout": 0.8122883077297274,
+     "brier_holdout": 0.04193465864475927,
+     "exp_obs_holdout": 0.7303613468437694,
+     "coefs": {
+      "presence_change": 0.4857721455822706
+     }
+    },
+    {
      "variant": "all",
      "split": 1985,
      "n": 8630,
      "events": 368,
-     "auc_holdout": 0.806817560121611,
-     "brier_holdout": 0.04255208642519793,
-     "exp_obs_holdout": 0.5597143480575708,
+     "auc_holdout": 0.8058314901510237,
+     "brier_holdout": 0.04251019340637586,
+     "exp_obs_holdout": 0.5670861477468673,
      "coefs": {
-      "log(infant_mortality)": 0.24320213502886587
+      "log(infant_mortality)": 0.2428711931240265,
+      "z(presence_any)": -0.011945813227540498,
+      "presence_change": 0.3613270830737353
      }
     }
    ],
@@ -1275,7 +1405,7 @@
     "brier": 0.04190203218012539,
     "base_rate_test": 0.04696273608984176
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_force": {
@@ -1289,6 +1419,30 @@
      "brier_holdout": 0.009894483178007682,
      "exp_obs_holdout": 0.9508300158510694,
      "coefs": {}
+    },
+    {
+     "variant": "patron_presence",
+     "split": 1946,
+     "n": 69272,
+     "events": 813,
+     "auc_holdout": 0.8520041555846785,
+     "brier_holdout": 0.00998166463120456,
+     "exp_obs_holdout": 1.0991408183565876,
+     "coefs": {
+      "patron_presence": -0.17114672049548335
+     }
+    },
+    {
+     "variant": "patron_presence_rival",
+     "split": 1946,
+     "n": 69272,
+     "events": 813,
+     "auc_holdout": 0.8585804842002817,
+     "brier_holdout": 0.009923260219605046,
+     "exp_obs_holdout": 0.9948603873543619,
+     "coefs": {
+      "patron_presence_rival": 0.4222605116109957
+     }
     },
     {
      "variant": "corridor_stake",
@@ -1307,11 +1461,13 @@
      "split": 1946,
      "n": 69272,
      "events": 813,
-     "auc_holdout": 0.8613594563582077,
-     "brier_holdout": 0.009889720495567456,
-     "exp_obs_holdout": 0.9114957879411174,
+     "auc_holdout": 0.8579292967003354,
+     "brier_holdout": 0.009923899814060043,
+     "exp_obs_holdout": 0.9740339442034875,
      "coefs": {
-      "z(corridor_stake)": -0.04008009563232551
+      "patron_presence": -0.315441337176816,
+      "patron_presence_rival": 0.6927742741953744,
+      "z(corridor_stake)": -0.018862872018414394
      }
     }
    ],
@@ -1432,43 +1588,69 @@
     "brier": 0.009894483178007682,
     "base_rate_test": 0.010280627703366279
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_war": {
    "ablation": [
     {
      "variant": "base",
-     "split": 1939,
+     "split": 1946,
      "n": 69272,
      "events": 227,
-     "auc_holdout": 0.8482172142289052,
-     "brier_holdout": 0.003111551708582101,
-     "exp_obs_holdout": 0.9020858055416513,
+     "auc_holdout": 0.8018465420509049,
+     "brier_holdout": 0.0012886453389611796,
+     "exp_obs_holdout": 3.223233330808449,
      "coefs": {}
     },
     {
-     "variant": "corridor_stake",
-     "split": 1939,
+     "variant": "patron_presence",
+     "split": 1946,
      "n": 69272,
      "events": 227,
-     "auc_holdout": 0.8502346153408465,
-     "brier_holdout": 0.0031094058325880744,
-     "exp_obs_holdout": 0.8650380645941821,
+     "auc_holdout": 0.8088225803363165,
+     "brier_holdout": 0.0013045123470594212,
+     "exp_obs_holdout": 3.4968290585853685,
+     "coefs": {
+      "patron_presence": 0.19684498752052357
+     }
+    },
+    {
+     "variant": "patron_presence_rival",
+     "split": 1946,
+     "n": 69272,
+     "events": 227,
+     "auc_holdout": 0.7997607870976802,
+     "brier_holdout": 0.001296900505512648,
+     "exp_obs_holdout": 3.3315201733464446,
+     "coefs": {
+      "patron_presence_rival": 0.5361140854726704
+     }
+    },
+    {
+     "variant": "corridor_stake",
+     "split": 1946,
+     "n": 69272,
+     "events": 227,
+     "auc_holdout": 0.7951942532167504,
+     "brier_holdout": 0.0012795908583413992,
+     "exp_obs_holdout": 2.9585293979122174,
      "coefs": {
       "z(corridor_stake)": -0.12699687335084406
      }
     },
     {
      "variant": "all",
-     "split": 1939,
+     "split": 1946,
      "n": 69272,
      "events": 227,
-     "auc_holdout": 0.8502346153408465,
-     "brier_holdout": 0.0031094058325880744,
-     "exp_obs_holdout": 0.8650380645941821,
+     "auc_holdout": 0.7968977497817439,
+     "brier_holdout": 0.001286640189526094,
+     "exp_obs_holdout": 3.0649902204446464,
      "coefs": {
-      "z(corridor_stake)": -0.12699687335084406
+      "patron_presence": 0.18340535428163732,
+      "patron_presence_rival": 0.4791516143392312,
+      "z(corridor_stake)": -0.15246150964961175
      }
     }
    ],
@@ -1597,7 +1779,7 @@
     "brier": 0.003111551708582101,
     "base_rate_test": 0.003146595503156553
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "weaponization": {
@@ -1605,7 +1787,42 @@
    "reason": "no panel sample yet; using literature prior"
   },
   "chokepoint_status": {
-   "ablation": null,
+   "ablation": [
+    {
+     "variant": "base",
+     "split": 1970,
+     "n": 1143,
+     "events": 37,
+     "auc_holdout": 0.6241461241461241,
+     "brier_holdout": 0.015129630003735343,
+     "exp_obs_holdout": 2.3121431879997347,
+     "coefs": {}
+    },
+    {
+     "variant": "guarantor_presence",
+     "split": 1970,
+     "n": 1143,
+     "events": 37,
+     "auc_holdout": 0.5148500148500148,
+     "brier_holdout": 0.015229653402954036,
+     "exp_obs_holdout": 2.325985750551209,
+     "coefs": {
+      "z(guarantor_presence)": 0.05788026896524029
+     }
+    },
+    {
+     "variant": "all",
+     "split": 1970,
+     "n": 1143,
+     "events": 37,
+     "auc_holdout": 0.5148500148500148,
+     "brier_holdout": 0.015229653402954036,
+     "exp_obs_holdout": 2.325985750551209,
+     "coefs": {
+      "z(guarantor_presence)": 0.05788026896524029
+     }
+    }
+   ],
    "status": "fitted",
    "unit": "chokepoint-year",
    "event": "chokepoint",
@@ -1621,68 +1838,72 @@
     1869,
     2024
    ],
-   "intercept": -4.051219720205852,
+   "intercept": -4.08407897858198,
    "coefs": {
     "adjacent_war": {
-     "value": 2.3837437154474355,
+     "value": 2.378191994457371,
      "prior": 2.5
     },
     "adjacent_intrastate": {
-     "value": -0.3536967605727977,
+     "value": -0.3779395151964993,
      "prior": 1
+    },
+    "guarantor_withdrawal": {
+     "value": 0.21082945504583478,
+     "prior": 0.5
     }
    },
    "stats": {},
-   "auc_in": 0.7744489516641415,
-   "brier_in": 0.02929811507695388,
+   "auc_in": 0.7827085675186941,
+   "brier_in": 0.029292454224560085,
    "calibration": [
     {
-     "pred": 0.012069670048488803,
+     "pred": 0.011407417526191784,
      "obs": 0,
      "n": 114
     },
     {
-     "pred": 0.012069670048488803,
+     "pred": 0.011801061774358483,
      "obs": 0.008771929824561403,
      "n": 114
     },
     {
-     "pred": 0.014851532580120497,
+     "pred": 0.01543571757554865,
      "obs": 0,
      "n": 114
     },
     {
-     "pred": 0.01710351653429853,
+     "pred": 0.016559796458789796,
      "obs": 0.017391304347826087,
      "n": 115
     },
     {
-     "pred": 0.01710351653429853,
+     "pred": 0.016559796458789796,
+     "obs": 0.008771929824561403,
+     "n": 114
+    },
+    {
+     "pred": 0.016559796458789796,
      "obs": 0.02631578947368421,
      "n": 114
     },
     {
-     "pred": 0.01710351653429853,
-     "obs": 0.017543859649122806,
-     "n": 114
-    },
-    {
-     "pred": 0.01710351653429853,
-     "obs": 0.043478260869565216,
+     "pred": 0.016559796458789796,
+     "obs": 0.05217391304347826,
      "n": 115
     },
     {
-     "pred": 0.01710351653429853,
-     "obs": 0.02631578947368421,
+     "pred": 0.016960581072162553,
+     "obs": 0,
      "n": 114
     },
     {
-     "pred": 0.039599263142027004,
-     "obs": 0.017543859649122806,
+     "pred": 0.042469755318990186,
+     "obs": 0.043859649122807015,
      "n": 114
     },
     {
-     "pred": 0.15876098312174702,
+     "pred": 0.15856622983042898,
      "obs": 0.16521739130434782,
      "n": 115
     }
@@ -1691,15 +1912,50 @@
     "split": 1946,
     "n_train": 466,
     "n_test": 677,
-    "auc": 0.5804347826086956,
-    "brier": 0.02116243779717448,
+    "auc": 0.6209145427286357,
+    "brier": 0.021439915225131556,
     "base_rate_test": 0.014771048744460856
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "corridor_status": {
-   "ablation": null,
+   "ablation": [
+    {
+     "variant": "base",
+     "split": 1946,
+     "n": 3143,
+     "events": 37,
+     "auc_holdout": 0.774427418026034,
+     "brier_holdout": 0.003458390703783867,
+     "exp_obs_holdout": 6.0992883796121555,
+     "coefs": {}
+    },
+    {
+     "variant": "guarantor_presence",
+     "split": 1946,
+     "n": 3143,
+     "events": 37,
+     "auc_holdout": 0.773356401384083,
+     "brier_holdout": 0.003444275265290201,
+     "exp_obs_holdout": 6.056105542226436,
+     "coefs": {
+      "z(guarantor_presence)": -0.12070468540883417
+     }
+    },
+    {
+     "variant": "all",
+     "split": 1946,
+     "n": 3143,
+     "events": 37,
+     "auc_holdout": 0.773356401384083,
+     "brier_holdout": 0.003444275265290201,
+     "exp_obs_holdout": 6.056105542226436,
+     "coefs": {
+      "z(guarantor_presence)": -0.12070468540883417
+     }
+    }
+   ],
    "status": "fitted",
    "unit": "corridor-year",
    "event": "corridor",
@@ -1715,69 +1971,73 @@
     1869,
     2025
    ],
-   "intercept": -5.59482551897289,
+   "intercept": -5.754178679127951,
    "coefs": {
     "transit_at_war_any": {
-     "value": 2.434979836889188,
+     "value": 2.43613095491334,
      "prior": 1.5
     },
     "sponsor_great_power": {
-     "value": 0.41916302850618065,
+     "value": 0.4195807745308143,
      "prior": 0.8
+    },
+    "guarantor_withdrawal": {
+     "value": 0.617086407572715,
+     "prior": 0.5
     }
    },
    "stats": {},
-   "auc_in": 0.8127077496040793,
-   "brier_in": 0.011300664639488199,
+   "auc_in": 0.8145046205252258,
+   "brier_in": 0.01123003155916864,
    "calibration": [
     {
-     "pred": 0.0037032825548475074,
+     "pred": 0.003159494680042646,
      "obs": 0,
      "n": 314
     },
     {
-     "pred": 0.0037032825548475074,
+     "pred": 0.003159494680042646,
      "obs": 0.006369426751592357,
      "n": 314
     },
     {
-     "pred": 0.0037032825548475074,
+     "pred": 0.003159494680042646,
      "obs": 0,
      "n": 314
     },
     {
-     "pred": 0.0037032825548475074,
+     "pred": 0.0032219409746373196,
      "obs": 0.0031746031746031746,
      "n": 315
     },
     {
-     "pred": 0.0037704532339129576,
-     "obs": 0.0031847133757961785,
-     "n": 314
-    },
-    {
-     "pred": 0.0056207001208976,
+     "pred": 0.004798709913152806,
      "obs": 0.01592356687898089,
      "n": 314
     },
     {
-     "pred": 0.005620700120897601,
+     "pred": 0.004798709913152806,
+     "obs": 0,
+     "n": 314
+    },
+    {
+     "pred": 0.005102960068109309,
      "obs": 0,
      "n": 315
     },
     {
-     "pred": 0.0056207001208976,
-     "obs": 0,
+     "pred": 0.00671501734848671,
+     "obs": 0.0031847133757961785,
      "n": 314
     },
     {
-     "pred": 0.02617969919608707,
-     "obs": 0.022292993630573247,
+     "pred": 0.02415189611463743,
+     "obs": 0.01910828025477707,
      "n": 314
     },
     {
-     "pred": 0.05600097077978995,
-     "obs": 0.06666666666666667,
+     "pred": 0.059351147942330824,
+     "obs": 0.06984126984126984,
      "n": 315
     }
    ],
@@ -1785,11 +2045,11 @@
     "split": 1946,
     "n_train": 1114,
     "n_test": 2029,
-    "auc": 0.6828143021914648,
-    "brier": 0.003396267865960673,
+    "auc": 0.774427418026034,
+    "brier": 0.003458390703783867,
     "base_rate_test": 0.002957121734844751
    },
-   "fitted": "2026-09-07",
+   "fitted": "2026-09-08",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   }
  }

@@ -11,6 +11,7 @@ import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/
 import { MODERN_FROM, resolveFetch, describeSource, snapshotColumns, snapshotExtras } from './lib/modern.mjs';
 import { COMPONENTS, MISSING_COMPONENTS, SPLICE_YEARS, compositeShares, componentLevels, spliceComposite, validate } from './lib/capability.mjs';
 import { POLARITY, normalise, projectionShares, smoothShares, classify, eraFlags, conditionality, greatGame, fitLogistic, fitDiffusionRate } from '../src/engine/polarity.js';
+import { PRESENCE, presenceIndex, covered, powerLevel, hostLevel, lastFall } from '../src/engine/presence.js';
 
 const Y0 = 1816, Y1 = 2025, YEARS = Array.from({ length: Y1 - Y0 + 1 }, (_, i) => Y0 + i);
 const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
@@ -427,6 +428,59 @@ for (const [id, vars] of Object.entries(panel)) {
   sources.aid_conditionality = `derived: ODA/GNI capped at ${POLARITY.aid_cap}% in tens during the derived promotion era, a structural zero outside it (aid_conditionality_dates keeps the typed-era version for one run)`;
   for (const v of ['bipolar', 'unipolar_us', 'cold_war', 'anticoup_norm', 'great_game', 'aid_conditionality', 'hegemon_regime']) sources[`${v}_dates`] = 'the typed calendar-year era flag this build replaced with derived world state, kept one run for the checker to diff (operator / derived-polarity)';
   console.log(`derived polarity: ${runs.length} states 1816-${Y1}; bipolar ${bi ? `${bi.a}-${bi.b}` : 'none'} (typed 1947-1991), unipolar ${uni ? `${uni.a}-${uni.b}` : 'none'} (typed 1992-2016); ${W.filter(w => w && w.st.polarity === 'multipolar' && w.y >= 1870 && w.y <= 1938).length}/69 of 1870-1938 multipolar; info wave L=${meta_info_wave?.L} r=${meta_info_wave?.r} t0=${meta_info_wave?.t0} rmse=${meta_info_wave?.rmse} (n=${meta_info_wave?.n}), diffusion kappa=${meta_info_wave?.kappa} rmse=${meta_info_wave?.kappa_rmse} (n=${meta_info_wave?.kappa_n})`);
+}
+
+// ---- military presence (operator / presence): bases, garrisons, fleet stations and advisor missions as a dated
+// layer, from data/presence.yaml through src/engine/presence.js — the same module scripts/lib/fit.mjs and the engine
+// read, so a presence covariate means one thing in the fit and in the simulation. Columns:
+//   presence_<POWER>  the level of that power's station on this actor's territory (0 none, 1 outpost/advisors,
+//                     2 base or brigade, 3 fleet HQ / corps / occupation), for every power with enough distinct land
+//                     hosts to vary across actors (PRESENCE.min_hosts)
+//   presence_any      the maximum over powers
+//   presence_change   a withdrawal: some power's level on this actor FELL within the last PRESENCE.window years
+//   troops_usa_host   US military personnel stationed in the country (Troopdata, 1950-2024) — the levels above are
+//                     hand-coded ordinals and this is the measured series they are calibrated against
+// Every column is null outside the layer's own coverage claim (1870-2026) and outside an actor's live years: the
+// absence of a record before 1870 is not an observation that nothing was there.
+{
+  const recs = Y('data/presence.yaml');
+  const index = presenceIndex(recs, { y0: Y0, y1: Math.max(Y1, PRESENCE.covers[1]) });
+  const known = new Set(Object.keys(panel));
+  const offMap = [...index.byHost.keys()].filter(h => !String(h).startsWith('sea:') && !known.has(h));
+  for (const [id, vars] of Object.entries(panel)) {
+    const fill = (name, f) => { vars[name] = YEARS.map((y, i) => (vars.live?.[i] && covered(y) ? f(y) : null)); };
+    for (const p of index.columnPowers) fill(`presence_${p}`, (y) => powerLevel(index, id, p, y));
+    fill('presence_any', (y) => hostLevel(index, id, y));
+    fill('presence_change', (y) => (lastFall(index, id, y) != null ? 1 : 0));
+  }
+  // Troopdata (Allen, Flynn & Martinez Machain), US deployments by country-year 1950-2024: the measured series the
+  // hand-coded levels are checked against. Joined on ISO3, which is the panel's own actor id.
+  let troopRows = 0; const unmatched = new Set();
+  for (const r of readCsv(H + 'troopdata-rebuild-country-year.csv')) {
+    const y = +r.year, iso = r.iso3c; if (!iso || iso === 'NA') continue;
+    if (!panel[iso]) { unmatched.add(iso); continue; }
+    const n = r.troops_ad === '' || r.troops_ad == null ? null : +r.troops_ad;
+    if (n == null || Number.isNaN(n)) continue;
+    if (panel[iso].live?.[y - Y0]) { put(iso, 'troops_usa_host', y, n); troopRows++; }
+  }
+  const usaCol = index.columnPowers.includes('USA') ? 'presence_USA' : null;
+  // calibration of the ordinal against the measured series: mean log10 troops per declared level, on the actor-years
+  // where both exist. Monotone in the level is the claim the levels make; the numbers are printed, not asserted.
+  const buckets = new Map();
+  if (usaCol) for (const [id, vars] of Object.entries(panel)) YEARS.forEach((y, i) => {
+    const L = vars[usaCol]?.[i], t = vars.troops_usa_host?.[i];
+    if (L == null || t == null) return;
+    const b = buckets.get(L) ?? buckets.set(L, { n: 0, s: 0, pos: 0 }).get(L);
+    b.n++; b.pos += t > 100 ? 1 : 0; b.s += Math.log10(Math.max(1, t));
+  });
+  const calib = [...buckets].sort((a, b) => a[0] - b[0]).map(([L, b]) => `L${L} n=${b.n} median-ish 10^${(b.s / b.n).toFixed(2)} (${(b.pos / b.n * 100).toFixed(0)}% >100 troops)`);
+  const powersLine = index.powers.map(p => `${p}:${index.hostCount[p]}`).join(' ');
+  for (const p of index.columnPowers) sources[`presence_${p}`] = `data/presence.yaml (hand-coded dated stations, mostly \`estimate\` dates, two 2026 operator entries unverified): level of this power's base/garrison/fleet/advisor presence on the actor's territory, 0-3, null outside ${PRESENCE.covers[0]}-${PRESENCE.covers[1]}`;
+  sources.presence_any = 'data/presence.yaml: max presence level of any great power on the actor that year (src/engine/presence.js)';
+  sources.presence_change = `data/presence.yaml: 1 where some power's level on this actor fell within the last ${PRESENCE.window} years, the fall year included — a withdrawal (src/engine/presence.js)`;
+  sources.troops_usa_host = 'Troopdata (Allen, Flynn & Martinez Machain), troops_ad, US military personnel by country-year 1950-2024; data/raw/hist/troopdata-rebuild-country-year.csv';
+  console.log(`presence: ${recs.length} records, powers by distinct land hosts ${powersLine}; columns for ${index.columnPowers.join(' ')}; ${offMap.length} hosts outside the actor universe (map only): ${offMap.join(' ')}`);
+  console.log(`presence troops join: ${troopRows} actor-years, ${unmatched.size} ISO3 codes with no actor (${[...unmatched].slice(0, 8).join(' ')}${unmatched.size > 8 ? ' …' : ''}); level vs troops: ${calib.join('; ')}`);
 }
 
 // ---- empires on successor-state borders: drop the OWID/Maddison population series where it is a modern-borders series

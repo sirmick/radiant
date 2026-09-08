@@ -4,6 +4,7 @@
 // No country names anywhere in this file.
 
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
+import { PRESENCE, presenceIndex, lastFall, patronMap, patronFeatures, guarantorLevel, guarantorFall } from './presence.js';
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -217,12 +218,19 @@ export function corridorFeatures(rec, state, look) {
   const gs = T.map(look.gdpGrowth).filter(x => x != null);
   const sponsor = rec.sponsor ?? state?.controller ?? null;
   const sponsorLive = sponsor && look.live(sponsor) ? sponsor : null;
+  // the guarantor terms (operator/presence): the strongest great-power station near the record or on one of its
+  // transit states, and whether that level has fallen inside the withdrawal window. `look.guarantor` returns the
+  // level and the year of the last fall; the recency is computed here against `look.year`, so in a forward run the
+  // frozen as-of configuration still lets a withdrawal age out of the window instead of firing for twenty years.
+  const g = look.guarantor ? look.guarantor(rec, T) : null;
   return {
     adjacent_war: war, transit_at_war_any: war,                    // the same construction under each template's name
     adjacent_intrastate: anyOf(look.intrastate),
     transit_gdp_growth_mean: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null,
     sponsor_great_power: sponsorLive ? (look.greatPower(sponsorLive) > 0 ? 1 : 0) : 0,
     n_transits: T.length,
+    guarantor_presence: g?.level ?? null,
+    guarantor_withdrawal: g == null || g.level == null ? null : (g.fall != null && look.year - g.fall <= PRESENCE.window ? 1 : 0),
   };
 }
 
@@ -392,6 +400,16 @@ function applyWorldState(world, id, a) {
   a.cur.aid_conditionality = conditionality(p.flags.promotion_era, a.cur.aid_gni, world.year >= p.aidFrom);
   a.cur.hegemon_x_client = a.cur.pact_usa ? (p.hegemonRegime ?? 3) : 0;   // panel var: the hegemon's own regime score, no actor id in the engine
 }
+/**
+ * The presence layer forward (operator/presence). Levels are frozen at as-of — where a garrison will be in year t of
+ * the horizon is an outcome — but the *withdrawal* flag is a recency, so it ages: the actor keeps the year it last
+ * lost a station and `presence_change` is on only while that year is inside PRESENCE.window. Without this the panel's
+ * value at as-of would be carried unchanged and a withdrawal in the as-of year would fire for the whole horizon.
+ */
+function applyPresence(world, a) {
+  if (!world.presence || a.cur.presence_change == null) return;
+  a.cur.presence_change = a.presenceFall != null && world.year - a.presenceFall <= PRESENCE.window ? 1 : 0;
+}
 
 /**
  * Build a world state at `asOf` from the panel. Only actors live at asOf are included; actors whose system
@@ -400,7 +418,7 @@ function applyWorldState(world, id, a) {
  * `contiguityFrom` is the first year the contiguity source covers — for an asOf before it, that first snapshot
  * stands in (documented imputation; CShapes 2.0 begins 1886 and there is no border data behind it).
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [] }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], presence = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -431,6 +449,12 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   // simulation's own wars thereafter, so the relevance rule is evaluated at the simulated year and not frozen at as-of.
   const coalition = coalitionRule(templates);
   const allied = alliedAt(pacts, asOf);
+  // the presence layer: the records in, indexed once. The index is memoised on the record array itself and is
+  // non-enumerable (like the corridor histories): a memo must never turn into published data if the array is
+  // ever serialised.
+  let pres = null;
+  if (presence) { if (!presence.__index) Object.defineProperty(presence, '__index', { value: presenceIndex(presence, { y0: Y0, y1: Math.max(panel.meta.y1, PRESENCE.covers[1]) }), enumerable: false }); pres = presence.__index; }
+  if (pres) for (const [id, a] of Object.entries(actors)) a.presenceFall = lastFall(pres, id, asOf);
   return {
     year: asOf, asOf, actors, dyadRecent, nukes, entryPrior,
     // the derived world state (polarity, hegemon, era flags) and the fitted information wave — package 9
@@ -451,6 +475,10 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     corridors: NO_CORRIDORS ? [] : corridors.filter(rec => { const t = templates.find(x => x.unit === CORRIDOR_UNIT[rec.kind]); const f = t ? corridorFirstYear(rec, t.window[0]) : null; return f != null && f <= asOf; })
       .map(rec => ({ rec, state: corridorStateAt(rec, asOf) })),
     corridorMix: corridorOutcomeMix(corridors, asOf),
+    // the military-presence layer (operator/presence), frozen at as-of like the alliance graph. `patrons` is the
+    // host -> patron-power map the dyadic term reads; the per-actor `presenceFall` is the year that actor last lost a
+    // station, so `presence_change` can age out of its window during the horizon instead of firing for all of it.
+    presence: pres, patrons: pres ? patronMap(pres, asOf) : new Map(),
     allied, contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
     fits, templates, log: [],
@@ -551,6 +579,9 @@ export function dyadHazards(world, a, b) {
     // corridor dampener (era-1914-1945/corridors-7): infrastructure running through one of the pair that a third party
     // tied to either side leans on. Same construction in scripts/lib/fit.mjs; a candidate, not a fitted covariate.
     corridor_stake: corridorStakeFor(world, a.id, b.id),
+    // the patron term (operator/presence): a great power with a station of level >= PRESENCE.patron_min on one side,
+    // allied to it and not to the other. Same construction in scripts/lib/fit.mjs's dyad block.
+    ...patronFeatures({ patrons: world.patrons ?? new Map(), allied: (p, h) => world.allied.has(pairKey(p, h)), major: (id) => (world.actors[id]?.cur.great_power ?? 0) > 0, a: a.id, b: b.id }),
   };
   for (const t of world.templates) {
     const fit = world.fits[t.id]; if (!fit || fit.status !== 'fitted' || t.unit !== 'dyad-year') continue;
@@ -562,12 +593,17 @@ export function dyadHazards(world, a, b) {
 /** The world as the record layer reads it: the simulated actors, not the panel. The fitter passes the panel instead. */
 export function worldLook(world) {
   return {
+    year: world.year,
     live: (id) => world.actors[id] != null,
     atWar: (id) => world.actors[id]?.cur.at_war ?? null,
     intrastate: (id) => world.actors[id]?.cur.intrastate ?? null,
     gdpGrowth: (id) => world.actors[id]?.cur.gdp_growth ?? null,
     greatPower: (id) => world.actors[id]?.cur.great_power ?? null,
     successor: (id) => world.lifecycle?.successors?.[id] ?? null,
+    // the presence layer is frozen at as-of, like the alliance and border graphs: where great-power forces will sit
+    // in year t of the horizon is an outcome, not knowledge the forecaster holds. The level and the last fall are
+    // therefore read at as-of; corridorFeatures ages the fall against the simulated year.
+    guarantor: world.presence ? (rec, T) => ({ level: guarantorLevel(world.presence, rec, T, world.asOf), fall: guarantorFall(world.presence, rec, T, world.asOf) }) : null,
   };
 }
 /** The dampener for one pair, with the year's record index built once per step. */
@@ -693,7 +729,7 @@ export function stepYear(world, rng, opts = {}) {
   }
   // the derived world state, after the drift (it reads this year's growth) and before any hazard reads an era term
   stepPolarity(world);
-  for (const id of ids) applyWorldState(world, id, world.actors[id]);
+  for (const id of ids) { applyWorldState(world, id, world.actors[id]); applyPresence(world, world.actors[id]); }
   // interstate war duration (era-1914-1945/engine-5): at_war is a spell, not a one-year flag. The drift loop above
   // cleared it; every war still running re-sets it on both belligerents, so lag1(at_war) and the war shock mean in
   // simulation what they mean in the panel, whose observed spells are 3.0 years long on average.

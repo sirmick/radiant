@@ -36,6 +36,7 @@ const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
 const { fits } = JSON.parse(readFileSync('data/fits.json', 'utf8'));
 const templates = Y('data/templates.yaml').templates;
 const corridors = Y('data/corridors.yaml');
+const presence = Y('data/presence.yaml');
 // era-1914-1945/corridors-7: CORRIDOR_DAMPENER=1 promotes the `corridor_stake` candidate on every template that
 // declares it, for one run, without editing the data — the fitter and the engine read the same templates array, so the
 // covariate is estimated and drawn on the same sample. Refit-only (the default): the published data/fits.json has no
@@ -50,7 +51,7 @@ const pacts = new Set();
 for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
 
 // ---- rolling-origin coefficients: one fits object per as-of year, cached (the design matrices are built once).
-const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, pacts, corridors, successors }) : null;
+const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, pacts, corridors, successors, presence }) : null;
 const fitCache = new Map();
 function fitsAt(asOf) {
   if (!REFIT) return fits;
@@ -82,7 +83,7 @@ console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS}
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
   const F = fitsAt(asOf);
-  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom, corridors });
+  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom, corridors, presence });
   const t0 = Date.now();
   const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads });
   const real = realized(asOf, horizon);

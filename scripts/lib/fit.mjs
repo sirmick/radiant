@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap } from './hist.mjs';
 import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked,
   CORRIDOR_UNIT, corridorFirstYear, corridorStateAt, corridorTransitionYears, corridorFeatures, corridorIndex, corridorStake, outsideDefault } from '../../src/engine/core.js';
+import { PRESENCE, presenceIndex, patronMap, patronFeatures, guarantorLevel, guarantorFall } from '../../src/engine/presence.js';
 
 export const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -23,14 +24,15 @@ export function loadFitInputs() {
   const templates = Y('data/templates.yaml').templates;
   const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
   const corridors = Y('data/corridors.yaml');
+  const presence = Y('data/presence.yaml');
   const actors = loadActors(); const code = makeCodeMap(actors);
   const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
   const pacts = new Set();
   for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
-  return { panel, events, templates, contiguity, pacts, corridors, successors };
+  return { panel, events, templates, contiguity, pacts, corridors, successors, presence };
 }
 
-export function createFitter({ panel, events, templates, contiguity, pacts, corridors = [], successors = {} }) {
+export function createFitter({ panel, events, templates, contiguity, pacts, corridors = [], successors = {}, presence = null }) {
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
@@ -43,6 +45,12 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
   const warPartnersCache = new Map();
   const warPartners = (y) => { if (!warPartnersCache.has(y)) warPartnersCache.set(y, warPartnersAt(warSpans, y)); return warPartnersCache.get(y); };
   const isContiguous = (a, b, y) => (contiguity[a < b ? `${a}|${b}` : `${b}|${a}`] ?? []).some?.(([f, t]) => y >= f && y <= t) ?? false;
+  // the military-presence layer (operator/presence), indexed once and read through src/engine/presence.js — the same
+  // module the engine reads, so the patron and guarantor terms are one construction on both sides. Here it is dated
+  // (the value at row-year y), where the engine freezes it at as-of.
+  const PRES = presence ? presenceIndex(presence, { y0: Y0, y1: Math.max(panel.meta.y1, PRESENCE.covers[1]) }) : null;
+  const patronCache = new Map();
+  const patronsAtYear = (y) => { if (!patronCache.has(y)) patronCache.set(y, PRES ? patronMap(PRES, y) : new Map()); return patronCache.get(y); };
 
   // ---------------------------------------------------------------- event index
   const evByActorYear = new Map();   // `${kind}|${actor}|${year}` -> [events]
@@ -108,6 +116,8 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
   // are the same model). Covariates are contemporaneous: the engine draws corridor transitions last in the step, after
   // the war draws, so a transit state that goes to war this year is visible on both sides.
   const panelLook = (y) => ({
+    year: y,
+    guarantor: PRES ? (rec, T) => ({ level: guarantorLevel(PRES, rec, T, y), fall: guarantorFall(PRES, rec, T, y) }) : null,
     live: (id) => panel.actors[id]?.live?.[y - Y0] === 1,
     atWar: (id) => pv(id, 'at_war', y),
     intrastate: (id) => pv(id, 'intrastate', y),
@@ -177,6 +187,9 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
           // era-1914-1945/corridors-7, the dampener docs/schema.md specifies; built by src/engine/core.js so the
           // engine's dyad block and this one are one construction. Candidate only.
           corridor_stake: corridorStake(cIdx, a, b, alliedY),
+          // the patron term (operator/presence), built by src/engine/presence.js so this block and the engine's dyad
+          // block are one construction. Candidate only.
+          ...patronFeatures({ patrons: patronsAtYear(y), allied: (p, h) => pacts.has(`${pairKey(p, h)}|${y}`), major: (id) => (pv(id, 'great_power', y) ?? 0) > 0, a, b }),
         };
         rows.push({ unit: pairKey(a, b), a, b, year: y, feats });
       }

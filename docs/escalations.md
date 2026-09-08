@@ -448,7 +448,57 @@ The dyadic templates gained no covariate this turn (the dampener is a candidate,
 
 **Map.** A `presence` layer: base/garrison markers coloured by power, sized by level; fleet areas as dashed circles; dated by the slider; hover shows actor, name, since, source. Legend lists the powers present that year with counts.
 
-**Status:** queued as package 7 after the current implementation run (needs the corridor-year unit from package 4).
+**Status:** implemented (2026-09-07).
+
+**Implemented as.** One shared module, `src/engine/presence.js`, imported by `scripts/build-panel.mjs`, `scripts/lib/fit.mjs` and `src/engine/core.js` — the presence layer becomes numbers in exactly one place, so the fit and the simulation cannot drift apart. Two conventions are stated in it rather than implied: a station is present in year y iff `from <= y < to` (`to` is the year the presence *ended*, so a withdrawal is visible in the year the source dates it — that is what makes the canal case 1956 and not 1957), and the layer's coverage claim is its own header's 1870–2026, outside which every column is null rather than zero.
+
+Four deviations from the package's text, each with a reason:
+
+1. **`presence_<POWER>` for six powers, not ten.** A per-power column needs cross-sectional variance; `PRESENCE.min_hosts = 5` distinct land hosts gives `presence_FRA GBR ITA RUS TUR USA` (35, 24, 21, 14, 7, 5 hosts) and folds CHN, DEU, IND, JPN (1–3 hosts each) into `presence_any` only.
+2. **`guarantor_presence` is a per-power *weight* — the sum of that power's station levels near the record — not the maximum level the package specifies.** The maximum of a 1–3 ordinal saturates: it stands at 3 for 81 of the 90 chokepoint-years of the 1940s–60s, no withdrawal can lower it while one other station remains, and the 1956 canal case does not fire under it at all (the garrison on the record's own transit state leaves; a fleet 1,400 km away does not, so the max never moves). Both constructions were measured and both sets of numbers are in `data/templates.yaml`.
+3. **`patron_presence` has a second form, `patron_presence_rival`**, as the package asks ("test both forms"): the same station, but the other side is itself a great power.
+4. **`troops_usa_host`** landed from `data/raw/hist/troopdata-rebuild-country-year.csv` (Troopdata: Allen, Flynn & Martinez Machain, 1950–2024, 11,546 actor-years) — the measured series the hand-coded ordinals are calibrated against, which the package listed as optional. `data/raw/hist/basedata.csv` is undated (a cross-section of current US sites) and is not joined.
+
+Panel columns (`scripts/build-panel.mjs`, all self-registering with source lines): `presence_FRA`, `presence_GBR`, `presence_ITA`, `presence_RUS`, `presence_TUR`, `presence_USA`, `presence_any`, `presence_change`, `troops_usa_host`. Dyad features (`patron_presence`, `patron_presence_rival`) are built in `src/engine/presence.js:patronFeatures` and called from both `scripts/lib/fit.mjs`'s dyad block and `src/engine/core.js:dyadHazards`. Record-year features (`guarantor_presence`, `guarantor_withdrawal`) are computed inside `corridorFeatures` from a `look.guarantor` accessor, dated in the fitter and **frozen at as-of in the engine** — like the alliance and border graphs, where great-power forces will sit in year t of the horizon is an outcome, not knowledge. The *recency* still ages: both `presence_change` (per actor, `applyPresence` in the step) and `guarantor_withdrawal` (against `look.year`) switch off when the last fall leaves the 3-year window, so a withdrawal in the as-of year does not fire for twenty simulated years.
+
+**Test result.**
+
+*Level calibration (the package's optional part, run as a validation).* The hand-coded 0–3 ordinal against the measured US troop count, over 11,546 actor-years: level 0 median 10 troops (p90 104), level 1 median 898 (p10 32), level 2 median 6,518 (p10 466), level 3 median 45,501 (p10 11,625). Strictly monotone, about an order of magnitude per level, with 10% / 88% / 96% / 100% of the years above 100 troops. The levels are not measured but they are not arbitrary.
+
+*Named falsifiers* (`node scripts/analysis/presence.mjs`): Iran 1979 — US advisors present 1953–78, gone in 1979, the withdrawal flag on 1979–82 and the revolution happens anyway (the term does not have to explain it, and it does not suppress it: the coup and closure candidates below are all ≈0). Vietnam — level 3 through 1972, 0 from 1973, withdrawal 1973–76 covering the 1975 fall. **Suez 1956 fires**: the record's guarantor weight goes 10 → 7 in the transition year, `guarantor_withdrawal` = 1, and the closure is in the sample as a predicted event rather than a miss. Subic 1992 → Mischief Reef 1995: `presence_USA` 3 → 0 in 1992, `presence_change` on 1992–95, so 1995 is inside the window. Aden 1967: level 2 → 0, flag on 1967–70.
+
+*Ablations* (holdout AUC / Brier, base → with the term). Promoted:
+- `chokepoint_status` `guarantor_withdrawal` — 1940 0.692/0.0278 → 0.660/0.0278, 1946 0.580/0.0212 → **0.621**/0.0214, 1960 0.572/0.0146 → **0.597**/0.0148, **1970 (the package's split) 0.501/0.0148 → 0.624/0.0151**, 1980 0.742/0.0143 → 0.714/0.0145. Fitted +0.21.
+- `corridor_status` `guarantor_withdrawal` — 1940 0.832/0.0078 → **0.852**/0.0078, 1946 0.683/0.0034 → **0.774**/0.0035. Fitted +0.62. The ≥ 1970 corridor holdout the package asks for is **empty**: 2 of the 37 corridor transitions are after 1970 and the fitter reports `insufficient events` at every split from 1960 on.
+
+Not promoted, all with numbers in `data/templates.yaml` under the candidate entries:
+- `guarantor_presence`, both templates: AUC loss at 4 of 5 chokepoint splits and the sign flips positive (fitted +0.06 against a prior of −0.5).
+- `coup_attempt` (holdout ≥ 1986, base 0.833/0.0202/exp-obs 1.01): `presence_any` 0.827/0.0205/1.04, `presence_change` 0.833/0.0203/1.01 (+0.26, the predicted sign, zero discrimination), `presence_USA` 0.831/0.0203/1.02, `presence_RUS` 0.837/0.0202/1.00 (−0.40). Only `presence_RUS` gains, +0.004 of AUC on 339 events with the Brier unmoved — one event changing places, and it would be the first country-named column in a fitted covariate list. Not worth it.
+- `autocratic_closure` (holdout ≥ 1986, base 0.592/0.0310/1.14): four presence terms, four zeros (0.591, 0.591, 0.592, 0.592).
+- `intrastate_onset` (holdout ≥ 1985, base 0.813/0.0419/0.74): `presence_any` 0.807 (fitted −0.06 against a prior of −0.2), `presence_change` 0.812 (+0.49). Right signs, no discrimination.
+- `mid_force` / `mid_war` (holdout ≥ 1946): `patron_presence` mid_force 0.861→0.852 with exp/obs 0.95→1.10 (fitted −0.17), mid_war 0.802→0.809 with exp/obs 3.22→3.50 (fitted **+0.20 — the wrong sign**). `patron_presence_rival` mid_force 0.861→0.859 (fitted +0.42), mid_war 0.802→0.800 (+0.54): the predicted sign on both templates and no AUC on either. Diagnosis: `patron_presence` is on 18% of politically relevant dyad-years and is close to collinear with `allied` and `major_power_any`; what is left is a Cold-War-bloc marker. The re-proposal is a *directed* dyad sample, where "the garrison is on one side" is expressible.
+
+*Direction check on the 2026 state.* `guarantor_withdrawal` fires for the Gulf chokepoint in 2026 (guarantor weight 13 → 12: the fleet leaves the Gulf, a smaller presence appears in the Indian Ocean) and the record's annual transition hazard rises **15.37% → 18.32%**. Rises, as required. No other chokepoint's 2026 state changes.
+
+**Scores: before → after** (`scores/backtest-1870-2010-h20-all.json`, as-of 1870…2010, +20y, 100 runs, universe all; exp/obs · skill · AUC):
+
+| template | before | after |
+|---|---|---|
+| chokepoint_status | 0.95 · +0.109 · 0.726 | 0.96 · **+0.114** · 0.724 |
+| corridor_status | 1.11 · +0.049 · 0.640 | 1.06 · **+0.045** · 0.634 |
+| mid_force | 0.77 · +0.088 · 0.766 | 0.78 · +0.084 · 0.765 |
+| mid_war | 0.80 · −0.007 · 0.771 | 0.80 · −0.010 · 0.770 |
+| coup_attempt | 0.74 · +0.172 · 0.748 | 0.75 · +0.173 · 0.750 |
+| intrastate_onset | 1.02 · +0.119 · 0.742 | 1.01 · +0.121 · 0.742 |
+| autocratic_closure | 0.68 · −0.157 · 0.584 | 0.68 · −0.164 · 0.583 |
+| democratize_step | 0.92 · −0.211 · 0.529 | 0.92 · −0.212 · 0.525 |
+| democratic_deepening | 1.40 · −0.087 · 0.681 | 1.38 · −0.052 · 0.692 |
+| leader_exit | 0.85 · −0.818 · 0.742 | 0.85 · −0.819 · 0.737 |
+| irregular_exit | 2.02 · −0.446 · 0.695 | 2.01 · −0.441 · 0.695 |
+
+Nothing moves. The two templates the promotion touches move by +0.005 and −0.004 of skill; every other template is a random-stream shift (a fired corridor transition consumes one extra draw, so a single changed record draw at as-of 1870 moves every later number by noise). **This promotion rests on the one-year holdout and the falsifiers, not on the rolling-origin score**, and the reason is measurable: in the layer's scoreable window (`COVERAGE` chokepoint/corridor = 1869–1945) `guarantor_withdrawal` is on 26 of 620 chokepoint-years carrying 2 of 29 transitions, against 179 of 720 carrying 5 of 10 after 1946. The corridor half is better placed — 105 of 1,114 pre-1946 rows carrying 9 of 31 transitions, an 8.6% event rate against 2.2% in the rest — which is where the +0.091 of holdout AUC at the 1946 split comes from. Extending the record layer's histories past 1945 (`era-1914-1945/corridors-7 (b)`) is what would let the backtest score this term properly.
+
+The published forward run was regenerated at the same settings and is **byte-identical to the committed one apart from `meta.built`**, so `public/forecast.json` is left as it was: `scripts/run-forward.mjs` does not pass the corridor layer, the promoted term lives only there, and the eleven unpromoted presence features are computed but read by no fitted covariate — an inert feature does not move a draw. The reverted file is the check, not an omission.
 
 ## operator / termination — endings as fitted processes (package 8)
 

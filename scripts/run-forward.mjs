@@ -16,6 +16,7 @@ const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
 let { fits } = JSON.parse(readFileSync('data/fits.json', 'utf8'));
 const templates = Y('data/templates.yaml').templates;
 const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
+const presence = Y('data/presence.yaml');   // operator/presence: the dyadic patron term needs the layer here too
 const actors = loadActors(); const code = makeCodeMap(actors);
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 // alliances: carry the last observed (2000) pacts forward as `*` (year-agnostic) entries
@@ -30,7 +31,7 @@ if (asOf < panel.meta.y1) {   // honest past forecast: coefficients from labels 
   fitSource = `refit on labels ≤ ${asOf}`;
 }
 const OUT = arg('out', asOf === panel.meta.y1 ? 'public/forecast.json' : `public/forecast-${asOf}.json`);
-const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE });
+const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence });
 const t0 = Date.now();
 const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, track: true });
 const w0 = make(); const ids = Object.keys(w0.actors);
