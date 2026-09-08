@@ -74,11 +74,27 @@ export function loadActors() {
   return byId;
 }
 
-/** (ccode, year) -> actor id. Hand entities win (Prussia→DEU, Austria-Hungary→AUT, Ottoman→TUR, Korea→KOR), else the countrycode panel. */
+/**
+ * (ccode, year) -> actor id. Hand entities win (Prussia→DEU, Austria-Hungary→AUT, Ottoman→TUR, Korea→KOR), else the
+ * countrycode panel.
+ *
+ * era-1945-1991-r2/data-6: the candidate set is every HAND-CODED actor (data/history/actors.yaml and data/actors.yaml),
+ * not only the simulated ones. The `a.modeled` gate meant a hand entry that corrects a lifecycle could not also
+ * redirect a code across the boundary it corrects: unified Yemen carries GW 678 from 1990, but with YEM outside the
+ * candidate set every post-1990 UCDP row on 678 fell through to the countrycode panel, which maps 678 to the Yemen
+ * Arab Republic through 2020 — five intrastate onsets, one ending and two interstate onsets landed on a state that
+ * ceased to exist on 22 May 1990, while unified Yemen's own conflict row read a clean zero.
+ * Selection is by LIVENESS at the queried year, which is what makes the redirection dated rather than global, and a
+ * code no candidate is live for falls through to `extra` and then to the panel exactly as before — so the
+ * `spans: []` codelist twins (YUGOSLAVIA, AUSTRIA_HUNGARY, GERMAN_DEMOCRATIC_REPUBLIC) can never win a lookup.
+ */
 export function makeCodeMap(actors, system = 'cow') {
   const byCode = new Map();
-  for (const a of actors.values()) { const c = system === 'gw' ? (a.gw ?? a.cow) : (a.cow ?? a.gw); if (c != null && a.modeled) (byCode.get(c) ?? byCode.set(c, []).get(c)).push(a); }
-  const extra = { 260: 'DEU', 265: 'DDR', 305: 'AUT', 300: 'AUT_HUN', 730: 'KOREA', 816: 'VNM', 817: 'VNM' };
+  for (const a of actors.values()) { const c = system === 'gw' ? (a.gw ?? a.cow) : (a.cow ?? a.gw); if (c != null && !a.universe) (byCode.get(c) ?? byCode.set(c, []).get(c)).push(a); }
+  // era-1945-1991-r2/data-4: CoW 817 (Republic of Vietnam) is NOT VNM. It was mapped here to the same actor as CoW 816
+  // (the DRV), which put Saigon's 20 disputes, 7 wars, 7 coups and 10 leader exits on Hanoi's actor-year row and left
+  // the registry's own REPUBLIC_OF_VIETNAM with no panel row and no events. It now resolves through the hand entry.
+  const extra = { 260: 'DEU', 265: 'DDR', 305: 'AUT', 300: 'AUT_HUN', 730: 'KOREA', 816: 'VNM' };
   const panelRows = system === 'gw' ? actors.gwRows : actors.cowRows;
   const panelByCode = new Map();
   for (const [c, y, id] of panelRows ?? []) (panelByCode.get(c) ?? panelByCode.set(c, []).get(c)).push([y, id]);
@@ -87,9 +103,11 @@ export function makeCodeMap(actors, system = 'cow') {
     const c = +code; const k = `${c}|${year}`; if (cache.has(k)) return cache.get(k);
     let out = null;
     const list = byCode.get(c);
-    if (list) { const live = list.filter(a => isLive(a, year)); out = (live[0] ?? list[0]).id; }
+    const live = list ? list.filter(a => isLive(a, year)) : [];
+    if (live.length) out = live[0].id;
     else if (extra[c]) out = extra[c];
     else { const rows = panelByCode.get(c); if (rows) { let best = null, bd = Infinity; for (const [y, id] of rows) { const d = Math.abs(y - year); if (d < bd) { bd = d; best = id; } } out = best; } }
+    if (out == null && list?.length) out = list[0].id;
     cache.set(k, out); return out;
   };
 }

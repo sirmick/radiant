@@ -55,7 +55,10 @@
   geometry: { ne_ids: [1159320905] }
   notes: "Annexed 1981; US-recognised 2019. Static in the model — a Syria treaty codifies it, it doesn't return it."
   history:
-    - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1948.4, controller: SYR, status: disputed, source: "the 1949 armistice line leaves the heights with Syria; the demilitarised zones along it are fought over from 1951" }
+    - { year: 1967.43, controller: ISR, status: occupied, source: "taken 9-10 Jun 1967 (Six-Day War)" }
+    - { year: 1981.95, controller: ISR, status: annexed, source: "Golan Heights Law, 14 Dec 1981" }
+    - { year: 2026.68, controller: ISR, status: annexed, source: "data/territories.yaml snapshot 2026-09-06; US recognition 25 Mar 2019" }
 
 - id: syria_buffer
   name: Israeli buffer zone in southern Syria (post-Dec 2024)
@@ -109,6 +112,12 @@
   geometry: { ne_ids: [1159320901] }
   notes: "Static in M1. Matters to the model through Saudi normalisation and IMEC, not through control change."
   history:
+    - { year: 1948.4, controller: EGY, status: occupied, source: "Egyptian military administration from the 1948 war; the Strip is the part of Mandate Palestine Egypt holds at the 1949 armistice" }
+    - { year: 1956.85, controller: ISR, status: occupied, source: "taken 2 Nov 1956 (Sinai campaign)" }
+    - { year: 1957.22, controller: EGY, status: occupied, source: "Israeli withdrawal Mar 1957; UNEF deployed" }
+    - { year: 1967.43, controller: ISR, status: occupied, source: "taken 6-7 Jun 1967" }
+    - { year: 1994.37, controller: PSE, status: contested, source: "Gaza-Jericho Agreement 4 May 1994: the Palestinian Authority takes civil administration" }
+    - { year: 2005.66, controller: PSE, status: contested, source: "Israeli disengagement completed 12 Sep 2005" }
     - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: west_bank
@@ -120,6 +129,11 @@
   geometry: { ne_ids: [1159320903, 1746265961] }
   notes: "Static in M1."
   history:
+    - { year: 1948.4, controller: JOR, status: occupied, source: "Transjordanian forces hold the area at the 1949 armistice" }
+    - { year: 1950.28, controller: JOR, status: annexed, source: "Jordanian annexation 24 Apr 1950, recognised only by Britain and Pakistan" }
+    - { year: 1967.43, controller: ISR, status: occupied, source: "taken 5-7 Jun 1967" }
+    - { year: 1988.60, controller: ISR, status: occupied, source: "Jordan renounces its claim 31 Jul 1988: the claimant changes from a state to the PLO" }
+    - { year: 1995.72, controller: ISR, status: contested, source: "Oslo II 28 Sep 1995: Areas A/B/C" }
     - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: shebaa
@@ -131,6 +145,8 @@
   geometry: { ne_ids: [1159320907] }
   notes: "Static."
   history:
+    - { year: 1967.43, controller: ISR, status: occupied, source: "taken with the Golan Jun 1967; claimed by Lebanon rather than Syria from 2000" }
+    - { year: 2000.42, controller: ISR, status: occupied, source: "Israeli withdrawal from southern Lebanon 24 May 2000 leaves the farms held; the UN certifies the Blue Line as Syrian territory and Lebanon disputes it" }
     - { year: 2026.68, controller: ISR, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- Iraq / Kurdistan
@@ -145,7 +161,10 @@
     geometry_source: sketch (KRG-administered governorates, approximate; disputed territories excluded)
   notes: "Autonomous under Baghdad. Turkey and Iran compete here; the Development Road skirts it. Static in M1, a hazard candidate in M2."
   history:
-    - { year: 2026.68, controller: IRQ, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1991.28, controller: IRQ, status: contested_active, source: "the March 1991 uprising and its suppression; the no-fly zone north of the 36th parallel from 7 Apr 1991 (Operation Provide Comfort)" }
+    - { year: 1992.44, controller: null, status: frozen, source: "the Iraqi withdrawal of Oct 1991 and the Kurdistan National Assembly election of 19 May 1992: a de facto autonomous region" }
+    - { year: 2005.79, controller: null, status: frozen, source: "the 2005 constitution recognises the region 15 Oct 2005" }
+    - { year: 2026.68, controller: null, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- Caucasus
 - id: zangezur_syunik
@@ -160,6 +179,7 @@
   hazard: zangezur_control
   notes: "TRIPP (Aug 2025) makes it a US-managed transit route under Armenian sovereignty. Iran's red line is a change of controller, not a road. Control hazard is low but the stakes are the corridor."
   history:
+    - { year: 2020.86, controller: ARM, status: disputed, source: "Art. 9 of the 10 Nov 2020 statement commits Armenia to a transit link; the corridor is disputed from then" }
     - { year: 2026.68, controller: ARM, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: nagorno_karabakh
@@ -171,6 +191,9 @@
   geometry: { ne_ids: [1159320385] }
   notes: "Resolved by force Sept 2023; NE polygon is the pre-2023 breakaway. Kept for history rendering. Static."
   history:
+    - { year: 1988.14, controller: AZE, status: contested_active, source: "the Karabakh movement from Feb 1988; the first war runs 1992-94" }
+    - { year: 1994.37, controller: null, status: frozen, source: "the Bishkek Protocol 12 May 1994: Armenian forces hold the enclave and seven surrounding districts" }
+    - { year: 2020.86, controller: AZE, status: frozen, source: "the 44-day war ends 10 Nov 2020; Azerbaijan retakes the districts" }
     - { year: 2023.7, controller: AZE, status: frozen, source: "data/history/events.yaml" }
 
 - id: abkhazia
@@ -182,7 +205,10 @@
   geometry: { ne_ids: [1159320785] }
   notes: "Russian-garrisoned. Moves only on Russian state failure."
   history:
-    - { year: 2026.68, controller: RUS, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1992.62, controller: null, status: contested_active, source: "the war in Abkhazia begins 14 Aug 1992" }
+    - { year: 1994.36, controller: null, status: breakaway, source: "the Moscow Agreement of 14 May 1994 and a CIS peacekeeping force freeze the line" }
+    - { year: 2008.63, controller: null, status: breakaway, source: "Russian recognition 26 Aug 2008 after the August war" }
+    - { year: 2026.68, controller: null, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: south_ossetia
   name: South Ossetia
@@ -192,7 +218,10 @@
   stakes: { RUS: 0.6 }
   geometry: { ne_ids: [1159320787] }
   history:
-    - { year: 2026.68, controller: RUS, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1991.01, controller: null, status: contested_active, source: "the South Ossetia war begins Jan 1991" }
+    - { year: 1992.48, controller: null, status: breakaway, source: "the Sochi Agreement 24 Jun 1992 and a Joint Peacekeeping Force" }
+    - { year: 2008.63, controller: null, status: breakaway, source: "Russian recognition 26 Aug 2008" }
+    - { year: 2026.68, controller: null, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: transnistria
   name: Transnistria
@@ -203,7 +232,9 @@
   geometry: { ne_ids: [1159321047] }
   notes: "Isolated since 2022; the first thing that flips if Russia fragments."
   history:
-    - { year: 2026.68, controller: RUS, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1992.20, controller: null, status: contested_active, source: "the Transnistria war, Mar-Jul 1992" }
+    - { year: 1992.54, controller: null, status: breakaway, source: "the ceasefire of 21 Jul 1992 and a Russian-Moldovan-Transnistrian peacekeeping force" }
+    - { year: 2026.68, controller: null, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- East Asia
 - id: taiwan
@@ -216,6 +247,8 @@
   hazard: taiwan_control
   notes: "The contested middle of both systems. Control hazard is conditioned on the taiwan_blockade hazard, not independent of it."
   history:
+    - { year: 1949.96, controller: TWN, status: disputed, source: "the Republic of China government moves to Taipei 7 Dec 1949; both governments claim to be China" }
+    - { year: 1971.79, controller: TWN, status: disputed, source: "UNGA 2758, 25 Oct 1971: the seat passes to Beijing and the dispute becomes one about recognition rather than about the seat" }
     - { year: 2026.68, controller: TWN, status: disputed, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: senkaku
@@ -227,6 +260,9 @@
   geometry: { ne_ids: [1159320959] }
   notes: "NE polygon covers the whole Nansei chain; the dispute is the Senkakus only. Static in M1."
   history:
+    - { year: 1945.70, controller: USA, status: disputed, source: "under US administration with the Ryukyus from 1945; no claim is pressed until the ECAFE seabed survey of 1968-69" }
+    - { year: 1971.46, controller: USA, status: disputed, source: "China and Taiwan state formal claims Jun and Dec 1971, ahead of the reversion agreement of 17 Jun 1971" }
+    - { year: 1972.37, controller: JPN, status: disputed, source: "Okinawa reversion 15 May 1972: administration passes to Japan with the islands included" }
     - { year: 2026.68, controller: JPN, status: disputed, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: paracels
@@ -237,6 +273,8 @@
   stakes: { CHN: 0.7, VNM: 0.6 }
   geometry: { ne_ids: [1159320477] }
   history:
+    - { year: 1954.55, controller: REPUBLIC_OF_VIETNAM, status: disputed, source: "the Geneva Accords 21 Jul 1954 leave the western group with South Vietnam and the eastern group under Chinese occupation from 1956" }
+    - { year: 1974.05, controller: CHN, status: annexed, source: "China takes the western group by force 19-20 Jan 1974, three weeks before the South Vietnamese state that held it collapses" }
     - { year: 2026.68, controller: CHN, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: spratlys
@@ -249,7 +287,10 @@
   hazard: scs_incident
   notes: "Controller MIXED = feature-by-feature occupation. The naval-drone scenario makes every reef a Houthi."
   history:
-    - { year: 2026.68, controller: MIXED, status: contested_active, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1956.20, controller: null, status: disputed, source: "Tomas Cloma's Kalayaan claim Mar 1956 reopens a group nobody had garrisoned since the Japanese left; Taiwan re-occupies Itu Aba 1956" }
+    - { year: 1974.09, controller: null, status: contested_active, source: "South Vietnamese garrisons on six features from Feb 1974 after the Paracels; the Philippines garrison eight from 1970-78 and Malaysia from 1983" }
+    - { year: 1988.19, controller: null, status: contested_active, source: "Johnson South Reef, 14 Mar 1988: China takes six features by force" }
+    - { year: 2026.68, controller: null, status: contested_active, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: scarborough
   name: Scarborough Shoal
@@ -260,6 +301,8 @@
   geometry: { ne_ids: [1159321227] }
   hazard: scs_incident
   history:
+    - { year: 1997.30, controller: null, status: disputed, source: "Chinese vessels at the shoal Apr 1997; the Philippines protests" }
+    - { year: 2012.29, controller: CHN, status: occupied, source: "the standoff of 8 Apr - Jun 2012 leaves China in continuous control" }
     - { year: 2026.68, controller: CHN, status: contested_active, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: korean_dmz
@@ -271,7 +314,10 @@
   geometry: { ne_ids: [1159320991, 1159321183] }
   notes: "Static; the reference case for what a Ukraine armistice looks like."
   history:
-    - { year: 2026.68, controller: UN, status: buffer, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1945.62, controller: null, status: disputed, source: "the peninsula divided at the 38th parallel 10-11 Aug 1945" }
+    - { year: 1950.48, controller: null, status: contested_active, source: "the Korean war, 25 Jun 1950" }
+    - { year: 1953.56, controller: null, status: frozen, source: "the armistice of 27 Jul 1953 draws the Military Demarcation Line and the 4 km zone; no peace treaty follows" }
+    - { year: 2026.68, controller: null, status: buffer, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: dokdo
   name: Dokdo / Takeshima
@@ -282,6 +328,8 @@
   geometry: { ne_ids: [1159320995] }
   notes: "The irritant inside the Japan–Korea alliance the model needs to hold."
   history:
+    - { year: 1952.05, controller: KOR, status: disputed, source: "the Syngman Rhee Line of 18 Jan 1952 encloses the islets; Japan protests 28 Jan 1952" }
+    - { year: 1954.60, controller: KOR, status: disputed, source: "a Korean coast guard detachment is stationed Aug 1954 and has held it since" }
     - { year: 2026.68, controller: KOR, status: disputed, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- South Asia
@@ -294,6 +342,11 @@
   geometry: { ne_ids: [1159321155, 1159321157] }
   notes: "CPEC runs through Gilgit-Baltistan. Static in M1."
   history:
+    - { year: 1947.81, controller: null, status: contested_active, source: "the tribal invasion of 22 Oct 1947 and the Instrument of Accession of 26 Oct 1947; the first Indo-Pakistani war follows" }
+    - { year: 1949.00, controller: PAK, status: frozen, source: "the Karachi ceasefire of 1 Jan 1949 and the UNCIP line of 27 Jul 1949 fix what each side holds" }
+    - { year: 1965.63, controller: null, status: contested_active, source: "the second Indo-Pakistani war, Aug-Sep 1965" }
+    - { year: 1966.03, controller: PAK, status: frozen, source: "Tashkent Declaration 10 Jan 1966: the ceasefire line is restored" }
+    - { year: 1972.50, controller: PAK, status: frozen, source: "Simla Agreement 2 Jul 1972: the ceasefire line becomes the Line of Control and the dispute becomes bilateral" }
     - { year: 2026.68, controller: PAK, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: siachen
@@ -304,6 +357,9 @@
   stakes: { IND: 0.5, PAK: 0.5 }
   geometry: { ne_ids: [1159320963] }
   history:
+    - { year: 1972.50, controller: null, status: disputed, source: "the Simla Line of Control is left undelimited north of NJ9842, which is what the glacier dispute is about" }
+    - { year: 1984.29, controller: IND, status: contested_active, source: "Operation Meghdoot, 13 Apr 1984: India occupies the Saltoro ridge and the glacier" }
+    - { year: 2003.95, controller: IND, status: frozen, source: "ceasefire of 26 Nov 2003 holds on the glacier" }
     - { year: 2026.68, controller: IND, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- Gulf / Africa
@@ -316,6 +372,7 @@
   geometry: { ne_ids: [1159320883] }
   notes: "Sit in the Hormuz approaches; IRGC Navy bases. Static unless Iran state-fails."
   history:
+    - { year: 1971.91, controller: IRN, status: annexed, source: "Iran seizes Abu Musa and the Greater and Lesser Tunbs 30 Nov 1971, the day before the British withdrawal from the Gulf completes — also a transition on the hormuz record" }
     - { year: 2026.68, controller: IRN, status: occupied, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: northern_cyprus
@@ -327,6 +384,8 @@
   geometry: { ne_ids: [1159320531, 1159320511] }
   notes: "Turkey's EU/SAFE candidacy runs into this. Static in M1."
   history:
+    - { year: 1974.53, controller: TUR, status: occupied, source: "the Turkish landing of 20 Jul 1974 and the second phase 14-16 Aug 1974: 36% of the island" }
+    - { year: 1983.86, controller: TUR, status: breakaway, source: "the Turkish Republic of Northern Cyprus declared 15 Nov 1983, recognised only by Turkey" }
     - { year: 2026.68, controller: TUR, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: western_sahara
@@ -338,6 +397,9 @@
   geometry: { ne_ids: [1159321223] }
   notes: "Static; included so the Africa map isn't wrong."
   history:
+    - { year: 1975.87, controller: ESP, status: disputed, source: "the Green March 6 Nov 1975 and the Madrid Accords 14 Nov 1975: Spain hands administration to Morocco and Mauritania" }
+    - { year: 1976.16, controller: MAR, status: contested_active, source: "the Spanish withdrawal completes 26 Feb 1976; the SADR is proclaimed 27 Feb and the Polisario war begins" }
+    - { year: 1991.68, controller: MAR, status: frozen, source: "the UN ceasefire of 6 Sep 1991 and MINURSO; the referendum is never held" }
     - { year: 2026.68, controller: MAR, status: frozen, source: "data/territories.yaml snapshot 2026-09-06" }
 
 - id: somaliland
@@ -349,7 +411,9 @@
   geometry: { ne_ids: [1159321259] }
   notes: "Berbera — UAE/Ethiopian port on the Bab al-Mandab approaches. Static in M1."
   history:
-    - { year: 2026.68, controller: SOM_L, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
+    - { year: 1960.50, controller: SOM, status: settled, source: "the State of Somaliland is independent 26 Jun 1960 and unites with the Trust Territory 1 Jul 1960" }
+    - { year: 1991.37, controller: null, status: breakaway, source: "Somaliland declares the union dissolved 18 May 1991 after the collapse of the Siad Barre state" }
+    - { year: 2026.68, controller: null, status: breakaway, source: "data/territories.yaml snapshot 2026-09-06" }
 
 # ---------------------------------------------------------------- historical territories (1870–1914)
 # Added 2026-09-06 (turn era-1870-1914). controller/status are the 2026 snapshot; `history` carries the dated changes.
@@ -563,6 +627,7 @@
     - { year: 1918.95, controller: FRA, status: occupied, source: "Allied occupation of the left bank from the Armistice, 11 Nov 1918" }
     - { year: 1930.49, controller: DEU, status: settled, source: "Allied evacuation completed 30 Jun 1930, five years early (Young Plan)" }
     - { year: 1936.18, controller: DEU, status: annexed, source: "remilitarisation 7 Mar 1936 — the revisionist test the Versailles system does not answer" }
+    - { year: 1955.35, controller: DEU, status: settled, source: "era-1945-1991-r2/corridors-2: the record's last row was the 1936 remilitarisation, so a demilitarised zone abolished in 1936 was still scored as an OPEN territorial contest in 1980 — one of the five unsettled records the whole contest_settle at-risk set consisted of at as-of 1960, 1970 and 1980. The Paris Agreements enter into force 5 May 1955: the Federal Republic is sovereign, rearms and joins NATO, and no claimant disputes the Rhineland's status thereafter" }
 
 - id: ruhr_occupation
   name: Ruhr (Franco-Belgian occupation)
@@ -985,3 +1050,120 @@
     - { year: 1919.66, status: disputed, source: "Versailles 28 Jun 1919 orders a plebiscite; three Polish risings 1919-21" }
     - { year: 1921.21, status: contested_active, source: "plebiscite 20 Mar 1921 and the third rising May-Jul 1921" }
     - { year: 1922.79, controller: POL, status: settled, source: "League partition and the Geneva Convention 15 May 1922: the industrial triangle to Poland" }
+
+# ---------------------------------------------------------------- decolonisation-era contests (era-1945-1991-r2/corridors-2)
+# The turn's at-risk set for contest_settle collapsed to five territory-years in 1960-1980, none of them a live Cold
+# War dispute: 24 records carried a single 2026 first row and the era's own contests were simply absent. These eight
+# records carry BOTH endpoints — the contest opens and it closes inside the record — so the template has settlements
+# in its sample and not only openings.
+- id: goa
+  name: Portuguese India (Goa, Daman and Diu)
+  controller: IND
+  claimants: []
+  status: settled
+  stakes: { IND: 0.8, PRT: 0.6 }
+  stakes_source: estimate
+  geometry: { point: [73.9, 15.4], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1947.62, controller: PRT, status: disputed, source: "India claims the enclaves at independence 15 Aug 1947; Portugal refuses to negotiate and the ICJ case over Dadra and Nagar Haveli runs 1955-60" }
+    - { year: 1961.96, controller: IND, status: settled, source: "Operation Vijay 18-19 Dec 1961; annexed by the 12th constitutional amendment and recognised by Portugal in 1974" }
+
+- id: west_new_guinea
+  name: West New Guinea (Netherlands New Guinea / West Irian)
+  controller: IDN
+  claimants: []
+  status: settled
+  stakes: { IDN: 0.85, NLD: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [138.0, -4.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1949.99, controller: NLD, status: disputed, source: "the transfer of sovereignty of 27 Dec 1949 explicitly leaves New Guinea out and defers it one year; the deferral holds for thirteen" }
+    - { year: 1962.03, controller: NLD, status: contested_active, source: "Operation Trikora: Indonesian infiltration from Jan 1962 and the Vlakke Hoek action 15 Jan 1962" }
+    - { year: 1962.62, controller: null, status: frozen, source: "the New York Agreement 15 Aug 1962: UNTEA administers the territory from 1 Oct 1962" }
+    - { year: 1963.33, controller: IDN, status: settled, source: "UNTEA hands the territory to Indonesia 1 May 1963 (the Act of Free Choice follows in 1969)" }
+
+- id: hong_kong
+  name: Hong Kong (the New Territories lease)
+  controller: CHN
+  claimants: []
+  status: settled
+  stakes: { CHN: 0.8, GBR: 0.6 }
+  stakes_source: estimate
+  geometry: { point: [114.15, 22.35], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1898.50, controller: GBR, status: disputed, source: "the Second Convention of Peking, 9 Jun 1898: a 99-year lease of the New Territories that makes the colony's expiry a dated fact" }
+    - { year: 1972.22, controller: GBR, status: disputed, source: "the PRC has the territory removed from the UN list of colonial territories 8 Mar 1972: the claim is sovereignty, not decolonisation" }
+    - { year: 1984.96, controller: GBR, status: frozen, source: "the Sino-British Joint Declaration 19 Dec 1984 fixes the handover date and the terms" }
+    - { year: 1997.50, controller: CHN, status: settled, source: "handover 1 Jul 1997" }
+
+- id: south_west_africa
+  name: South West Africa / Namibia
+  controller: NAM
+  claimants: []
+  status: settled
+  stakes: { ZAF: 0.7, NAM: 0.95 }
+  stakes_source: estimate
+  geometry: { point: [17.0, -22.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1946.99, controller: ZAF, status: disputed, source: "the General Assembly refuses South Africa's request to incorporate the mandate 14 Dec 1946 and South Africa refuses to place it under trusteeship" }
+    - { year: 1966.82, controller: ZAF, status: contested_active, source: "GA 2145, 27 Oct 1966, terminates the mandate; the SWAPO armed campaign begins at Omgulumbashe 26 Aug 1966" }
+    - { year: 1988.99, controller: ZAF, status: frozen, source: "the Brazzaville Protocol 13 Dec 1988 and the New York Accords 22 Dec 1988: Cuban withdrawal from Angola for Namibian independence" }
+    - { year: 1990.21, controller: NAM, status: settled, source: "independence 21 Mar 1990" }
+
+- id: sinai
+  name: Sinai Peninsula
+  controller: EGY
+  claimants: []
+  status: settled
+  stakes: { EGY: 0.95, ISR: 0.6 }
+  stakes_source: estimate
+  geometry: { point: [33.8, 29.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1956.85, controller: ISR, status: occupied, source: "the Sinai campaign 29 Oct - 5 Nov 1956" }
+    - { year: 1957.22, controller: EGY, status: settled, source: "Israeli withdrawal Mar 1957 under UNEF" }
+    - { year: 1967.43, controller: ISR, status: occupied, source: "taken 5-8 Jun 1967" }
+    - { year: 1979.23, controller: ISR, status: frozen, source: "the Egypt-Israel treaty 26 Mar 1979 sets the withdrawal schedule" }
+    - { year: 1982.31, controller: EGY, status: settled, source: "withdrawal complete 25 Apr 1982; the MFO deploys" }
+
+- id: falklands
+  name: Falkland Islands / Islas Malvinas
+  controller: GBR
+  claimants: [ARG]
+  status: disputed
+  stakes: { GBR: 0.8, ARG: 0.85 }
+  stakes_source: estimate
+  geometry: { point: [-59.0, -51.7], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1833.01, controller: GBR, status: disputed, source: "British reassertion of control 3 Jan 1833; Argentina has protested continuously since" }
+    - { year: 1965.99, controller: GBR, status: disputed, source: "GA 2065, 16 Dec 1965, invites negotiation and the talks run to 1982" }
+    - { year: 1982.25, controller: ARG, status: contested_active, source: "the Argentine landing 2 Apr 1982" }
+    - { year: 1982.46, controller: GBR, status: disputed, source: "the Argentine surrender 14 Jun 1982; the claim survives the war" }
+  notes: "A contest that a war does not settle — the counter-case the contest_settle sample needs alongside the ones a war does settle."
+
+- id: ogaden
+  name: Ogaden / Somali region of Ethiopia
+  controller: ETH
+  claimants: [SOM]
+  status: disputed
+  stakes: { ETH: 0.8, SOM: 0.85 }
+  stakes_source: estimate
+  geometry: { point: [44.0, 7.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1948.0, controller: ETH, status: disputed, source: "Britain returns the Ogaden to Ethiopian administration 1948 (and the Haud in 1955); Somali irredentism dates from the transfer" }
+    - { year: 1964.15, controller: ETH, status: contested_active, source: "the Ethiopian-Somali border war Feb-Apr 1964" }
+    - { year: 1964.28, controller: ETH, status: disputed, source: "ceasefire 30 Mar / Khartoum agreement 6 Apr 1964" }
+    - { year: 1977.55, controller: SOM, status: contested_active, source: "the Somali invasion of Jul 1977; Somali forces hold most of the region by Sep" }
+    - { year: 1978.19, controller: ETH, status: disputed, source: "the Somali withdrawal 9 Mar 1978 after the Soviet-Cuban intervention; the claim is not renounced until 1988" }
+
+- id: aouzou
+  name: Aouzou Strip
+  controller: TCD
+  claimants: []
+  status: settled
+  stakes: { LBY: 0.6, TCD: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [17.5, 21.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1973.60, controller: LBY, status: annexed, source: "Libyan occupation and administration of the strip from 1973, on the unratified Laval-Mussolini treaty of 1935" }
+    - { year: 1987.0, controller: TCD, status: contested_active, source: "the Toyota War: Chad retakes the strip Mar-Sep 1987" }
+    - { year: 1994.35, controller: TCD, status: settled, source: "the ICJ judgment of 3 Feb 1994 and the Libyan withdrawal completed 31 May 1994" }

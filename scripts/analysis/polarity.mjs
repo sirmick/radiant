@@ -192,3 +192,35 @@ for (let y = Y1 + 1; y <= Y1 + H; y++) {
 }
 const f = flips.filter(x => x != null).sort((a, b) => a - b);
 console.log(`   ${f.length}/${RUNS} runs leave the ${w0.pol.state.polarity} state inside ${H} years` + (f.length ? `; median first change ${f[Math.floor(f.length / 2)]}` : ''));
+
+// era-1945-1991-r2/engine-8: the simulated polarity-transition rate against the observed one, stated rather than
+// assumed. docs/system.md says the derived layer exists so "a run can change polarity — the typed flags could not",
+// and that is a claim about the FIT, not about the simulation: the only thing that moves a pole's capability share in
+// a forward run is the structural growth drift, and a great power's collapse is an event the engine has no hazard for
+// (great-power entry and exit is in docs/escalations.md). So the run is expected to hold its as-of polarity, and this
+// line is what makes that visible instead of leaving it to be discovered as a surprise.
+{
+  let simTrans = 0, worldYears = 0;
+  for (let y = Y1 + 2; y <= Y1 + H; y++) {
+    const c = counts.get(y) ?? {}, prev = counts.get(y - 1) ?? {};
+    const tot = Object.values(c).reduce((a, b) => a + b, 0);
+    const pot = Object.values(prev).reduce((a, b) => a + b, 0);
+    if (!tot || !pot) continue;                       // the first simulated year has no predecessor to compare against
+    worldYears += tot;
+    // a lower bound on the number of run-years that changed polarity: the L1 distance between the two years' mixes
+    for (const k of new Set([...Object.keys(c), ...Object.keys(prev)])) simTrans += Math.abs((c[k] ?? 0) - (prev[k] ?? 0)) / 2;
+  }
+  const obs = [];   // the module's own labelling of the observed record, from the panel's derived columns
+  let last = null;
+  for (let y = Y0; y <= Y1; y++) {
+    const A0 = Object.values(A); let lab = null;
+    const uni = A0.find(v => v.unipolar?.[at(y)] != null);
+    if (!uni) continue;
+    lab = uni.unipolar[at(y)] ? 'unipolar' : (A0.find(v => v.bipolar?.[at(y)])?.bipolar[at(y)] ? 'bipolar' : 'multipolar');
+    if (last != null && lab !== last) obs.push(y);
+    last = lab;
+  }
+  const obsYears = Y1 - Y0 + 1;
+  console.log(`   polarity transitions per 100 world-years: simulated ${(100 * simTrans / Math.max(1, worldYears)).toFixed(2)} over ${worldYears} run-years; observed ${(100 * obs.length / obsYears).toFixed(2)} over ${obsYears} years (${obs.join(', ') || 'none'})`);
+  console.log('   a simulated rate of 0 is the engine holding its as-of polarity for the whole horizon, which is what it does: polarity is frozen at as-of in the same sense as the great-power flag, the alliance graph, the border graph and world.nukes (src/engine/core.js). Great-power exit as a modelled hazard is docs/escalations.md.');
+}

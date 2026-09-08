@@ -13,11 +13,11 @@ templates:
     event: leader_exit
     window: [1950, 2021]           # REIGN coverage
     covariates:
-      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.3, 2: 0.9, 3: 1.1 } }     # elections make exits routine
+      - { var: regime, transform: cat, lag: 1, prior: { 0: 0, 1: 0.3, 2: 0.9, 3: 1.1 } }     # elections make exits routine
       - { var: leader_tenure, transform: log, lag: 1, prior: -0.2 }
       - { var: leader_age, transform: z, lag: 1, prior: 0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: gdp_growth, transform: z, prior: -0.2 }
+      - { var: gdp_growth, transform: z, lag: 1, prior: -0.2 }
       - { var: coup_attempt, transform: win5, prior: 0.4 }
     outcomes: { regular: null, irregular: null }   # split fitted from events.irregular
     sources: [Archigos/Goemans-Gleditsch-Chiozza 2009, "REIGN (Bell 2016)", "Svolik 2012"]
@@ -29,15 +29,24 @@ templates:
     event_filter: { irregular: 1 }
     window: [1950, 2021]
     covariates:
-      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.2, 2: -0.8, 3: -1.8 } }
+      - { var: regime, transform: cat, lag: 1, prior: { 0: 0, 1: 0.2, 2: -0.8, 3: -1.8 } }
       - { var: leader_tenure, transform: log, lag: 1, prior: -0.3 }
       - { var: leader_age, transform: z, lag: 1, prior: 0.1 }
       - { var: at_war, transform: lag1, prior: 0.6 }
-      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: gdp_growth, transform: z, lag: 1, prior: -0.3 }
       - { var: log_gdp_pc, transform: z, prior: -0.4 }
       - { var: coup_attempt, transform: win5, prior: 0.8 }
       - { var: leader_irregular_entry, transform: none, lag: 1, prior: 0.5 }
+      - { var: great_game, transform: none, prior: 0.3, lifecycle: { phase: active, promoted: 2026-09-07, reason: "era-1945-1991-r2/statistics-4, engine-2: this template had no era mechanism at all and over-predicted 2.5x out of sample while coup_attempt — its own subset — carried two and predicted 1.0x. Ablation at holdout >= 1986 against base 0.770 / 0.0098 / 2.52 (AUC / Brier / exp-obs): great_game alone 0.780 / 0.0096 / 2.15, a gain on all three; jointly with info_access 0.775 / 0.0095 / 1.51, coef +0.57 — the best Brier and the best calibration of any combination tested, and the only mechanism that survives the all-candidates joint fit (+0.41 there while info_access and anticoup_norm collapse to +0.04 and -0.07). Same derived-bipolarity construction as the coup_attempt promotion" } }
+      - { var: info_access, transform: z, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-07, reason: "era-1945-1991-r2/statistics-4: alone 0.773 / 0.0096 / 1.65 against base 0.770 / 0.0098 / 2.52 — a gain on all three, and the largest single calibration gain of any mechanism; jointly with great_game 0.775 / 0.0095 / 1.51, coef -0.40 per sd. Costs 342 rows and 18 events to nulls in the info_access column, the same price coup_attempt already pays for it. Hypothesis is the coup_attempt one: seizing the broadcaster stops working once information is distributed" } }
     sources: ["Goldstone et al. 2010 (PITF)", "Powell 2012", "Svolik 2012"]
+    candidates:                                                    # era-1945-1991-r2/statistics-4, engine-2: this template had no candidates: block at all, so the era mechanisms that fixed coup_attempt's post-1990 over-prediction were never tested on the template that shares its events. Measured 2026-09-07 at --split 1986 and --split 1990, AFTER the regime/gdp_growth lag fix (statistics-2) and the leader_irregular_entry rebuild (data-2), so these numbers supersede the adversary's, which were taken on the leaky fit
+      - { id: anticoup_norm, var: anticoup_norm, transform: none, prior: -0.5, holdout_split: 1986, hypothesis: "a democratic majority of live states raises the cost of an irregular seizure (derived, not a typed year)", evidence: "alone 0.774 / 0.0096 / 1.99 against base 0.770 / 0.0098 / 2.52 — a gain on all three, but it collapses to -0.07 in the all-candidates joint fit where great_game holds +0.41. Kept a candidate: it is the same secular decline great_game and info_access already carry, measured a third way" }
+      - { id: milper_share, var: milper_share, transform: z, prior: 0.2, holdout_split: 1986, hypothesis: "the coup family's one military-capacity term, carried on coup_attempt", evidence: "0.777 / 0.0097 / 2.63 against base 0.770 / 0.0098 / 2.52: +0.007 of AUC bought with WORSE calibration on a template whose defect is over-prediction. Not promoted" }
+      - { id: year_trend, var: year, transform: z, prior: 0, hypothesis: "null: an unexplained secular decline. The benchmark the mechanisms have to beat, never a promotion", evidence: "0.776 / 0.0095 / 1.93. The promoted pair beats it on calibration (1.51) — which is the test a mechanism has to pass against a bare trend" }
+    rejected:
+      - { id: presence_any, evidence: "era-1945-1991-r2/statistics-4, measured 2026-09-07 at holdout >= 1986: 0.779 / 0.0099 / 2.60 against base 0.770 / 0.0098 / 2.52 — AUC up, Brier AND calibration down, on a template whose defect is over-prediction. Same verdict the coup_attempt candidates block records for it" }
+      - { id: presence_change, evidence: "0.772 / 0.0098 / 2.52 against base 0.770 / 0.0098 / 2.52 — nothing moves. The flag is on 4.5% of the sample and the irregular exits inside it are not concentrated. Re-propose against a leader dataset that reaches before 1950, where the colonial withdrawals are (same note as coup_attempt)" }
     notes: "This is the generic form of russia_transition / iran_consolidation / china_transition. Outcome mix (managed / hardliner / fragmentation) is a per-actor parameter in actors.yaml, not fitted."
 
   - id: coup_attempt
@@ -46,10 +55,10 @@ templates:
     event: coup
     window: [1950, 2021]
     covariates:
-      - { var: regime, transform: cat, prior: { 0: 0.2, 1: 0.4, 2: 0, 3: -1.5 } }
+      - { var: regime, transform: cat, lag: 1, prior: { 0: 0.2, 1: 0.4, 2: 0, 3: -1.5 } }
       - { var: milper_share, transform: z, prior: 0.2 }          # milper / population
       - { var: log_gdp_pc, transform: z, prior: -0.5 }
-      - { var: gdp_growth, transform: z, prior: -0.2 }
+      - { var: gdp_growth, transform: z, lag: 1, prior: -0.2 }
       - { var: coup_attempt, transform: win5, prior: 1.0 }        # coup trap
       - { var: leader_military, transform: none, lag: 1, prior: 0.3 }
       - { var: intrastate, transform: lag1, prior: 0.3 }
@@ -212,7 +221,7 @@ templates:
     candidates:
       - { id: patron_presence, var: patron_presence, transform: none, prior: -0.3, holdout_split: 1946, hypothesis: "operator/presence: one side hosts a great-power station of level >= 2 belonging to a power allied to it and not to the other — tripwire deterrence. Built by src/engine/presence.js and read by scripts/lib/fit.mjs's dyad block and the engine's from the same code", evidence: "measured 2026-09-07 (operator/presence), NOT promoted. Holdout >= 1946, AUC / Brier / exp-obs. mid_force base 0.861 / 0.0099 / 0.95 -> 0.852 / 0.0100 / 1.10, fitted -0.17 (the predicted sign, and worse on all three). mid_war base 0.802 / 0.0013 / 3.22 -> 0.809 / 0.0013 / 3.50, fitted +0.20 — the WRONG sign against a prior of -0.3, and the +0.007 of AUC comes with an exp/obs already at 3.2 getting worse. Diagnosis: patron_presence is on 18% of politically relevant dyad-years and is close to collinear with `allied` and `major_power_any`, both already fitted; what is left of it is a marker for the Cold War blocs, where disputes are frequent. Re-propose as a directed term (the garrison is on ONE side) once the dyad sample is directed, or with the patron's own capability in it." }
       - { id: patron_presence_rival, var: patron_presence_rival, transform: none, prior: 0.3, holdout_split: 1946, hypothesis: "operator/presence, the second form the package asks to test: the same station, but the dispute is with a great power — a garrison is a tripwire against the patron's peers, not a general pacifier", evidence: "measured 2026-09-07 (operator/presence), NOT promoted. Holdout >= 1946. mid_force base 0.861 / 0.0099 / 0.95 -> 0.859 / 0.0099 / 0.99, fitted +0.42; mid_war base 0.802 / 0.0013 / 3.22 -> 0.800 / 0.0013 / 3.33, fitted +0.54. The sign the package predicted for this form, on both templates, and no AUC on either — the calibration on mid_force improves (0.95 -> 0.99) and that is the whole of it. This is the presence term most worth re-proposing when the dyad sample is directed." }
-      - { id: corridor_stake, var: corridor_stake, transform: z, prior: -0.3, hypothesis: "the corridor dampener docs/schema.md specifies (era-1914-1945/corridors-7): log1p of the load-bearing weight that third parties carry on infrastructure running through either side of the pair, counted only where the third party holds a defence pact with one of the two. Built once in src/engine/core.js (corridorIndex / corridorStake) and read by scripts/lib/fit.mjs and the engine's dyad block from the same code. Prior negative: a pair whose shared infrastructure is load-bearing for someone's ally is a pair someone leans on not to fight", evidence: "measured 2026-09-07, NOT promoted: the sign is right and the size is nothing. One-year holdout ablation (>=1946): mid_force AUC 0.861 -> 0.861, Brier 0.0099 -> 0.0099, fitted -0.04; mid_war (>=1939) AUC 0.848 -> 0.850, Brier 0.0031 -> 0.0031, exp/obs 0.91 -> 0.87, fitted -0.13. Backtest off -> on (CORRIDOR_DAMPENER=1, 100 runs, all states): 1910-1940 mid_force Brier 0.03985 -> 0.03994 and mid_war 0.02902 -> 0.02918; 1950-2000 mid_force 0.00666 -> 0.00670 and mid_war 0.00205 -> 0.00211. The test asked for an improvement in both windows and got a small loss in all four. Diagnosis: the term is zero for almost every pair-year, because a defence-pact tie between a corridor's dependent third party and one of the two states it runs through is rare in the pre-1946 alliance graph, which is where the corridor records are. Re-propose with the stake weighted by something denser than a defence pact (trade share, or the load_bearing_for value itself without the alliance gate), or once the record layer covers the post-1945 alliance blocs." }
+      - { id: corridor_stake, var: corridor_stake, transform: z, prior: -0.3, hypothesis: "the corridor dampener docs/schema.md specifies (era-1914-1945/corridors-7): log1p of the load-bearing weight that third parties carry on infrastructure running through either side of the pair, counted only where the third party holds a defence pact with one of the two. Built once in src/engine/core.js (corridorIndex / corridorStake) and read by scripts/lib/fit.mjs and the engine's dyad block from the same code. Prior negative: a pair whose shared infrastructure is load-bearing for someone's ally is a pair someone leans on not to fight", evidence: "measured 2026-09-07, NOT promoted: the sign is right and the size is nothing. One-year holdout ablation (>=1946): mid_force AUC 0.861 -> 0.861, Brier 0.0099 -> 0.0099, fitted -0.04; mid_war (>=1939) AUC 0.848 -> 0.850, Brier 0.0031 -> 0.0031, exp/obs 0.91 -> 0.87, fitted -0.13. Backtest off -> on (CORRIDOR_DAMPENER=1, 100 runs, all states): 1910-1940 mid_force Brier 0.03985 -> 0.03994 and mid_war 0.02902 -> 0.02918; 1950-2000 mid_force 0.00666 -> 0.00670 and mid_war 0.00205 -> 0.00211. The test asked for an improvement in both windows and got a small loss in all four. Diagnosis: the term is zero for almost every pair-year, because a defence-pact tie between a corridor's dependent third party and one of the two states it runs through is rare in the pre-1946 alliance graph, which is where the corridor records are. Re-propose with the stake weighted by something denser than a defence pact (trade share, or the load_bearing_for value itself without the alliance gate), or once the record layer covers the post-1945 alliance blocs. KNOWN LOOKAHEAD, era-1945-1991-r2/corridors-3: `load_bearing_for` in data/corridors.yaml is ONE undated map per record — the 2026 dependence weights — so every measurement above reads 2026 numbers at 1910 and 1950 (hormuz JPN 0.70 / SGP 1.00 on malacca at as-of 1950, where Japan's Gulf-oil dependence was near zero and Singapore was not a state). src/engine/core.js:corridorStake now takes the year and a record may declare `load_bearing_from`, the first year its weights are a claim rather than a back-projection; it returns 0 for a record before that year. The eleven records added or corrected in this turn carry the field. The other 62 do not, so the ablation above is still measured on a partial lookahead and re-measuring it is part of dating the whole layer." }
     rejected:                                                     # tested 2026-09-07 (era-1870-1914/statistics-6)
       - { id: pre_1946, evidence: "A derived era constant (year < 1946) on the dispute template earns nothing. Ablation at holdout_split 1975 (1946 and every earlier split leave the dummy with no within-training variation, so the test is empty there): holdout AUC 0.900 -> 0.900, holdout Brier 0.0081 -> 0.0081, holdout exp/obs 1.14 -> 1.12, fitted +0.14. The 5x era swing the package was written about is in wars, not disputes: the base dispute model is already calibrated out of sample. Promoted on mid_war instead, where the same ablation gives 0.838 -> 0.841 and exp/obs 3.68 -> 2.10 at +1.17. Post-1945 mid_force still improves in the backtest (pooled 1950-2000 exp/obs 1.32 -> 1.17), through the at_war feedback from the war template and not through a term of its own." }
     sources: ["Bremer 1992", "Oneal & Russett 1999", "Jones, Bremer & Singer 1996"]
@@ -323,7 +332,16 @@ templates:
     kinds: [chokepoint, corridor]      # one process over both record kinds — see notes
     event: record_reopen
     spell: impaired                    # the sample is the record-years the record opens closed or contested
-    window: [1869, 1945]               # the window in which the hand-coded record layer is complete — see notes
+    window: [1869, 1945]               # era-1945-1991-r2/corridors-1: NOT reopened. The 1946-1991 record layer landed in this
+                                       # turn (see chokepoint_status), and on the chokepoint half it passes the
+                                       # era-1914-1945-r2/statistics-5 gate; on this template's own spell sample it does
+                                       # not. 18 reopenings over 242 impaired record-years in 1946-1991 (7.44%) against
+                                       # 41 over 150 (27.33%) in the coded window, a factor of 3.7. Part of that is real
+                                       # — the era's closures were long (Benguela cut 1975-2014, Kirkuk-Haifa closed in
+                                       # 1948 and never reopened, the Gibraltar land frontier shut 1969-1985) — and part
+                                       # is the same un-coded reopenings corridor_status is held back for. The sample is
+                                       # the 46 corridor records plus the chokepoints and is not separable from
+                                       # corridor_status, so this window moves when that one does.
     holdout_split: 1930
     covariates:
       - { var: impair_duration, transform: z, prior: -0.2 }
@@ -371,14 +389,18 @@ templates:
     label: Chokepoint status or control transition
     unit: chokepoint-year
     event: chokepoint
-    window: [1869, 1945]               # era-1914-1945-r2/statistics-5: was [1869, 2026]. scripts/backtest.mjs scores this
-                                       # template's ground truth only inside [1869, 1945] (COVERAGE) because the hand
-                                       # record layer is complete only where the refine loop has been, and fitting past
-                                       # it counted un-coded years as observed non-events: the corridor base rate halved
-                                       # (1.37% on 4,085 record-years against 3.34% on the 1,496 coded ones, 6 of the 56
-                                       # events in the 2,589 post-1946 rows), chokepoint 2.63% against 4.65%, and
-                                       # `adjacent_intrastate` flipped sign (-0.48 pooled, +1.00 truncated). Reopen the
-                                       # window when the post-1945 record layer lands (docs/refine-log.md, deferred).
+    window: [1869, 1991]               # era-1945-1991-r2/corridors-1: was [1869, 1945]. The window is a claim about where the hand
+                                       # record layer is complete, and the 1946-1991 half of it landed in this turn
+                                       # (data/corridors.yaml: the Berlin access corridors, the Straits of Tiran, the
+                                       # Florida Straits, Tazara and the southern-African set, the Soviet energy set,
+                                       # and the dated decolonisation control transfers on eight records that still
+                                       # named a departed colonial power in 1980). Measured before reopening, exactly as
+                                       # era-1914-1945-r2/statistics-5 requires, and on the label rate the fitter itself
+                                       # sees rather than on a hand count: 4.73% over 825 post-1945 chokepoint-years
+                                       # against 5.19% over the 1,080 coded ones, inside the factor of 1.5 that test
+                                       # names. corridor_status and record_reopen did NOT pass the same gate and their
+                                       # windows stayed at 1945 — the numbers are on those two templates. 1992-2026
+                                       # stays closed for all three until a later turn codes it.
     states: [open, contested, closed]
     covariates:
       - { var: adjacent_war, transform: none, prior: 2.5 }         # a transit state (or the controller) at war this year
@@ -396,14 +418,24 @@ templates:
     label: Corridor status or control transition (advance, cut, or change of hands)
     unit: corridor-year
     event: corridor
-    window: [1869, 1945]               # era-1914-1945-r2/statistics-5: was [1869, 2026]. scripts/backtest.mjs scores this
-                                       # template's ground truth only inside [1869, 1945] (COVERAGE) because the hand
-                                       # record layer is complete only where the refine loop has been, and fitting past
-                                       # it counted un-coded years as observed non-events: the corridor base rate halved
-                                       # (1.37% on 4,085 record-years against 3.34% on the 1,496 coded ones, 6 of the 56
-                                       # events in the 2,589 post-1946 rows), chokepoint 2.63% against 4.65%, and
-                                       # `adjacent_intrastate` flipped sign (-0.48 pooled, +1.00 truncated). Reopen the
-                                       # window when the post-1945 record layer lands (docs/refine-log.md, deferred).
+    window: [1869, 1945]               # era-1945-1991-r2/corridors-1: NOT reopened, and this is the measurement that decided it.
+                                       # The 1946-1991 record layer landed in this turn (see chokepoint_status), and on
+                                       # the CHOKEPOINT half it passes the era-1914-1945-r2/statistics-5 gate: the label
+                                       # rate the fitter actually sees is 4.73% over 825 post-1945 chokepoint-years
+                                       # against 5.19% over the 1,080 coded ones, so that window moved to 1991. The
+                                       # corridor half does not: 1.63% over 1,781 post-1945 corridor-years against 4.32%
+                                       # over the 1,690 coded ones, a factor of 2.6 — reopening it would count un-coded
+                                       # years as observed non-events and halve the base rate, which is precisely the
+                                       # failure era-1914-1945-r2/statistics-5 recorded. (The adversary's own script,
+                                       # which dates each record from its first history row rather than from
+                                       # corridorFirstYear, reads 1.68% against 1.37% and would pass; the two
+                                       # denominators differ and the fitter's is the one that biases the coefficients.)
+                                       # What would close the gap is not more entries: 29 of the 46 corridor records
+                                       # have no post-1945 transition and roughly a dozen of those are records that
+                                       # genuinely stopped being corridors (the submarine telegraph cables superseded by
+                                       # radio, the Hejaz railway abandoned in 1917, Madeira-Mamore closed in 1972) and
+                                       # are scored as live at-risk record-years for eighty years each. The next step is
+                                       # a dated `retired:` on a record, not more history rows — docs/refine-log.md.
     covariates:
       - { var: transit_at_war_any, transform: none, prior: 1.5, source: "prior restated 2026-09-07 with the label (era-1914-1945/corridors-7): it was -2.0 for 'a corridor does not advance while a transit state is at war', but the fitted label is any status or control transition, and war is the modal cause of one — a corridor is cut, captured, or completed under military priority. Magnitude below the chokepoint template's 2.5: a land corridor has more of its length away from the front" }
       - { var: sponsor_great_power, transform: none, prior: 0.8 }  # sponsor, or the controller where no sponsor is declared

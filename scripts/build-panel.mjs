@@ -67,17 +67,38 @@ for (const r of readCsv(H + 'oil_hist.csv')) { const y = +r.year, id = owid(r.co
 sources.coal_prod = sources.oil_prod = 'OWID fossil production (Energy Institute, Etemad & Luciani)';
 
 // ---- REIGN: leader age, tenure, coups (December row of each year)
+// era-1945-1991-r2/data-2, statistics-5, engine-3: REIGN's `irregular` column is NOT a 0/1 "the incumbent took power
+// irregularly" flag. It has 4,332 distinct values over the file's 138,600 rows and its four commonest are log 2, log 3,
+// log 4 and log 5: it is log(months since the state's last irregular leader change). Read as a flag it was 1 in 99.3%
+// of actor-years, it was 0 exactly in the month an irregular change HAD just happened (the inverse of its name), and
+// data/fits.json duly fitted it at -0.69 on irregular_exit against a +0.5 literature prior (Svolik 2012, Powell 2012).
+// It is now used as the recency it is: a leader entered irregularly iff the last irregular change is no older than the
+// leader's own tenure, i.e. exp(irregular) <= tenure_months (+1.5 months of slack for the month-granularity of both
+// columns). The flag is decided once per (ccode, leader) spell at the spell's first observed row and carried across
+// the spell, so a single noisy month cannot flip it mid-tenure. Measured on REIGN: 427 of 2,197 leader spells (19.4%)
+// and 34.4% of actor-years, against the 0.71% of zeros the raw column gave. build-events.mjs never trusted this column
+// (it derives irregular exits from Powell-Thyne coup months instead) and it was right not to.
 {
   const last = new Map();
+  const spell = new Map();          // ccode|leader -> { at, irregular } at the earliest observed month of the spell
   for (const r of readCsv(H + 'reign.csv')) {
-    const y = +r.year, id = code(r.ccode, y); if (!id) continue;
+    const y = +r.year, m = +r.month, id = code(r.ccode, y); if (!id) continue;
     if (+r.pt_attempt > 0) add(id, 'coup_attempt', y, 1);
     if (+r.pt_suc > 0) add(id, 'coup_success', y, 1);
+    const sk = `${r.ccode}|${r.leader}`; const at = y * 12 + m; const sp = spell.get(sk);
+    if (!sp || at < sp.at) spell.set(sk, { at, irregular: Math.exp(+r.irregular) <= +r.tenure_months + 1.5 ? 1 : 0 });
     const k = `${id}:${y}`; const prev = last.get(k);
-    if (!prev || +r.month > prev.month) last.set(k, { month: +r.month, age: +r.age, tenure: +r.tenure_months / 12, mil: +r.militarycareer, irregular: +r.irregular });
+    if (!prev || m > prev.month) last.set(k, { month: m, age: +r.age, tenure: +r.tenure_months / 12, mil: +r.militarycareer, spellKey: sk, irregular_recency: Math.exp(+r.irregular) });
   }
-  for (const [k, v] of last) { const [id, y] = k.split(':'); put(id, 'leader_age', +y, v.age); put(id, 'leader_tenure', +y, v.tenure); put(id, 'leader_military', +y, v.mil); put(id, 'leader_irregular_entry', +y, v.irregular); }
+  for (const [k, v] of last) {
+    const [id, y] = k.split(':');
+    put(id, 'leader_age', +y, v.age); put(id, 'leader_tenure', +y, v.tenure); put(id, 'leader_military', +y, v.mil);
+    put(id, 'leader_irregular_entry', +y, spell.get(v.spellKey)?.irregular ?? 0);
+    put(id, 'irregular_recency_months', +y, v.irregular_recency);
+  }
   sources.leader_age = sources.leader_tenure = sources.coup_attempt = 'REIGN 2021.8 (1950–2021), Powell–Thyne coups';
+  sources.leader_irregular_entry = 'REIGN 2021.8, derived: the sitting leader\'s entry is irregular iff exp(irregular) ≤ tenure_months at the first month of the spell (the raw `irregular` column is log months since the last irregular change, not a flag)';
+  sources.irregular_recency_months = 'REIGN 2021.8 `irregular`, exponentiated: months since the state\'s last irregular leader change (display only)';
 }
 
 // ---- alliances: defence-pact partner count per actor-year (sstype 1 = defense); superpower client ties (any pact type with USA / RUS)
@@ -356,6 +377,45 @@ for (const [id, vars] of Object.entries(panel)) {
     sources[col] = rec.srcLine ? `${rec.srcLine}, modern snapshot valued at ${SNAP}` : `${rec.v.label ?? rec.v.id} — ${src.hand ? `data/actors.yaml ${src.field}` : 'hand estimate in data/variables.yaml'}, modern snapshot valued at ${SNAP}${rec.note ? `; ${rec.note}` : ''}`;
   }
   console.log(`modern fold: ${wrote.length} series columns (${wrote.join(' ')}); ${[...snapCols].filter(([, r]) => r).length} snapshot columns at ${SNAP}${skipped.length ? `; skipped ${skipped.join(' ')} (already measured in the panel)` : ''}`);
+}
+
+// ---- era-1945-1991-r2/data-5: splice the World Bank PPP series onto gdp_pc where Maddison has nothing.
+// gdp_pc comes from Maddison via OWID and gdp_growth / log_gdp_pc are derived from it, so one null kills three
+// covariates and drops the actor from leader_exit, irregular_exit and coup_attempt — from the FITTING sample as well
+// as from scoring, so the coefficients were estimated on a systematically richer subset of the system. Measured over
+// live actor-years 1950-2020 before this block: 827 had gdp_pc null while gdp_pc_ppp (World Bank, already folded into
+// the panel above) was non-null, concentrated in whole-life gaps (BHS GRD VCT ATG KNA BLZ GUY SUR SOM SDN BTN MDV BRN
+// PNG VUT SLB FJI WSM all 31 of 31 years). The backtest's exclusion count GREW over time: leader_exit lost 5 actors to
+// a null gdp_growth at as-of 1960 and 33 at as-of 2010, where it was the largest single exclusion reason of any kind.
+// Construction is the ratio splice scripts/lib/capability.mjs already uses for CINC 2023-24: the two series measure
+// the same quantity in different base years and different price concepts, so the level is matched on the actor's own
+// overlap (geometric mean of gdp_pc / gdp_pc_ppp) where it has one and on the pooled cross-actor ratio where it does
+// not, and only NULL years are written. Every filled year is flagged in gdp_pc_wb.
+{
+  const R = [];                                        // pooled log ratio, over every actor-year that has both
+  const perActor = new Map();
+  for (const [id, vars] of Object.entries(panel)) {
+    if (!vars.gdp_pc || !vars.gdp_pc_ppp) continue;
+    const rs = [];
+    for (let i = 0; i < YEARS.length; i++) { const m = vars.gdp_pc[i], w = vars.gdp_pc_ppp[i]; if (m > 0 && w > 0) { rs.push(Math.log(m / w)); R.push(Math.log(m / w)); } }
+    if (rs.length) perActor.set(id, { r: rs.reduce((a, b) => a + b, 0) / rs.length, n: rs.length });
+  }
+  const pooled = R.length ? R.reduce((a, b) => a + b, 0) / R.length : null;
+  // held-out check on the splice itself: for the actors that HAVE both series, how well does the pooled ratio alone
+  // reproduce the Maddison value? Printed, not asserted — an actor with its own overlap never uses the pooled number.
+  let within = 0, tot = 0;
+  for (const [, v] of perActor) { tot++; if (pooled != null && Math.abs(v.r - pooled) < Math.log(1.10)) within++; }
+  let filled = 0; const actorsFilled = new Set();
+  if (pooled != null) for (const [id, vars] of Object.entries(panel)) {
+    if (!vars.gdp_pc_ppp) continue;
+    vars.gdp_pc ??= new Array(YEARS.length).fill(null);
+    vars.gdp_pc_wb ??= new Array(YEARS.length).fill(null);
+    const r = perActor.get(id)?.r ?? pooled;
+    for (let i = 0; i < YEARS.length; i++) { const w = vars.gdp_pc_ppp[i]; if (vars.gdp_pc[i] != null || !(w > 0)) continue; vars.gdp_pc[i] = Math.exp(r) * w; vars.gdp_pc_wb[i] = 1; filled++; actorsFilled.add(id); }
+  }
+  sources.gdp_pc += `; where Maddison has no row and the World Bank PPP series does, gdp_pc is that series level-matched to Maddison (geometric-mean ratio on the actor's own overlap, else the pooled ratio exp(${pooled?.toFixed(3)}) over ${R.length} actor-years) and flagged in gdp_pc_wb`;
+  sources.gdp_pc_wb = 'derived: 1 where gdp_pc was spliced from the World Bank PPP series (data/variables.yaml gdp_pc_ppp) because Maddison has no row for that actor-year';
+  console.log(`gdp_pc World Bank splice: ${filled} actor-years across ${actorsFilled.size} actors; pooled log ratio ${pooled?.toFixed(3)} over ${R.length} overlap actor-years; ${within}/${tot} actors with an overlap sit within 10% of the pooled ratio`);
 }
 
 // ---- derived: gdp growth, log gdp pc, milex share proxy, great power flag

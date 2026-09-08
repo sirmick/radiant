@@ -24,20 +24,29 @@ const contiguity = contiguityFile.pairs; const contiguityFrom = contiguityFile.m
 const MIN_AT_RISK = 10;   // a template scored on fewer at-risk units than this is reported but kept out of the pooled summary
 const MIN_EPV = 3;        // events per estimated covariate: below it the fit cannot identify its own terms and the row is reported, not pooled
 // ground-truth coverage per event kind: score only inside these windows (the datasets end; absence past the end is not a non-event)
-// chokepoint/corridor: the hand-coded record layer (data/corridors.yaml) is complete only where the refine loop has
-// been. Two demonstrations that it is not complete after 1945: the Bosphorus record ends at `closed` in 1939 and never
-// reopens, and the Kiel record ends at `open/GBR` in 1945 and never returns to German control. Scoring a 1950-2000 row
-// against that would count missing transitions as non-events. The templates are still FITTED on 1869-2026 (that is all
-// the record there is, and the test in docs/escalations.md asks for >= 30 events), so the published full-sample fit
-// carries a post-1945 base rate biased low — the backtest rows at as-of <= 1940 are refit on labels <= as-of and do not.
+// chokepoint/corridor/record_reopen: the hand-coded record layer (data/corridors.yaml) is complete only where the
+// refine loop has been, so these windows are a claim about the DATA and not about the calendar and move one era at a
+// time. era-1945-1991-r2/corridors-1 landed the 1946-1991 entries (the Berlin access corridors, the Straits of Tiran,
+// the Florida Straits, Tazara and the southern-African set, the Soviet energy set, and the dated decolonisation
+// control transfers on eight records that still named a departed colonial power in 1980) and then measured whether
+// they were enough BEFORE moving anything, which is the test era-1914-1945-r2/statistics-5 wrote after the last
+// premature reopening. On the label rate the fitter itself sees: chokepoints 4.73% over 825 post-1945 record-years
+// against 5.19% over the 1,080 coded ones — inside the factor of 1.5, so `chokepoint` moves to 1991. `corridor` and
+// `record_reopen` do NOT move: 1.63% against 4.32%, and 7.44% against 27.33%. 29 of the 46 corridor records still have
+// no post-1945 transition and about a dozen of those stopped being corridors decades ago and are not retired, so the
+// gap is a missing `retired:` field rather than missing history rows. The templates' own window comments in
+// data/templates.yaml carry the numbers. 1992-2026 stays outside for all three.
 // regime_change opens at 1816, not 1900 (era-1870-1914-r2/data-3): its source is V-Dem Regimes of the World via OWID,
 // which runs 1789-2025, and data/events.json carries 179 regime_change events dated before 1900. The ERT-derived
 // onset kinds keep their own 1900 start — that is where the Episodes of Regime Transformation data begins.
 // operator/termination adds four ending kinds. Their windows are their sources': CoW MID endyear stops in 2001,
 // UCDP in 2024, and the two record layers are complete only where the refine loop has been — the reopen window is the
-// same 1869-1945 the status templates are scored in, and the territory histories run 1871-2025.
-const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1816, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], chokepoint: [1869, 1945], corridor: [1869, 1945], war_end: [1816, 2001], intrastate_end: [1946, 2024], record_reopen: [1869, 1945], territory_settle: [1871, 2025] };
+// same 1869-1945 corridor_status is scored in (chokepoint_status now reaches 1991; the reopen sample is the two kinds
+// pooled, so it moves with the corridor half), and the territory histories run 1871-2025.
+const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1816, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], chokepoint: [1869, 1991], corridor: [1869, 1945], war_end: [1816, 2001], intrastate_end: [1946, 2024], record_reopen: [1869, 1945], territory_settle: [1871, 2025] };
 const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
+// the structural zeros src/engine/core.js:stepLifecycle gives an actor introduced inside the horizon (see missingVars)
+const ENTRY_ZEROS = ['at_war', 'intrastate', 'mid_force', 'mid_war', 'coup_attempt', 'coup_success', 'interstate_ucdp', 'pact_usa', 'pact_rus', 'defence_pacts', 'sp_client_any', 'sp_client_one', 'great_game', 'aid_conditionality'];
 
 const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
 const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
@@ -73,14 +82,14 @@ function fitsAt(asOf) {
 
 // events actually observed in (asOf, asOf+H] per key
 function realized(asOf, horizon) {
-  const any = new Set(); const dy = new Set();
+  const any = new Set(); const dy = new Set(); const anyCount = new Map();
   for (const e of events) {
     const y = Math.floor(e.year ?? e.start); if (y <= asOf || y > asOf + horizon) continue;
     const cov = COVERAGE[e.kind]; if (cov && (y < cov[0] || y > cov[1])) continue;
-    if (e.actor) for (const t of templates) if (t.event === e.kind && (!t.event_filter || Object.entries(t.event_filter).every(([k, v]) => e[k] === v))) any.add(`${t.id}|${e.actor}`);
+    if (e.actor) for (const t of templates) if (t.event === e.kind && (!t.event_filter || Object.entries(t.event_filter).every(([k, v]) => e[k] === v))) { const k = `${t.id}|${e.actor}`; any.add(k); anyCount.set(k, (anyCount.get(k) ?? 0) + 1); }
     if (e.a && e.b) dy.add(`${e.kind}|${pairKey(e.a, e.b)}`);
   }
-  return { any, dy };
+  return { any, dy, anyCount };
 }
 const auc = (pairs) => { // [[p, y]]
   const pos = pairs.filter(x => x[1]).length, neg = pairs.length - pos; if (!pos || !neg) return null;
@@ -111,7 +120,18 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   for (const t of templates) {
     if (fits[t.id]?.status !== 'fitted') continue;   // never fitted on the full sample: out of scope for scoring entirely
     const kind = t.event; const pairs = [];
-    const cov = COVERAGE[kind]; if (cov && (asOf + 1 < cov[0] || asOf + 1 > cov[1])) continue;
+    const cov = COVERAGE[kind];
+    // era-1945-1991-r2/data-8, statistics-7, engine-7: a template whose horizon opens outside its ground-truth window
+    // used to be dropped with a bare `continue` — no row, no reason — which contradicts the rule this file states
+    // twice and docs/system.md states once ("a template that never fires is reported, not dropped: silence about a
+    // dead template reads as a clean score"). It hid the entire corridor layer from every as-of row after 1945: at
+    // 1950, 1960, 1970 and 1980 chokepoint_status, corridor_status and record_reopen were simply absent, and a reader
+    // could not tell that from a layer that was scored and found perfect. Reported with n: 0 and the window, and kept
+    // out of `pooled` exactly as the other n: 0 rows are.
+    if (cov && (asOf + 1 < cov[0] || asOf + 1 > cov[1])) {
+      row.templates[t.id] = { n: 0, reason: `ground truth for '${kind}' is covered only ${cov[0]}-${cov[1]}; the horizon opening at ${asOf + 1} is entirely outside it, so nothing in it is observable and absence is not a non-event`, coverage: cov, scored_years: 0 };
+      continue;
+    }
     const covYears = cov ? Math.max(0, Math.min(asOf + horizon, cov[1]) - Math.max(asOf, cov[0] - 1)) : horizon;
     if (covYears < horizon) { /* truth truncated: compare against the ensemble's P(event within covYears) instead */ }
     // a forecaster standing at asOf may hold no fitted model for this template at all (no training year before the
@@ -122,6 +142,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     const f = F[t.id];
     if (f?.status !== 'fitted') { row.templates[t.id] = { n: 0, reason: `no fit at as-of: ${f?.reason ?? 'unfitted'}`, fit_source: 'none (no training data at as-of)', fit_split: null, leaky: false, scored_years: covYears }; continue; }
     let excluded = 0, excludedWithEvent = 0; const excludedVars = {};
+    let expCount = 0, obsCount = 0;   // the count scale, for the saturated actor-year templates (era-1945-1991-r2/statistics-6)
     let unborn = 0, unbornEvents = 0;   // corridor/chokepoint records whose dated history opens inside the horizon
     if (t.unit === 'actor-year') {
       if (t.status === 'monitored') continue;
@@ -138,9 +159,17 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
         const y = real.any.has(key) ? 1 : 0;
         if (p == null && !(key in ens.expected)) {
           excluded++; if (y) excludedWithEvent++;
-          for (const v of missingVars(w0, t, id)) excludedVars[v] = (excludedVars[v] ?? 0) + 1;
+          for (const v of missingVars(w0, t, id, firstLive[id])) excludedVars[v] = (excludedVars[v] ?? 0) + 1;
         }
         pairs.push([covYears < horizon ? ens.pAnyWithin(key, covYears) : (p ?? 0), y, id]);
+        // era-1945-1991-r2/statistics-6: the COUNT alongside the indicator. Every actor-year template is scored as
+        // P(any event within the horizon), and for leader_exit the observed horizon rate is 0.84, so the reference
+        // forecaster is nearly perfect by saying "yes" and no calibrated model can earn skill against it — while a
+        // doubling of the underlying RATE is invisible to the statistic. At as-of 1980 the pAny row read predicted
+        // 136 against observed 170 (a mild under-prediction) while the same ensemble fired ~1300 leader exits against
+        // 654 observed. Reported, not pooled: the pooled score stays the Brier so the comparison against every
+        // previous run is unchanged, and the two numbers below are what a 2x over-firing can no longer hide behind.
+        expCount += ens.expected[key] ?? 0; obsCount += real.anyCount.get(key) ?? 0;
       }
     } else if (RECORD_UNITS.has(t.unit)) {
       // one unit per corridor/chokepoint record that exists at as-of. A record whose dated history opens INSIDE the
@@ -222,6 +251,14 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     rec.fit_source = REFIT ? `refit on labels ≤ ${f.trained_through} (n=${f.n}, events=${f.events})` : 'full-sample fit (data/fits.json)';
     rec.leaky = rec.fit_split == null ? null : rec.fit_split > asOf;
     if (t.unit === 'actor-year' || t.unit === 'dyad-year') { rec.n_excluded_no_covariate = excluded; rec.n_excluded_with_event = excludedWithEvent; rec.excluded_vars = excludedVars; }
+    if (t.unit === 'actor-year') {
+      rec.expected_count = expCount; rec.observed_count = obsCount;
+      rec.count_ratio = obsCount ? expCount / obsCount : null;
+      // a template whose horizon base rate is past this line cannot be discriminated by the indicator score at all:
+      // brier_base = p(1-p) collapses and every unreachable unit costs the full 1.0. Flagged so the count pair above
+      // is read as the primary calibration statistic for it rather than as a footnote.
+      if (rec.observed / rec.n > 0.5) rec.saturated = { horizon_base_rate: rec.observed / rec.n, note: 'the any-event indicator is saturated at this horizon; read expected_count / observed_count for calibration' };
+    }
     if (RECORD_UNITS.has(t.unit) || t.unit === SPELL_UNITS.record || t.unit === SPELL_UNITS.territory) { rec.n_unborn_records = unborn; rec.n_unborn_events = unbornEvents; }
     // the pooled guard applies to EVERY unit type (era-1870-1914-r2/statistics-5). It used to test `t.unit ===
     // 'actor-year'`, so half the record rows entered pooled at n_at_risk < 10 — chokepoint_status was pooled at 7
@@ -241,9 +278,35 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     console.log(`   ${id.padEnd(22)}${s.scored_years < horizon ? `[${s.scored_years}y]` : '     '} n=${String(s.n).padStart(5)}  atrisk=${String(s.n_at_risk).padStart(5)}  exp=${s.predicted.toFixed(1).padStart(6)}  obs=${String(s.observed).padStart(4)}  miss0=${String(s.n_structural_miss).padStart(3)}${s.n_excluded_no_covariate ? `  nocov=${String(s.n_excluded_no_covariate).padStart(3)}` : ''}${s.n_unborn_records ? `  unborn=${s.n_unborn_records}/${s.n_unborn_events}` : ''}  ratio=${fmt(s.observed ? s.predicted / s.observed : null)}  brier=${fmt(s.brier, 3)}  auc=${fmt(s.auc)}  auc@risk=${fmt(s.auc_at_risk)}  fit≤${s.fit_split}${s.leaky ? ' LEAKY' : ''}${s.underpowered ? '  [underpowered, out of pooled]' : ''}`);
   }
 }
-/** Which of a template's covariates the world cannot supply for this actor (empty = fully covered). */
-function missingVars(world, t, id) {
-  const a = world.actors[id]; if (!a) return ['not_live_at_as_of'];
+/**
+ * Which of a template's covariates the world cannot supply for this actor (empty = fully covered).
+ *
+ * era-1945-1991-r2/data-1: an actor the engine instantiates INSIDE the horizon is not in the as-of world, and this
+ * collapsed every one of them to the single label `not_live_at_as_of` — 47 of the 56 exclusions on leader_exit at
+ * as-of 1960 — which hid which variable actually did the damage (it was the leader block, absent from entryPrior).
+ * The entrant's state is now reconstructed the way src/engine/core.js:stepLifecycle builds it (the panel row at
+ * min(first live year, asOf), then the world's dated entry prior over the nulls, then the structural zeros a state
+ * that does not yet exist cannot have) and the covariates that are STILL null are named, prefixed `entrant:` so the
+ * two cases stay distinguishable in `excluded_vars`.
+ */
+function entrantState(world, id, firstYear) {
+  const vars = panel.actors[id]; if (!vars || firstYear == null) return null;
+  const at = Math.min(firstYear, world.asOf);
+  const read = (y) => { const o = {}; for (const v of Object.keys(vars)) o[v] = vars[v]?.[y - Y0] ?? null; return o; };
+  const cur = read(at), prev = read(at - 1);
+  for (const [v, x] of Object.entries(world.entryPrior ?? {})) if (x != null) { cur[v] ??= x; prev[v] ??= x; }
+  if (cur.gdp_pc != null && cur.log_gdp_pc == null) cur.log_gdp_pc = Math.log(cur.gdp_pc);
+  for (const v of ENTRY_ZEROS) { cur[v] ??= 0; prev[v] ??= 0; }
+  return { id, cur, prev, recent: { coup_attempt: [0, 0, 0, 0, 0], intrastate: [0, 0, 0, 0, 0], mid_force: [0, 0, 0, 0, 0], at_war: [0, 0, 0, 0, 0], leader_exit: [0, 0, 0, 0, 0] }, fired: {} };
+}
+function missingVars(world, t, id, firstYear) {
+  const a = world.actors[id];
+  if (!a) {
+    const e = entrantState(world, id, firstYear);
+    if (!e) return ['not_live_at_as_of'];
+    const miss = t.covariates.filter(c => !hasVar(world, e, c)).map(c => `entrant:${c.var}`);
+    return miss.length ? miss : ['entrant:not_live_at_as_of'];
+  }
   return t.covariates.filter(c => !hasVar(world, a, c)).map(c => c.var);
 }
 function hasVar(world, a, c) {

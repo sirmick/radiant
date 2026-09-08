@@ -22,6 +22,8 @@
   notes: "Effectively shut since Feb 2026 (tanker war). Reopening is a hazard; the transcript's modal path is a Hormuz-for-blockade swap."
   history:
     - { year: 1892.0, status: open, controller: GBR, source: "the Trucial exclusive agreements of 1892 formalise a British Gulf that had been de facto since the 1850s: the strait is open and its littoral bound to one power (era-1870-1914-r2/corridors-1)" }
+    - { year: 1971.91, status: contested, source: "Iran seizes Abu Musa and the Greater and Lesser Tunbs 30 Nov 1971, the day before the British withdrawal completes — the islands that command the approach lanes (data/territories.yaml abu_musa_tunbs)" }
+    - { year: 1971.92, status: open, controller: OMN, source: "the British Gulf ends: the exclusive agreements are terminated and the last forces leave by 1 Dec 1971 (Bahrain independent 15 Aug, Qatar 3 Sep, the UAE 2 Dec 1971). The controller passes to the littoral state whose territorial waters the traffic separation scheme runs through — the record carried GBR forward to 1984 and so put every British war of the era on the strait's adjacent_war covariate (era-1945-1991-r2/corridors-3)" }
     - { year: 1984.0, status: contested, source: "Iran-Iraq tanker war" }
     - { year: 1988.6, status: open, source: "ceasefire Aug 1988" }
     - { year: 2026.2, status: closed, source: "2026 tanker war (data/history/events.yaml)" }
@@ -41,6 +43,10 @@
     - { year: 1915.50, status: open, controller: GBR, source: "British landing retakes Sheikh Said; the strait reopens" }
     - { year: 1940.44, status: contested, source: "Italian entry 10 Jun 1940: the Massawa squadron makes the Red Sea a war zone, closed to US shipping by the combat-zone proclamation, and Middle East supply reroutes round the Cape" }
     - { year: 1941.28, status: open, controller: GBR, source: "Massawa falls 8 Apr 1941; the Red Sea combat-zone designation is lifted 11 Apr 1941 and the Suez route reopens to American shipping" }
+    - { year: 1967.92, status: open, controller: YEMEN_PEOPLE_S_REPUBLIC, source: "the People's Republic of South Yemen is independent 30 Nov 1967 and the British leave Aden and Perim: the southern gate passes from the power that had held it since 1839 (era-1945-1991-r2/corridors-3 — the record carried GBR forward to 2023)" }
+    - { year: 1973.78, status: contested, source: "Egyptian and South Yemeni naval blockade of the strait against Israel-bound shipping from 8 Oct 1973 (October war); Perim is the closing point" }
+    - { year: 1974.0, status: open, controller: YEMEN_PEOPLE_S_REPUBLIC, source: "the blockade lapses with the disengagement agreements, Jan 1974" }
+    - { year: 1990.39, status: open, controller: YEM, source: "Yemeni unification 22 May 1990: both shores of the Yemeni side under one state" }
     - { year: 2023.9, status: contested, source: "Houthi campaign from Nov 2023" }
 
 - id: suez
@@ -88,6 +94,10 @@
     - { year: 1915.15, status: open, controller: GBR, source: "Emden destroyed at Cocos 9 Nov 1914; with the German East Asia squadron gone the raiding threat ends" }
     - { year: 1942.1, status: closed, source: "Japanese occupation" }
     - { year: 1945.7, status: open, source: "Japanese surrender" }
+    - { year: 1957.66, status: open, controller: MYS, source: "Malayan independence 31 Aug 1957; the British keep the Singapore base under the Anglo-Malayan Defence Agreement but sovereignty over the eastern shore passes (era-1945-1991-r2/corridors-3 — the record carried GBR forward to 2023)" }
+    - { year: 1963.70, status: contested, source: "Konfrontasi: Indonesia opposes the formation of Malaysia 16 Sep 1963 and raids across the strait and into Borneo" }
+    - { year: 1966.61, status: open, controller: MYS, source: "Bangkok Accord 11 Aug 1966 ends Konfrontasi" }
+    - { year: 1971.83, status: open, source: "the British garrison east of Suez goes; the Five Power Defence Arrangements come into force 1 Nov 1971 — a guarantee by treaty replaces a guarantee by presence" }
 
 - id: bosphorus
   name: Turkish Straits
@@ -133,8 +143,73 @@
     - { year: 1895.23, status: open, controller: JPN, source: "Pescadores seized 23-26 Mar 1895; the Treaty of Shimonoseki 17 Apr 1895 cedes Formosa and the Pescadores" }
     - { year: 1937.65, status: contested, controller: JPN, source: "Japanese naval blockade of the China coast declared 25 Aug 1937 and extended to the whole coast — the closure that makes the Burma Road and the Hump necessary (war record: sino_japanese_1937)" }
     - { year: 1945.70, status: open, controller: CHN, source: "Japanese surrender; the island returns to Chinese administration" }
+    - { year: 1949.96, status: contested, controller: TWN, source: "the Republic of China government moves to Taipei 7 Dec 1949 and declares a closure of the mainland coast; the PRC prepares an invasion. The record had CHN as controller of the strait through 1996 (era-1945-1991-r2/corridors-3, corridors-8)" }
+    - { year: 1950.49, status: contested, controller: USA, source: "Truman interposes the Seventh Fleet 27 Jun 1950: the strait is neutralised by a third power — the era's clearest case of a guarantor closing a chokepoint to both claimants" }
+    - { year: 1954.67, status: contested, source: "First Taiwan Strait crisis: bombardment of Quemoy from 3 Sep 1954; Yijiangshan taken 18 Jan 1955" }
+    - { year: 1955.42, status: open, controller: TWN, source: "Formosa Resolution 29 Jan 1955 and the Dachen evacuation Feb 1955; the crisis ends with the offshore islands held and the strait open" }
+    - { year: 1958.64, status: contested, source: "Second Taiwan Strait crisis: shelling of Quemoy from 23 Aug 1958, US convoys to resupply the island" }
+    - { year: 1958.76, status: open, controller: TWN, source: "de facto ceasefire 6 Oct 1958 (alternate-day shelling); traffic normal" }
     - { year: 1996.2, status: contested, source: "third Taiwan Strait crisis, missile tests" }
     - { year: 1996.4, status: open, source: "crisis ends" }
+
+- id: tiran
+  name: Straits of Tiran / Gulf of Aqaba
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: EGY
+  geometry: { point: [34.5, 27.9] }
+  transits: [EGY, SAU, ISR, JOR]
+  load_bearing_for: { ISR: 0.45, JOR: 0.8 }
+  load_bearing_source: estimate
+  load_bearing_from: 1949
+  notes: "era-1945-1991-r2/corridors-5. The layer had no record for the strait whose closure is the proximate cause of the Six-Day War: the suez record carried `1967.4 closed` sourced to the war, so the model saw a canal closing because a war happened, where the actual sequence is a chokepoint closing on 22 May 1967 and the war starting sixteen days later. It is also the only Israeli and the only Jordanian outlet to the Red Sea, which is why the load-bearing weights are what they are."
+  history:
+    - { year: 1949.05, status: contested, controller: EGY, source: "Egyptian batteries at Ras Nasrani and on Tiran close the strait to Israeli-flag shipping and to strategic cargo from the 1949 armistices" }
+    - { year: 1956.85, status: open, controller: ISR, source: "Sharm el-Sheikh taken 5 Nov 1956 in the Sinai campaign; the strait opens to Israeli shipping" }
+    - { year: 1957.22, status: open, controller: EGY, source: "Israeli withdrawal Mar 1957 under a UNEF stationing at Sharm el-Sheikh and a US assurance of free passage — the guarantee whose removal in 1967 is the crisis"  }
+    - { year: 1967.39, status: closed, controller: EGY, source: "Nasser closes the strait to Israeli shipping 22 May 1967, three days after UNEF withdraws on 19 May" }
+    - { year: 1967.43, status: open, controller: ISR, source: "Sharm el-Sheikh taken 7 Jun 1967; the strait is held by force for eleven years" }
+    - { year: 1979.23, status: open, controller: ISR, source: "Egypt-Israel treaty 26 Mar 1979, Art. V: the strait and the Gulf of Aqaba are international waterways open to all, free passage guaranteed by treaty" }
+    - { year: 1982.31, status: open, controller: EGY, source: "Sinai withdrawal complete 25 Apr 1982 with the Multinational Force and Observers at Sharm el-Sheikh: the guarantee holds without the guarantor holding the ground" }
+
+- id: florida_straits
+  name: Florida Straits / Windward Passage
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: USA
+  geometry: { point: [-80.0, 24.0] }
+  transits: [CUB, USA, MEX]
+  load_bearing_for: { CUB: 0.8, MEX: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 1962
+  notes: "era-1945-1991-r2/corridors-8. The one case in the record of a great power closing a chokepoint against another great power's shipping with no war attached — which is exactly the sequence the reopen and status templates have almost no instances of."
+  history:
+    - { year: 1898.99, status: open, controller: USA, source: "the Treaty of Paris 10 Dec 1898 and the Platt Amendment make the approaches an American sea" }
+    - { year: 1962.81, status: closed, controller: USA, source: "quarantine of Cuba proclaimed 22 Oct 1962, in force 24 Oct: a naval interdiction line across the approaches, enforced against Soviet shipping" }
+    - { year: 1962.89, status: open, controller: USA, source: "the quarantine is lifted 20 Nov 1962" }
+
+- id: berlin_corridors
+  name: West Berlin access corridors (road, rail, canal, air)
+  kind: chokepoint
+  mode: multimodal
+  status: open
+  controller: DEU
+  geometry: { point: [13.4, 52.5] }
+  transits: [DEU, DDR]
+  load_bearing_for: { DEU: 0.35, USA: 0.3, GBR: 0.3, FRA: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 1945
+  notes: "era-1945-1991-r2/corridors-4. The era's defining corridor crisis and the one case where a chokepoint closure produces a great-power confrontation without a war — 322 days closed, reopened without a shot, with a guarantor airlift attached. It is the best in-era falsifier for the guarantor_presence / guarantor_withdrawal terms, because the record reopens when the guarantor's weight goes UP."
+  history:
+    - { year: 1945.53, status: open, controller: USA, source: "four-power occupation from 4 Jul 1945; the access agreements of 29 Jun 1945 (road, rail) and 30 Nov 1945 (the three air corridors) are what the western sectors are supplied through" }
+    - { year: 1948.48, status: closed, controller: RUS, source: "surface access to the western sectors severed 24 Jun 1948; the airlift begins 26 Jun 1948" }
+    - { year: 1949.36, status: open, controller: USA, source: "the blockade is lifted 12 May 1949 after 322 days; the airlift continues to 30 Sep 1949 to build a stockpile" }
+    - { year: 1958.90, status: contested, controller: RUS, source: "Khrushchev's ultimatum 27 Nov 1958: six months to make West Berlin a free city or access is handed to the GDR" }
+    - { year: 1961.62, status: contested, controller: RUS, source: "the sector boundary is sealed 13 Aug 1961 and the wall built; allied access along the corridors is kept but tested (the Checkpoint Charlie standoff, 27-28 Oct 1961)" }
+    - { year: 1971.67, status: open, controller: RUS, source: "Quadripartite Agreement signed 3 Sep 1971, in force 3 Jun 1972: unimpeded civilian transit guaranteed in writing for the first time" }
+    - { year: 1989.86, status: open, controller: DEU, source: "the boundary opens 9 Nov 1989; access ceases to be a four-power question" }
 
 # ---------------------------------------------------------------- Eurasian land corridors
 - id: instc
@@ -303,6 +378,11 @@
     - { year: 1914.60, status: open, controller: USA, source: "SS Ancon transits 15 Aug 1914" }
     - { year: 1915.70, status: closed, controller: USA, source: "Culebra/Cucaracha slides close the canal to traffic from Sep 1915 — the dataset's only corridor closure with no war attached" }
     - { year: 1916.30, status: open, controller: USA, source: "traffic resumes Apr 1916 (month is an estimate; the slides recur into 1920)" }
+    - { year: 1964.03, status: contested, controller: USA, source: "flag riots 9-12 Jan 1964; Panama severs relations with the United States until 3 Apr 1964 — the crisis that starts the treaty negotiation (era-1945-1991-r2/corridors-8: the record had no row between 1916 and 1999)" }
+    - { year: 1977.68, status: open, controller: USA, source: "Torrijos-Carter treaties signed 7 Sep 1977" }
+    - { year: 1979.75, status: open, controller: PAN, source: "the treaties enter into force 1 Oct 1979: the Canal Zone is abolished and the canal passes to the binational Panama Canal Commission under Panamanian sovereignty. data/territories.yaml already recorded this as panama_canal_zone 1979 and the two layers disagreed" }
+    - { year: 1989.97, status: closed, controller: USA, source: "the canal is closed to traffic 20 Dec 1989 during the US invasion — the only wartime closure in its history" }
+    - { year: 1990.0, status: open, controller: PAN, source: "reopened 21 Dec 1989 / Jan 1990" }
     - { year: 1999.99, status: open, controller: PAN, source: "Torrijos–Carter handover 31 Dec 1999" }
   notes: "The 1881–1889 French attempt is the model's only abandoned corridor: a corridor can fail without anyone fighting over it."
 
@@ -325,6 +405,7 @@
     - { year: 1936.87, status: open, controller: DEU, source: "Germany repudiates the international waterway clauses, Nov 1936" }
     - { year: 1939.67, status: closed, controller: DEU, source: "closed to belligerents on the outbreak of war" }
     - { year: 1945.40, status: open, controller: GBR, source: "Allied control from May 1945" }
+    - { year: 1955.34, status: open, controller: DEU, source: "the Paris Agreements enter into force 5 May 1955 and the occupation statute ends: the canal returns to German administration. The record carried GBR forward to 2026, which put Britain's Korea, Suez, Falklands and Gulf wars on the canal's adjacent_war covariate (era-1945-1991-r2/corridors-3)" }
   notes: "The corridor fact most often cited as an input to German war timing in 1914. Recorded so the claim is datable, not asserted."
 
 - id: us_transcontinental
@@ -483,6 +564,10 @@
   history:
     - { year: 1893.0, status: building, source: "construction north from Vryburg resumes 1893 under the Bechuanaland Railway Company" }
     - { year: 1897.83, status: built, source: "Bulawayo reached Nov 1897 — the southern half of the Cape-to-Cairo project" }
+    - { year: 1965.86, status: contested, controller: GBR, source: "Rhodesian UDI 11 Nov 1965 and UN sanctions from 1966: the line north of the Limpopo becomes a sanctioned route and Zambia starts looking for another way out (era-1945-1991-r2/corridors-6)" }
+    - { year: 1973.02, status: closed, source: "Rhodesia closes the Zambian border 9 Jan 1973; Zambia refuses to reopen it and the copper stops moving south" }
+    - { year: 1978.79, status: built, source: "Zambia reopens the southern route Oct 1978 after the Benguela and Tazara alternatives fail to carry the traffic" }
+    - { year: 1980.30, status: built, controller: ZWE, source: "Zimbabwean independence 18 Apr 1980; the line is a normal commercial route again" }
 
 - id: uganda_railway
   name: Uganda railway (Mombasa–Kisumu)
@@ -693,8 +778,12 @@
   transits: [RUS, UKR, POL, DDR]
   load_bearing_for: { POL: 0.6, DEU: 0.4, HUN: 0.6, SVK: 0.8, CZE: 0.6 }
   load_bearing_source: estimate
+  load_bearing_from: 1964
   history:
+    - { year: 1959.99, status: planned, controller: RUS, source: "CMEA agreement of 18 Dec 1959 to build the line (era-1945-1991-r2/corridors-7: the record had exactly one row)" }
+    - { year: 1962.88, status: building, controller: RUS, source: "COCOM large-diameter pipe embargo 18 Nov 1962 and the West German export ban of Mar 1963, aimed at the line's 40-inch pipe: the first Western attempt to stop a Soviet energy corridor by export control" }
     - { year: 1964.00, status: built, controller: RUS, source: "opened 1964 — the corridor that made the Warsaw Pact an energy system" }
+    - { year: 1974.00, status: built, controller: RUS, source: "Druzhba-2 doubles the line" }
 
 - id: btc_pipeline
   name: Baku–Tbilisi–Ceyhan pipeline
@@ -823,6 +912,9 @@
   history:
     - { year: 1869.0, status: open, controller: GBR, source: "British since the Treaty of Utrecht 1713; the Rock and the Mediterranean Fleet are what make the Suez route a British route (data/presence.yaml: GBR GIB from 1816)" }
     - { year: 1904.29, status: open, controller: GBR, source: "Anglo-French Declaration 8 Apr 1904: France accepts the British position and the strait stops being a Franco-British question" }
+    - { year: 1969.46, status: contested, controller: GBR, source: "Spain closes the land frontier at La Linea 8 Jun 1969 and cuts the ferry and telephone links: the strait stays open to shipping and the Rock's land corridor is severed (era-1945-1991-r2/corridors-1)" }
+    - { year: 1982.99, status: contested, controller: GBR, source: "the frontier is reopened to pedestrians 15 Dec 1982" }
+    - { year: 1985.10, status: open, controller: GBR, source: "the frontier fully reopens 5 Feb 1985 as Spain joins the European Community" }
   notes: "The western gate of the Mediterranean route. It never changes hands in the modelled window, and that is the point: a chokepoint sample with no unchanging straits in it has its base rate wrong the other way."
 
 - id: danish_straits
@@ -875,6 +967,7 @@
     - { year: 1884.30, status: open, controller: NLD, source: "resurveyed and reopened to navigation 1884" }
     - { year: 1942.16, status: closed, controller: JPN, source: "Battle of Sunda Strait 28 Feb-1 Mar 1942 (Houston and Perth sunk) and the Japanese landings at Bantam Bay; Java surrenders 9 Mar 1942 and both shores pass to Japan" }
     - { year: 1945.70, status: open, controller: NLD, source: "Japanese surrender 15 Aug / 2 Sep 1945; Allied reoccupation of the Indies" }
+    - { year: 1949.99, status: open, controller: IDN, source: "transfer of sovereignty 27 Dec 1949: both shores are Indonesian. The record carried NLD forward to 2026 — 31 years of a colonial power holding a strait it had left (era-1945-1991-r2/corridors-3)" }
   notes: "The layer's one natural closure — an impairment with no belligerent behind it, which is what a reopen hazard needs to not be a war hazard."
 
 - id: corinth_canal
@@ -957,6 +1050,7 @@
     - { year: 1879.0, status: building, source: "begun during the Second Afghan War to put a railhead on the Afghan frontier" }
     - { year: 1891.0, status: built, source: "the Khojak tunnel completed 1891" }
     - { year: 1892.0, status: built, controller: GBR, source: "railhead at Chaman 1892, 100 km from Kandahar" }
+    - { year: 1947.62, status: built, controller: PAK, source: "partition 14 Aug 1947: the line and the Afghan frontier it serves pass to Pakistan (era-1945-1991-r2/corridors-3 — the record carried GBR forward to 2026)" }
   notes: "The British answer to trans_caspian. The two records are one race, and the model held only the Russian half."
 
 - id: orenburg_tashkent
@@ -987,6 +1081,10 @@
     - { year: 1895.0, status: built, source: "through traffic Lourenco Marques-Pretoria from 1895: the Transvaal's outlet to the sea that does not cross British territory" }
     - { year: 1899.79, status: closed, source: "Transvaal war traffic and the British blockade of the line, Oct 1899" }
     - { year: 1900.50, status: built, controller: GBR, source: "British control of the line from mid-1900" }
+    - { year: 1902.42, status: built, controller: PRT, source: "peace of Vereeniging 31 May 1902: the Transvaal half is British, the port and the coastal half revert to Portuguese administration. The record left GBR as controller of a Portuguese-Mozambican line until 2026 (era-1945-1991-r2/corridors-3)" }
+    - { year: 1975.48, status: built, controller: MOZ, source: "Mozambican independence 25 Jun 1975" }
+    - { year: 1976.17, status: contested, controller: MOZ, source: "Mozambique closes the Rhodesian frontier 3 Mar 1976 and applies sanctions; the line keeps working for South Africa and stops working for Rhodesia" }
+    - { year: 1984.21, status: built, controller: MOZ, source: "Nkomati Accord 16 Mar 1984: South Africa and Mozambique agree to stop supporting each other's insurgents and the line is meant to be secured" }
   notes: "The corridor the South African war was partly about. Its belligerents are not in the actor universe (the Boer republics are absent from the codelist), so the record carries the corridor without the war."
 
 - id: peking_mukden_railway
@@ -1065,3 +1163,151 @@
     - { year: 1940.47, status: contested, controller: GBR, source: "the French armistice 22 Jun 1940 puts the southern shore in German hands; the Channel is closed to British through-convoys after convoy CW9 (Aug 1940) and is fought over by artillery and E-boats for four years" }
     - { year: 1944.43, status: open, controller: GBR, source: "Operation Neptune 6 Jun 1944; the Pas-de-Calais batteries cleared Sep 1944 and PLUTO in service from Aug 1944" }
   notes: "Open before every as-of year in the 1910-1940 turn, so it is a scored unit and not `unborn`."
+
+# ---------------------------------------------------------------- the southern-African corridor system (era-1945-1991-r2/corridors-6)
+# The era's cleanest case of a landlocked state's corridor being cut and a war being funded to reopen it. Zambia's
+# copper had to leave through Rhodesia or Portuguese Africa; after UDI on 11 Nov 1965 and UN sanctions in 1966 Zambia
+# built Tazara with Chinese finance specifically to escape both routes. The layer had none of it, which is a large
+# part of why the 1946-1991 corridor transition count was five.
+- id: benguela_railway
+  name: Benguela railway (Lobito–Katanga)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: AGO
+  geometry: { line: [[13.55, -12.35], [15.0, -12.6], [17.5, -12.4], [20.8, -11.9], [23.4, -11.7], [25.5, -11.7], [27.5, -12.8]] }
+  transits: [AGO, COD, ZMB]
+  load_bearing_for: { ZMB: 0.4, COD: 0.5 }
+  load_bearing_source: estimate
+  load_bearing_from: 1931
+  history:
+    - { year: 1931.65, status: built, controller: PRT, source: "the line reaches the Katanga border 28 Aug 1931 and through traffic Lobito-Elisabethville begins: the shortest route from the Copperbelt to the Atlantic" }
+    - { year: 1975.48, status: built, controller: AGO, source: "Angolan independence 11 Nov 1975 (the Alvor transfer begins 25 Jun 1975)" }
+    - { year: 1975.60, status: closed, source: "the line is severed by UNITA and FAPLA fighting from Aug 1975 and stays cut for 39 years — the corridor loss that makes Tazara load-bearing" }
+    - { year: 2014.62, status: built, controller: AGO, source: "rebuilt line reopened to through traffic Aug 2014" }
+  notes: "load_bearing_for is an estimate: Zambia moved roughly a third of its copper through Lobito before 1975."
+
+- id: beira_corridor
+  name: Beira corridor (Beira–Umtali–Salisbury, road, rail and the Feruka pipeline)
+  kind: corridor
+  mode: multimodal
+  status: built
+  controller: MOZ
+  geometry: { line: [[34.84, -19.83], [33.0, -19.4], [32.67, -18.97], [31.05, -17.83]] }
+  transits: [MOZ, ZWE, ZMB]
+  load_bearing_for: { ZWE: 0.6, ZMB: 0.3, MWI: 0.5 }
+  load_bearing_source: estimate
+  load_bearing_from: 1900
+  history:
+    - { year: 1900.0, status: built, controller: PRT, source: "the Beira-Umtali line reaches Salisbury 1899-1900: Rhodesia's shortest outlet to the sea" }
+    - { year: 1965.86, status: contested, controller: PRT, source: "Rhodesian UDI 11 Nov 1965 and the oil embargo; the Beira Patrol blockades the Feruka pipeline's terminal from Mar 1966 and the pipeline stops pumping" }
+    - { year: 1975.48, status: built, controller: MOZ, source: "Mozambican independence 25 Jun 1975" }
+    - { year: 1976.17, status: closed, controller: MOZ, source: "Mozambique closes the Rhodesian frontier and applies sanctions 3 Mar 1976, at a cost it is then compensated for by the UN — a corridor closed as an instrument, not as a casualty" }
+    - { year: 1980.30, status: built, controller: MOZ, source: "Zimbabwean independence 18 Apr 1980; the corridor reopens" }
+    - { year: 1982.0, status: contested, controller: MOZ, source: "RENAMO attacks on the line and the pipeline from 1982; Zimbabwean troops deploy to guard the corridor from 1985" }
+    - { year: 1992.79, status: built, controller: MOZ, source: "Rome General Peace Accords 4 Oct 1992" }
+
+- id: lourenco_marques_railway
+  name: Lourenço Marques / Maputo–Witwatersrand line
+  kind: corridor
+  mode: rail
+  status: built
+  controller: MOZ
+  geometry: { line: [[32.57, -25.97], [31.9, -25.9], [30.8, -25.8], [28.2, -25.75]] }
+  transits: [MOZ, ZAF, SWZ]
+  load_bearing_for: { ZAF: 0.3, SWZ: 0.6 }
+  load_bearing_source: estimate
+  load_bearing_from: 1895
+  history:
+    - { year: 1895.0, status: built, controller: PRT, source: "through traffic to the Rand from 1895 under the Mozambique Convention: the Witwatersrand's nearest port and the migrant-labour agreement that goes with it" }
+    - { year: 1975.48, status: built, controller: MOZ, source: "Mozambican independence 25 Jun 1975; South Africa keeps using the port and cuts the tonnage it routes through it" }
+    - { year: 1984.21, status: built, controller: MOZ, source: "Nkomati Accord 16 Mar 1984: a non-aggression pact whose commercial half is this line" }
+  notes: "Kept as a separate record from delagoa_bay_railway, which is the same physical route recorded from the Transvaal end for the 1870-1914 turn; this record carries the modern-state history. Retiring one of the two is a later change."
+
+- id: tazara
+  name: Tazara / Tanzam railway (Dar es Salaam–Kapiri Mposhi)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: TZA
+  sponsor: CHN
+  geometry: { line: [[39.28, -6.82], [36.7, -8.9], [35.0, -9.3], [33.6, -9.5], [32.6, -10.2], [31.2, -12.0], [28.3, -13.97]] }
+  transits: [TZA, ZMB]
+  load_bearing_for: { ZMB: 0.6, TZA: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 1976
+  history:
+    - { year: 1967.66, status: planned, controller: TZA, source: "Tanzania, Zambia and China sign the agreement to build the line 5 Sep 1967, after Western and Soviet lenders refuse it" }
+    - { year: 1970.83, status: building, controller: TZA, source: "construction begins Oct 1970 with a Chinese interest-free loan and ~25,000 Chinese workers" }
+    - { year: 1975.79, status: built, controller: TZA, source: "the line is completed and through traffic starts Oct 1975, two years early" }
+    - { year: 1976.53, status: built, controller: TZA, source: "formal handover to Tanzania and Zambia 14 Jul 1976" }
+  notes: "The layer's only Cold War instance of a corridor built by a third-party great power to break another power's chokepoint, which is the hypothesis `sponsor_great_power` and `record_building` are fitted on — every other instance in the sample is an imperial railway before 1914."
+
+# ---------------------------------------------------------------- Soviet energy and rail corridors (era-1945-1991-r2/corridors-7)
+- id: bratstvo_pipeline
+  name: Bratstvo (Brotherhood) gas pipeline
+  kind: corridor
+  mode: pipeline
+  status: built
+  controller: RUS
+  geometry: { line: [[35.0, 48.5], [30.5, 50.4], [24.0, 48.9], [21.2, 48.7], [19.0, 47.5], [16.4, 48.2]] }
+  transits: [RUS, UKR, SVK, AUT, HUN]
+  load_bearing_for: { AUT: 0.4, CZE: 0.6, SVK: 0.7, HUN: 0.5 }
+  load_bearing_source: estimate
+  load_bearing_from: 1968
+  history:
+    - { year: 1967.0, status: built, controller: RUS, source: "the line reaches Uzhgorod and the Czechoslovak border 1967" }
+    - { year: 1968.68, status: built, controller: RUS, source: "first Soviet gas delivered to Austria 1 Sep 1968: the first Western European state on a Soviet pipeline, five days after the invasion of Czechoslovakia" }
+
+- id: soyuz_pipeline
+  name: Soyuz gas pipeline (Orenburg–Uzhgorod)
+  kind: corridor
+  mode: pipeline
+  status: built
+  controller: RUS
+  geometry: { line: [[55.1, 51.8], [50.0, 51.5], [42.0, 50.5], [34.0, 49.5], [28.0, 49.5], [22.3, 48.6]] }
+  transits: [RUS, UKR]
+  load_bearing_for: { CZE: 0.4, SVK: 0.4, HUN: 0.3, POL: 0.3, BGR: 0.5, ROU: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 1980
+  history:
+    - { year: 1975.0, status: building, controller: RUS, source: "CMEA agreement of 1974: the member states build the line and are repaid in gas — the Warsaw Pact's largest joint project" }
+    - { year: 1980.0, status: built, controller: RUS, source: "in service 1980" }
+
+- id: urengoy_uzhgorod
+  name: Urengoy–Pomary–Uzhgorod (the trans-Siberian export line)
+  kind: corridor
+  mode: pipeline
+  status: built
+  controller: RUS
+  sponsor: RUS
+  geometry: { line: [[76.7, 66.1], [65.5, 61.3], [56.2, 58.0], [47.5, 56.3], [39.0, 54.0], [31.0, 51.5], [24.0, 49.0], [22.3, 48.6]] }
+  transits: [RUS, UKR, SVK]
+  load_bearing_for: { DEU: 0.35, FRA: 0.25, ITA: 0.3, AUT: 0.5 }
+  load_bearing_source: estimate
+  load_bearing_from: 1984
+  history:
+    - { year: 1981.87, status: planned, controller: RUS, source: "the gas-for-pipe contracts with West Germany, France and Italy are signed from Nov 1981" }
+    - { year: 1981.99, status: contested, controller: RUS, source: "US sanctions on oil and gas equipment for the line, 29 Dec 1981, after martial law in Poland" }
+    - { year: 1982.46, status: contested, controller: RUS, source: "the sanctions are extended to foreign subsidiaries and licensees 18 Jun 1982; France, Italy, Britain and West Germany order their firms to deliver anyway — the corridor build that splits a defence alliance" }
+    - { year: 1982.87, status: building, controller: RUS, source: "the sanctions are lifted 13 Nov 1982; construction continues" }
+    - { year: 1984.02, status: built, controller: RUS, source: "deliveries to Western Europe begin Jan 1984" }
+  notes: "The clearest instance in the dataset of a corridor build splitting an alliance, and therefore the case the corridor dampener exists to be tested against."
+
+- id: bam_railway
+  name: Baikal–Amur Mainline
+  kind: corridor
+  mode: rail
+  status: built
+  controller: RUS
+  sponsor: RUS
+  geometry: { line: [[104.3, 55.9], [108.0, 56.0], [113.0, 56.9], [119.0, 56.3], [126.0, 55.0], [132.0, 51.5], [136.5, 49.6], [140.3, 49.1]] }
+  transits: [RUS]
+  load_bearing_for: { RUS: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 1984
+  history:
+    - { year: 1974.28, status: building, controller: RUS, source: "CPSU decision of Apr 1974 to build the line, five years after the Zhenbao border war of Mar 1969: a second trunk route 200-500 km north of the Chinese frontier the Trans-Siberian runs along" }
+    - { year: 1984.74, status: built, controller: RUS, source: "the golden spike 29 Sep 1984" }
+    - { year: 1989.0, status: built, controller: RUS, source: "permanent through service from 1989" }
+  notes: "The layer's one instance of a corridor built as a hedge against a border the builder had just fought over — the reason it is here rather than a general infrastructure record."

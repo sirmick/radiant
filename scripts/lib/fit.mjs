@@ -317,7 +317,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
           pre_1946: y < 1946 ? 1 : 0,   // era-1870-1914/statistics-6, a derived constant; candidate only
           // era-1914-1945/corridors-7, the dampener docs/schema.md specifies; built by src/engine/core.js so the
           // engine's dyad block and this one are one construction. Candidate only.
-          corridor_stake: corridorStake(cIdx, a, b, alliedY),
+          corridor_stake: corridorStake(cIdx, a, b, alliedY, y),
           // the patron term (operator/presence), built by src/engine/presence.js so this block and the engine's dyad
           // block are one construction. Candidate only.
           ...patronFeatures({ patrons: patronsAtYear(y), allied: (p, h) => pacts.has(`${pairKey(p, h)}|${y}`), major: (id) => (pv(id, 'great_power', y) ?? 0) > 0, a, b }),

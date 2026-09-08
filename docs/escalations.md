@@ -1057,3 +1057,98 @@ is the data half; the engine half is this.
 exactly 0); `autocratic_closure` / `democratize_step` `predicted` falling by roughly the excluded share without
 `auc_at_risk` dropping; guard that pooled `leader_exit`, `coup_attempt` and `irregular_exit` exp/obs on 1950–2000 move
 by less than 0.05; `ENGINE_ABLATE=occupation` reproduces the pre-package baseline exactly.
+
+## era-1945-1991-r2 / data-7, statistics-8, engine-6 — Archigos 4.1 as the pre-1950 leader source
+
+**What it would add.** A second leader dataset — Archigos 4.1 (Goemans, Gleditsch & Chiozza 2009: leader identity,
+dated entry and exit, birth date, and an `entry` / `exit` type coded *regular* / *irregular* / *foreign imposition*,
+covering 1875–2015) — ingested in `scripts/fetch-raw.sh` and `scripts/build-panel.mjs`, spliced under REIGN over the
+1950–2015 overlap the way `scripts/lib/capability.mjs` splices the modern composite under CoW NMC, with a printed
+agreement rate on the overlap rather than an assumed one. It would carry `leader_age`, `leader_tenure` and
+`leader_exit` back to 1875, and it would supply `leader_irregular_entry` from a coded field instead of the derivation
+this turn built out of REIGN's log-months-since-the-last-irregular-change column.
+
+**Why.** `panel.meta.introduced.leader_tenure` is 1950, so `leader_exit`, `irregular_exit` and `coup_attempt` declare
+`window: [1950, 2021]` and have **no fit at all** at as-of 1870, 1880, 1890, 1900, 1910, 1920, 1930, 1940 **and 1950** —
+nine of the fifteen as-of rows in the published backtest, including the first as-of year of the 1945–1991 turn itself,
+where 132 of the era's irregular exits are inside the horizon. `pooled.leader_exit.n_as_of_rows` is 3 in the turn
+window and 6 over the full run. The knock-on reaches templates outside the leader family: `leader_exit_recent` on
+`democratize_step` and `autocratic_closure` carries a declared `default_outside` imputed 0 for every actor-year before
+1946, which is why `win5(leader_exit_recent)` shows up in the `degenerate` list of the as-of 1870 `democratize_step`
+row. Archigos is already cited in both templates' own `sources:` and is not fetched.
+
+**Data.** Archigos 4.1, `Archigos_4.1_stata14.dta` / the CSV release (Rochester / Kristian Gleditsch,
+http://ksgleditsch.com/archigos.html); `peacesciencer` ships it as `archigos`. Nothing else is needed — the CoW/GW
+crosswalk it keys on is already in `scripts/lib/hist.mjs`.
+
+**Templates it would feed.** `leader_exit` and `irregular_exit` (window → [1875, 2021], and `COVERAGE.leader_exit` in
+`scripts/backtest.mjs` with it); `coup_attempt` stays at 1950 because Powell–Thyne has no earlier coverage, so
+`COVERAGE.leader_exit` and `COVERAGE.coup` must become separate windows with separate values; `democratize_step` and
+`autocratic_closure` lose the `default_outside` imputation on `leader_exit_recent` for the years Archigos covers.
+
+**Test.** After the ingest, `data/events.json` carries `leader_exit` events at or before 1880 and the build prints the
+1950–2015 overlap agreement rate — exits matched by actor-year, and irregular-flag agreement — with a rate below 0.85
+a merge to reject rather than to ship. `byAsOf[1950].templates.leader_exit.n` and `.irregular_exit.n` are non-zero with
+`fit_split: 1950` and `leaky: false`; `pooled.leader_exit.n_as_of_rows` rises from 6. Guard: the as-of 1960–1980
+`leader_exit` rows must not lose more than 0.03 of `auc_at_risk` (0.76 / 0.85 / 0.77 after this turn), and
+`win5(leader_exit_recent)` must leave the as-of 1870 `democratize_step` `degenerate` list.
+
+**Why it is escalated and not applied.** It is a new dataset and a new derivation in `build-panel.mjs`, which
+`agent/fixer.md` reserves. It is also correctly ranked behind the three findings this turn did apply: those buy skill
+on rows that already exist, this buys new rows.
+
+## era-1945-1991-r2 / engine-8 — great-power entry and exit as a modelled hazard
+
+**What it would add.** A hazard on a pole's capability share: a great power's collapse is an event, not a growth path,
+and the engine has no way to produce one. Concretely, a fitted or declared shock process on `cinc` / `pol_mass` for
+actors above the pole threshold, drawn per simulated year, with the resulting share re-classified by
+`src/engine/polarity.js` the way it already is — plus the `great_power` flag becoming simulated state rather than a
+value frozen at as-of.
+
+**Why.** `docs/system.md` says the derived layer exists so that "a run can change polarity — the typed flags could
+not". Measured (`scripts/analysis/polarity.mjs`, which now prints this line): the simulated polarity-transition rate is
+**0.00 per 100 world-years** against an observed 2.38 over the panel's own 210 years. `world.pol.state.n_poles` is 2 in
+197 of 200 simulated world-years from as-of 1980 and never 1, while the panel's own derived column — the same module
+run over observed capability — drops to unipolar from 1995. `great_game` carries +0.60 on `coup_attempt` and +0.57 on
+`irregular_exit`, so every horizon that crosses 1995 applies a superpower-client term the derived layer itself says had
+ended, for five to fifteen simulated years. The layer does real work in the fit and none in the simulation.
+
+**Data.** None new: `cinc`, `milex` and `pol_mass` are already in the panel, and the observed transition record is the
+panel's own derived polarity columns. What is missing is a process, which is why this is an escalation and not a fix.
+A rate can be estimated off the observed record (two clean transitions in 1870–2025 by the module's own labelling) or
+off great-power exits in `data/history/actors.yaml`.
+
+**Templates it would feed.** `great_game` on `coup_attempt` and `irregular_exit`; `aid_conditionality` and
+`hegemon_regime` on `democratize_step` and `autocratic_closure`; every era flag in `src/engine/polarity.js:eraFlags`.
+
+**Test.** `scripts/analysis/polarity.mjs` reports a simulated transition rate inside a factor of 2 of the observed
+2.38 per 100 world-years. Guard: pooled `coup_attempt` exp/obs at as-of 1980 and 1990 must not degrade, and pooled
+`democratize_step` skill must not fall. Until then the honest alternative — taken in this turn — is to say out loud
+that polarity is frozen at as-of alongside the great-power flag, the alliance graph, the border graph and
+`world.nukes`, which `docs/system.md` and that script now do.
+
+## era-1945-1991-r2 / corridors-1 (residue) — a dated `retired:` on a corridor record
+
+**What it would add.** A dated end-of-life field on `data/corridors.yaml` records, honoured by `corridorFirstYear` /
+the record at-risk set the way `spans` is honoured for actors: a record that stops being a corridor leaves the
+denominator instead of being scored as a live at-risk record-year forever.
+
+**Why.** This turn landed the 1946–1991 corridor entries and then measured whether they were enough to reopen
+`COVERAGE.corridor`. On chokepoints they were (4.73% over 825 post-1945 record-years against 5.19% over the 1,080
+coded ones) and that window moved to 1991. On corridors they were not: 1.63% against 4.32%, a factor of 2.6. The
+diagnosis is not missing history rows — 29 of the 46 corridor records have no post-1945 transition and roughly a dozen
+of those *correctly* have none, because they stopped being corridors decades ago: the submarine telegraph records
+superseded by radio and then by cable-laying of a different kind (`eastern_telegraph`, `all_red_pacific`,
+`german_atlantic_cables`, `spanish_colonial_cables`), the Hejaz railway abandoned in 1917 and never rebuilt south of
+Ma'an, `madeira_mamore` closed in 1972, `cape_to_cairo` never built. `abandoned` exists as a *status* and takes a
+record out of the reopen risk set, but it does not take it out of `corridor_status`'s denominator, so eighty years of
+guaranteed non-events per record sit under the base rate.
+
+**Data.** None new: the dates are in the records' own sources.
+
+**Templates it would feed.** `corridor_status` and `record_reopen` — and it is the precondition for their `window` and
+their `COVERAGE` entry moving past 1945.
+
+**Test.** With the field honoured, the 1946–1991 corridor label rate must come inside a factor of 1.5 of the coded
+window's 4.32% before either window moves. Guard: the 1869–1945 rate must not move by more than 0.2 points (a record
+retired in 1972 changes nothing before 1946), and pooled 1870–2010 `corridor_status` skill must not fall.

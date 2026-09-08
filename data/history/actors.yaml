@@ -20,8 +20,8 @@
 - { id: GBR, name: United Kingdom, introduced: 1816, gw: 200, owid: GBR, great_power: [1816, null] }
 - { id: FRA, name: France, introduced: 1816, gw: 220, owid: FRA, great_power: [1816, null] }
 - { id: PRUSSIA, name: Prussia, introduced: 1816, retired: 1871, successor: DEU, gw: 255, owid: DEU, great_power: [1816, 1871], successor_borders_until: 1871, series_note: "OWID Germany series used; modern-borders population dropped (NMC tpop is the contemporaneous one)" }
-- { id: DEU, name: Germany, spans: [[1871, 1946], [1949, null]], gw: 255, owid: DEU, great_power: [1871, 1945, 1991, null], notes: "1949-90 split: model keeps DEU as West Germany (gw 260) and adds DDR. CoW system membership ends with the surrender 8 May 1945 and resumes with the Federal Republic 1949 (CoW dates the FRG 1955; the model uses the Basic Law, 23 May 1949, because the state exists from then); the 1946-48 gap is Allied military government, not a state." }
-- { id: DDR, name: East Germany, introduced: 1949, retired: 1990, successor: DEU, gw: 265, owid: null }
+- { id: DEU, name: Germany, spans: [[1871, 1946], [1949, null]], gw: 255, owid: DEU, owid_alt: [{ code: OWID_GFR, from: 1949, to: 1991, source: "era-1945-1991-r2/data-3: V-Dem Regimes of the World via OWID codes the Federal Republic separately for the split period (OWID_GFR). The DEU series in data/raw/hist/regime.csv has a 46-year hole 1945-1990 that exactly matches the split, so DEU carried `regime: null` for 42 live actor-years and was outside every actor template and every dyad for the whole Cold War. The polyarchy join over the same underlying V-Dem data resolved it correctly all along (0.813 in 1950), which is how the disagreement was found." }], great_power: [1871, 1945, 1991, null], notes: "1949-90 split: model keeps DEU as West Germany (gw 260) and adds DDR. CoW system membership ends with the surrender 8 May 1945 and resumes with the Federal Republic 1949 (CoW dates the FRG 1955; the model uses the Basic Law, 23 May 1949, because the state exists from then); the 1946-48 gap is Allied military government, not a state." }
+- { id: DDR, name: East Germany, introduced: 1949, retired: 1990, successor: DEU, gw: 265, owid: OWID_GDR, series_note: "era-1945-1991-r2/data-3: was `owid: null`, which loadActors defaults to the id `DDR` — a code no OWID file carries — so regime was null for all 41 live years. V-Dem/OWID codes the GDR as OWID_GDR (regime 0 in 1950)." }
 
 - id: AUT_HUN
   name: Austria-Hungary
@@ -220,7 +220,7 @@
 - { id: IND, name: India, introduced: 1947, gw: 750, owid: IND, notes: "British India pre-1947 is a GBR dependency; rail km and steel enter via corridors/waves, not as an actor" }
 - { id: PAK, name: Pakistan, introduced: 1947, gw: 770, owid: PAK }
 - { id: IDN, name: Indonesia, introduced: 1949, gw: 850, owid: IDN }
-- { id: VNM, name: Vietnam, introduced: 1954, gw: 816, owid: VNM }
+- { id: VNM, name: Vietnam, introduced: 1954, gw: 816, cow: 816, owid: VNM, owid_alt: [{ code: OWID_DRV, from: 1954, to: 1976, source: "era-1945-1991-r2/data-3: V-Dem/OWID codes the Democratic Republic of Vietnam separately (OWID_DRV) for the divided period; the VNM series has no rows 1954-1975, so regime was null for 22 live years and VNM carried probability exactly 0 on every dyad through 28 of its own mid_force events and 9 mid_war events" }] }
 - { id: THA, name: Thailand / Siam, introduced: 1816, gw: 800, owid: THA }
 - { id: PHL, name: Philippines, introduced: 1946, gw: 840, owid: PHL }
 - { id: MYS, name: Malaysia, introduced: 1957, gw: 820, owid: MYS }
@@ -242,6 +242,25 @@
 - { id: VAT, name: Papal States / Vatican City, spans: [[1816, 1861]], modeled: false, cow: 327, gw: 327, owid: VAT, notes: "The 1816-1860 entity is the Papal States (CoW 327), annexed by Italy in 1860; the codelist reuses the iso3c VAT of Vatican City, which is not a system member. Id kept as VAT to avoid rekeying the panel." }
 - { id: CZECHOSLOVAKIA, name: Czechoslovakia, spans: [[1918, 1939], [1945, 1993]], successor: CZE, modeled: false, cow: 315, gw: 315, owid: CZE, owid_alt: [{ code: OWID_CZS, from: 1918, to: 1993, source: "Maddison/OWID 'Czechoslovakia': gdp_pc 4664 in 1930" }], series_note: "V-Dem/OWID code CZE carries Czechoslovakia 1918-1992 (regime 2 in 1930 and 1938, the 1939 collapse and the 1948 coup); Maddison/population use OWID_CZS. Without this entry the events land on CZE, which the panel says is not live until 1993, and the live entity has no covariates.", notes: "German occupation 15 Mar 1939 - 9 May 1945; dissolved 31 Dec 1992" }
 - { id: ALB, name: Albania, spans: [[1913, 1939], [1946, null]], modeled: false, cow: 339, gw: 339, owid: ALB, notes: "Italian invasion and annexation 7 Apr 1939; CoW drops Albania 1939-1945. The codelist's GW span runs continuously 1913-2020." }
+
+# era-1945-1991-r2/data-4: the Republic of Vietnam. CoW/GW 817 was mapped to VNM by a hard-coded override in
+# scripts/lib/hist.mjs, so Saigon's record — 20 disputes, 7 wars, 7 coups and 10 leader exits in 1954-1975 — was
+# written onto Hanoi's actor-year row, and the registry's own REPUBLIC_OF_VIETNAM (the countrycode panel has 22 rows
+# for it) never reached data/panel.json at all. The generated id is kept rather than renamed so nothing has to be
+# rekeyed; the entry supplies the codes and the OWID entity that make it an actor with covariates.
+- { id: REPUBLIC_OF_VIETNAM, name: Republic of Vietnam, spans: [[1954, 1976]], successor: VNM, modeled: false, cow: 817, gw: 817, owid: OWID_RVN, notes: "CoW/GW system member 1954-1975 (State of Vietnam from the Geneva Accords 21 Jul 1954, Republic 26 Oct 1955); absorbed into the Socialist Republic 2 Jul 1976. V-Dem/OWID codes it OWID_RVN." }
+
+# era-1945-1991-r2/data-6: the Yemens. Neither North Yemen nor unified Yemen had a hand entry, so nothing dated the
+# unification of 22 May 1990: the countrycode panel kept YEMEN_ARAB_REPUBLIC live 1918-2025 alongside YEM 1990-2025,
+# 36 years of two live actors for one state. YAR post-1990 is covariate-free (regime, cinc and leader_age all null)
+# and was still a live at-risk unit scored at p=0 on every template, while UCDP — which keeps using GW 678 for unified
+# Yemen — put the 1994 civil war, the Houthi wars, 2011 and 2015 on it and left YEM's own conflict row empty.
+- { id: YEMEN_ARAB_REPUBLIC, name: Yemen Arab Republic, spans: [[1926, 1990]], successor: YEM, modeled: false, cow: 678, gw: 678, owid: OWID_YAR, notes: "North Yemen: independent of the Ottoman Empire 1918, CoW system member from 1926 (Treaty of Sanaa, 2 Sep 1926); merged with the PDRY 22 May 1990" }
+- { id: YEMEN_PEOPLE_S_REPUBLIC, name: People's Democratic Republic of Yemen, spans: [[1967, 1990]], successor: YEM, modeled: false, cow: 680, gw: 680, owid: OWID_YPR, notes: "South Yemen: independence 30 Nov 1967; merged 22 May 1990" }
+- { id: YEM, name: Yemen, spans: [[1990, null]], modeled: false, cow: 679, gw: 678, owid: YEM, notes: "Unified 22 May 1990. GW 678 is carried forward by UCDP for the unified state, so the hand entry claims it from 1990 — makeCodeMap picks the candidate that is live at the year, and YAR is retired at 1990." }
+
+# era-1945-1991-r2/data-3: split states V-Dem/OWID codes separately and the registry did not claim.
+- { id: ZANZIBAR, name: Zanzibar, spans: [[1963, 1965]], successor: TZA, modeled: false, cow: 511, gw: 511, owid: OWID_ZAN, notes: "Independent 10 Dec 1963; united with Tanganyika 26 Apr 1964 (CoW membership ends 1964)" }
 
 # Retired codelist twins: the countrycode panel carries a second, non-iso3c entity for a CoW code a hand actor already
 # owns, so the universe held two actors for one state (cow 345 SRB/Yugoslavia overlapped for 148 years). No data source

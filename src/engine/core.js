@@ -91,6 +91,16 @@ const NO_NESTING = ABLATE.includes('war_nesting');
 // With it off the engine consumes no random numbers for records, so a run reproduces the pre-2026-09-07 random stream
 // exactly — which is how the claim "the dyadic numbers moved by stream noise only" is checked rather than asserted.
 const NO_CORRIDORS = ABLATE.includes('corridor_layer');
+// era-1945-1991-r2/statistics-3, engine-5: the hand-typed regime decrements on an irregular exit and a successful coup.
+// They are OFF by default from 2026-09-07 (the fitted autocratization templates already contain the coup-caused
+// downgrades); ENGINE_ABLATE=coup_regime_step turns them back on so the removal can be scored against itself.
+const COUP_REGIME_STEP = ABLATE.includes('coup_regime_step');
+// era-1945-1991-r2/statistics-3, engine-4: irregular_exit is declared `event: leader_exit` with
+// `event_filter: { irregular: 1 }`, so its events are a strict SUBSET of leader_exit's. The engine drew the two as
+// independent competing risks and applied a leader replacement for each, which fired leader turnover ~2x the observed
+// rate and irregular exits ~5x. They are nested from 2026-09-07 exactly as mid_war nests inside mid_force;
+// ENGINE_ABLATE=exit_nesting restores the independent draws.
+const NO_EXIT_NESTING = ABLATE.includes('exit_nesting');
 // operator/termination: one switch per fitted ending, so each can be scored on its own. With all four off the engine
 // is the pre-2026-09-07 one — a one-year war, a uniform 1..6-year internal conflict, no reopening hazard and no
 // territory layer — except that the war half is also gated by `duration.status` in the data (see warDurationOn).
@@ -317,11 +327,18 @@ export function corridorOutcomeMix(records, asOf) {
   }
   return m;
 }
-export function corridorStake(index, a, b, allied) {
+export function corridorStake(index, a, b, allied, year = null) {
   const ra = index.byTransit.get(a), rb = index.byTransit.get(b);
   if (!ra && !rb) return 0;
   let s = 0;
-  const one = (rec) => { let w = 0; for (const [c, lb] of Object.entries(rec.load_bearing_for ?? {})) { if (c === a || c === b) continue; if (allied.has(pairKey(c, a)) || allied.has(pairKey(c, b))) w += lb; } return w; };
+  // era-1945-1991-r2/corridors-3: `load_bearing_for` is ONE undated map per record — the 2026 dependence weights —
+  // read at every simulated year, so at as-of 1950 the dampener knew Japan's Gulf-oil dependence and Singapore's
+  // Malacca dependence decades before either was true (Singapore was not a state until 1965). A record may now
+  // declare `load_bearing_from: <year>`, the first year its weights are a claim about the world rather than a
+  // back-projection, and it contributes nothing before it: silence is better than a 2026 number at 1950. Records
+  // without the field keep the old behaviour and the limitation is declared on the corridor_stake candidate in
+  // data/templates.yaml — dating the whole layer is a separate change.
+  const one = (rec) => { if (year != null && rec.load_bearing_from != null && year < rec.load_bearing_from) return 0; let w = 0; for (const [c, lb] of Object.entries(rec.load_bearing_for ?? {})) { if (c === a || c === b) continue; if (allied.has(pairKey(c, a)) || allied.has(pairKey(c, b))) w += lb; } return w; };
   for (const rec of ra ?? []) s += one(rec);
   for (const rec of rb ?? []) if (!ra?.includes(rec)) s += one(rec);
   return Math.log1p(s);
@@ -499,6 +516,23 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   const quant = (v, q) => { const xs = Object.values(actors).map(a => a.cur[v]).filter(x => x != null).sort((p, o) => p - o); return xs.length ? xs[Math.min(xs.length - 1, Math.floor(xs.length * q))] : null; };
   const med = (v) => quant(v, 0.5);
   const entryPrior = Object.fromEntries(['regime', 'polyarchy', 'gdp_pc', 'log_gdp_pc', 'gdp_growth', 'population', 'tpop'].map(v => [v, med(v)]));
+  // the leader block has to be in it too (era-1945-1991-r2/data-1, statistics-1, engine-1). actorHazards drops a whole
+  // template on the first null covariate, so before this every state born inside the horizon carried probability
+  // exactly zero on leader_exit, irregular_exit and coup_attempt for its entire simulated life — the whole
+  // decolonisation cohort. Measured at as-of 1960: 48 actors enter in 1961-1980, 27 of them have an observed leader
+  // exit inside the window and 17 a coup, and the backtest reported all of them as n_structural_miss.
+  // Two of the four are structural facts rather than medians and are set as such: a state entering the system has a
+  // leader who took office at or about the year it entered (tenure 0), and that leader did not take power by
+  // overthrowing a predecessor of a state that did not yet exist (irregular entry 0). leader_age and leader_military
+  // are the live-actor median at asOf, exactly as regime and income already are. milper has no structural value and
+  // takes the 25th percentile of the live actors, on the same reasoning as cinc: a state entering the system is not a
+  // median power. All of them are recorded in a.imputed by the loop in stepLifecycle.
+  entryPrior.leader_tenure = 0;
+  entryPrior.leader_irregular_entry = 0;
+  entryPrior.leader_age = med('leader_age');
+  entryPrior.leader_military = med('leader_military');
+  entryPrior.milper = quant('milper', 0.25);
+  entryPrior.info_access = med('info_access');
   // capability has to be in the entry prior too (era-1870-1914-r2/statistics-2, engine-4): dyadHazards returns {} the
   // moment either side's cinc is null, so before this every state born inside the horizon carried probability exactly
   // zero on every dyadic template for its whole simulated life — 30 of the 99 observed mid_force pairs at as-of 1900.
@@ -644,6 +678,25 @@ function linearPredictor(fit, t, feats) {
   return eta;
 }
 
+/**
+ * Actor-year templates whose label set is a strict SUBSET of another fitted template's: same `event`, and the child
+ * carries an `event_filter` the parent does not. era-1945-1991-r2/statistics-3, engine-4 — `irregular_exit` is
+ * declared `event: leader_exit, event_filter: { irregular: 1 }`, so every one of its events is also a leader_exit
+ * event, yet stepYear drew the two against independent uniforms and applied a leader replacement for each. Measured
+ * at as-of 1980: 69.4 actor-years per run fired both, simulated leader turnover ran 1.98x the observed count and
+ * simulated irregular exits 5.4x. Returns child template id -> parent template id; the draw is nested exactly as
+ * mid_war nests inside mid_force.
+ */
+function subsetNesting(templates) {
+  const m = new Map();
+  for (const t of templates) {
+    if (t.unit !== 'actor-year' || !t.event_filter || t.spell || t.status === 'monitored') continue;
+    const parent = templates.find(x => x.id !== t.id && x.unit === 'actor-year' && x.event === t.event && !x.event_filter && !x.spell && x.status !== 'monitored');
+    if (parent) m.set(t.id, parent.id);
+  }
+  return m;
+}
+
 /** Annual probability of each fitted actor-year template for one actor in the current state. */
 export function actorHazards(world, a) {
   const out = {};
@@ -731,7 +784,7 @@ export function worldLook(world) {
 function corridorStakeFor(world, a, b) {
   if (!world.corridors?.length) return 0;
   if (world.corridorIdxYear !== world.year) { world.corridorIdx = corridorIndex(world.corridors, worldLook(world)); world.corridorIdxYear = world.year; }
-  return corridorStake(world.corridorIdx, a, b, world.allied);
+  return corridorStake(world.corridorIdx, a, b, world.allied, world.year);
 }
 
 /** Annual probability that a running war between this pair stops during the year. `age` = years already elapsed. */
@@ -779,9 +832,20 @@ function drawCorridorStatus(world, entry, rng) {
 function applyActorEvent(world, a, kind, rng) {
   const y = world.year; a.fired[kind] = y;
   switch (kind) {
-    case 'irregular_exit': applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (a.cur.regime > 0 && rng() < 0.5) a.cur.regime -= 1; break;
-    case 'leader_exit': a.cur.leader_tenure = 0; a.cur.leader_age = 45 + Math.floor(rng() * 25); a.cur.leader_military = rng() < 0.2 ? 1 : 0; a.recent.leader_exit[0] = 1; break;
-    case 'coup': a.cur.coup_attempt = 1; if (rng() < 0.5) { a.cur.coup_success = 1; applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (a.cur.regime > 0 && rng() < 0.6) a.cur.regime -= 1; } break;
+    // era-1945-1991-r2/statistics-3, engine-5: the two typed regime decrements that used to sit here (rng() < 0.5 on an
+    // irregular exit, rng() < 0.6 on a successful coup) were unfitted hand-typed constants stacked on top of
+    // autocratize_step / autocratic_closure, which are fitted on V-Dem RoW downward steps that ALREADY contain the
+    // coup-caused ones. Sized at as-of 1980 they fired ~128 downgrades per run against 63 fitted autocratic_closure
+    // firings — the unfitted channel was 2x the fitted one — and the simulated regime mix at 2000 stayed at its as-of
+    // 1980 value (0.46/0.31/0.08/0.14 against an observed 0.18/0.32/0.27/0.23): the third wave did not happen, and
+    // because irregular_exit carries -0.8/-2.5/-2.9 on regime that alone multiplied the irregular hazard by 1.7x.
+    // Removed; ENGINE_ABLATE=coup_regime_step restores them for the diff.
+    case 'irregular_exit': if (a.fired.leader_exit !== y) applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (COUP_REGIME_STEP && a.cur.regime > 0 && rng() < 0.5) a.cur.regime -= 1; break;
+    // a regular exit clears the irregular-entry flag: the incoming leader did not take power by force. Before
+    // era-1945-1991-r2/engine-3 the panel column was 1 for 99.3% of actor-years, so the `= 1` assignments below were
+    // a no-op and the engine had no coup-trap feedback at all despite reading as if it did.
+    case 'leader_exit': a.cur.leader_tenure = 0; a.cur.leader_age = 45 + Math.floor(rng() * 25); a.cur.leader_military = rng() < 0.2 ? 1 : 0; a.cur.leader_irregular_entry = 0; a.recent.leader_exit[0] = 1; break;
+    case 'coup': a.cur.coup_attempt = 1; if (rng() < 0.5) { a.cur.coup_success = 1; if (a.fired.leader_exit !== y) applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (COUP_REGIME_STEP && a.cur.regime > 0 && rng() < 0.6) a.cur.regime -= 1; } break;
     case 'autocratization_onset': case 'autocratize_step': if (a.cur.regime > 0) a.cur.regime -= 1; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); a.cur.regime_down = 1; break;
     case 'democratization_onset': case 'democratize_step': if (a.cur.regime < 3) a.cur.regime += 1; a.cur.polyarchy = Math.min(1, (a.cur.polyarchy ?? 0.5) + 0.1); a.cur.regime_up = 1; break;
     case 'autocratic_closure': if (a.cur.regime > 0) a.cur.regime -= 1; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); a.cur.regime_down = 1; break;
@@ -907,11 +971,21 @@ export function stepYear(world, rng, opts = {}) {
     const u = rng();
     if (p == null || u < p) { world.warSpells.delete(k); fired.push({ kind: 'war_end', a: A.id, b: B.id, year: y, start: sp.y0, duration: y - sp.y0 + 1 }); }
   }
-  // actor hazards
+  // actor hazards. A template whose labels are a subset of another's is drawn INSIDE its parent, not beside it
+  // (era-1945-1991-r2/engine-4): the parent is drawn first, and the child at P(child | parent) = p_child / max(p_parent,
+  // p_child) only in the years the parent fired — the same construction, and the same cap, as the war-inside-dispute
+  // nesting below. One random number per template per actor-year either way, so ENGINE_ABLATE=exit_nesting differs by
+  // mechanism only.
+  const nest = world.subsetNesting ??= subsetNesting(world.templates);
   for (const id of ids) {
     const a = world.actors[id]; const hz = actorHazards(world, a);
-    for (const [kind, p] of Object.entries(hz)) {
-      if (rng() < p) {
+    const order = Object.entries(hz).sort((x, z) => (nest.has(x[0]) ? 1 : 0) - (nest.has(z[0]) ? 1 : 0));
+    const firedHere = new Set();
+    for (const [kind, p] of order) {
+      const parent = NO_EXIT_NESTING ? null : nest.get(kind);
+      const pDraw = parent == null ? p : (firedHere.has(parent) ? Math.min(1, p / Math.max(hz[parent] ?? 0, p)) : 0);
+      if (rng() < pDraw) {
+        firedHere.add(kind);
         const t = world.templates.find(t => t.id === kind); const ev = { kind: t.event, template: kind, actor: id, year: y };
         const rewrite = ev.kind === 'coup' ? 'coup' : (t.event_filter ? kind : ev.kind);
         if (!HANDLED.has(rewrite)) throw new Error(`stepYear: template '${kind}' fires but applyActorEvent has no rewrite for '${rewrite}'`);
