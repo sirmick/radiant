@@ -317,10 +317,16 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
 function initPolarity(panel, asOf, actors) {
   const Y0 = panel.meta.y0;
   const last = (vars, v) => { const arr = vars[v]; if (!arr) return null; for (let i = Math.min(asOf - Y0, arr.length - 1); i >= Math.max(0, asOf - Y0 - 30); i--) if (arr[i] != null) return arr[i]; return null; };
+  // check(operator/derived-polarity): pol_mass/pol_share are one year's share of one distribution, not an actor
+  // attribute, so they carry only PAST the column's own last measured year — the case this carry exists for. Reading
+  // them back through a mid-series gap injects mass the panel never gave that actor and rescales every pole: at as-of
+  // 1950 a live-but-unmeasured actor's 1945 share (0.207) came back as the second-ranked pole and the engine started
+  // the world multipolar where the panel — and the fit — say bipolar, for as-of 1950-1954.
+  const lastPol = (vars, v) => { const arr = vars[v]; if (!arr) return null; const end = Math.min(asOf, panel.meta.vars?.[v]?.last ?? asOf) - Y0, floor = end < asOf - Y0 ? Math.max(0, end - 30) : end; for (let i = Math.min(end, arr.length - 1); i >= floor; i--) if (arr[i] != null) return arr[i]; return null; };
   const raw = new Map(), sm = new Map(); let demShare = null;
   for (const [id, vars] of Object.entries(panel.actors)) {
     if (vars.live?.[asOf - Y0] !== 1) continue;
-    const r = last(vars, 'pol_mass'), k = last(vars, 'pol_share');
+    const r = lastPol(vars, 'pol_mass'), k = lastPol(vars, 'pol_share');
     if (r != null) raw.set(id, r);
     if (k != null) sm.set(id, k);
     if (demShare == null) demShare = last(vars, 'dem_share');

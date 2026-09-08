@@ -527,23 +527,27 @@ Forward from 2025, 40 runs × 40 years, polarity reported per year rather than a
 | template | before | after | derived eras only |
 |---|---|---|---|
 | mid_force | 0.77 · +0.085 · 0.766 | 0.77 · +0.088 · 0.766 | 0.77 · +0.086 · 0.765 |
-| mid_war | 0.80 · −0.008 · 0.770 | 0.79 · −0.005 · 0.771 | 0.79 · −0.004 · 0.770 |
+| mid_war | 0.80 · −0.008 · 0.770 | 0.80 · −0.007 · 0.771 | 0.79 · −0.006 · 0.770 |
 | chokepoint_status | 0.95 · +0.107 · 0.726 | 0.95 · +0.109 · 0.726 | 0.95 · +0.109 · 0.726 |
 | corridor_status | 1.10 · +0.048 · 0.639 | 1.11 · +0.049 · 0.640 | 1.11 · +0.049 · 0.640 |
-| democratize_step | 0.95 · −0.194 · 0.546 | 0.92 · **−0.209** · 0.530 | 0.92 · −0.207 · 0.529 |
-| autocratic_closure | 0.66 · −0.149 · 0.597 | 0.68 · −0.158 · 0.584 | 0.67 · −0.160 · 0.584 |
-| intrastate_onset | 1.02 · +0.114 · 0.739 | 1.02 · +0.120 · 0.742 | 1.01 · +0.114 · 0.740 |
-| leader_exit | 0.85 · −0.828 · 0.735 | 0.85 · −0.818 · 0.742 | 0.85 · −0.826 · 0.732 |
+| democratize_step | 0.95 · −0.194 · 0.546 | 0.92 · **−0.211** · 0.529 | 0.92 · −0.209 · 0.528 |
+| autocratic_closure | 0.66 · −0.149 · 0.597 | 0.68 · −0.157 · 0.584 | 0.67 · −0.159 · 0.584 |
+| intrastate_onset | 1.02 · +0.114 · 0.739 | 1.02 · +0.119 · 0.742 | 1.01 · +0.113 · 0.739 |
+| leader_exit | 0.85 · −0.828 · 0.735 | 0.85 · −0.818 · 0.742 | 0.85 · −0.827 · 0.732 |
 | irregular_exit | 2.05 · −0.468 · 0.701 | 2.02 · −0.446 · 0.695 | 2.07 · −0.504 · 0.696 |
 | coup_attempt | 0.90 · +0.182 · 0.759 | **0.74** · +0.172 · 0.748 | 0.92 · +0.175 · 0.754 |
-| democratic_deepening | 1.51 · −0.085 · 0.706 | 1.40 · −0.087 · 0.681 | 1.39 · −0.086 · 0.665 |
+| democratic_deepening | 1.51 · −0.085 · 0.706 | 1.40 · −0.087 · 0.681 | 1.39 · −0.084 · 0.665 |
 
-**The package's guard passes**: no template's pooled skill falls by more than 0.02 (worst `democratize_step` −0.015; `irregular_exit` gains 0.022). Two costs are worth naming rather than rounding away.
+**The package's guard passes**: no template's pooled skill falls by more than 0.02 (worst `democratize_step` −0.017; `irregular_exit` gains 0.022). Two costs are worth naming rather than rounding away.
 
 - **`coup_attempt` calibration, 0.90 → 0.74 exp/obs**, and the third column shows it is entirely the information wave (0.92 with the typed diffusion). The fitted wave diffuses faster in the 1970s–90s than the typed switch — which is what the panel says happened: from a 1970 start the fitted rule reaches 0.291 by 1990 against an observed 0.278, the typed rule 0.225 — and `info_access` carries −0.45 on coup odds, so the model predicts fewer coups than it used to. The old calibration was closer to the observed coup count *because* its diffusion was wrong in the direction that happened to compensate. Reported, not defended: the diffusion rule is now the one that fits the diffusion data, and the coup base rate is where that shows up.
-- **The regime templates lose AUC**: `democratic_deepening` 0.706 → 0.681 (n = 169, 29 events), `democratize_step` 0.546 → 0.530, `autocratic_closure` 0.597 → 0.584. `aid_conditionality` moves from a 25-year typed window to a 20-year derived one plus 1946–48, and its coefficient falls with it (+0.83 → +0.68 on democratization, −0.50 → −0.43 on closure). `democratize_step` had no discrimination before this package and has none after it (0.55 → 0.53); `democratic_deepening`'s move is 25 events' worth of ordering.
+- **The regime templates lose AUC**: `democratic_deepening` 0.706 → 0.681 (n = 169, 29 events), `democratize_step` 0.546 → 0.529, `autocratic_closure` 0.597 → 0.584. `aid_conditionality` moves from a 25-year typed window to a 20-year derived one plus 1946–48, and its coefficient falls with it (+0.83 → +0.68 on democratization, −0.50 → −0.43 on closure). `democratize_step` had no discrimination before this package and has none after it (0.55 → 0.53); `democratic_deepening`'s move is 25 events' worth of ordering.
 
 Fitted-coefficient movement on the promoted era terms, one-year holdout: `great_game` +0.67 → +0.60 on `coup_attempt` (holdout AUC 0.833 unchanged), +0.43 → +0.29 on `autocratic_closure` (0.589 → 0.579); `aid_conditionality` +0.83 → +0.68 on `democratize_step` (0.604 → 0.593), −0.50 → −0.43 on `autocratic_closure`. Every era term keeps its sign and most of its size under the derived flags, which is the substantive result: the mechanisms were not artefacts of the dates.
+
+**Checked (2026-09-07).** Build green and reproducible (`data/panel.json`, `events.json`, `fits.json` rebuild byte-identical modulo their timestamps); the deciding test reproduces all four counts; the committed 1870–2010 backtest reproduces bit-exactly from the committed tree.
+
+One construction divergence was found and fixed in `src/engine/core.js`. `initPolarity` read `pol_mass`/`pol_share` with the same 30-year last-observation carry `buildActorState` uses for actor attributes. But a share is a share of *one year's* distribution: at as-of 1950 an actor that is live but has no capability measurement came back carrying its 1945 share (0.207), which entered the ranking as the second pole and rescaled every other. The engine therefore started as-of 1950–1954 **multipolar** where the panel — and so the fit — say bipolar, i.e. `cold_war` and `great_game` were off through a 20-year simulated window the coefficients were fitted on as bipolar. The two polarity columns now carry only past their own last measured year (the case the carry exists for: capability ends in 2024, the forecast does not), and the engine's world state at as-of now equals the panel's for **all 196 years** the panel classifies, 1950–1954 included. Effect on the scores: ≤ 0.002 of skill or AUC on any template (it changes one of the fifteen as-of windows); both committed score files were regenerated with the fix and the table above is the regenerated run. The 2025 forward run and every published slice are unchanged — at as-of 2025 the carry still applies and behaves as before.
 
 **What this does not do.** The dyadic capability ratio still reads carried `cinc`, not the projection share — two capability numbers now live in the model and only one of them moves in a forward run. The forward drift of capability share by simulated GDP growth is an assumption with no ablation behind it (it cannot be scored: no backtest window contains a polarity transition the model could have called). And the interwar result depends on the military-expenditure share, where CoW's official-rate conversion of Soviet spending is a known artefact (3.5 bn USD in 1930 against Britain's 0.51 bn, on a CINC share of 14.9% against 7.8%) — it is the *weight* on that series, not its accuracy, that keeps 1932–34 out of the bipolar state, and a future NMC revision could move those three years.
 
