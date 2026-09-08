@@ -4,7 +4,8 @@ A world model you can argue with. One historical panel (every state, 1816–2025
 
 Nothing hand-typed drives the engine. Every number carries a source or is labelled `estimate`; every mechanism has a fitted history and a holdout score; every proposed factor earns its place by ablation or is recorded as rejected with the numbers.
 
-- **Live viewer:** `npm run dev` → http://localhost:5173 (or `npx vite preview` for the built app; bound to `0.0.0.0`).
+- **Play with it, no install:** **https://sirmick.github.io/radiant/** — the built viewer, deployed from this repo by GitHub Actions on every push (`.github/workflows/pages.yml`). Scrub the timeline, pick a view (Politics · Power · Conflict · Routes · Industry · Forecast), flip to 3D, hover a country. Every state of the viewer is a link (the URL hash).
+- **Run it locally:** `git clone https://github.com/sirmick/radiant && cd radiant && npm install && npm run dev` → http://localhost:5173. The map data (`public/*.json`) is committed, so this needs no data build; the pipeline below is only for regenerating it.
 - **Docs index:** [docs/system.md](docs/system.md) (how the loop keeps it honest) · [docs/schema.md](docs/schema.md) (entities and files) · [docs/data-catalogue.md](docs/data-catalogue.md) (every dataset) · [docs/ui.md](docs/ui.md) (the viewer) · [docs/runbook.md](docs/runbook.md) (commands and workflows) · [docs/contributing.md](docs/contributing.md) (how to add things) · [docs/glossary.md](docs/glossary.md) · [docs/refine-log.md](docs/refine-log.md) (what each loop turn changed) · [docs/escalations.md](docs/escalations.md) (decisions for the operator) · [docs/ui-review.md](docs/ui-review.md) (UI gaps, ranked).
 - **Origin:** [docs/origin/](docs/origin/) — the conversation that started it and the hand-typed 2026 scenario it produced, retired on 2026-09-07 ("faithful first").
 
@@ -15,7 +16,7 @@ npm install
 ./scripts/fetch-raw.sh                 # public datasets into data/raw (gitignored, ~150 MB)
 npm run build:hist                     # panel -> events -> fits           (data/panel.json, events.json, fits.json)
 npm run backtest                       # rolling-origin backtest           (scores/)
-npm run forecast                       # 2026-2065 ensemble                (public/forecast.json)
+npm run forecast                       # 2026-2125 ensemble, 300 runs       (public/forecast.json, ~7 min)
 node scripts/build-geo.mjs && node scripts/build-world.mjs && npm run build:ui-data   # map data (public/*.json)
 npm run dev
 ```
