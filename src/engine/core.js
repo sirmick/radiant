@@ -194,19 +194,29 @@ const BASE_STATUS = { chokepoint: 'open', corridor: 'built' };
 const ACTIVE_STATUS = new Set(['open', 'built', 'building', 'contested']);   // carries traffic (or will): stake > 0
 // the record's history sorted once, memoised on the record itself (non-enumerable: a record is also serialised into
 // public/world.json by scripts/build-world.mjs, and a memo must never turn into published data)
+/** Statuses in which a record is not yet in service: its next transition is a construction stage, not a seizure. */
+const BUILDING = new Set(['planned', 'building']);
+
 const histOf = (rec) => {
   if (!rec.__hist) Object.defineProperty(rec, '__hist', { value: [...(rec.history ?? [])].sort((a, b) => a.year - b.year), enumerable: false });
   return rec.__hist;
 };
 
 /**
- * The first year the record is a unit. A record enters the sample when its dated history opens — except where the
- * first row is already an impairment (`closed`/`contested`), which is only observable if the thing existed in its
- * unimpaired state before: those records start at the template window instead (a strait is not built).
+ * The first year the record is a unit: the year its dated history opens, clipped to the template window.
+ *
+ * It used to be the window start whenever the first row was an impairment, on the reasoning that a strait must have
+ * existed unimpaired before it was closed. That is true of the strait and false of the RECORD: it back-dated four
+ * chokepoints whose first coded entry is 1942, 1984, 1996 and 2023 to 1869 and handed each of them 70-150 years of
+ * synthesised `open` state carrying no transition — 469 record-years of guaranteed non-events, 41% of the fitted
+ * sample, reported by the backtest as born and at risk (era-1870-1914-r2/statistics-3, engine-3). Existence is now
+ * declared rather than inferred: a record whose history genuinely opens before its first dated row says so with
+ * `exists_from:` and a source, and everything else enters when its history does.
  */
 export function corridorFirstYear(rec, windowFrom) {
   const h = histOf(rec); if (!h.length) return null;
-  return IMPAIRED.has(h[0].status) ? windowFrom : Math.max(windowFrom, Math.floor(h[0].year));
+  const first = rec.exists_from != null ? Math.floor(rec.exists_from) : Math.floor(h[0].year);
+  return Math.max(windowFrom, first);
 }
 /** Status and controller in force at the END of `year`; controller carries forward across rows that omit it. */
 export function corridorStateAt(rec, year) {
@@ -259,6 +269,10 @@ export function corridorFeatures(rec, state, look) {
   return {
     adjacent_war: war, transit_at_war_any: war,                    // the same construction under each template's name
     adjacent_intrastate: anyOf(look.intrastate),
+    // the record's own status word, read the way contest_reversible reads a territory's: a record still being built
+    // changes status because construction has stages, one in service changes status because somebody takes it or
+    // shuts it. Two processes under one hazard; without the term the base rate is the mixture.
+    record_building: state?.status == null ? null : (BUILDING.has(state.status) ? 1 : 0),
     transit_gdp_growth_mean: gs.length ? gs.reduce((a, b) => a + b, 0) / gs.length : null,
     sponsor_great_power: sponsorLive ? (look.greatPower(sponsorLive) > 0 ? 1 : 0) : 0,
     n_transits: T.length,
@@ -454,7 +468,9 @@ function applyPresence(world, a) {
  * membership starts or ends inside the horizon are introduced/retired by stepYear from the same dated lifecycle.
  * Alliance and contiguity graphs are frozen at asOf: their future values are not knowledge a forecaster has.
  * `contiguityFrom` is the first year the contiguity source covers — for an asOf before it, that first snapshot
- * stands in (documented imputation; CShapes 2.0 begins 1886 and there is no border data behind it).
+ * stands in (a documented imputation). Since era-1870-1914-r2 the source is CShapes 2.0 merged with CoW Direct
+ * Contiguity 3.2 and covers 1816, so the stand-in no longer fires anywhere in the modelled window; the guard stays
+ * because the floor is a property of data/contiguity.json's own meta, not of this code.
  */
 export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
@@ -480,8 +496,16 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   // entry prior: the median live actor at asOf, used to instantiate an actor introduced inside the horizon whose panel
   // row at asOf is empty (a colony has no regime or income series). A stated, dated imputation — the alternative is a
   // structural zero, which reads as "this state cannot have a regime transition" for the whole decolonisation cohort.
-  const med = (v) => { const xs = Object.values(actors).map(a => a.cur[v]).filter(x => x != null).sort((p, q) => p - q); return xs.length ? xs[Math.floor(xs.length / 2)] : null; };
+  const quant = (v, q) => { const xs = Object.values(actors).map(a => a.cur[v]).filter(x => x != null).sort((p, o) => p - o); return xs.length ? xs[Math.min(xs.length - 1, Math.floor(xs.length * q))] : null; };
+  const med = (v) => quant(v, 0.5);
   const entryPrior = Object.fromEntries(['regime', 'polyarchy', 'gdp_pc', 'log_gdp_pc', 'gdp_growth', 'population', 'tpop'].map(v => [v, med(v)]));
+  // capability has to be in the entry prior too (era-1870-1914-r2/statistics-2, engine-4): dyadHazards returns {} the
+  // moment either side's cinc is null, so before this every state born inside the horizon carried probability exactly
+  // zero on every dyadic template for its whole simulated life — 30 of the 99 observed mid_force pairs at as-of 1900.
+  // The quantile is the 25th and not the median because a state entering the system is not a median power; where the
+  // newborn has a predecessor in the successor chain, stepLifecycle overrides this with the predecessor's own
+  // capability scaled by population share, which is the better estimate and is information the forecaster holds.
+  entryPrior.cinc = quant('cinc', 0.25);
   // coalition joining and the relevance set it implies (era-1914-1945/engine-1). `warPartners` is the war graph as it
   // stood in the last observed year — seeded from the dated war records at asOf and rewritten by stepYear from the
   // simulation's own wars thereafter, so the relevance rule is evaluated at the simulated year and not frozen at as-of.
@@ -526,9 +550,19 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // station, so `presence_change` can age out of its window during the horizon instead of firing for all of it.
     presence: pres, patrons: pres ? patronMap(pres, asOf) : new Map(),
     allied, contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
-    lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
+    // `predecessors` is the successor map inverted, so a state entering the horizon can be seeded from the state it
+    // succeeds instead of from the world median; `retiredState` keeps the last state of an actor stepLifecycle has
+    // already removed, for a successor that enters a year or more after its predecessor leaves.
+    lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {}, predecessors: invertMap(successors ?? {}), retiredState: new Map() },
     fits, templates, log: [],
   };
+}
+
+/** id -> [ids that name it as their successor] — the successor map read backwards. */
+function invertMap(successors) {
+  const out = {};
+  for (const [id, succ] of Object.entries(successors)) (out[succ] ??= []).push(id);
+  return out;
 }
 
 /**
@@ -770,6 +804,20 @@ function stepLifecycle(world, y) {
     if (alive && !present) {
       const a = buildActorState({ panel, events, id, vars, at: Math.min(y, world.asOf), asOf: world.asOf });
       a.imputed = [];
+      // seed from the predecessor before the world median: a state that succeeds another inherits its capability
+      // scaled by the population share it takes with it, and its income and regime outright. Both the successor map
+      // and the predecessor's own state are as-of knowledge, so this adds nothing the forecaster does not hold — where
+      // there is no predecessor the world median (and, for cinc, its 25th percentile) still stands in.
+      const preds = (lc.predecessors?.[id] ?? []).map(pid => world.actors[pid] ?? lc.retiredState?.get(pid)).filter(Boolean);
+      const pred = preds.sort((p, q) => (q.cur.cinc ?? 0) - (p.cur.cinc ?? 0))[0] ?? null;
+      if (pred) {
+        const share = a.cur.population != null && pred.cur.population ? Math.min(1, a.cur.population / pred.cur.population) : null;
+        for (const v of ['cinc', 'gdp_pc', 'log_gdp_pc', 'regime', 'polyarchy', 'gdp_growth']) {
+          if (a.cur[v] != null || pred.cur[v] == null) continue;
+          a.cur[v] = v === 'cinc' ? pred.cur[v] * (share ?? 0.5) : pred.cur[v];
+          a.prev[v] = a.cur[v]; a.imputed.push(`${v}<-${pred.id}`);
+        }
+      }
       for (const [v, x] of Object.entries(world.entryPrior ?? {})) if (x != null && a.cur[v] == null) { a.cur[v] = x; a.prev[v] = x; a.imputed.push(v); }
       if (a.cur.gdp_pc != null && a.cur.log_gdp_pc == null) a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc);
       // flags and ties an actor that does not yet exist cannot have: a structural zero, not a missing value
@@ -780,8 +828,13 @@ function stepLifecycle(world, y) {
   for (const id of ids) {
     const vars = panel.actors[id]; const alive = vars.live?.[i] === 1; const a = world.actors[id];
     if (alive || !a) continue;
+    lc.retiredState?.set(id, a);
     const succ = successors[id] && world.actors[successors[id]];
     if (succ) {   // the successor inherits the rivalry memory: the dispute history is the state's, not the name's
+      // and the border graph: the frozen as-of snapshot has no edge for a state that did not exist at as-of, so
+      // without this a successor is non-contiguous with everyone and every non-major pair it is in sits at hazard 0
+      // (era-1870-1914-r2/statistics-8). Edges are only ever added, so the at-risk set cannot silently shrink.
+      for (const k of [...world.contiguous]) { const [p, q] = k.split('|'); if (p !== id && q !== id) continue; const other = p === id ? q : p; if (other === succ.id) continue; world.contiguous.add(pairKey(succ.id, other)); }
       for (const [k, yr] of [...world.dyadRecent]) { const [p, q] = k.split('|'); if (p !== id && q !== id) continue; const other = p === id ? q : p; if (other === succ.id) continue; const nk = pairKey(succ.id, other); world.dyadRecent.set(nk, Math.max(world.dyadRecent.get(nk) ?? -1e9, yr)); world.dyadRecent.delete(k); }
       for (const v of Object.keys(succ.recent)) succ.recent[v] = succ.recent[v].map((x, j) => (x || a.recent[v]?.[j] ? 1 : 0));
     } else for (const k of [...world.dyadRecent.keys()]) { const [p, q] = k.split('|'); if (p === id || q === id) world.dyadRecent.delete(k); }

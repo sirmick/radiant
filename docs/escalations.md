@@ -757,3 +757,90 @@ Everything moves by less than 0.006 of AUC except the two corridor templates, an
 ## operator / cleanup — phase 1 (not a package: done by hand after the baseline)
 
 Registry entries that are snapshot estimates with no history are marked `model: false` (display only): `fiscal_breakeven`, `desal_dependence`, `food_self_sufficiency`, `mineral_refining_share`, `reserve_currency_share`, the `cap_*` levels, chokepoint exposure. ERT episode templates and the switched-off candidates (coalition joining, war duration) move to a `retired:` block in `data/templates.yaml`. The scenario latents in `data/variables.yaml` are deleted (nothing reads them). The conflict field is relabelled *belligerents* until UCDP GED is in. `scripts/analysis/` holds the implementer one-offs.
+
+## era-1870-1914-r2 / data-2 — CoW Inter-State War v4.0 participant dates instead of a hand-typed war list
+
+**What it would add.** The `at_war` panel column built from a dataset rather than from `data/history/events.yaml`'s
+hand list. Today `scripts/build-panel.mjs` reads `kind: war` entries and nothing else; `data/raw/hist/cow_war.csv` is a
+741-row name/id codelist with no participants or dates and is read by nothing.
+
+**Why.** Before this turn the hand list carried 40 at_war actor-years across the whole of 1870–1914 (1.7% of the era's
+live actor-years) with 32 of the 45 years showing zero states at war anywhere on earth. Eight wars added this turn take
+it to 85 and cut the longest all-peace run from 15 years to 7 — but that is eight hand entries, not a source, and the
+same hole is certainly present in every era nobody has attacked yet. The covariate carries the largest priors in the
+model (`lag1(at_war_any)` fitted at +1.06 on `mid_force` and +1.77 on `mid_war`, `adjacent_war` +2.40 on
+`chokepoint_status`, `transit_at_war_any` +1.70 on `corridor_status`, plus `at_war` on both regime templates and all
+three termination hazards), and its absence is a silent 0, not a null that drops a row.
+
+**Data it needs.** CoW Inter-State War v4.0 (`Inter-StateWarData_v4.0.csv`, participant-level, 1816–2007) with
+`ccode`, `StartYear1/Month1/Day1`, `EndYear1/…`, `Side`. correlatesofwar.org answers 403 to scripted fetches; the
+`peacesciencer` R package that supplied NMC 7.0 and Direct Contiguity 3.2 this turn ships `cow_war_inter` — the same
+route (`scripts/fetch-contdir.mjs` is the pattern, bzip2-wrapped RDX3 through `scripts/lib/rdata.mjs`) should reach it.
+
+**Templates it feeds.** `mid_force`, `mid_war` (`at_war_any`), `democratize_step`, `autocratic_closure`,
+`democratic_deepening`, `liberal_erosion` (`at_war`), `chokepoint_status`, `corridor_status` (`adjacent_war`),
+`record_reopen`, `contest_settle`, `war_end`, `intrastate_end`.
+
+**Test that decides it.** Rebuild the panel and assert the 1870–1914 at_war actor-year count rises from 85 and that no
+run of more than 2 consecutive years shows zero states at war; then rerun the 1870–2010 backtest and report the move on
+`mid_force`/`mid_war` exp/obs at every as-of year, and on the two record templates, against the hand-list baseline.
+Keep the hand list as an override layer for wars CoW does not code (the 1882 Anglo-Egyptian war is one).
+
+## era-1870-1914-r2 / statistics-8 (b) — a settled contest writes a border into the graph
+
+**What it would add.** An optional `implies_border: [A, B]` on a `data/territories.yaml` record, and an engine rule
+that adds that edge to `world.contiguous` when `contest_settle` fires on the record during a run. A new engine
+dynamic — the territory layer writing back into the dyad layer — which is why it is here and not in the turn.
+
+**Why.** `src/engine/core.js` computes the border graph once at as-of and never advances it. Successor inheritance
+landed this turn (a retiring actor's edges pass to its successor, which is what opens the Danubian pairs), but a border
+that is *created* inside the horizon by a settlement the engine itself simulates still cannot exist. `BGR|GRC` starts
+in 1913, inside the horizon of both the as-of-1900 and the as-of-1910 runs, and their dispute is a structural miss at
+both.
+
+**Data it needs.** None external: the pairs are already implied by the records this turn added (`bolivian_littoral`,
+`morocco`, `norway_sweden_union`, `andes_cordillera`) and by `data/contiguity.json`'s own dated intervals.
+
+**Templates it feeds.** `mid_force`, `mid_war` (through the relevance gate), and `contest_settle` indirectly.
+
+**Test that decides it.** `n_structural_miss` on `mid_force` at as-of 1900 and 1910 must fall below the 20 and 21 this
+turn leaves, with `auc_at_risk` not falling below 0.71 / 0.68; and the guard from the rejected coalition-relevance
+package applies — pooled 1950–2000 `mid_force` exp/obs must not rise, since the same rule opens post-1945 pairs too.
+
+## era-1870-1914-r2 / corridors-5 — `terms` as a third thing a record-year can change
+
+**What it would add.** A `terms:` field on a corridor/chokepoint history row (`free_passage | concession | lease |
+guarantee | ownership_shift | none`, carried forward), and a label for `chokepoint_status` / `corridor_status` that
+fires on a change of status, controller **or** terms.
+
+**Why.** The label today is "status or controller changed". Three of Suez's five rows in 1870–1914 change neither: the
+Disraeli share purchase (1875.86), the Convention of Constantinople (1888.82) and the Entente (1904.29) are dated,
+sourced changes in who controls the corridor's terms, and the fitter cannot see them. The same is true of
+`mediterranean_route` 1904.29 and of `trans_caspian`'s second `built` row.
+
+**Why it is not in the turn.** It redefines the outcome of two templates across the whole model and every era, in the
+same turn that added five chokepoint records and eleven corridor histories. The two changes would be inseparable in
+the backtest. It needs its own package with the record additions already in the baseline.
+
+**Test that decides it.** `corridorTransitionYears(suez, 1869, 1945)` must include 1875, 1888 and 1904; the pre-1946
+chokepoint base rate must be re-reported; and pooled `chokepoint_status` / `corridor_status` skill and AUC must be
+compared against the baseline this turn leaves, on the same records.
+
+## era-1870-1914-r2 / corridors-6 — dated `load_bearing_for`
+
+**What it would add.** `load_bearing_for` inside a dated history row, with the top-level dict kept as the 2026
+snapshot, and `corridorIndex`/`corridorStake` reading the value in force at the year.
+
+**Why.** The field is one undated 2026 snapshot applied to every historical year: Suez's dependants are
+`{EGY, ITA, DEU, NLD, CHN, IND, SAU}` with no GBR, in a model whose own Suez record contains the 1882 British
+occupation. And 17 of the 25 records live before 1915 list only their own transit states, so `corridorStake` is
+structurally 0 for every pair-year on them regardless of the alliance graph — which is a second reason the corridor
+dampener measured as nothing, beyond the alliance gate the rejection note blames.
+
+**Why it is not in the turn.** `load_bearing_for` is read by exactly one thing, `src/engine/core.js:corridorStake`,
+which feeds only the `corridor_stake` candidate — currently rejected on both dyadic templates. Backfilling the field
+changes no fitted number until that candidate is re-proposed, so the two belong in one package.
+
+**Test that decides it.** The share of pre-1915 records whose `load_bearing_for` names a non-transit state must rise
+from 8/25 to ≥ 18/25; then `corridor_stake` must be re-measured on `mid_force` at split 1946 with the share of
+pre-1914 dyad-years on which it is non-zero printed, against the near-constant zero it is today.

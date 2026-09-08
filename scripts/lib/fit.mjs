@@ -24,7 +24,8 @@ export function loadFitInputs() {
   const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
   const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
   const templates = Y('data/templates.yaml').templates;
-  const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
+  const contiguityFile = JSON.parse(readFileSync('data/contiguity.json', 'utf8'));
+  const contiguity = contiguityFile.pairs, contiguityFrom = contiguityFile.meta?.years?.[0] ?? null;
   const corridors = Y('data/corridors.yaml');
   const territories = Y('data/territories.yaml');
   const presence = Y('data/presence.yaml');
@@ -32,10 +33,10 @@ export function loadFitInputs() {
   const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
   const pacts = new Set();
   for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
-  return { panel, events, templates, contiguity, pacts, corridors, territories, successors, presence };
+  return { panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence };
 }
 
-export function createFitter({ panel, events, templates, contiguity, pacts, corridors = [], territories = [], successors = {}, presence = null }) {
+export function createFitter({ panel, events, templates, contiguity, contiguityFrom = null, pacts, corridors = [], territories = [], successors = {}, presence = null }) {
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
@@ -48,6 +49,11 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
   const warPartnersCache = new Map();
   const warPartners = (y) => { if (!warPartnersCache.has(y)) warPartnersCache.set(y, warPartnersAt(warSpans, y)); return warPartnersCache.get(y); };
   const isContiguous = (a, b, y) => (contiguity[a < b ? `${a}|${b}` : `${b}|${a}`] ?? []).some?.(([f, t]) => y >= f && y <= t) ?? false;
+  // the first year the contiguity source covers, read from its own meta rather than hard-coded: a dyad-year before it
+  // has no border value at all and is dropped from the design matrix. With CoW Direct Contiguity 3.2 merged in this is
+  // 1816, so nothing in the modelled window is dropped any more; the guard stays because the floor is a property of
+  // the data file, not of the code.
+  const CONTIG_FROM = contiguityFrom ?? -Infinity;
   // the military-presence layer (operator/presence), indexed once and read through src/engine/presence.js — the same
   // module the engine reads, so the patron and guarantor terms are one construction on both sides. Here it is dated
   // (the value at row-year y), where the engine freezes it at as-of.
@@ -187,7 +193,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
     atWar: (id) => pv(id, 'at_war', y),
     allied: (a, b) => pacts.has(`${pairKey(a, b)}|${y}`),
     hostPresence: (id) => (PRES ? hostLevel(PRES, id, y) : null),
-    contiguous: (a, b) => (y >= 1886 ? isContiguous(a, b, y) : null),
+    contiguous: (a, b) => (y >= CONTIG_FROM ? isContiguous(a, b, y) : null),
     patron: (a, b) => patronFeatures({ patrons: patronsAtYear(y), allied: (p, h) => pacts.has(`${pairKey(p, h)}|${y}`), major: (id) => (pv(id, 'great_power', y) ?? 0) > 0, a, b }),
   });
 
@@ -220,11 +226,21 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
     for (const rec of corridors) {
       if (!kinds.has(rec.kind)) continue;
       const first = corridorFirstYear(rec, w0); if (first == null) continue;
+      // right-censoring, the rule buildActorRows already applies to a dataset that stops (era-1870-1914-r2/engine-5):
+      // a record's history stops at its last status change, and the years after it are not observed non-endings — they
+      // are years nobody coded. 113 of the 185 rows in this sample were such a tail, and they put the reopen base rate
+      // at 8.6% where the coded sample says 22%. Rows stop at `covered_through` where the record declares one (with a
+      // source saying the impairment is permanent through it) and otherwise at the last dated history year; that final
+      // year is itself dropped unless the spell is observed to end in it, since whether it ended is unknown.
+      const h = [...(rec.history ?? [])].sort((a, b) => a.year - b.year);
+      const covered = rec.covered_through != null ? Math.floor(rec.covered_through) : Math.floor(h[h.length - 1].year);
+      const yStop = Math.min(yEnd, covered);
       const open = (y) => (y <= first ? corridorStateAt(rec, y) : corridorStateAt(rec, y - 1));
       const close = (y) => corridorStateAt(rec, y);
-      const ends = endYears({ open: (y) => open(y)?.status ?? null, close: (y) => close(y)?.status ?? null, inSpell: (s) => IMPAIRED.has(s), from: first, to: yEnd });
+      const ends = endYears({ open: (y) => open(y)?.status ?? null, close: (y) => close(y)?.status ?? null, inSpell: (s) => IMPAIRED.has(s), from: first, to: yStop });
       let age = 0;
-      for (let y = first; y <= yEnd; y++) {
+      for (let y = first; y <= yStop; y++) {
+        if (y === yStop && !ends.has(y)) continue;
         const state = open(y);
         if (!state || !IMPAIRED.has(state.status)) { age = 0; continue; }
         const f = { ...reopenFeatures({ age, corridor: corridorFeatures(rec, state, panelLook(y)) }) };
@@ -274,7 +290,7 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
       const cIdx = corridorIndexAt(y);
       for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
         const a = live[i], b = live[j]; const ca = pv(a, 'cinc', y), cb = pv(b, 'cinc', y);
-        const contiguous = y >= 1886 ? (isContiguous(a, b, y) ? 1 : 0) : null;
+        const contiguous = y >= CONTIG_FROM ? (isContiguous(a, b, y) ? 1 : 0) : null;
         const major = (pv(a, 'great_power', y) || pv(b, 'great_power', y)) ? 1 : 0;
         // politically relevant dyads only (Lemke & Reed 2001), plus — where the coalition rule is on — the pairs a
         // running war makes relevant: at war with each other, or at war with a state allied to the other.
@@ -395,9 +411,15 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
       }
     }
     const years = rows.map(r => labelYear(t, r));
+    // identification, reported so a scorer can refuse a fit rather than dress one up (era-1870-1914-r2/statistics-6):
+    // `degenerate` names the encoded columns with no within-training variation — their coefficient cannot leave its
+    // prior and the term is not estimated — and `epv` is events per column actually estimated. mid_war at as-of 1900
+    // was 8 events over 9 covariates, two of them constants, and the row carried the same fields as one fitted on 227.
+    const degenerate = cols.filter(c => { const xs = rows.map(r => c.get(r)); return xs.every(x => x === xs[0]); }).map(c => c.name);
     const fit = {
       ablation: ablationOut,
       status: 'fitted', unit: t.unit, event: t.event, n: rows.length, events: evn, base_rate: evn / rows.length, window: t.window,
+      degenerate, epv: evn / Math.max(1, cols.length - degenerate.length),
       trained_through: maxYear ?? Math.max(...years), train_years: [Math.min(...years), Math.max(...years)],
       intercept: beta[0], coefs: Object.fromEntries(cols.map((c, j) => [c.name, { value: beta[j + 1], prior: c.prior }])), stats,
       auc_in: auc(pIn, yv), brier_in: brier(pIn, yv), calibration: calibration(pIn, yv), holdout: hold,

@@ -9,9 +9,18 @@
 - { kind: war, id: austro_prussian, start: 1866.5, end: 1866.6, sides: [[PRUSSIA, ITA], [AUT_HUN]] }
 - { kind: war, id: franco_prussian, start: 1870.6, end: 1871.1, sides: [[PRUSSIA], [FRA]], notes: "Rail-mobilisation war; produces DEU" }
 - { kind: war, id: russo_turkish_1877, start: 1877.3, end: 1878.2, sides: [[RUS, ROU, SRB], [OTTOMAN]] }
+- { kind: war, id: war_of_the_pacific, start: 1879.26, end: 1883.80, exits: { BOL: 1884.26 }, sides: [[CHL], [BOL, PER]], notes: "5 Apr 1879 to the Treaty of Ancon 20 Oct 1883 (Peru); Bolivia to the truce of Valparaiso 4 Apr 1884. The nitrate littoral is the territory half (data/territories.yaml bolivian_littoral, tacna_arica)", source: "CoW Inter-State War v4.0, War of the Pacific" }
+- { kind: war, id: anglo_egyptian_1882, start: 1882.53, end: 1882.71, sides: [[GBR], [EGY]], notes: "Bombardment of Alexandria 11 Jul 1882, Tel el-Kebir 13 Sep, Cairo occupied 15 Sep 1882 — the war behind the Suez controller change dated 1882.70 in data/corridors.yaml", source: "CoW Inter-State War v4.0, Anglo-Egyptian War" }
+- { kind: war, id: sino_french, start: 1884.64, end: 1885.44, sides: [[FRA], [CHN]], notes: "Foochow 23 Aug 1884 to the Treaty of Tientsin 9 Jun 1885; the Formosa blockade and the Pescadores are the chokepoint half (data/corridors.yaml taiwan_strait)", source: "CoW Inter-State War v4.0, Sino-French War" }
+- { kind: war, id: franco_siamese, start: 1893.55, end: 1893.77, sides: [[FRA], [THA]], notes: "Paknam incident 13 Jul 1893 and the blockade of the Chao Phraya; Franco-Siamese treaty 3 Oct 1893 cedes the left bank of the Mekong", source: "CoW Inter-State War v4.0, Franco-Siamese War" }
 - { kind: war, id: sino_japanese_1894, start: 1894.6, end: 1895.3, sides: [[JPN], [CHN]] }
+- { kind: war, id: italo_ethiopian_1895, start: 1895.10, end: 1896.24, sides: [[ITA], [ETH]], notes: "Coatit Jan 1895 to Adwa 1 Mar 1896; Treaty of Addis Ababa 26 Oct 1896 recognises Ethiopian independence", source: "CoW Inter-State War v4.0, First Italo-Ethiopian War" }
+- { kind: war, id: greco_turkish_1897, start: 1897.29, end: 1897.38, sides: [[OTTOMAN], [GRC]], notes: "17 Apr - 20 May 1897; armistice under great-power pressure, Treaty of Constantinople 4 Dec 1897", source: "CoW Inter-State War v4.0, Greco-Turkish War" }
 - { kind: war, id: spanish_american, start: 1898.3, end: 1898.6, sides: [[USA], [ESP]] }
+- { kind: war, id: boxer, start: 1900.46, end: 1900.62, sides: [[GBR, FRA, RUS, DEU, JPN, USA, ITA, AUT_HUN], [CHN]], notes: "Eight-nation intervention: Seymour expedition 10 Jun 1900, Taku forts 17 Jun, Peking relieved 14 Aug 1900. The Boxer Protocol of 7 Sep 1901 closes the settlement, not the fighting", source: "CoW Inter-State War v4.0, Boxer Rebellion (17 Jun - 14 Aug 1900)" }
 - { kind: war, id: russo_japanese, start: 1904.1, end: 1905.7, sides: [[JPN], [RUS]], notes: "Trans-Siberian single-track logistics decided it — corridor capacity as a war variable" }
+- { kind: war, id: central_american_1906, start: 1906.40, end: 1906.55, sides: [[GTM], [SLV, HND]], notes: "27 May - 20 Jul 1906; armistice aboard USS Marblehead 20 Jul 1906", source: "CoW Inter-State War v4.0, First Central American War" }
+- { kind: war, id: central_american_1907, start: 1907.13, end: 1907.31, sides: [[NIC], [HND, SLV]], notes: "Nicaragua invades Honduras 19 Feb 1907; Namasigue 23 Mar; peace at Amapala 23 Apr 1907", source: "CoW Inter-State War v4.0, Second Central American War" }
 - { kind: war, id: italo_turkish, start: 1911.7, end: 1912.8, sides: [[ITA], [OTTOMAN]] }
 - { kind: war, id: balkan_1, start: 1912.8, end: 1913.4, sides: [[SRB, BGR, GRC], [OTTOMAN]] }
 - { kind: war, id: balkan_2, start: 1913.5, end: 1913.6, sides: [[SRB, GRC, ROU, OTTOMAN], [BGR]] }

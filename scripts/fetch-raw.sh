@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Fetch every raw dataset the build reads into data/raw/. Idempotent; re-run to refresh.
 # Sources: Natural Earth (public domain), World Bank WDI API, UN WPP 2024, OWID energy (Energy Institute-derived), IEA Global EV Data Explorer,
-# CoW NMC 7.0 (via the peacesciencer R package, which is the only copy a script can reach: correlatesofwar.org answers 403).
+# CoW NMC 7.0 and CoW Direct Contiguity 3.2 (via the peacesciencer R package, which is the only copy a script can reach: correlatesofwar.org answers 403).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p data/raw/ne data/raw/wb data/raw/wpp data/raw/ei data/raw/hist
@@ -16,6 +16,9 @@ done
 
 echo "== CoW National Material Capabilities v7.0 (1816-2022)"
 node scripts/fetch-nmc.mjs
+
+echo "== CoW Direct Contiguity v3.2 (1816-2016)"
+node scripts/fetch-contdir.mjs
 
 echo "== World Bank WDI"
 node scripts/fetch-wb.mjs

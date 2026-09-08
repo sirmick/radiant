@@ -436,6 +436,7 @@
   geometry: { point: [7.9, 54.2], geometry_source: "point estimate (historical territory)" }
   history:
     - { year: 1890.50, controller: DEU, status: annexed, source: "Heligoland–Zanzibar treaty 1 Jul 1890" }
+    - { year: 1890.50, controller: DEU, status: settled, source: "the same treaty IS the settlement: Britain cedes the island outright against Zanzibar and the Caprivi strip, and no residual claim survives it (era-1870-1914-r2/data-4). Without this row the record contributed 136 unsettled spell-years to 2025, 21 of them inside the 1870-1914 turn, on a template whose event count in the era was zero" }
   notes: "Traded for colonial claims and turned into the seaward anchor of the Kiel Canal position — a territory whose value is a corridor's."
 
 - id: kiaochow
@@ -731,3 +732,176 @@
   history:
     - { year: 1936.35, controller: ITA, status: annexed, source: "Addis Ababa falls 5 May 1936; annexation 9 May 1936 (war record: italo_ethiopian) — the conquest the League does not reverse" }
     - { year: 1941.35, controller: ETH, status: settled, source: "liberation 5 May 1941; Haile Selassie restored" }
+
+# ---------------------------------------------------------------- arbitrated and settled contests of 1870-1914 (turn era-1870-1914-r2, added 2026-09-07)
+# Why this block exists: before it, the earliest `settled` row anywhere in this file was 1922, so `contest_settle`
+# had 252 unsettled spell-years and ZERO settlement labels at as-of 1910 and was unfittable at every as-of year in
+# the turn. The layer was selected on survival — it recorded acquisitions and kept them open — and the era's
+# arbitrations, the characteristic instrument of the period, were absent as records. Each record below carries a
+# dated opening, a dated terminus and a source; tacna_arica and morocco are here as the counter-cases (a contest
+# that runs past the era, and one that is settled by partition rather than by award).
+
+- id: venezuela_guiana_boundary
+  name: Venezuela – British Guiana boundary
+  controller: GBR
+  claimants: [VEN]
+  status: settled
+  stakes: { GBR: 0.5, VEN: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [-60.5, 6.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1876.0, controller: GBR, status: disputed, source: "Venezuela breaks relations over the Schomburgk line, 1876" }
+    - { year: 1899.75, controller: GBR, status: settled, source: "Paris arbitral award 3 Oct 1899 under the Washington treaty of 2 Feb 1897" }
+  notes: "The Olney–Salisbury crisis of 1895 is the great-power half; the award is the settlement."
+
+- id: alaska_boundary
+  name: Alaska panhandle boundary
+  controller: USA
+  claimants: [GBR]
+  status: settled
+  stakes: { USA: 0.6, GBR: 0.4 }
+  stakes_source: estimate
+  geometry: { point: [-135.0, 57.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1871.0, controller: USA, status: disputed, source: "British Columbia joins Canada 1871 and the lisière boundary becomes a live claim" }
+    - { year: 1898.0, controller: USA, status: disputed, source: "Klondike gold makes the Lynn Canal heads the issue; the 1898 Joint High Commission fails" }
+    - { year: 1903.80, controller: USA, status: settled, source: "Alaska Boundary Tribunal award 20 Oct 1903" }
+
+- id: puna_de_atacama
+  name: Puna de Atacama
+  controller: ARG
+  claimants: [CHL]
+  status: settled
+  stakes: { ARG: 0.5, CHL: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [-67.5, -24.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1889.0, controller: ARG, status: disputed, source: "Bolivia cedes its claim to Argentina 1889; Chile disputes it" }
+    - { year: 1899.23, controller: ARG, status: settled, source: "Buenos Aires conference award 24 Mar 1899 under US minister Buchanan" }
+
+- id: andes_cordillera
+  name: Argentina – Chile cordillera boundary
+  controller: CHL
+  claimants: [ARG]
+  status: settled
+  stakes: { ARG: 0.6, CHL: 0.6 }
+  stakes_source: estimate
+  geometry: { point: [-71.5, -41.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1881.56, controller: CHL, status: disputed, source: "Boundary Treaty 23 Jul 1881 fixes the principle and leaves the line; the Strait of Magellan is neutralised in perpetuity by Art. V" }
+    - { year: 1902.40, controller: CHL, status: settled, source: "Pactos de Mayo 28 May 1902 and the British arbitral award 20 Nov 1902" }
+  notes: "The naval race the Pactos de Mayo ended is the era's clearest case of a settlement that is also an arms-control agreement."
+
+- id: upper_nile_fashoda
+  name: Upper Nile (Fashoda)
+  controller: GBR
+  claimants: [FRA]
+  status: settled
+  stakes: { GBR: 0.85, FRA: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [32.47, 9.9], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1898.72, controller: GBR, status: contested_active, source: "Marchand at Fashoda 10 Jul 1898; Kitchener arrives 19 Sep 1898" }
+    - { year: 1899.22, controller: GBR, status: settled, source: "Anglo-French declaration 21 Mar 1899 fixing the Nile–Congo watershed" }
+
+- id: samoa
+  name: Samoan islands
+  controller: DEU
+  claimants: [USA, GBR]
+  status: settled
+  stakes: { DEU: 0.5, USA: 0.5, GBR: 0.3 }
+  stakes_source: estimate
+  geometry: { point: [-172.0, -13.8], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1889.42, status: disputed, source: "Berlin treaty 14 Jun 1889 makes the islands a tripartite condominium after the Apia standoff of Mar 1889" }
+    - { year: 1899.92, controller: DEU, status: settled, source: "Tripartite Convention 2 Dec 1899 partitions the group: Germany west, the United States east, Britain compensated elsewhere" }
+
+- id: norway_sweden_union
+  name: Norway – Sweden union
+  controller: SWE
+  claimants: [NOR]
+  status: settled
+  stakes: { SWE: 0.5, NOR: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [11.0, 59.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1905.44, controller: SWE, status: disputed, source: "the Storting declares the union dissolved 7 Jun 1905; both sides mobilise" }
+    - { year: 1905.73, controller: NOR, status: settled, source: "Karlstad convention 23 Sep 1905; Sweden recognises Norway 26 Oct 1905" }
+  notes: "The era's one great mobilised dispute that ends in a negotiated separation rather than a war — the negative case a settlement hazard needs."
+
+- id: bolivian_littoral
+  name: Bolivian littoral (Antofagasta)
+  controller: CHL
+  claimants: [BOL]
+  status: settled
+  stakes: { CHL: 0.8, BOL: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [-70.4, -23.65], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1879.15, controller: CHL, status: occupied, source: "Chilean occupation of Antofagasta 14 Feb 1879 (war record: war_of_the_pacific)" }
+    - { year: 1904.80, controller: CHL, status: settled, source: "Treaty of Peace and Friendship 20 Oct 1904; Bolivia cedes the coast against the Arica–La Paz railway" }
+
+- id: tacna_arica
+  name: Tacna and Arica
+  controller: CHL
+  claimants: [PER]
+  status: settled
+  stakes: { CHL: 0.7, PER: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [-70.25, -18.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1883.80, controller: CHL, status: occupied, source: "Treaty of Ancón 20 Oct 1883 puts the provinces under Chilean administration for ten years pending a plebiscite that is never held" }
+    - { year: 1929.42, controller: CHL, status: settled, source: "Treaty of Lima 3 Jun 1929: Tacna to Peru, Arica to Chile" }
+  notes: "In this file as the era's long right-censored contest: 46 unsettled years, all of them negatives, against the arbitrations that close in one or two."
+
+- id: acre
+  name: Acre
+  controller: BRA
+  claimants: [BOL]
+  status: settled
+  stakes: { BRA: 0.7, BOL: 0.6 }
+  stakes_source: estimate
+  geometry: { point: [-68.0, -9.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1899.0, controller: BOL, status: contested_active, source: "the rubber boom and the Acrean revolts from Jul 1899" }
+    - { year: 1903.88, controller: BRA, status: settled, source: "Treaty of Petrópolis 17 Nov 1903: Brazil buys the territory and builds the Madeira–Mamoré railway for Bolivia" }
+
+- id: crete
+  name: Crete
+  controller: GRC
+  claimants: [OTTOMAN]
+  status: settled
+  stakes: { GRC: 0.9, OTTOMAN: 0.6 }
+  stakes_source: estimate
+  geometry: { point: [24.8, 35.2], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1897.15, controller: OTTOMAN, status: disputed, source: "the Cretan insurrection and the Greek landing of Feb 1897 (war record: greco_turkish_1897)" }
+    - { year: 1898.92, controller: OTTOMAN, status: protectorate, source: "the Cretan State under the four powers, Prince George arrives 21 Dec 1898 — Ottoman suzerainty, international administration" }
+    - { year: 1913.98, controller: GRC, status: settled, source: "Treaty of London 30 May 1913 and the union with Greece proclaimed 1 Dec 1913" }
+
+- id: eastern_rumelia
+  name: Eastern Rumelia
+  controller: BGR
+  claimants: [OTTOMAN]
+  status: settled
+  stakes: { BGR: 0.9, OTTOMAN: 0.6, SRB: 0.3 }
+  stakes_source: estimate
+  geometry: { point: [25.35, 42.15], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1885.70, controller: OTTOMAN, status: disputed, source: "the Plovdiv coup of 18 Sep 1885 unites the province with Bulgaria against the Treaty of Berlin" }
+    - { year: 1886.29, controller: BGR, status: settled, source: "Tophane agreement 5 Apr 1886: the powers accept the personal union" }
+
+- id: morocco
+  name: Morocco
+  controller: FRA
+  claimants: [DEU, ESP]
+  status: settled
+  stakes: { FRA: 0.8, DEU: 0.5, ESP: 0.5, GBR: 0.3 }
+  stakes_source: estimate
+  geometry: { point: [-6.0, 32.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1905.24, status: disputed, source: "the Kaiser at Tangier 31 Mar 1905 opens the first Moroccan crisis" }
+    - { year: 1906.27, status: protectorate, source: "Act of Algeciras 7 Apr 1906: an international police regime under French and Spanish officers — a settlement of the crisis and not of the claim" }
+    - { year: 1911.84, status: disputed, source: "Agadir 1 Jul 1911; the Franco-German convention of 4 Nov 1911 trades Congo territory for a free hand" }
+    - { year: 1912.24, controller: FRA, status: settled, source: "Treaty of Fez 30 Mar 1912 and the Franco-Spanish convention of 27 Nov 1912" }
+  notes: "Two crises, one settlement, and the record the era's alliance politics turned on. MAR leaves the actor universe at the protectorate."

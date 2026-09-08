@@ -21,6 +21,7 @@
   hazard: hormuz_reopens
   notes: "Effectively shut since Feb 2026 (tanker war). Reopening is a hazard; the transcript's modal path is a Hormuz-for-blockade swap."
   history:
+    - { year: 1892.0, status: open, controller: GBR, source: "the Trucial exclusive agreements of 1892 formalise a British Gulf that had been de facto since the 1850s: the strait is open and its littoral bound to one power (era-1870-1914-r2/corridors-1)" }
     - { year: 1984.0, status: contested, source: "Iran-Iraq tanker war" }
     - { year: 1988.6, status: open, source: "ceasefire Aug 1988" }
     - { year: 2026.2, status: closed, source: "2026 tanker war (data/history/events.yaml)" }
@@ -35,6 +36,9 @@
   load_bearing_for: { EGY: 0.6, SAU: 0.3, ISR: 0.3, IND: 0.3, CHN: 0.25, DEU: 0.2, NLD: 0.2, ITA: 0.25 }
   notes: "Houthi preview of the every-coast-is-a-Houthi world. Contested = insurance-priced, not closed."
   history:
+    - { year: 1869.0, status: open, controller: GBR, source: "Aden a British possession from 1839 and Perim fortified in 1857: as the canal opens, the southern gate of the Suez route is under British guns (era-1870-1914-r2/corridors-1)" }
+    - { year: 1915.05, status: contested, source: "Ottoman force occupies Sheikh Said opposite Perim, Jan 1915" }
+    - { year: 1915.50, status: open, controller: GBR, source: "British landing retakes Sheikh Said; the strait reopens" }
     - { year: 2023.9, status: contested, source: "Houthi campaign from Nov 2023" }
 
 - id: suez
@@ -50,6 +54,7 @@
   history:
     - { year: 1869.87, status: open, controller: OTTOMAN, source: "opened 17 Nov 1869; Suez Canal Co. Franco-Egyptian, Egypt an Ottoman khedivate" }
     - { year: 1875.86, status: open, controller: OTTOMAN, source: "Britain buys the Khedive's 44% stake, Nov 1875 (Disraeli share purchase)" }
+    - { year: 1882.55, status: contested, controller: OTTOMAN, source: "Alexandria bombarded 11 Jul 1882; the canal is closed to traffic during the British landing at Ismailia, 20-25 Aug 1882 (war record: anglo_egyptian_1882)" }
     - { year: 1882.70, status: open, controller: GBR, source: "Tel el-Kebir 13 Sep 1882; British occupation of Egypt — the corridor-driven intervention of the era" }
     - { year: 1888.82, status: open, controller: GBR, source: "Convention of Constantinople 29 Oct 1888: free passage in war and peace" }
     - { year: 1904.29, status: open, controller: GBR, source: "Entente Cordiale 8 Apr 1904 ratifies the British position in Egypt" }
@@ -76,6 +81,9 @@
   load_bearing_for: { SGP: 1.0, CHN: 0.6, JPN: 0.7, KOR: 0.65, TWN: 0.6, MYS: 0.9, IDN: 0.5, VNM: 0.4, AUS: 0.4, IND: 0.3 }
   notes: "China's Malacca dilemma. The rail corridors exist to make this number smaller."
   history:
+    - { year: 1867.0, status: open, controller: GBR, source: "the Straits Settlements become a crown colony 1 Apr 1867; with Suez opening in 1869 the strait is the Europe-East Asia trunk (era-1870-1914-r2/corridors-1)" }
+    - { year: 1914.83, status: contested, source: "SMS Emden shells Penang and sinks the Zhemchug 28 Oct 1914; traffic suspended" }
+    - { year: 1915.15, status: open, controller: GBR, source: "Emden destroyed at Cocos 9 Nov 1914; with the German East Asia squadron gone the raiding threat ends" }
     - { year: 1942.1, status: closed, source: "Japanese occupation" }
     - { year: 1945.7, status: open, source: "Japanese surrender" }
 
@@ -105,6 +113,7 @@
     - { year: 1923.56, status: open, controller: TUR, source: "Treaty of Lausanne 24 Jul 1923: Turkish sovereignty with demilitarised zones and an International Straits Commission chaired by Turkey; the Allied garrison leaves Constantinople 2 Oct 1923" }
     - { year: 1936.50, status: open, controller: TUR, source: "Montreux Convention 20 Jul 1936" }
     - { year: 1939.67, status: closed, controller: TUR, source: "Montreux Art. 19: the Straits are closed to belligerent warships — the closure that makes the Persian Corridor necessary" }
+    - { year: 1945.75, status: open, controller: TUR, source: "the war ends and the Montreux peacetime regime resumes; the record's own history used to stop at the 1939 closure and never reopen, which is the case scripts/backtest.mjs's COVERAGE comment cites (era-1870-1914-r2/engine-5)" }
 
 - id: taiwan_strait
   name: Taiwan Strait / Luzon Strait
@@ -117,6 +126,10 @@
   hazard: taiwan_blockade
   notes: "The blockade hazard closes this and the Taiwan control hazard reads it."
   history:
+    - { year: 1884.80, status: contested, source: "French blockade of Formosa declared 20 Oct 1884 (war record: sino_french); Keelung held, the Pescadores taken 31 Mar 1885" }
+    - { year: 1885.44, status: open, source: "Treaty of Tientsin 9 Jun 1885; the French evacuate Keelung and the Pescadores" }
+    - { year: 1895.23, status: open, controller: JPN, source: "Pescadores seized 23-26 Mar 1895; the Treaty of Shimonoseki 17 Apr 1895 cedes Formosa and the Pescadores" }
+    - { year: 1945.70, status: open, controller: CHN, source: "Japanese surrender; the island returns to Chinese administration" }
     - { year: 1996.2, status: contested, source: "third Taiwan Strait crisis, missile tests" }
     - { year: 1996.4, status: open, source: "crisis ends" }
 
@@ -334,6 +347,7 @@
   load_bearing_for: { CAN: 0.8, GBR: 0.2 }
   load_bearing_source: estimate
   history:
+    - { year: 1880.81, status: building, source: "Canadian Pacific Railway contract signed 21 Oct 1880" }
     - { year: 1885.86, status: built, source: "last spike, Craigellachie, 7 Nov 1885" }
   notes: "Built to hold British Columbia — the promise that bought the province into confederation."
 
@@ -436,6 +450,8 @@
     - { year: 1908.70, status: built, source: "Medina reached Sep 1908" }
     - { year: 1917.00, status: closed, source: "Arab Revolt sabotage 1916-18 — the first modern rail-cutting campaign" }
     - { year: 1920.00, status: closed, source: "never restored north of Medina after the Arab Revolt; the mandate borders cut the line" }
+  covered_through: 1945
+  covered_through_source: "the line north of Medina is never rebuilt; the 1920 row is a statement about the whole window and not the last thing anyone checked (era-1870-1914-r2/engine-5)"
   notes: "Pilgrimage cover for a troop-movement line; its destruction is the era's cleanest corridor-denial campaign."
 
 - id: cape_to_cairo
@@ -462,6 +478,7 @@
   load_bearing_for: { GBR: 0.25 }
   load_bearing_source: estimate
   history:
+    - { year: 1893.0, status: building, source: "construction north from Vryburg resumes 1893 under the Bechuanaland Railway Company" }
     - { year: 1897.83, status: built, source: "Bulawayo reached Nov 1897 — the southern half of the Cape-to-Cairo project" }
 
 - id: uganda_railway
@@ -474,6 +491,7 @@
   load_bearing_for: { GBR: 0.2 }
   load_bearing_source: estimate
   history:
+    - { year: 1896.41, status: building, source: "construction begins at Mombasa 30 May 1896" }
     - { year: 1901.98, status: built, source: "Kisumu reached Dec 1901" }
   notes: "Built to reach the Nile headwaters — the corridor rationale for the British position in Uganda and, through it, Egypt."
 
@@ -488,6 +506,8 @@
   load_bearing_for: { RUS: 0.5 }
   load_bearing_source: estimate
   history:
+    - { year: 1880.0, status: building, controller: RUS, source: "construction begins at Uzun-Ada 1880 for the Akhal-Teke campaign" }
+    - { year: 1886.5, status: built, controller: RUS, source: "Merv reached 1886 — the railhead that makes the Panjdeh crisis a standing threat" }
     - { year: 1888.50, status: built, controller: RUS, source: "Samarkand reached May 1888" }
     - { year: 1898.00, status: built, controller: RUS, source: "Tashkent branch 1898" }
   notes: "The corridor behind the Panjdeh crisis and the Anglo-Russian Great Game: Russian troops within rail reach of Herat."
@@ -528,6 +548,8 @@
   load_bearing_for: { CHE: 0.6, ITA: 0.3, DEU: 0.2 }
   load_bearing_source: estimate
   history:
+    - { year: 1869.79, status: planned, source: "Gotthard Convention signed 15 Oct 1869 by Switzerland, Italy and the North German Confederation" }
+    - { year: 1872.70, status: building, source: "works begin 13 Sep 1872" }
     - { year: 1882.40, status: built, source: "opened 1 Jun 1882" }
   notes: "Alpine transit as neutrality's product: Swiss neutrality is load-bearing for its neighbours because of the tunnels."
 
@@ -541,6 +563,7 @@
   load_bearing_for: { CHE: 0.4, ITA: 0.3 }
   load_bearing_source: estimate
   history:
+    - { year: 1898.60, status: building, source: "works begin Aug 1898" }
     - { year: 1906.40, status: built, source: "opened 1 Jun 1906" }
 
 # ---- cables: routing concentration is a corridor property, not a diffusion property (see data/waves.yaml telegraph_cable)
@@ -592,20 +615,23 @@
     - { year: 1900.60, status: built, controller: DEU, source: "Emden–Azores–New York, 1900" }
     - { year: 1904.60, status: built, controller: DEU, source: "second cable, 1904" }
     - { year: 1914.60, status: closed, source: "cut by CS Alert in the Channel, 5 Aug 1914 — Germany's direct link to neutral opinion severed on day one" }
+  covered_through: 1945
+  covered_through_source: "the cables are never relaid to Germany: the two Emden cables are diverted to Brest and Penzance in 1917 and awarded to the Allies by Versailles Art. 244 / Annex VII. The impairment is permanent through the record window, so these years are observed non-endings and not an uncoded tail (era-1870-1914-r2/engine-5)"
   notes: "Built as a bypass of the British spine and cut anyway: bypass reduces exposure only where the bypass avoids the adversary's water."
 
 - id: spanish_colonial_cables
   name: Spanish colonial cables (Cuba, Philippines)
   kind: corridor
   mode: cable
-  status: closed
-  controller: ESP
+  status: built
+  controller: USA
   geometry: { line: [[-80.4, 22.1], [-82.4, 23.1], [120.98, 14.6]] }
   transits: [ESP, USA, PHL]
   load_bearing_for: { ESP: 0.7 }
   load_bearing_source: estimate
   history:
     - { year: 1898.35, status: closed, source: "US Navy cuts the Manila cable 2 May and the Cienfuegos cable 11 May 1898 — the first deliberate infrastructure denial of a war" }
+    - { year: 1899.50, status: built, controller: USA, source: "the Manila and Caribbean cables relaid and reoperated under American ownership after the peace of 10 Dec 1898; the month is an estimate" }
   notes: "With spanish_american already in events.yaml, this and german_atlantic_cables are the two cleanest cut-the-cable observations in the dataset."
 
 # ---------------------------------------------------------------- pipelines with dated histories already in events.yaml
@@ -753,3 +779,199 @@
     - { year: 1940.44, status: closed, controller: ITA, source: "Italian entry 10 Jun 1940: Allied through-traffic reroutes via the Cape" }
     - { year: 1943.38, status: contested, controller: GBR, source: "Tunis falls 13 May 1943" }
     - { year: 1943.60, status: open, controller: GBR, source: "first through convoy since 1940 sails in Aug 1943 (date is an estimate)" }
+
+# ---------------------------------------------------------------- records the era had and this layer did not (turn era-1870-1914-r2, added 2026-09-07)
+# Why this block exists. Before it the layer held 9 chokepoints, of which 4 had no dated entry before 1942 and were
+# back-dated to 1869 by an inference this turn removed (src/engine/core.js:corridorFirstYear); the 1891-1900 decade
+# contained zero chokepoint transitions anywhere in the file; and `chokepoint_status` had 4 events at both as-of 1890
+# and as-of 1900 against a fitter that needs 5. The straits below are the ones the era's own presence and territory
+# layers already imply — data/presence.yaml carries GBR at Gibraltar from 1816 — and each carries a dated history with
+# a source. `load_bearing_for` values are estimates unless a share is cited.
+
+- id: gibraltar
+  name: Strait of Gibraltar
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: GBR
+  geometry: { point: [-5.35, 36.14] }
+  transits: [ESP, MAR]
+  load_bearing_for: { GBR: 0.9, FRA: 0.4, ITA: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1869.0, status: open, controller: GBR, source: "British since the Treaty of Utrecht 1713; the Rock and the Mediterranean Fleet are what make the Suez route a British route (data/presence.yaml: GBR GIB from 1816)" }
+    - { year: 1904.29, status: open, controller: GBR, source: "Anglo-French Declaration 8 Apr 1904: France accepts the British position and the strait stops being a Franco-British question" }
+  notes: "The western gate of the Mediterranean route. It never changes hands in the modelled window, and that is the point: a chokepoint sample with no unchanging straits in it has its base rate wrong the other way."
+
+- id: danish_straits
+  name: Danish Straits (Sound and Belts)
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: DNK
+  geometry: { point: [10.9, 55.9] }
+  transits: [DNK, SWE]
+  load_bearing_for: { RUS: 0.6, DEU: 0.5, SWE: 0.5, DNK: 0.5 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1869.0, status: open, controller: DNK, source: "Copenhagen Convention 14 Mar 1857 abolishes the Sound Dues and makes the passage free against a capitalised payment" }
+    - { year: 1914.59, status: contested, controller: DNK, source: "Denmark mines the Great Belt at German request 5 Aug 1914 — a neutral closing the Baltic gate under pressure" }
+    - { year: 1919.50, status: open, controller: DNK, source: "the minefields cleared after the armistice; free passage restored" }
+  notes: "The Baltic's only exit, and the reason the Kiel Canal record exists — Kiel is the bypass."
+
+- id: magellan_strait
+  name: Strait of Magellan
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: CHL
+  geometry: { point: [-70.9, -53.6] }
+  transits: [CHL, ARG]
+  load_bearing_for: { CHL: 0.8, ARG: 0.4, GBR: 0.4, USA: 0.4 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1869.0, status: open, controller: CHL, source: "Punta Arenas held by Chile from 1843; the strait is the sea route between the oceans before Panama" }
+    - { year: 1878.90, status: contested, controller: CHL, source: "the Chile-Argentina crisis over the strait and Patagonia, Nov-Dec 1878; the Devonshire incident" }
+    - { year: 1881.56, status: open, controller: CHL, source: "Boundary Treaty 23 Jul 1881, Art. V: the strait neutralised in perpetuity and free navigation guaranteed (territory record: andes_cordillera)" }
+    - { year: 1914.62, status: open, controller: CHL, capacity: 0.4, capacity_source: estimate, source: "Panama opens 15 Aug 1914 and the Cape Horn/Magellan route collapses — a corridor substituted away rather than closed (capacity is an estimate)" }
+
+- id: sunda_strait
+  name: Sunda Strait
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: IDN
+  geometry: { point: [105.9, -6.0] }
+  transits: [IDN]
+  load_bearing_for: { NLD: 0.5, GBR: 0.2 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1869.0, status: open, controller: NLD, source: "the Netherlands Indies hold both shores; the strait is the southern alternative to Malacca" }
+    - { year: 1883.65, status: closed, source: "Krakatoa 26-27 Aug 1883: the strait is unusable and uncharted, pumice-choked and the soundings gone" }
+    - { year: 1884.30, status: open, controller: NLD, source: "resurveyed and reopened to navigation 1884" }
+  notes: "The layer's one natural closure — an impairment with no belligerent behind it, which is what a reopen hazard needs to not be a war hazard."
+
+- id: corinth_canal
+  name: Corinth Canal
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: GRC
+  geometry: { point: [22.95, 37.93] }
+  transits: [GRC]
+  load_bearing_for: { GRC: 0.5 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1882.30, status: building, controller: GRC, source: "works begin 1882 under the Société Internationale du Canal Maritime de Corinthe" }
+    - { year: 1893.60, status: open, controller: GRC, source: "opened 6 Aug 1893" }
+  notes: "The only chokepoint transition the layer had in 1891-1900; it was missing."
+
+- id: panama_railway
+  name: Panama Railway
+  kind: corridor
+  mode: rail
+  status: built
+  controller: PAN
+  geometry: { line: [[-79.9, 9.36], [-79.7, 9.1], [-79.53, 8.95]] }
+  transits: [PAN, USA]
+  load_bearing_for: { USA: 0.5, PAN: 0.6 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1869.0, status: built, controller: COL, source: "opened 28 Jan 1855 under the Mallarino-Bidlack treaty of 1846, which obliges the United States to keep the transit open" }
+    - { year: 1885.25, status: contested, controller: COL, source: "Colon burned 31 Mar 1885 in the Colombian civil war; US landings under the 1846 transit guarantee" }
+    - { year: 1885.50, status: built, controller: COL, source: "order restored and through traffic resumed" }
+    - { year: 1903.88, status: built, controller: PAN, source: "Panamanian secession 3 Nov 1903; the line passes with the Zone (territory record: panama_canal_zone)" }
+  notes: "The transit guarantee that produced the Canal Zone. The territory record existed in this model; the railway it was built around did not."
+
+- id: arica_la_paz
+  name: Arica–La Paz railway
+  kind: corridor
+  mode: rail
+  status: built
+  controller: CHL
+  geometry: { line: [[-70.32, -18.48], [-69.6, -18.3], [-68.15, -16.5]] }
+  transits: [CHL, BOL]
+  load_bearing_for: { BOL: 0.9, CHL: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1904.80, status: planned, source: "Treaty of Peace and Friendship 20 Oct 1904, Art. III: Chile builds the line as part of the price of the littoral (territory record: bolivian_littoral)" }
+    - { year: 1906.0, status: building, source: "construction begins 1906" }
+    - { year: 1913.36, status: built, source: "opened 13 May 1913" }
+  notes: "A corridor paid for a territory — the clearest instance in the era of the trade the two layers exist to see together."
+
+- id: madeira_mamore
+  name: Madeira–Mamoré railway
+  kind: corridor
+  mode: rail
+  status: abandoned
+  controller: BRA
+  geometry: { line: [[-64.8, -9.4], [-65.3, -10.8], [-65.35, -11.0]] }
+  transits: [BRA, BOL]
+  load_bearing_for: { BOL: 0.6, BRA: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1903.88, status: planned, source: "Treaty of Petropolis 17 Nov 1903: Brazil buys Acre and undertakes the railway that gives Bolivia an Atlantic outlet (territory record: acre)" }
+    - { year: 1907.0, status: building, source: "the May-Jekyll-Randolph contract; construction from Porto Velho 1907" }
+    - { year: 1912.33, status: built, source: "opened to Guajara-Mirim 30 Apr 1912" }
+  notes: "The second half of the Acre settlement, and the second corridor-for-territory trade of the decade."
+
+- id: sind_pishin_chaman
+  name: Sind–Pishin State Railway (Bolan/Khojak to Chaman)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: GBR
+  geometry: { line: [[68.35, 27.7], [67.0, 29.5], [66.6, 30.2], [66.45, 30.92]] }
+  transits: [GBR, AFG]
+  load_bearing_for: { GBR: 0.4 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1879.0, status: building, source: "begun during the Second Afghan War to put a railhead on the Afghan frontier" }
+    - { year: 1891.0, status: built, source: "the Khojak tunnel completed 1891" }
+    - { year: 1892.0, status: built, controller: GBR, source: "railhead at Chaman 1892, 100 km from Kandahar" }
+  notes: "The British answer to trans_caspian. The two records are one race, and the model held only the Russian half."
+
+- id: orenburg_tashkent
+  name: Orenburg–Tashkent railway
+  kind: corridor
+  mode: rail
+  status: built
+  controller: RUS
+  geometry: { line: [[55.1, 51.8], [59.6, 47.0], [65.2, 43.7], [69.3, 41.3]] }
+  transits: [RUS]
+  load_bearing_for: { RUS: 0.5 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1901.0, status: building, controller: RUS, source: "construction begins from both ends 1901" }
+    - { year: 1906.05, status: built, controller: RUS, source: "regular traffic Jan 1906 — Turkestan tied to European Russia without the Caspian ferry" }
+
+- id: delagoa_bay_railway
+  name: Delagoa Bay railway (Lourenço Marques–Pretoria)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: MOZ
+  geometry: { line: [[32.57, -25.97], [31.5, -25.8], [28.2, -25.75]] }
+  transits: [MOZ, ZAF]
+  load_bearing_for: { PRT: 0.4, GBR: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1895.0, status: built, source: "through traffic Lourenco Marques-Pretoria from 1895: the Transvaal's outlet to the sea that does not cross British territory" }
+    - { year: 1899.79, status: closed, source: "Transvaal war traffic and the British blockade of the line, Oct 1899" }
+    - { year: 1900.50, status: built, controller: GBR, source: "British control of the line from mid-1900" }
+  notes: "The corridor the South African war was partly about. Its belligerents are not in the actor universe (the Boer republics are absent from the codelist), so the record carries the corridor without the war."
+
+- id: peking_mukden_railway
+  name: Peking–Mukden railway (Imperial Railways of North China)
+  kind: corridor
+  mode: rail
+  status: built
+  controller: CHN
+  geometry: { line: [[116.4, 39.9], [117.2, 39.1], [119.8, 40.0], [121.6, 40.8], [123.4, 41.8]] }
+  transits: [CHN]
+  load_bearing_for: { CHN: 0.5, GBR: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1897.0, status: built, controller: CHN, source: "the Peking-Tientsin line opened 1897; the Imperial Railways of North China reach Shanhaiguan" }
+    - { year: 1900.45, status: closed, source: "Boxer destruction of the Peking-Tientsin line, Jun 1900 (war record: boxer)" }
+    - { year: 1901.60, status: built, controller: CHN, source: "restored and reopened under the Boxer Protocol of 7 Sep 1901, with foreign guards on the line" }

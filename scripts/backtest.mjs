@@ -22,6 +22,7 @@ const UNIVERSE = arg('universe', 'modeled');   // modeled (67 simulated actors) 
 const contiguityFile = JSON.parse(readFileSync('data/contiguity.json', 'utf8'));
 const contiguity = contiguityFile.pairs; const contiguityFrom = contiguityFile.meta?.years?.[0] ?? null;
 const MIN_AT_RISK = 10;   // a template scored on fewer at-risk units than this is reported but kept out of the pooled summary
+const MIN_EPV = 3;        // events per estimated covariate: below it the fit cannot identify its own terms and the row is reported, not pooled
 // ground-truth coverage per event kind: score only inside these windows (the datasets end; absence past the end is not a non-event)
 // chokepoint/corridor: the hand-coded record layer (data/corridors.yaml) is complete only where the refine loop has
 // been. Two demonstrations that it is not complete after 1945: the Bosphorus record ends at `closed` in 1939 and never
@@ -29,10 +30,13 @@ const MIN_AT_RISK = 10;   // a template scored on fewer at-risk units than this 
 // against that would count missing transitions as non-events. The templates are still FITTED on 1869-2026 (that is all
 // the record there is, and the test in docs/escalations.md asks for >= 30 events), so the published full-sample fit
 // carries a post-1945 base rate biased low — the backtest rows at as-of <= 1940 are refit on labels <= as-of and do not.
+// regime_change opens at 1816, not 1900 (era-1870-1914-r2/data-3): its source is V-Dem Regimes of the World via OWID,
+// which runs 1789-2025, and data/events.json carries 179 regime_change events dated before 1900. The ERT-derived
+// onset kinds keep their own 1900 start — that is where the Episodes of Regime Transformation data begins.
 // operator/termination adds four ending kinds. Their windows are their sources': CoW MID endyear stops in 2001,
 // UCDP in 2024, and the two record layers are complete only where the refine loop has been — the reopen window is the
 // same 1869-1945 the status templates are scored in, and the territory histories run 1871-2025.
-const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1900, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], chokepoint: [1869, 1945], corridor: [1869, 1945], war_end: [1816, 2001], intrastate_end: [1946, 2024], record_reopen: [1869, 1945], territory_settle: [1871, 2025] };
+const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1816, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], chokepoint: [1869, 1945], corridor: [1869, 1945], war_end: [1816, 2001], intrastate_end: [1946, 2024], record_reopen: [1869, 1945], territory_settle: [1871, 2025] };
 const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
 
 const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
@@ -59,7 +63,7 @@ const pacts = new Set();
 for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
 
 // ---- rolling-origin coefficients: one fits object per as-of year, cached (the design matrices are built once).
-const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, pacts, corridors, territories, successors, presence }) : null;
+const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence }) : null;
 const fitCache = new Map();
 function fitsAt(asOf) {
   if (!REFIT) return fits;
@@ -182,6 +186,13 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     }
     // a template that never fires is reported, not dropped: silence about a dead template reads as a clean score
     if (!pairs.length) { row.templates[t.id] = { n: 0, reason: 'no at-risk unit with complete covariates', scored_years: covYears }; continue; }
+    // era-1870-1914-r2/engine-8: a spell template's units are the spells its ONSET template opens, so when the onset
+    // has no fit at this as-of year the spell row is a forecast of nothing dressed as a calibrated zero (war_end read
+    // n_at_risk 0, predicted 0.00, auc 0.5 against 14 observed endings). Report the upstream reason instead.
+    if (t.spell && pairs.every(x => x[0] === 0)) {
+      const up = templates.find(x => x.unit === 'dyad-year' && x.event === `mid_${t.spell}`) ?? templates.find(x => x.event === `${t.spell}_onset`);
+      if (up && F[up.id]?.status !== 'fitted') { row.templates[t.id] = { n: 0, reason: `no unit at risk: the upstream onset template \`${up.id}\` has no fit at as-of (${F[up.id]?.reason ?? 'unfitted'}), so the engine opens no spell for this template to end`, upstream: up.id, observed: pairs.reduce((s, x) => s + x[1], 0), scored_years: covYears }; continue; }
+    }
     const brier = pairs.reduce((s, [p, y]) => s + (p - y) ** 2, 0) / pairs.length;
     const predicted = pairs.reduce((s, [p]) => s + p, 0), observed = pairs.reduce((s, [, y]) => s + y, 0);
     // the at-risk split: units the model can ever put mass on (p>0) versus the ones its relevance filter zeroes out.
@@ -196,9 +207,16 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     rec.leaky = rec.fit_split == null ? null : rec.fit_split > asOf;
     if (t.unit === 'actor-year') { rec.n_excluded_no_covariate = excluded; rec.n_excluded_with_event = excludedWithEvent; rec.excluded_vars = excludedVars; }
     if (RECORD_UNITS.has(t.unit) || t.unit === SPELL_UNITS.record || t.unit === SPELL_UNITS.territory) { rec.n_unborn_records = unborn; rec.n_unborn_events = unbornEvents; }
-    if (t.unit === 'actor-year' && at.length < MIN_AT_RISK) rec.underpowered = true;
+    // the pooled guard applies to EVERY unit type (era-1870-1914-r2/statistics-5). It used to test `t.unit ===
+    // 'actor-year'`, so half the record rows entered pooled at n_at_risk < 10 — chokepoint_status was pooled at 7
+    // at-risk units in four separate as-of years and the headline read n=36.
+    rec.epv = f.epv ?? null; rec.n_degenerate = f.degenerate?.length ?? 0; rec.degenerate = f.degenerate ?? [];
+    if (at.length < MIN_AT_RISK) rec.underpowered = true;
+    // and to a fit that cannot identify its own coefficients (era-1870-1914-r2/statistics-6): a row scored off 8
+    // events over 9 covariates is a miss, not a clean score, which is the rule already applied to `n: 0` rows.
+    if (rec.epv != null && rec.epv < MIN_EPV) { rec.underpowered = true; rec.underpowered_reason = `events per estimated covariate ${rec.epv.toFixed(2)} < ${MIN_EPV}`; }
     row.templates[t.id] = rec;
-    if (!rec.underpowered) (pooled[t.id] ??= []).push(...pairs.map(([p, y]) => [p, y]));
+    if (!rec.underpowered) (pooled[t.id] ??= []).push(...pairs.map(([p, y, u]) => [p, y, u, asOf]));
   }
   results.push(row);
   console.log(`as-of ${asOf} (+${horizon}y, ${ids.length} actors, ${(row.ms / 1000).toFixed(1)}s)`);
@@ -242,8 +260,27 @@ for (const [id, pairs] of Object.entries(pooled)) {
   // calibration deciles
   const sorted = [...pairs].sort((a, b) => a[0] - b[0]); const cal = [];
   for (let b = 0; b < 5; b++) { const sl = sorted.slice(Math.floor(b * sorted.length / 5), Math.floor((b + 1) * sorted.length / 5)); if (sl.length) cal.push([sl.reduce((s, x) => s + x[0], 0) / sl.length, sl.reduce((s, x) => s + x[1], 0) / sl.length]); }
-  summary[id] = { n: pairs.length, predicted, observed, brier, brier_base: brierBase, skill: 1 - brier / brierBase, auc: auc(pairs), calibration: cal };
-  console.log(`   ${id.padEnd(22)} n=${String(pairs.length).padStart(6)}  exp/obs=${(predicted / Math.max(1, observed)).toFixed(2).padStart(5)}  brier=${brier.toFixed(3)} (base ${brierBase.toFixed(3)}, skill ${fmt(1 - brier / brierBase)})  auc=${fmt(auc(pairs))}  cal: ${cal.map(([p, o]) => `${(p * 100).toFixed(0)}→${(o * 100).toFixed(0)}`).join(' ')}`);
+  // repeated measures (era-1870-1914-r2/statistics-5): with a 20-year horizon at a 10-year step every scored unit-year
+  // falls inside two horizons, so `n` counts each unit once per as-of row it appears in. For the dyad templates that
+  // only overstates precision; for the record templates it is the whole sample — chokepoint_status' n=36 was 9 records
+  // measured four times. `n_distinct_units` and `n_as_of_rows` say so, and the AUC and skill CIs are bootstrapped by
+  // resampling UNIT IDS rather than rows, which prices the repetition in.
+  const units = [...new Set(pairs.map(x => x[2]))];
+  const byUnit = new Map(); for (const x of pairs) { const k = x[2]; (byUnit.get(k) ?? byUnit.set(k, []).get(k)).push(x); }
+  const asOfRows = new Set(pairs.map(x => x[3])).size;
+  const boot = { auc: [], skill: [] };
+  let seed = 12345; const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  for (let b = 0; b < 400; b++) {
+    const sample = []; for (let i = 0; i < units.length; i++) sample.push(...byUnit.get(units[Math.floor(rnd() * units.length)]));
+    const obs = sample.reduce((s, x) => s + x[1], 0); if (obs === 0 || obs === sample.length) continue;
+    const bb = sample.reduce((s, x) => s + (x[0] - x[1]) ** 2, 0) / sample.length;
+    const bs = (obs / sample.length) * (1 - obs / sample.length);
+    boot.auc.push(auc(sample)); boot.skill.push(1 - bb / bs);
+  }
+  const ci = (xs) => { if (xs.length < 20) return null; const v = [...xs].sort((a, b) => a - b); return [v[Math.floor(v.length * 0.025)], v[Math.floor(v.length * 0.975)]]; };
+  summary[id] = { n: pairs.length, n_distinct_units: units.length, n_as_of_rows: asOfRows, predicted, observed, brier, brier_base: brierBase, skill: 1 - brier / brierBase, auc: auc(pairs), auc_ci95_by_unit: ci(boot.auc), skill_ci95_by_unit: ci(boot.skill), calibration: cal };
+  const a95 = summary[id].auc_ci95_by_unit;
+  console.log(`   ${id.padEnd(22)} n=${String(pairs.length).padStart(6)} (${String(units.length).padStart(5)} units × ${asOfRows} as-of)  exp/obs=${(predicted / Math.max(1, observed)).toFixed(2).padStart(5)}  brier=${brier.toFixed(3)} (base ${brierBase.toFixed(3)}, skill ${fmt(1 - brier / brierBase)})  auc=${fmt(auc(pairs))}${a95 ? ` [${fmt(a95[0])}, ${fmt(a95[1])}]` : ''}  cal: ${cal.map(([p, o]) => `${(p * 100).toFixed(0)}→${(o * 100).toFixed(0)}`).join(' ')}`);
 }
 mkdirSync('scores', { recursive: true });
 // An ablation run is not the published run: the engine switches go into meta and into the filename, so a sweep can

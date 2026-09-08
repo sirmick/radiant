@@ -18,7 +18,8 @@ Every dataset the model reads, where it comes from, what it covers, and what it 
 | V-Dem Episodes of Regime Transformation | `ert.csv` | 1900–2024 | `polyarchy`; autocratization/democratization episode onsets (monitored templates) | GitHub vdeminstitute/ERT |
 | REIGN 2021.8 | `reign.csv` | 1950–2021 | leader age/tenure/military, leader exits, coups (Powell–Thyne columns), irregular exits (derived: exit within 2 months of a successful coup) | the shipped `irregular` column is empty |
 | UCDP/PRIO Armed Conflict 25.1 | `UcdpPrioConflict_v25_1.csv` | 1946–2024 | `intrastate` (intensity), `interstate_ucdp`, intrastate onsets | GW codes |
-| CShapes 2.0 | `cshapes.geojson` | 1886–2019 | contiguity (30 km buffer), `nbr_*` neighbourhood covariates | first snapshot stands in before 1886 (declared) |
+| CShapes 2.0 | `cshapes.geojson` | 1886–2019 | contiguity (30 km buffer), `nbr_*` neighbourhood covariates | merged with CoW Direct Contiguity 3.2 for 1816–1885 and for water pairs; antimeridian polygons split before buffering |
+| CoW Direct Contiguity 3.2 | `cow_contdir.csv` | 1816–2016 | contiguity (conttype 1–3: land, ≤12 mi, ≤24 mi of water) | fetched from the `peacesciencer` R package (`scripts/fetch-contdir.mjs`); correlatesofwar.org answers 403 |
 | countrycode panel | `codelist_panel.csv`, `codelist.csv` | 1816–2025 | the state universe (CoW/GW/ISO3 crosswalk, system membership spans), ISO2 for flags | GitHub vincentarelbundock/countrycode |
 | OWID energy by source / coal / oil | `energy_hist.csv`, `coal_hist.csv`, `oil_hist.csv` | 1800–2025 | `energy_twh`, `oil_twh`, `coal_twh`, `lowcarbon_share`, `coal_prod`, `oil_prod` | Energy Institute + Smil |
 | World Bank WDI | `data/raw/wb/*.json` | 1960–2024 | `internet_users`, `mobile_subs`, `fixed_lines` → `info_access`; `infant_mortality`, `urban_share`, `aid_gni` → `aid_conditionality`; plus the modern series (GDP, debt, trade, milex, R&D, migration, rents, water) | API, all countries |
@@ -60,4 +61,4 @@ Natural Earth 50m admin-0 countries, 10m disputed areas, the CHN point-of-view c
 
 ## Not yet fetched (deferred in the loop)
 
-CoW Direct Contiguity v3.2 (would fill 1816–1885 and water contiguity), CoW Intra-State War v4.1 (pre-1946 civil wars), Archigos 4.1 (pre-1950 leaders), UN General Assembly ideal points (alignment), Reinhart–Rogoff / BoC–BoE defaults, UCDP GED (georeferenced conflict, 1989→), archived WPP vintages (honest structural backtests).
+CoW Intra-State War v4.1 (pre-1946 civil wars), Archigos 4.1 (pre-1950 leaders), UN General Assembly ideal points (alignment), Reinhart–Rogoff / BoC–BoE defaults, UCDP GED (georeferenced conflict, 1989→), archived WPP vintages (honest structural backtests).

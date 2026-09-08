@@ -120,7 +120,7 @@ for (const e of handEvents) {
     for (let y = y0; y <= y1; y++) if (!act || isLive(act, y)) put(a, 'at_war', y, 1);
   }
 }
-sources.at_war = 'data/history/events.yaml (hand-coded interstate wars, per-participant entry/exit dates where declared)';
+sources.at_war = 'data/history/events.yaml — a HAND LIST of interstate wars with per-participant entry/exit dates where declared, not a dataset. Absence is not evidence of peace: the list is complete only where the refine loop has been, and a war it does not name enters the panel as a 0. Ingesting CoW Inter-State War v4.0 participant-level dates the way NMC 7.0 was ingested is the fix (docs/escalations.md)';
 
 // ---- World Bank WDI 1960+ (fetched by scripts/fetch-wb.mjs): information access, infant mortality, urbanisation
 {

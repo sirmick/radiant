@@ -96,6 +96,10 @@ Chokepoints and land corridors — the load-bearing infrastructure that turns tr
   transits: [IRN, IRQ, SAU, ARE, QAT]      # states whose territory/coast it runs through
   load_bearing_for: { CHN: 0.5, JPN: 0.6, QAT: 0.9 }   # 0-1 per dependent state; for planned corridors, the value once built
   load_bearing_source: estimate            # every hand number carries a source or the literal `estimate`
+  exists_from: 1857        # optional: the record existed before its first dated row, and the source says so
+  exists_from_source: "..."
+  covered_through: 1945    # optional: the refine loop has verified the record through this year past its last row
+  covered_through_source: "..."
   history:                 # REQUIRED: the dated status record. status/controller/completion above are the 2026 snapshot.
     - { year: 1869.87, status: open, controller: OTTOMAN, source: "opened 17 Nov 1869" }
     - { year: 1882.70, status: open, controller: GBR, capacity: 0.5, source: "..." }
@@ -108,6 +112,16 @@ load-bearing property is routing concentration rather than throughput.
 
 Every `kind: corridor` / `kind: chokepoint` event in `data/history/events.yaml` must name a record here, and every record
 must carry a non-empty `history`; `scripts/build-events.mjs` and `scripts/build-world.mjs` fail the build otherwise.
+
+**Existence and coverage are declared, not inferred** (era-1870-1914-r2/statistics-3, engine-3, engine-5). A record is a
+unit from the year its history opens (`src/engine/core.js:corridorFirstYear`). It used to be back-dated to the template
+window whenever its first row was an impairment, on the reasoning that a strait must have existed unimpaired before it
+was closed — true of the strait, false of the record: four chokepoints whose first coded entry is 1942, 1984, 1996 and
+2023 were handed 469 record-years of synthesised `open` state carrying no transition, 41% of the fitted sample, and the
+backtest reported them as born and at risk. A record that genuinely predates its first row says so with `exists_from:`
+and a source. Symmetrically, a spell sample stops at the record's last dated year — the years after it are not observed
+non-endings but years nobody coded — unless the record declares `covered_through:` with a source saying the state holds
+through it; the final year is dropped unless the spell is observed to end in it.
 
 `load_bearing_for` is the corridor-dampener term in the dyadic conflict hazard: a dyad whose shared infrastructure is load-bearing for a third party gets its dispute hazard multiplied down, weighted by that third party's alliance edge to each side. "China won't let the rail through Iran be bombed" is this one number.
 
