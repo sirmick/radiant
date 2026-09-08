@@ -4,7 +4,9 @@
 // No country names anywhere in this file.
 
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
-import { PRESENCE, presenceIndex, lastFall, patronMap, patronFeatures, guarantorLevel, guarantorFall } from './presence.js';
+import { PRESENCE, presenceIndex, lastFall, patronMap, patronFeatures, guarantorLevel, guarantorFall, hostLevel } from './presence.js';
+import { IMPAIRED, RESOLVED, SPELL_UNITS, warSpells, spellAge, territoryFirstYear, territoryStateAt,
+  warEndFeatures, contestFeatures, reopenFeatures } from './termination.js';
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -63,7 +65,22 @@ export function warRunLengths(panel, asOf) {
   }
   m.set(asOf, out); return out;
 }
-const drawWarDuration = (world, rng) => { const d = world.warDurations; return d && d.length ? d[Math.floor(rng() * d.length)] : 1; };
+
+/**
+ * The termination layer (operator/termination, package 8). Four fitted hazards replace four typed constants:
+ * a war's length (was: one year, or a resampled run length), an internal conflict's length (was: 1 + U{0..5}),
+ * an impaired corridor or chokepoint's return to service (was: only through the status template's outcome mix), and
+ * a territorial contest's settlement (was: territories were not in the engine at all). Every one of them draws from
+ * data/fits.json through the same covariate blocks scripts/lib/fit.mjs estimated them on (src/engine/termination.js).
+ */
+const spellTemplate = (templates, unit, spell = null) => (templates ?? []).find(t => t.unit === unit && (spell == null || t.spell === spell));
+/** Annual probability for one spell-year, given its already-assembled covariate block. null = not drawable. */
+function spellHazard(world, t, feats) {
+  const fit = t && world.fits[t.id]; if (!fit || fit.status !== 'fitted') return null;
+  for (const c of t.covariates) { if (feats[c.var] == null) { const d = outsideDefault(c, world.year); if (d == null) return null; feats[c.var] = d; } }
+  const eta = linearPredictor(fit, t, feats);
+  return eta == null || !Number.isFinite(eta) ? null : sigmoid(eta);
+}
 
 // Ablation switches, node only (the browser build reads nothing here): ENGINE_ABLATE=war_duration,war_nesting turns a
 // mechanism off so the backtest can score it on its own. With both off the dyad draw is the pre-2026-09-07 one, and the
@@ -74,13 +91,29 @@ const NO_NESTING = ABLATE.includes('war_nesting');
 // With it off the engine consumes no random numbers for records, so a run reproduces the pre-2026-09-07 random stream
 // exactly — which is how the claim "the dyadic numbers moved by stream noise only" is checked rather than asserted.
 const NO_CORRIDORS = ABLATE.includes('corridor_layer');
+// operator/termination: one switch per fitted ending, so each can be scored on its own. With all four off the engine
+// is the pre-2026-09-07 one — a one-year war, a uniform 1..6-year internal conflict, no reopening hazard and no
+// territory layer — except that the war half is also gated by `duration.status` in the data (see warDurationOn).
+const NO_TERM = {
+  war: ABLATE.includes('war_duration') || ABLATE.includes('war_end'),
+  intrastate: ABLATE.includes('intrastate_end'),
+  record: ABLATE.includes('record_reopen'),
+  territory: ABLATE.includes('contest_settle'),
+};
 /**
- * Whether war duration is switched on. It is declared in the data, not here: `duration.status` on the dyadic war
- * template in data/templates.yaml. It stands at `candidate` — built, measured on 2026-09-07 and not promoted, because
- * it moves every pooled calibration number the wrong way (the numbers are in that file under `rejected:`). Flipping it
- * to `active` reproduces the measured run; ENGINE_ABLATE=war_duration forces it off whatever the data says.
+ * Whether interstate war has a duration at all. Declared in the data, not here: `duration.status` on the dyadic war
+ * template in data/templates.yaml. Until 2026-09-07 the length was a resample of the panel's own at_war run lengths
+ * and the mechanism stood at `candidate` (built, measured, not promoted — the numbers are in that file under
+ * `rejected: war_duration`). It is now the fitted `war_end` hazard (`duration.draw: war_end`), drawn once per running
+ * spell per year. ENGINE_ABLATE=war_duration forces it off whatever the data says.
  */
-const warDurationOn = (templates) => !ABLATE.includes('war_duration') && (templates ?? []).some(t => t.unit === 'dyad-year' && t.duration?.status === 'active');
+const warDurationOn = (templates) => {
+  if (ABLATE.includes('war_duration')) return false;
+  // WAR_DURATION_ON=1 runs the candidate without editing the data, the way COALITION_ON does (node only).
+  const env = (typeof process !== 'undefined' && process.env) || {};
+  if (env.WAR_DURATION_ON) return true;
+  return (templates ?? []).some(t => t.unit === 'dyad-year' && t.duration?.status === 'active');
+};
 
 /**
  * Coalition joining and the relevance set it implies (era-1914-1945/engine-1), declared in the data on the dyadic war
@@ -156,7 +189,7 @@ export function warLinked(partners, allied, a, b, mode = 'linked') {
 // argument is the only difference between the two, so the sample the coefficients are estimated on and the state the
 // hazard is drawn from cannot drift apart. No country names — every id comes out of the record.
 export const CORRIDOR_UNIT = { chokepoint: 'chokepoint-year', corridor: 'corridor-year' };
-const IMPAIRED = new Set(['closed', 'contested']);           // a record first observed impaired existed before it
+// IMPAIRED comes from src/engine/termination.js: the same set defines a record's impaired spell and the reopen sample
 const BASE_STATUS = { chokepoint: 'open', corridor: 'built' };
 const ACTIVE_STATUS = new Set(['open', 'built', 'building', 'contested']);   // carries traffic (or will): stake > 0
 // the record's history sorted once, memoised on the record itself (non-enumerable: a record is also serialised into
@@ -311,7 +344,12 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
   recent.leader_exit = []; for (let k = 1; k <= 5; k++) recent.leader_exit.push(events.some(e => e.kind === 'leader_exit' && e.actor === id && Math.floor(e.year) === at - k) ? 1 : 0);
   const prev = build(at - 1);
   if (cur.gdp_growth == null && g.length) { cur.gdp_growth = g.reduce((a, b) => a + b, 0) / g.length; stale.gdp_growth = null; carry.gdp_growth = 'trailing_mean'; }
-  return { id, cur, prev, recent, stale, carry, growth: g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0.015, popGrowth: pg.length ? pg.reduce((a, b) => a + b, 0) / pg.length : 0.01, fired: {} };
+  // operator/termination: the first year of the internal-conflict run the actor is in at `at`, so a spell already
+  // running when the horizon opens enters the termination hazard with its observed duration rather than at age 0.
+  const onConflict = (y) => (pv('intrastate', y) ?? 0) > 0;
+  const conflictStart = onConflict(at) ? at - spellAge(onConflict, at) : null;
+  cur.conflict_duration = conflictStart == null ? null : at - conflictStart;
+  return { id, cur, prev, recent, stale, carry, conflictStart, growth: g.length ? g.reduce((a, b) => a + b, 0) / g.length : 0.015, popGrowth: pg.length ? pg.reduce((a, b) => a + b, 0) / pg.length : 0.01, fired: {} };
 }
 
 /**
@@ -418,7 +456,7 @@ function applyPresence(world, a) {
  * `contiguityFrom` is the first year the contiguity source covers — for an asOf before it, that first snapshot
  * stands in (documented imputation; CShapes 2.0 begins 1886 and there is no border data behind it).
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], presence = null }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -461,20 +499,28 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     pol: initPolarity(panel, asOf, actors),
     coalition, warPartners: coalition ? warPartnersAt(warDyadSpans(events), asOf) : new Map(),
     allyOf: coalition ? allyAdjacency(allied) : null,
-    // interstate war as a spell rather than a one-year flag: warSpells holds the years left on each pair's war,
-    // warDurations is the panel's own run-length distribution as observed at asOf, and warSeed is the set of actors
-    // already at war at asOf (a war in progress takes a fresh draw as its residual — a stated approximation).
-    // Both are null unless the data switches the mechanism on (see warDurationOn), and then warSpells stays empty.
-    warSpells: new Map(), warDurations: warDurationOn(templates) ? warRunLengths(panel, asOf) : null,
-    warSeed: warDurationOn(templates) ? new Set(Object.keys(actors).filter(id => actors[id].cur.at_war > 0)) : null,
+    // interstate war as a spell rather than a one-year flag (operator/termination): warSpells maps a pair to the year
+    // its war started, and the fitted `war_end` hazard decides each year whether it stops. The spells running at asOf
+    // are seeded from the OBSERVED record — a pair at war at the as-of date is state the forecaster holds, and its
+    // start year is dated, so the seeded spell enters the horizon with its real duration-so-far rather than a fresh
+    // draw. The mechanism is off unless the data switches it on (see warDurationOn), and then the map stays empty.
+    warSpells: warDurationOn(templates) ? seedWarSpells(events, actors, asOf) : new Map(),
+    warDuration: warDurationOn(templates),
     rivalryDecay: rivalryDecay(templates),
     // the corridor / chokepoint layer, as-of dated like everything else: a record is in the world only if its dated
     // history has opened by asOf (a corridor announced inside the horizon is not knowledge the forecaster holds — the
     // backtest reports those records and their transitions separately rather than scoring them at zero), its status and
     // controller are the ones in force at asOf, and the outcome mix a fired transition draws from is the history to date.
-    corridors: NO_CORRIDORS ? [] : corridors.filter(rec => { const t = templates.find(x => x.unit === CORRIDOR_UNIT[rec.kind]); const f = t ? corridorFirstYear(rec, t.window[0]) : null; return f != null && f <= asOf; })
-      .map(rec => ({ rec, state: corridorStateAt(rec, asOf) })),
+    corridors: NO_CORRIDORS ? [] : corridors.filter(rec => { const t = templates.find(x => x.unit === CORRIDOR_UNIT[rec.kind] && !x.spell); const f = t ? corridorFirstYear(rec, t.window[0]) : null; return f != null && f <= asOf; })
+      .map(rec => ({ rec, state: corridorStateAt(rec, asOf), impairAge: impairAgeAt(rec, asOf) })),
     corridorMix: corridorOutcomeMix(corridors, asOf),
+    // the territory layer (operator/termination): the records whose dated history has opened by asOf, with the status
+    // and controller in force then. Territories had no place in the engine at all before this package — the contest
+    // half of "faithful first" (docs/system.md) — so the only hazard on them is the one this package fits, and a
+    // record moves in one direction only: from unresolved to settled. A contest that RE-opens is the onset half and
+    // is still escalated, which is why a settled record simply leaves the draw.
+    territories: territories.filter(rec => { const f = territoryFirstYear(rec); return f != null && f <= asOf; })
+      .map(rec => ({ rec, state: territoryStateAt(rec, asOf), age: contestAge(rec, asOf) })),
     // the military-presence layer (operator/presence), frozen at as-of like the alliance graph. `patrons` is the
     // host -> patron-power map the dyadic term reads; the per-actor `presenceFall` is the year that actor last lost a
     // station, so `presence_change` can age out of its window during the horizon instead of firing for all of it.
@@ -483,6 +529,30 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {} },
     fits, templates, log: [],
   };
+}
+
+/**
+ * The war spells running at `asOf`, from the observed dyadic record (src/engine/termination.js:warSpells over the
+ * event log, which is already truncated at asOf by createWorld). Only pairs both of whose members are live enter.
+ * The value is the spell's OBSERVED start year, so a seeded war carries its real duration-so-far into the hazard —
+ * the previous mechanism gave every running war a fresh residual drawn from the whole run-length distribution.
+ */
+function seedWarSpells(events, actors, asOf) {
+  const out = new Map();
+  for (const [k, spells] of warSpells(events)) {
+    const i = k.indexOf('|'); if (!actors[k.slice(0, i)] || !actors[k.slice(i + 1)]) continue;
+    for (const s of spells) if (s.y0 <= asOf && s.y1 >= asOf) out.set(k, { y0: s.y0, coalition: s.n_participants ?? 2 });
+  }
+  return out;
+}
+/** Years a corridor/chokepoint record has already been impaired when `asOf` opens (0 if it is not). */
+function impairAgeAt(rec, asOf) {
+  return spellAge((y) => { const s = corridorStateAt(rec, y); return s != null && IMPAIRED.has(s.status); }, asOf);
+}
+/** Years a territorial contest has already run when `asOf` opens: back to the last year the record was settled. */
+function contestAge(rec, asOf) {
+  const first = territoryFirstYear(rec); if (first == null) return 0;
+  return spellAge((y) => { if (y < first) return false; const s = territoryStateAt(rec, y); return s != null && !RESOLVED.has(s.status); }, asOf);
 }
 
 /** Defence-pact edges as they stood at `asOf` (carried forward from the last year the alliance source covers). */
@@ -544,7 +614,9 @@ function linearPredictor(fit, t, feats) {
 export function actorHazards(world, a) {
   const out = {};
   for (const t of world.templates) {
-    const fit = world.fits[t.id]; if (!fit || fit.status !== 'fitted' || t.unit !== 'actor-year' || t.status === 'monitored') continue;
+    // a spell template on the actor-year unit (operator/termination: `intrastate_end`) is not an onset: it is drawn
+    // by stepYear over the actors whose spell is running, after the onsets, and it must not fire here.
+    const fit = world.fits[t.id]; if (!fit || fit.status !== 'fitted' || t.unit !== 'actor-year' || t.status === 'monitored' || t.spell) continue;
     if (t.sample?.regime_max != null && !(a.cur.regime <= t.sample.regime_max)) continue;
     if (t.sample?.regime_min != null && !(a.cur.regime >= t.sample.regime_min)) continue;
     const feats = {}; let ok = true;
@@ -600,6 +672,15 @@ export function worldLook(world) {
     gdpGrowth: (id) => world.actors[id]?.cur.gdp_growth ?? null,
     greatPower: (id) => world.actors[id]?.cur.great_power ?? null,
     successor: (id) => world.lifecycle?.successors?.[id] ?? null,
+    // the termination layer's reads (operator/termination) — the engine's twin of scripts/lib/fit.mjs:termLook
+    cinc: (id) => world.actors[id]?.cur.cinc ?? null,
+    regime: (id) => world.actors[id]?.cur.regime ?? null,
+    logGdpPc: (id) => world.actors[id]?.cur.log_gdp_pc ?? null,
+    gdpGrowthPrev: (id) => world.actors[id]?.prev.gdp_growth ?? null,
+    allied: (a, b) => world.allied.has(pairKey(a, b)),
+    contiguous: (a, b) => world.contiguous.has(pairKey(a, b)),
+    hostPresence: (id) => (world.presence ? hostLevel(world.presence, id, world.asOf) : null),
+    patron: (a, b) => patronFeatures({ patrons: world.patrons ?? new Map(), allied: (p, h) => world.allied.has(pairKey(p, h)), major: (id) => (world.actors[id]?.cur.great_power ?? 0) > 0, a, b }),
     // the presence layer is frozen at as-of, like the alliance and border graphs: where great-power forces will sit
     // in year t of the horizon is an outcome, not knowledge the forecaster holds. The level and the last fall are
     // therefore read at as-of; corridorFeatures ages the fall against the simulated year.
@@ -613,9 +694,26 @@ function corridorStakeFor(world, a, b) {
   return corridorStake(world.corridorIdx, a, b, world.allied);
 }
 
+/** Annual probability that a running war between this pair stops during the year. `age` = years already elapsed. */
+export function warEndHazard(world, a, b, age, coalition = 2) {
+  const t = spellTemplate(world.templates, SPELL_UNITS.war);
+  return t ? spellHazard(world, t, warEndFeatures({ a, b, age, coalition, look: worldLook(world) })) : null;
+}
+/** Annual probability that an impaired corridor or chokepoint record returns to service during the year. */
+export function reopenHazard(world, entry) {
+  const t = spellTemplate(world.templates, SPELL_UNITS.record);
+  if (!t || !(t.kinds ?? []).includes(entry.rec.kind)) return null;
+  return spellHazard(world, t, reopenFeatures({ age: entry.impairAge ?? 0, corridor: corridorFeatures(entry.rec, entry.state, worldLook(world)) }));
+}
+/** Annual probability that a territorial contest is settled during the year. */
+export function contestHazard(world, entry) {
+  const t = spellTemplate(world.templates, SPELL_UNITS.territory);
+  return t ? spellHazard(world, t, contestFeatures({ rec: entry.rec, state: entry.state, age: entry.age ?? 0, look: worldLook(world) })) : null;
+}
+
 /** Annual probability of a status/control transition for one corridor or chokepoint record in the current state. */
 export function corridorHazards(world, entry) {
-  const t = world.templates.find(x => x.unit === CORRIDOR_UNIT[entry.rec.kind]);
+  const t = world.templates.find(x => x.unit === CORRIDOR_UNIT[entry.rec.kind] && !x.spell);
   const fit = t && world.fits[t.id]; if (!fit || fit.status !== 'fitted') return null;
   const feats = corridorFeatures(entry.rec, entry.state, worldLook(world));
   for (const c of t.covariates) { if (feats[c.var] == null) { const d = outsideDefault(c, world.year); if (d == null) return null; feats[c.var] = d; } }
@@ -649,7 +747,10 @@ function applyActorEvent(world, a, kind, rng) {
     case 'autocratic_closure': if (a.cur.regime > 0) a.cur.regime -= 1; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); a.cur.regime_down = 1; break;
     case 'liberal_erosion': a.cur.regime = 2; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); a.cur.regime_down = 1; break;
     case 'democratic_deepening': a.cur.regime = 3; a.cur.polyarchy = Math.min(1, (a.cur.polyarchy ?? 0.5) + 0.1); a.cur.regime_up = 1; break;
-    case 'intrastate_onset': a.cur.intrastate = 1; a.conflictLeft = 1 + Math.floor(rng() * 6); a.cur.gdp_pc *= 0.97; break;
+    // operator/termination: the length is no longer typed here. The fitted `intrastate_end` hazard draws it year by
+    // year (stepYear, after the actor hazards), so a fresh onset only records the year it started. With the mechanism
+    // ablated off the old uniform 1..6-year draw is restored, and it consumes the same one random number it always did.
+    case 'intrastate_onset': a.cur.intrastate = 1; a.conflictStart = y; a.cur.conflict_duration = 0; if (NO_TERM.intrastate) a.conflictLeft = 1 + Math.floor(rng() * 6); a.cur.gdp_pc *= 0.97; break;
     default: throw new Error(`applyActorEvent: no state rewrite for '${kind}' — a simulated template must change state`);
   }
 }
@@ -693,9 +794,6 @@ export function stepYear(world, rng, opts = {}) {
   world.year += 1; const y = world.year; const fired = [];
   stepLifecycle(world, y);
   const ids = Object.keys(world.actors);
-  // a war already running at asOf keeps running: it is given a residual drawn from the same run-length distribution
-  // as a fresh war (an approximation — the panel dates the spell's start but its end is past the as-of date).
-  if (world.warSeed) { for (const id of world.warSeed) { const a = world.actors[id]; if (a) a.warLeft = drawWarDuration(world, rng); } world.warSeed = null; }
   // snapshot prev, structural drift
   for (const id of ids) {
     const a = world.actors[id]; a.prev = { ...a.cur };
@@ -723,23 +821,33 @@ export function stepYear(world, rng, opts = {}) {
     if (a.cur.info_access != null) a.cur.info_access = infoDiffuse(Math.max(0.02, a.cur.info_access), y, world.pol?.infoWave ?? INFO_WAVE);
     // clear annual flags; decay conflicts
     a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0; a.cur.regime_up = 0; a.cur.regime_down = 0;
-    if (a.cur.intrastate) { a.conflictLeft = (a.conflictLeft ?? 1) - 1; if (a.conflictLeft <= 0) a.cur.intrastate = 0; }
+    // internal conflict: the spell ends at the START of the year after the one its termination hazard fired in, so the
+    // year it ended still reads as a conflict year — which is what the panel's own `intrastate` column does and what
+    // the fit's label means. With the mechanism ablated off this is the old countdown from a typed uniform draw.
+    if (a.cur.intrastate) {
+      if (NO_TERM.intrastate) { a.conflictLeft = (a.conflictLeft ?? 1) - 1; if (a.conflictLeft <= 0) a.cur.intrastate = 0; }
+      else if (a.conflictOver) { a.cur.intrastate = 0; a.conflictOver = false; a.conflictStart = null; }
+    }
+    a.cur.conflict_duration = a.cur.intrastate && a.conflictStart != null ? y - a.conflictStart : (a.cur.intrastate ? 0 : null);
     for (const v of Object.keys(a.recent)) { a.recent[v].unshift(0); a.recent[v].length = 5; }
     if (a.prev.coup_attempt) a.recent.coup_attempt[0] = 1; if (a.prev.intrastate) a.recent.intrastate[0] = 1; if (a.prev.mid_force) a.recent.mid_force[0] = 1; if (a.prev.at_war) a.recent.at_war[0] = 1;
   }
   // the derived world state, after the drift (it reads this year's growth) and before any hazard reads an era term
   stepPolarity(world);
   for (const id of ids) { applyWorldState(world, id, world.actors[id]); applyPresence(world, world.actors[id]); }
-  // interstate war duration (era-1914-1945/engine-5): at_war is a spell, not a one-year flag. The drift loop above
-  // cleared it; every war still running re-sets it on both belligerents, so lag1(at_war) and the war shock mean in
-  // simulation what they mean in the panel, whose observed spells are 3.0 years long on average.
-  for (const [k, left] of [...world.warSpells]) {
+  // interstate war duration (era-1914-1945/engine-5, refitted by operator/termination): at_war is a spell, not a
+  // one-year flag. The drift loop above cleared it; every war still running re-sets it on both belligerents, so
+  // lag1(at_war) and the war shock mean in simulation what they mean in the panel. Whether the spell stops this year
+  // is the fitted `war_end` hazard, drawn once per running spell with the spell's own duration-so-far in it — a
+  // resampled length, which is what this replaces, could not depend on the state of the war.
+  for (const [k, sp] of [...world.warSpells]) {
     const i = k.indexOf('|'); const A = world.actors[k.slice(0, i)], B = world.actors[k.slice(i + 1)];
     if (!A || !B) { world.warSpells.delete(k); continue; }
     A.cur.at_war = 1; B.cur.at_war = 1;
-    if (left <= 1) world.warSpells.delete(k); else world.warSpells.set(k, left - 1);
+    const p = warEndHazard(world, A.id, B.id, y - sp.y0, sp.coalition);
+    const u = rng();
+    if (p == null || u < p) { world.warSpells.delete(k); fired.push({ kind: 'war_end', a: A.id, b: B.id, year: y, start: sp.y0, duration: y - sp.y0 + 1 }); }
   }
-  for (const id of ids) { const a = world.actors[id]; if (a.warLeft > 0) { a.cur.at_war = 1; a.warLeft -= 1; } }
   // actor hazards
   for (const id of ids) {
     const a = world.actors[id]; const hz = actorHazards(world, a);
@@ -750,6 +858,22 @@ export function stepYear(world, rng, opts = {}) {
         if (!HANDLED.has(rewrite)) throw new Error(`stepYear: template '${kind}' fires but applyActorEvent has no rewrite for '${rewrite}'`);
         fired.push(ev); applyActorEvent(world, a, rewrite, rng);
       }
+    }
+  }
+  // internal-conflict termination (operator/termination). Drawn after the onsets so a conflict that starts this year
+  // can also end this year — which is what the fit's first spell-year row means (age 0, label "ends during y") and
+  // what 33 of the panel's 305 observed runs did. The flag itself is cleared at the start of the next step.
+  if (!NO_TERM.intrastate) {
+    const tEnd = spellTemplate(world.templates, 'actor-year', 'intrastate');
+    if (tEnd && world.fits[tEnd.id]?.status === 'fitted') for (const id of ids) {
+      const a = world.actors[id]; if (!a || !a.cur.intrastate || a.conflictOver) continue;
+      if (a.conflictStart == null) a.conflictStart = y;
+      a.cur.conflict_duration = y - a.conflictStart;
+      const feats = {}; let ok = true;
+      for (const c of tEnd.covariates) { const x = featureActor(world, a, c); if (x == null) { ok = false; break; } feats[c.var] = x; }
+      if (!ok) continue;
+      const eta = linearPredictor(world.fits[tEnd.id], tEnd, feats); if (eta == null) continue;
+      if (rng() < sigmoid(eta)) { a.conflictOver = true; fired.push({ kind: 'intrastate_end', template: tEnd.id, actor: id, year: y, duration: y - a.conflictStart + 1 }); }
     }
   }
   // dyad hazards. A war nests inside a dispute (era-1870-1914/engine-7): CoW hostility level 5 is a subset of use of
@@ -771,7 +895,9 @@ export function stepYear(world, rng, opts = {}) {
       fired.push({ kind: 'mid_war', a: a.id, b: b.id, year: y }); world.dyadRecent.set(k, y);
       a.cur.at_war = 1; b.cur.at_war = 1; a.cur.mid_war = 1; b.cur.mid_war = 1;
       warPairs.push([a.id, b.id]);
-      if (world.warDurations) { const dur = drawWarDuration(world, rng); if (dur > 1) world.warSpells.set(k, dur - 1); }
+      // the war's first year is also a chance for it to be its only year: the fitted hazard is drawn at age 0, exactly
+      // as the fit's first spell-year row is labelled. One random number per fired war, as the resampled length was.
+      if (world.warDuration) openWarSpell(world, k, a.id, b.id, y, rng, fired);
     }
   }
   if (world.coalition && !opts.skipDyads) fired.push(...coalitionJoin(world, rng, warPairs, y));
@@ -780,13 +906,46 @@ export function stepYear(world, rng, opts = {}) {
   // transition rewrites the record's status from the observed outcome mix; control transfer is not simulated (the
   // competing-risks control model over claimants in docs/schema.md is still an escalation), so a simulated record
   // moves only through status while the label counts control changes too.
+  // An IMPAIRED record draws the fitted `record_reopen` hazard INSTEAD of the generic status hazard, not as well as
+  // it: the status template is fitted on every record-year including the impaired ones, so a second independent draw
+  // would count the same transition twice. What the substitution costs is stated rather than hidden — an impaired
+  // record can now only return to service, where the status hazard's outcome mix also let it move contested -> closed.
+  // A fired reopening is logged twice, once under the status template (so its probability mass and its truth stay the
+  // record layer's) and once under the reopen template, which is the unit this package scores.
   for (const entry of world.corridors ?? []) {
+    const impaired = entry.state != null && IMPAIRED.has(entry.state.status);
+    const reopen = impaired && !NO_TERM.record ? reopenHazard(world, entry) : null;
+    if (impaired && !NO_TERM.record) {
+      entry.impairAge = (entry.impairAge ?? 0) + 1;
+      if (reopen == null) continue;
+      if (rng() < reopen) {
+        const to = BASE_STATUS[entry.rec.kind] ?? 'open';
+        const t = world.templates.find(x => x.unit === CORRIDOR_UNIT[entry.rec.kind] && !x.spell);
+        fired.push({ kind: t?.event ?? entry.rec.kind, template: t?.id, record: entry.rec.id, year: y, from: entry.state.status, status: to, via: 'reopen' });
+        fired.push({ kind: 'record_reopen', template: spellTemplate(world.templates, SPELL_UNITS.record)?.id, record: entry.rec.id, year: y, from: entry.state.status, duration: entry.impairAge });
+        entry.state = { status: to, controller: entry.state.controller }; entry.impairAge = 0;
+      }
+      continue;
+    }
     const hz = corridorHazards(world, entry); if (!hz) continue;
     if (rng() < hz.p) {
       const to = drawCorridorStatus(world, entry, rng);
       fired.push({ kind: hz.event, template: hz.template, record: entry.rec.id, year: y, from: entry.state.status, status: to });
       entry.state = { status: to, controller: entry.state.controller };
+      if (IMPAIRED.has(to)) entry.impairAge = 0;
     }
+  }
+  // the territory layer (operator/termination): one hazard per unsettled record per year, the contest ending when it
+  // fires. There is no onset half — nothing in this model turns a settled territory back into a contested one — so a
+  // record that settles leaves the draw for good, and that asymmetry is the escalation this package does not close.
+  if (!NO_TERM.territory) for (const entry of world.territories ?? []) {
+    if (!entry.state || RESOLVED.has(entry.state.status)) continue;
+    const p = contestHazard(world, entry); if (p == null) { entry.age = (entry.age ?? 0) + 1; continue; }
+    if (rng() < p) {
+      fired.push({ kind: 'territory_settle', template: spellTemplate(world.templates, SPELL_UNITS.territory)?.id, record: entry.rec.id, year: y, from: entry.state.status, duration: (entry.age ?? 0) + 1 });
+      entry.state = { ...entry.state, status: 'settled' };
+    }
+    entry.age = (entry.age ?? 0) + 1;
   }
   // the war graph the next year's relevance clause reads: this year's onsets, its joiners, and any spell still open
   if (world.coalition) {
@@ -796,6 +955,18 @@ export function stepYear(world, rng, opts = {}) {
   }
   world.log.push(...fired);
   return fired;
+}
+
+/**
+ * A war that has just fired: draw its termination at age 0. If it does not fire the pair enters a spell whose start
+ * year is this one; if it does, the war is a one-year war and the ending is logged in the same step. `coalition` is 2
+ * for a fresh dyadic war — the joiners a coalition rule adds open their own pairs and carry the wider count.
+ */
+function openWarSpell(world, k, a, b, y, rng, log, coalition = 2) {
+  const p = warEndHazard(world, a, b, 0, coalition);
+  const u = rng();
+  if (p != null && u >= p) world.warSpells.set(k, { y0: y, coalition });
+  else log.push({ kind: 'war_end', a, b, year: y, start: y, duration: 1 });
 }
 
 /**
@@ -826,7 +997,7 @@ function coalitionJoin(world, rng, warPairs, y) {
         out.push({ kind: 'mid_force', a: c, b: o, year: y, via: 'coalition' });
         out.push({ kind: 'mid_war', a: c, b: o, year: y, via: 'coalition' });
         world.dyadRecent.set(k, y); warPairs.push([c, o]);
-        if (world.warDurations) { const dur = drawWarDuration(world, rng); if (dur > 1) world.warSpells.set(k, dur - 1); }
+        if (world.warDuration) openWarSpell(world, k, c, o, y, rng, out);
       }
     }
   }

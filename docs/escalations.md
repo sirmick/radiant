@@ -512,6 +512,89 @@ The published forward run was regenerated at the same settings and is **byte-ide
 
 **Test that decides it.** Each template fitted with n ≥ 100 spell-years and holdout AUC ≥ 0.6 on ≥1946; simulated war-spell length distribution within ±30% of the panel's (mean 3.0y, 33% one-year) *and* 1950–2000 `mid_war` exp/obs not worse than the baseline (the guard that failed in package 2); Suez 1956–57 and 1967–75, Hormuz 1984–88, Iran–Iraq 1980–88 reproduced as the modal termination decade in as-of runs from 1957/1968/1985/1982.
 
+**Status:** partial (2026-09-07). Three of the four terminations are fitted, simulated, scored and left **on**; the fourth — the war spell — is fitted, simulated, scored and left **off**, because it fails the package's own package-2 guard. Every number below is reproducible from the committed tree.
+
+**Implemented as.** One shared module, `src/engine/termination.js`, imported by `scripts/lib/fit.mjs` (over the panel) and `src/engine/core.js` (over the simulated world), the same construction the corridor and presence layers use. Four templates on three new units plus one new sample filter:
+
+| template | unit | sample | n / endings | holdout AUC |
+|---|---|---|---|---|
+| `war_end` | `war-year` | merged dyadic hostlev-5 spells, CoW MID 3.02 | 1,041 / 407 | **0.612** (≥ 1946) |
+| `intrastate_end` | `actor-year`, `sample.flag: intrastate` | runs of the panel's UCDP conflict flag | 1,550 / 249 | **0.734** (≥ 1985) |
+| `record_reopen` | `record-year` (both record kinds) | impaired corridor/chokepoint-years 1869–1945 | 185 / 16 | **0.742** (≥ 1930) |
+| `contest_settle` | `territory-year` | unsettled territory-years, `data/territories.yaml` | 1,577 / 22 | **0.646** (≥ 1946) |
+
+The spell convention is the record layer's, not `lead: 1`: a row's covariates are the state the year **opens** in, the label is "the spell ends during the year", and a spell's first year (age 0) can be its last — which is exactly what the engine does when a war fires and draws its termination in the same step. A spell whose end the source never observes is right-censored and its last row dropped.
+
+**Engine.** `warLeft` and the resampled run length are gone. A running war now draws `war_end` each year with its own duration-so-far in it; a war already running at as-of is seeded from the observed record with its real start year (the old mechanism gave it a fresh residual). An internal conflict's typed `1 + U{0..5}` is replaced by `intrastate_end`. An **impaired** corridor or chokepoint draws `record_reopen` *instead of* the generic status hazard — not as well as it, because the status template is fitted on every record-year including the impaired ones and a second draw would count one transition twice — and a fired reopening is logged twice, once under the status template so its mass and truth stay the record layer's, once under the reopen template. **Territories enter the engine for the first time**: `createWorld` carries the records whose dated history has opened by as-of and settles them through `contest_settle`. Four switches, one per ending (`ENGINE_ABLATE=war_duration|intrastate_end|record_reopen|contest_settle`), plus `WAR_DURATION_ON=1` to run the candidate war spell without editing the data.
+
+**Deviations from the package as written**, all four forced by the data and all four measured:
+
+1. **`chokepoint_reopen` is `record_reopen`, over both record kinds, on 1869–1945.** Chokepoints alone give 31 impaired record-years inside the window where the hand record layer is complete — below the fitter's own n ≥ 50 floor. On the full 1869–2026 record they give 128, but 86 of those are one record sitting `closed` from 1939 to 2025 because nothing has ever added its post-war reopening, so the full-record base rate (9.4%) is an artefact of a missing history rather than a measurement, and a hazard fitted on it reopens straits an order of magnitude too slowly. Pooling the two kinds is the mechanism as well as the sample: a cut rail line and a closed strait are the same process — the thing stops carrying traffic and later carries it again.
+2. **`contest_settle`'s sample is every *unsettled* territory-year, not the `contested_active` ones.** The literal sample is 21 rows and **0** endings: `contested_active` appears only on live 2014–2026 records. `settled` is the only resolved status — `annexed` is a change of holder and the records show it cycling (one record is annexed three times before it is settled once), so treating annexation as a resolution would score a conquest as an ending.
+3. **Four of `war_end`'s five stated covariates do not survive**, and the reasons are in `data/templates.yaml` under `candidates:`. The capability ratio deletes 87 of 1,041 spell-years and those rows carry **84 of the 407 endings** (an 82% event rate against 29% elsewhere), because `build-panel.mjs` nulls `cinc` for occupied actor-years and the occupied actor-years of 1940–45 are exactly where the war spells of 1945 end — the `transit_gdp_growth_mean` failure on `corridor_status` again. `major_power_any` costs 0.098 of holdout AUC. `joint_democracy` is the largest available gain (+0.049) at the *wrong sign* on a sample it shrinks by 73 endings. Third-party presence (`patron_presence`) has the predicted sign and no discrimination. What is fitted is duration plus `war_coalition`, a spell-level fact the package did not ask for: whether the pair's war is part of a wider coalition.
+4. **The GDP shock is lagged one year, and that is the finding.** Contemporaneous growth in the year a war ends fits at −0.66 against a prior of +0.3 with in-sample AUC 0.639 — "wars end in good years", which is the recovery being dated to the year the fighting stopped. Lagging it flips the sign to the prior's and costs the in-sample AUC. That is a covariate that was partly its own label.
+
+**Test result** (`node scripts/analysis/termination.mjs --runs 400`).
+
+*(a) Each template fitted with n ≥ 100 spell-years and holdout AUC ≥ 0.6 on ≥ 1946.* All four clear n ≥ 100. Three clear the AUC bar at the split the package names; `record_reopen` cannot be evaluated there at all — its window ends in 1945 because that is where `scripts/backtest.mjs` already says the record layer is complete, and on the full record the ≥ 1946 test half holds 4 events, which `fit.mjs` reports as `insufficient events`. It is reported at 1930 (0.742) and 1943 (0.656) instead.
+
+| | n / endings | holdout | package's bar |
+|---|---|---|---|
+| `war_end` | 1,041 / 407 | 0.612 (≥ 1946, 270 rows / 80 endings) | **pass, and only just — see below** |
+| `intrastate_end` | 1,550 / 249 | 0.734 (≥ 1985) | **pass** |
+| `record_reopen` | 185 / 16 | 0.742 (≥ 1930), 0.656 (≥ 1943) | **not evaluable at ≥ 1946** |
+| `contest_settle` | 1,577 / 22 | 0.646 (≥ 1946, 751 rows / 10 endings) | **pass** |
+
+`intrastate_end` is the only one that discriminates wherever it is cut (0.706 / 0.734 / 0.735 at splits 1970 / 1985 / 2000). **`war_end` does not**: the same fitted pair scores 0.468 / 0.461 / 0.499 / **0.612** / 0.504 / 0.550 at splits 1900 / 1914 / 1939 / 1946 / 1960 / 1975, and its in-sample AUC is 0.507 on 1,041 rows. The one split at which it clears 0.6 is the one the package asked for. That is recorded under `rejected: war_end_discrimination` rather than reported as a pass: what the template is for is the baseline hazard and its duration shape, and the ≥ 0.6 is one split's worth of ordering.
+
+*(b) Simulated war-spell length within ±30% of the panel's.* `WAR_DURATION_ON=1`, as-of 1920, 400 runs: **mean 3.06 years, 36% one-year**, against the panel's 3.02 / 49% over all years and the package's stated 3.0 / 33%. Both inside ±30%. The mechanism this replaces — a length resampled from the panel's run-length distribution — gave 3.91 / 24% and was rejected on exactly this. As-of 1970 the engine gives 2.53 / 42% against a 20-year-windowed panel figure of 2.39 / 57%. Internal conflicts: engine 2.55 / 45% against a 20-year-windowed panel 3.02 / 47% (the engine's spells are measured inside a 20-year horizon, so the panel has to be truncated the same way to be comparable at all).
+
+*(c) 1950–2000 `mid_war` exp/obs not worse than the baseline — the guard that failed in package 2.* **It fails, and that is why the war spell ships off.** With the fitted hazard driving war spells: 1950–2000 `mid_war` exp/obs **2.65 → 3.57** and `mid_force` **1.17 → 1.43**; pooled 1870–2010 `mid_war` skill −0.010 → −0.064 and `mid_force` +0.084 → +0.044. The pooled *calibration* improves (`mid_war` 0.80 → 1.10, `mid_force` 0.78 → 0.96 — the model under-predicted wars over the whole window and now does not), so this is a genuine trade and not a bug; but the guard is a guard. The mechanism therefore stays `duration.status: candidate`, exactly as the resampled version did, with the numbers in `data/templates.yaml` under `rejected: war_end` and both ablation runs written to `scores/backtest-*-abl-war_duration_on_1.json`. With it off, the guard passes: **1950–2000 `mid_war` 2.65 → 2.62, `mid_force` 1.17 → 1.17**.
+
+*(d) The four named cases, as-of runs with coefficients refit on labels ≤ as-of.* All four reproduce the observed decade as the modal one, two of them narrowly:
+
+| case | observed | modal | observed decade's share | median |
+|---|---|---|---|---|
+| Suez reopen, as-of 1956 | 1957 | **1950s** | 40% (next: 1960s 34%) | 1960 |
+| Suez reopen, as-of 1968 | 1975 | **1970s** | 54% (next: 1960s 14%) | 1972 |
+| Hormuz reopen, as-of 1985 | 1988 | **1980s** | 36% (next: 1990s 31%) | 1990 |
+| Iran–Iraq war ends, as-of 1982 | 1988 | **1980s** | 99% | 1983 |
+
+The package writes the first as "as-of 1957"; at as-of 1957 the canal is already open (it reopened in April), so the run starts from 1956, the last year it closes. Suez 1956 and Hormuz 1985 are separated from the next decade by 6 and 5 points of 400 runs — read them as ties that fall the right way, not as sharp results. The war case is sharp because the spell is seeded at age 2 with a hazard of 0.47.
+
+**Scores: before → after** (`node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all`; exp/obs · Brier skill · AUC). "before" is the committed baseline; "after" is the published run with `intrastate_end`, `record_reopen` and `contest_settle` on and the war spell off.
+
+| template | before | after |
+|---|---|---|
+| mid_force | 0.78 · +0.084 · 0.765 | 0.77 · +0.088 · 0.765 |
+| mid_war | 0.80 · −0.010 · 0.770 | 0.80 · −0.009 · 0.770 |
+| chokepoint_status | 0.96 · +0.114 · 0.724 | 0.95 · **+0.066** · 0.695 |
+| corridor_status | 1.06 · +0.045 · 0.634 | 1.05 · **+0.108** · 0.699 |
+| democratize_step | 0.92 · −0.212 · 0.525 | 0.92 · −0.216 · 0.527 |
+| autocratic_closure | 0.68 · −0.164 · 0.583 | 0.67 · −0.163 · 0.581 |
+| intrastate_onset | 1.01 · +0.121 · 0.742 | 1.05 · +0.122 · 0.747 |
+| leader_exit | 0.85 · −0.819 · 0.737 | 0.85 · −0.821 · 0.737 |
+| irregular_exit | 2.01 · −0.441 · 0.695 | 2.01 · −0.437 · 0.697 |
+| coup_attempt | 0.75 · +0.173 · 0.750 | 0.75 · +0.171 · 0.749 |
+| democratic_deepening | 1.38 · −0.052 · 0.692 | 1.41 · **−0.103** · 0.676 |
+| **intrastate_end** (new) | — | 1.00 · +0.119 · 0.736 |
+| **record_reopen** (new) | — | 1.13 · +0.082 · 0.718 |
+| **contest_settle** (new) | — | 0.84 · +0.063 · 0.798 |
+| `war_end` (candidate, `WAR_DURATION_ON=1`) | — | 1.12 · −0.002 · 0.785 |
+
+1950–2000 (the guard's window): `mid_war` 2.65 → **2.62**, `mid_force` 1.17 → 1.17, `intrastate_onset` 1.04 → 1.07, `coup_attempt` 0.76 → 0.77, `democratic_deepening` 1.14 · +0.05 → 1.18 · −0.006. New rows: `intrastate_end` 0.95 · +0.110 · 0.726, `contest_settle` 2.00 · +0.083 · 0.923.
+
+**The layer switches off cleanly.** `ENGINE_ABLATE=war_duration,intrastate_end,record_reopen,contest_settle` reproduces the committed baseline **exactly** on all eleven pre-existing templates — 0.78 · +0.084 · 0.765 on `mid_force`, 0.96 · +0.114 · 0.724 on `chokepoint_status`, and so on, to three decimals. Nothing in this package changes a number except through a mechanism you can name and turn off.
+
+**Two costs, attributed by ablation rather than guessed.**
+
+- **`chokepoint_status` loses 0.048 of skill and `corridor_status` gains 0.063**, and `ENGINE_ABLATE=record_reopen` shows both are entirely the reopen substitution (chokepoint +0.123 / corridor +0.072 with it off, against +0.066 / +0.108 with it on). The reason is the substitution's own logic: an impaired record's transition hazard was the status template's 3.2% base rate and is now the reopen template's 8.6% front-loaded one, which is what the record layer says actually happens to impaired records — the exp/obs stays near 1 (0.96 → 0.95, 1.06 → 1.05) and what moves is the ordering of nine chokepoint records over eight as-of years. On n = 36 rows that is two records changing places. Reported, not defended.
+- **`democratic_deepening` falls 0.052 → 0.103 of negative skill on 169 rows / 29 events**, and it is *not* attributable: `ENGINE_ABLATE=intrastate_end` gives −0.108 and `ENGINE_ABLATE=record_reopen` −0.076, both worse than one of the two on its own. Any mechanism that consumes a random number moves this template, which is the honest description of a 29-event sample.
+
+**What the package surfaced that it did not ask about: `data/territories.yaml` has the corridor layer's disease.** Twelve records are "unsettled contests" in 2025 and seven of them are contests history closed decades ago — the record's history simply stops at its last status change and no row was ever added for the settlement. That biases `contest_settle`'s base rate down (22 settlements over 1,577 territory-years) and it is why the 2026 direction check assigns 40-56% forty-year settlement probabilities to territories that are not disputed by anyone. The same escalation as `era-1914-1945/corridors-7 (b)`, on the other record layer.
+
+**The 2026 direction check** (published engine, 400 runs × 40 years): the two live impaired sea records reopen with P = 0.79 and 0.73, both with a median year of 2029-2030; the cut pipeline reopens with P = 0.80 by 2029; and the record that closed in 1939 and was never reopened in the data sits at **P = 0**, because 86 years of impairment take `z(impair_duration)` off the end of the fitted range. That last number is the data hole made visible rather than a forecast.
+
 ## operator / derived-polarity — replace hard-coded era dates with derived world state (package 9)
 
 **Adds.** World-level derived variables computed each year in both `build-panel.mjs` and `core.js` (shared code): `polarity` from capability shares (unipolar if the top actor holds > 2× the second; bipolar if two actors each exceed a threshold and the third is far behind; multipolar otherwise), `hegemon` = the top actor, `promotion_era` = hegemon is a democracy (regime ≥ 2) and its aid/GNI-weighted conditionality is active, `info_rate` from the observed logistic fit of `info_access` rather than a 1985 switch. `bipolar`, `unipolar_us`, `cold_war`, `anticoup_norm` become derived aliases; `great_game` = superpower client × `polarity == bipolar`.

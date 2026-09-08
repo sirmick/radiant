@@ -5,6 +5,7 @@
 // Output: { events: [ {kind, year, actor|a,b, ...} ], counts: {kind: n} }
 import { writeFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap } from './lib/hist.mjs';
+import { warSpells } from '../src/engine/termination.js';
 
 const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
 const H = 'data/raw/hist/'; const events = [];
@@ -73,7 +74,7 @@ function occupationCause(actor, year) {
 // inside mid_force instead of being disjoint from it.
 {
   const disp = new Map();
-  for (const r of readCsv(H + 'midb_3.02.csv')) { const y = +r.styear, id = code(r.ccode, y); if (!id) continue; (disp.get(r.dispnum) ?? disp.set(r.dispnum, []).get(r.dispnum)).push({ id, side: r.sidea, y, hl: +r.hostlev }); }
+  for (const r of readCsv(H + 'midb_3.02.csv')) { const y = +r.styear, id = code(r.ccode, y); if (!id) continue; (disp.get(r.dispnum) ?? disp.set(r.dispnum, []).get(r.dispnum)).push({ id, side: r.sidea, y, ey: +r.endyear, hl: +r.hostlev }); }
   for (const [num, ps] of disp) {
     const A = ps.filter(p => p.side === '1'), B = ps.filter(p => p.side === '0');
     const multilateral = ps.length > 2;
@@ -81,7 +82,14 @@ function occupationCause(actor, year) {
       if (a.id === b.id) continue;
       const hl = Math.min(a.hl, b.hl); if (hl < 4) continue;
       const y = Math.max(a.y, b.y);
-      const base = { a: a.id, b: b.id, year: y, dispnum: num, hostlev: hl, n_participants: ps.length, multilateral, source: 'CoW MID 3.02 (dyad hostility = min of the pair, onset = max of the pair)' };
+      // the year the pair's dispute stops being a pair dispute: the EARLIER of the two exits, by the same argument
+      // that makes the onset the later of the two entries — neither side can be engaged after the less engaged of the
+      // two has gone. Two rows in midb 3.02 carry an endyear before their own styear (dispnum 2004, hostlev 1 and 2,
+      // outside this sample anyway); the max() clamps them rather than emitting a negative spell.
+      // This is what the termination templates read (operator/termination, package 8): src/engine/termination.js
+      // merges a pair's overlapping spans into the spell the engine carries as `at_war`.
+      const end = Math.max(y, Math.min(a.ey, b.ey));
+      const base = { a: a.id, b: b.id, year: y, end, dispnum: num, hostlev: hl, n_participants: ps.length, multilateral, source: 'CoW MID 3.02 (dyad hostility = min of the pair, onset = max of the pair, end = min of the pair)' };
       events.push({ kind: 'mid_force', ...base });
       if (hl >= 5) events.push({ kind: 'mid_war', ...base });
     }
@@ -98,6 +106,41 @@ function occupationCause(actor, year) {
     if (t === 2) for (const a of as) for (const b of bs) events.push({ kind: 'interstate_onset', a, b, year: y, intensity: +r.intensity_level, source: 'UCDP/PRIO 25.1' });
     if (t === 3 || t === 4) for (const a of as) events.push({ kind: 'intrastate_onset', actor: a, year: y, intensity: +r.intensity_level, territory: r.territory_name || null, source: 'UCDP/PRIO 25.1' });
   }
+}
+
+// ---- terminations (operator/termination, package 8): the dated END of a spell the engine carries as state.
+// These are derived from the same rows the onsets are derived from — a spell's last year is an observation, and until
+// this package nothing in the event log recorded one, so no template could be scored on an ending.
+{
+  // internal conflict: the last year of each run of UCDP-active years per actor. The run, not the conflict episode:
+  // the panel's `intrastate` is an actor-year flag over every type-3/4 conflict the actor is in, and it is that flag
+  // the engine sets and clears, so the spell it ends must be the same union.
+  const active = new Map();   // actor -> Set(year)
+  let last = 0;
+  for (const r of readCsv(H + 'UcdpPrioConflict_v25_1.csv')) {
+    const y = +r.year, t = +r.type_of_conflict; last = Math.max(last, y);
+    if (t !== 3 && t !== 4) continue;
+    for (const a of r.gwno_a.split(',').map(s => gw(s.trim(), y)).filter(Boolean)) (active.get(a) ?? active.set(a, new Set()).get(a)).add(y);
+  }
+  let nEnd = 0;
+  for (const [a, ys] of active) {
+    const sorted = [...ys].sort((p, q) => p - q);
+    for (let i = 0; i < sorted.length; i++) {
+      const y = sorted[i];
+      if (ys.has(y + 1)) continue;                 // the run continues
+      if (y >= last) continue;                     // still running when the source stops: right-censored, not an ending
+      events.push({ kind: 'intrastate_end', actor: a, year: y, source: `UCDP/PRIO 25.1 (last year of the actor's run of active type-3/4 conflict years; runs open at ${last} are censored)` });
+      nEnd++;
+    }
+  }
+  // interstate war: the last year of each merged dyadic war spell (CoW MID hostlev 5). A spell reaching the source's
+  // own last year has no observed end and is not emitted.
+  let nWar = 0;
+  for (const [k, spells] of warSpells(events, { kind: 'mid_war' })) {
+    const i = k.indexOf('|'); const a = k.slice(0, i), b = k.slice(i + 1);
+    for (const s of spells) { if (s.censored) continue; events.push({ kind: 'war_end', a, b, year: s.y1, start: s.y0, duration: s.y1 - s.y0 + 1, source: "CoW MID 3.02 (merged dyadic hostlev-5 spells; a spell reaching the source's own last year has no observed end and is not emitted)" }); nWar++; }
+  }
+  console.log(`terminations: ${nEnd} intrastate_end, ${nWar} war_end`);
 }
 
 // ---- hand events pass through, after checking every corridor/chokepoint/territory id resolves to a record

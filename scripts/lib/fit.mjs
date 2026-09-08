@@ -11,7 +11,9 @@ import { readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap } from './hist.mjs';
 import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked,
   CORRIDOR_UNIT, corridorFirstYear, corridorStateAt, corridorTransitionYears, corridorFeatures, corridorIndex, corridorStake, outsideDefault } from '../../src/engine/core.js';
-import { PRESENCE, presenceIndex, patronMap, patronFeatures, guarantorLevel, guarantorFall } from '../../src/engine/presence.js';
+import { PRESENCE, presenceIndex, patronMap, patronFeatures, guarantorLevel, guarantorFall, hostLevel } from '../../src/engine/presence.js';
+import { IMPAIRED, RESOLVED, SPELL_UNITS, warSpells, territoryFirstYear, territoryStateAt, endYears, spellAge,
+  warEndFeatures, contestFeatures, reopenFeatures } from '../../src/engine/termination.js';
 
 export const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -24,15 +26,16 @@ export function loadFitInputs() {
   const templates = Y('data/templates.yaml').templates;
   const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pairs;
   const corridors = Y('data/corridors.yaml');
+  const territories = Y('data/territories.yaml');
   const presence = Y('data/presence.yaml');
   const actors = loadActors(); const code = makeCodeMap(actors);
   const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
   const pacts = new Set();
   for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
-  return { panel, events, templates, contiguity, pacts, corridors, successors, presence };
+  return { panel, events, templates, contiguity, pacts, corridors, territories, successors, presence };
 }
 
-export function createFitter({ panel, events, templates, contiguity, pacts, corridors = [], successors = {}, presence = null }) {
+export function createFitter({ panel, events, templates, contiguity, pacts, corridors = [], territories = [], successors = {}, presence = null }) {
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
@@ -81,6 +84,10 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
     milper_share: (a, y) => { const m = pv(a, 'milper', y), p = pv(a, 'tpop', y); return m != null && p ? (m * 1e3) / p : null; },
     leader_exit_recent: (a, y) => win5ev('leader_exit', a, y),
     regime_change: (a, y) => (hasEvent('regime_change', a, y) ? 1 : 0),
+    // operator/termination: years the actor's internal-conflict spell has already run when year y opens. Counted back
+    // over the panel's own `intrastate` column, which is the flag the engine sets and clears, so the duration fitted
+    // and the duration simulated are the same quantity. Past years only — it cannot see the row's label.
+    conflict_duration: (a, y) => spellAge((yy) => (pv(a, 'intrastate', yy) ?? 0) > 0, y),
   };
   function rawValue(actor, c, y) {
     const v = c.var;
@@ -102,6 +109,12 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
         if (!vars.live?.[y - Y0]) continue;
         if (t.sample?.regime_max != null && !(pv(id, 'regime', y) <= t.sample.regime_max)) continue;
         if (t.sample?.regime_min != null && !(pv(id, 'regime', y) >= t.sample.regime_min)) continue;
+        // a spell template's sample is the years the spell is running (operator/termination): `sample.flag` names the
+        // panel column that IS the state, and the row exists only while it is on.
+        if (t.sample?.flag != null && !((pv(id, t.sample.flag, y) ?? 0) > 0)) continue;
+        // ... and the last year the flag's own source covers is right-censored: a run still on when the dataset stops
+        // may or may not have ended there, and keeping it as a non-ending would make every long conflict look finished.
+        if (t.sample?.flag != null && y >= (panel.meta.vars?.[t.sample.flag]?.last ?? Infinity)) continue;
         const feats = {}; let ok = true;
         for (const c of t.covariates) { const x = rawValue(id, c, y); if (x == null) { ok = false; break; } feats[c.var] = x; }
         if (!ok) continue;
@@ -154,6 +167,100 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
     return rows;
   }
 
+  // ---------------------------------------------------------------- the termination layer (operator/termination)
+  // Three spell-year samples, all built through src/engine/termination.js so the engine draws from the same code.
+  // The convention is the record layer's: the covariates are the state the year OPENS in, the label is "the spell ends
+  // during the year", and a spell whose end is not observed (the source stops while it is still running) contributes
+  // its years as non-endings except the last, which is dropped rather than scored.
+  const WAR_SPELLS = warSpells(events, { kind: 'mid_war' });
+
+  /** The look the termination blocks read the panel through — the fitter's twin of src/engine/core.js:worldLook. */
+  const termLook = (y) => ({
+    year: y,
+    live: (id) => panel.actors[id]?.live?.[y - Y0] === 1,
+    cinc: (id) => pv(id, 'cinc', y),
+    regime: (id) => pv(id, 'regime', y),
+    logGdpPc: (id) => pv(id, 'log_gdp_pc', y),
+    gdpGrowth: (id) => pv(id, 'gdp_growth', y),
+    gdpGrowthPrev: (id) => pv(id, 'gdp_growth', y - 1),
+    greatPower: (id) => pv(id, 'great_power', y),
+    atWar: (id) => pv(id, 'at_war', y),
+    allied: (a, b) => pacts.has(`${pairKey(a, b)}|${y}`),
+    hostPresence: (id) => (PRES ? hostLevel(PRES, id, y) : null),
+    contiguous: (a, b) => (y >= 1886 ? isContiguous(a, b, y) : null),
+    patron: (a, b) => patronFeatures({ patrons: patronsAtYear(y), allied: (p, h) => pacts.has(`${pairKey(p, h)}|${y}`), major: (id) => (pv(id, 'great_power', y) ?? 0) > 0, a, b }),
+  });
+
+  function buildWarSpellRows(t) {
+    const rows = []; const [w0, w1] = t.window; const yEnd = Math.min(w1, panel.meta.y1);
+    for (const [k, spells] of WAR_SPELLS) {
+      const i = k.indexOf('|'); const a = k.slice(0, i), b = k.slice(i + 1);
+      for (const s of spells) {
+        const last = s.censored ? s.y1 - 1 : s.y1;   // a censored spell's final year has no observed answer
+        for (let y = Math.max(w0, s.y0); y <= Math.min(yEnd, last); y++) {
+          const f = warEndFeatures({ a, b, age: y - s.y0, coalition: s.n_participants, look: termLook(y) });
+          const feats = {}; let ok = true;
+          for (const c of t.covariates) { let x = f[c.var]; if (x == null) x = outsideDefault(c, y); if (x == null) { ok = false; break; } feats[c.var] = x; }
+          if (!ok) continue;
+          rows.push({ unit: k, a, b, year: y, feats, y: y === s.y1 && !s.censored ? 1 : 0 });
+        }
+      }
+    }
+    return rows;
+  }
+
+  /**
+   * Impaired record-years: the sample `record_reopen` terminates. `t.kinds` selects which record kinds are in it —
+   * both, because a strait and a rail line that have been cut are the same process returning to service, and because
+   * chokepoints alone give 31 spell-years inside the window where the hand record layer is complete.
+   */
+  function buildReopenRows(t) {
+    const rows = []; const [w0, w1] = t.window; const yEnd = Math.min(w1, panel.meta.y1);
+    const kinds = new Set(t.kinds ?? Object.keys(CORRIDOR_UNIT).filter(k => CORRIDOR_UNIT[k] === t.unit));
+    for (const rec of corridors) {
+      if (!kinds.has(rec.kind)) continue;
+      const first = corridorFirstYear(rec, w0); if (first == null) continue;
+      const open = (y) => (y <= first ? corridorStateAt(rec, y) : corridorStateAt(rec, y - 1));
+      const close = (y) => corridorStateAt(rec, y);
+      const ends = endYears({ open: (y) => open(y)?.status ?? null, close: (y) => close(y)?.status ?? null, inSpell: (s) => IMPAIRED.has(s), from: first, to: yEnd });
+      let age = 0;
+      for (let y = first; y <= yEnd; y++) {
+        const state = open(y);
+        if (!state || !IMPAIRED.has(state.status)) { age = 0; continue; }
+        const f = { ...reopenFeatures({ age, corridor: corridorFeatures(rec, state, panelLook(y)) }) };
+        age++;
+        const feats = {}; let ok = true;
+        for (const c of t.covariates) { let x = f[c.var]; if (x == null) x = outsideDefault(c, y); if (x == null) { ok = false; break; } feats[c.var] = x; }
+        if (!ok) continue;
+        rows.push({ unit: rec.id, year: y, feats, y: ends.has(y) ? 1 : 0 });
+      }
+    }
+    return rows;
+  }
+
+  /** Unsettled territory-years: the sample `contest_settle` terminates (data/territories.yaml dated histories). */
+  function buildTerritoryRows(t) {
+    const rows = []; const [w0, w1] = t.window; const yEnd = Math.min(w1, panel.meta.y1);
+    for (const rec of territories) {
+      const first = territoryFirstYear(rec); if (first == null) continue;
+      const start = Math.max(first, w0);
+      const open = (y) => (y <= first ? territoryStateAt(rec, y) : territoryStateAt(rec, y - 1));
+      const ends = endYears({ open: (y) => open(y)?.status ?? null, close: (y) => territoryStateAt(rec, y)?.status ?? null, inSpell: (s) => !RESOLVED.has(s), from: start, to: yEnd });
+      let age = 0;
+      for (let y = start; y <= yEnd; y++) {
+        const state = open(y);
+        if (!state || RESOLVED.has(state.status)) { age = 0; continue; }
+        const f = contestFeatures({ rec, state, age, look: termLook(y) });
+        age++;
+        const feats = {}; let ok = true;
+        for (const c of t.covariates) { let x = f[c.var]; if (x == null) x = outsideDefault(c, y); if (x == null) { ok = false; break; } feats[c.var] = x; }
+        if (!ok) continue;
+        rows.push({ unit: rec.id, year: y, feats, y: ends.has(y) ? 1 : 0 });
+      }
+    }
+    return rows;
+  }
+
   // the dyad feature block does not depend on which dyadic template asks for it, so it is built once per window and
   // relabelled per template (mid_force and mid_war share 69k rows).
   const dyadCache = new Map();
@@ -201,7 +308,13 @@ export function createFitter({ panel, events, templates, contiguity, pacts, corr
     return dyadFeatureRows(w0, w1).map(r => ({ unit: r.unit, year: r.year, feats: r.feats, y: hasDyadEvent(t.event, r.a, r.b, r.year) ? 1 : 0 }));
   }
   const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
-  const rowsOf = (t) => t.unit === 'dyad-year' ? buildDyadRows(t) : RECORD_UNITS.has(t.unit) ? buildRecordRows(t) : buildActorRows(t);
+  const rowsOf = (t) =>
+    t.unit === SPELL_UNITS.war ? buildWarSpellRows(t)
+      : t.unit === SPELL_UNITS.territory ? buildTerritoryRows(t)
+        : t.unit === SPELL_UNITS.record ? buildReopenRows(t)
+          : t.unit === 'dyad-year' ? buildDyadRows(t)
+            : RECORD_UNITS.has(t.unit) ? buildRecordRows(t)
+              : buildActorRows(t);
   const rowCache = new Map();
   function rowsFor(t) {
     if (rowCache.has(t.id)) return rowCache.get(t.id);
