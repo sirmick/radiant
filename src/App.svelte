@@ -11,7 +11,6 @@
   let varId = $state('h_regime');
   // auto-switch the regime view across the history/forecast boundary
   const fcFrom = $derived(ensemble?.meta.from ?? 2026);
-  $effect(() => { if ((view === 'politics' || view === 'forecast') && varId === 'h_regime' && year >= fcFrom) varId = 'fc_regime_mean'; else if (view === 'politics' && varId === 'fc_regime_mean' && year < fcFrom) varId = 'h_regime'; });
   let year = $state(2035);
   let playing = $state(false);
   const Y0 = 1870, Y1 = 2066;
@@ -26,11 +25,11 @@
   let view = $state('politics');
   let advanced = $state(false);
   const VIEWS = {
-    politics: { label: 'Politics', layers: { territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false }, variable: (y) => (y >= 2026 ? 'fc_regime_mean' : 'h_regime') },
+    politics: { label: 'Politics', layers: { territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false }, variable: () => 'h_regime' },
     power:    { label: 'Power',    layers: { territories: false, corridors: false, alliances: 'major', conflicts: false, presence: true, field: 'influence', labels: false, glyphs: false }, variable: () => 'h_cinc' },
     conflict: { label: 'Conflict', layers: { territories: true, corridors: true, alliances: false, conflicts: true, presence: false, field: 'conflict', labels: false, glyphs: false }, variable: () => 'h_at_war' },
     routes:   { label: 'Routes',   layers: { territories: false, corridors: true, alliances: false, conflicts: false, presence: false, field: 'routes', labels: false, glyphs: false }, variable: () => 'h_energy_twh' },
-    forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'fc_regime_mean', year: 2036 },
+    forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'h_regime', year: 2036 },
   };
   function applyView(v) { view = v; const V = VIEWS[v]; if (V.year && year < 2026) year = V.year; for (const k of Object.keys(V.layers)) layers[k] = V.layers[k]; const want = V.variable(year); if (mapVars.some(x => x.id === want)) varId = want; }
   let selected = $state(null);

@@ -45,7 +45,7 @@ export function actualWithin(news, id, template, asOf, years) {
 export function forecastVariables(fc) {
   if (!fc) return [];
   const vars = fc.meta.templates.filter(t => t.unit === 'actor-year').map(t => ({ id: `fc_${t.id}`, group: 'forecast', label: `P(${t.label})`, unit: 'within the horizon', kind: 'forecast', scope: 'actor', template: t.id, display: { map: true, format: '.0%' } }));
-  vars.unshift({ id: 'fc_regime_mean', group: 'forecast', label: 'Expected regime level (0 closed … 3 liberal)', unit: 'ensemble mean', kind: 'forecast', scope: 'actor', display: { map: true, format: '.2f' } });
+  vars.unshift({ id: 'fc_regime_mean', group: 'forecast', label: 'Regime level, ensemble mean (0 closed … 3 liberal)', unit: 'mean over runs; see Regime for the modal state', kind: 'forecast', scope: 'actor', display: { map: true, format: '.2f' } });
   vars.push({ id: 'fc_regime_uncertainty', group: 'forecast', label: 'Regime uncertainty (entropy)', unit: 'bits', kind: 'forecast', scope: 'actor', display: { map: true, format: '.2f' } });
   return vars;
 }
@@ -104,6 +104,42 @@ export function historyAt(h, variable, year) {
   }
   return out;
 }
+/**
+ * One series across the seam. Before the panel ends: the observed value, carried forward where a source stopped early,
+ * with `conf` fading by staleness. After it, with a forecast: the ensemble's modal category (regime) or median (continuous)
+ * for that year, `conf` = the modal share for a category, a slow fade with lead for a median; series the ensemble does not
+ * carry stay at their last observation and fade. Nothing switches palette at the forecast start — the colour only washes.
+ */
+export function seriesAt(h, fc, variable, year) {
+  const out = {}; if (!h) return out;
+  const y = Math.round(year); const i = y - h.meta.y0; if (i < 0) return out;
+  const v = variable.var; const fade = (stale) => (stale <= 0 ? 1 : Math.max(0.3, 1 - 0.12 * stale));
+  const lastAt = (arr, upto) => { for (let j = Math.min(upto, arr.length - 1); j >= 0; j--) if (arr[j] != null) return [arr[j], j]; return [null, -1]; };
+  if (i <= h.meta.y1 - h.meta.y0) {
+    const liveIds = new Set(Object.entries(h.actors).filter(([, a]) => a.live[i]).map(([id]) => id));
+    for (const [id, a] of Object.entries(h.actors)) {
+      if (!a.live[i]) continue;
+      const key = liveIds.has(a.map_to) ? null : (a.map_to ?? id); if (!key || !a[v]) continue;
+      const [val, j] = lastAt(a[v], i); if (val == null) { out[key] = { value: null, year, actor: id, name: a.name, history: true }; continue; }
+      out[key] = { value: val, year, actor: id, name: a.name, history: true, observed: h.meta.y0 + j, stale: i - j, conf: fade(i - j) };
+    }
+    return out;
+  }
+  if (!fc) return out;
+  const k = Math.min(fc.meta.horizon - 1, Math.max(0, y - fc.meta.from));
+  for (const [id, a] of Object.entries(fc.actors)) {
+    const ha = h.actors[id]; const name = ha?.name ?? id;
+    if (v === 'regime' && a.regime?.[k]) { const d = a.regime[k]; const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, conf: d[m], dist: d }; continue; }
+    const tri = a[v]?.[k];
+    if (Array.isArray(tri)) { out[id] = { value: tri[1], year, actor: id, name, forecast: true, lo: tri[0], hi: tri[2], conf: Math.max(0.5, 1 - 0.015 * (y - fc.meta.from)) }; continue; }
+    if (!ha?.[v]) continue;
+    const [val, j] = lastAt(ha[v], ha[v].length - 1); if (val == null) continue;
+    out[id] = { value: val, year, actor: id, name, carried: true, observed: h.meta.y0 + j, stale: y - (h.meta.y0 + j), conf: fade(y - (h.meta.y0 + j)) };
+  }
+  return out;
+}
+/** A colour washed toward the map's neutral by how little we know: conf 1 = the colour, 0 = mostly grey. */
+export const washed = (color, conf) => (color == null ? null : conf == null || conf >= 1 ? color : d3.interpolateLab(color, '#3a4250')((1 - conf) * 0.8));
 /** Latest history entry at or before `year` for a corridor/territory record; null if it does not exist yet. */
 export function statusAt(rec, year) {
   const hist = rec.history; if (!hist?.length) return { status: rec.status, controller: rec.controller, exists: true };

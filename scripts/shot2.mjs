@@ -4,7 +4,7 @@ const [,, out, year, btns = '', actor, tab, hoverXY] = process.argv;
 const b = await chromium.launch({ executablePath: '/home/mick/.cache/ms-playwright/chromium-1223/chrome-linux64/chrome', args: ['--no-sandbox'] });
 const p = await b.newPage({ viewport: { width: 1600, height: 950 } });
 p.on('pageerror', e => console.log('PAGEERROR', e.message));
-await p.goto('http://localhost:4173/', { waitUntil: 'networkidle' }); await p.waitForSelector('canvas');
+await p.goto('http://localhost:4173/' + (process.env.HASH ?? ''), { waitUntil: 'networkidle' });   // HASH='#y=2036&v=h_gdp_pc' opens a specific state await p.waitForSelector('canvas');
 if (year) { await p.locator('input[type=range]').fill(String(year)); await p.waitForTimeout(200); }
 for (const t of btns.split(',').filter(Boolean)) { await p.locator('header button', { hasText: t }).first().click(); await p.waitForTimeout(150); }
 if (actor) { await p.locator('header select').nth(1).selectOption(actor); await p.waitForTimeout(300); }

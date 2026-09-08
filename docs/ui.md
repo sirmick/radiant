@@ -15,11 +15,15 @@ A view is a preset of fill variable + layers + field. One click each; the advanc
 
 | view | fill | field | vector layers |
 |---|---|---|---|
-| Politics (default) | regime (expected regime in forecast years) | — | territories, flags · regime glyphs |
+| Politics (default) | regime, one series across the seam (see below) | — | territories, flags · regime glyphs |
 | Power | capability share | spheres of influence | great-power pacts, military presence |
 | Conflict | at war | belligerents (heat) | territories, corridors, conflict outlines and arcs |
 | Routes | primary energy | routes (open green / contested red, weighted by how many states each is load-bearing for) | corridors and chokepoints |
-| Forecast | expected regime, jumps the slider to 2036 if it is in the past | forecast hazard | flags · regime glyphs |
+| Forecast | regime, jumps the slider to 2036 if it is in the past | forecast hazard | flags · regime glyphs |
+
+## Across the seam
+
+A history variable is one series from 1870 to 2066; nothing switches palette at the forecast start. Before the panel ends it is the observed value, carried forward where a source stopped early and washed toward grey by staleness (GDP stops in 2022, so 2023–2025 are already a little pale). After it, regime is the *most likely* category in each of the 300 runs, painted in the same four colours with the modal share as saturation — a state at 90% keeps its colour, a 50/50 one goes grey. Continuous series the engine carries (GDP per head, information access) show the ensemble median with a slow wash by lead; the rest hold their last observation and fade. The hover card says which: "in 63% of runs", "23.4k median (20k–26.8k)", or "as of 2022". The ensemble mean of the regime level and its entropy remain as separate forecast variables.
 
 ## Renderer
 

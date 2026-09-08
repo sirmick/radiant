@@ -4,7 +4,7 @@
   import { loadGeometry, buildOwnerGrid, makeProjection, unproject, visible } from './geo.js';
   import { drawScene } from './render.js';
   import { buildGrid, FIELDS, evaluateField } from './influence.js';
-  import { valueAt, forecastAt, historyAt, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
+  import { valueAt, forecastAt, seriesAt, washed, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
   let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, mode = '2d', selected, onSelect } = $props();
 
@@ -45,12 +45,12 @@
   const values = $derived.by(() => {
     const out = {}; if (!variable) return out;
     if (variable.kind === 'forecast') { for (const id of Object.keys(forecast?.actors ?? {})) out[id] = forecastAt(forecast, variable, id, year, variable.template ? horizon : 0); return out; }
-    if (variable.kind === 'history') return historyAt(history, variable, year);
+    if (variable.kind === 'history') return seriesAt(history, forecast, variable, year);
     for (const [id, a] of Object.entries(world.actors)) out[id] = valueAt(a.vars[variable.id], year);
     return out;
   });
   const scale = $derived(colorScale(variable, Object.values(values).map(v => v.value)));
-  const fills = $derived.by(() => { const o = {}; for (const f of geom.countries) { const v = values[f.id]; if (v) { const c = scale.color(v.value); if (c) o[f.id] = c; } } return o; });
+  const fills = $derived.by(() => { const o = {}; for (const f of geom.countries) { const v = values[f.id]; if (v) { const c = washed(scale.color(v.value), v.conf); if (c) o[f.id] = c; } } return o; });
   const selectable = (id) => !!world.actors[id] || !!forecast?.actors?.[id] || !!history?.actors?.[id];
 
   // ---- featured actors (labels / roses)
@@ -162,7 +162,9 @@
     const hosted = presenceNow.filter(r => r.host === id).map(r => `${r.actor} ${r.kind}${r.level >= 3 ? ' (major)' : ''}`);
     const lo = ha?.last_observed; const staleNote = lo && Math.round(year) > (history?.meta.y1 ?? 0) ? Object.entries(lo).filter(([k, y]) => ['cinc', 'regime', 'gdp_pc', 'population'].includes(k) && y != null && y < history.meta.y1 - 1).map(([k, y]) => `${k} as of ${y}`).join(' · ') : '';
     let hz = null; if (isForecastYear && forecast.actors[id]) { const tp = forecast.meta.templates.filter(t => t.unit === 'actor-year').map(t => [t.label ?? t.id, forecastAt(forecast, { template: t.id }, id, year, horizon).value]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]).slice(0, 3); hz = tp.map(([l, v]) => `${(v * 100).toFixed(0)}% ${l}`).join(' · '); }
-    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, hosted, staleNote, hz, live: ha ? (inHist ? !!ha.live[yi] : true) : !!wa };
+    const cell = values[hover.neId]; const rgNote = cell?.dist ? `in ${(cell.conf * 100).toFixed(0)}% of runs` : cell?.stale > 0 && variable?.var === 'regime' ? `as of ${cell.observed}` : '';
+    const cellNote = cell && variable?.var !== 'regime' && variable?.kind === 'history' ? (cell.forecast ? `${variable.label}: ${d3.format(variable.display?.format ?? '.3~s')(cell.value)} median (${d3.format('.3~s')(cell.lo)}–${d3.format('.3~s')(cell.hi)})` : cell.stale > 0 ? `${variable.label}: ${d3.format(variable.display?.format ?? '.3~s')(cell.value)} as of ${cell.observed}` : '') : '';
+    return { id, name, flag: flagEmoji(ha?.iso2), rg, rgNote, cellNote, pop, pacts, items, conflicts, hosted, staleNote, hz, live: ha ? (inHist ? !!ha.live[yi] : true) : !!wa };
   });
   const fmtPop = (n) => (n == null || !n ? '—' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' bn' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' k' : String(Math.round(n)));
 
@@ -185,7 +187,8 @@
     <div class="card" style="left:{Math.min(hover.x + 14, width - 300)}px; top:{Math.min(hover.y + 14, height - 200)}px">
       {#if hoverInfo.title}<div class="ch">{hoverInfo.title}</div>{:else}
         <div class="ch">{hoverInfo.flag ?? ''} <b>{hoverInfo.name}</b> <span class="mono muted">{hoverInfo.id}</span>{#if !hoverInfo.live}<span class="muted"> · not a state in {Math.round(year)}</span>{/if}</div>
-        <div class="cr">{#if hoverInfo.rg != null}<span style="color:{REGIME_COL4[hoverInfo.rg]}">{REGIME_GLYPH[hoverInfo.rg]} {REGIME_LABELS[hoverInfo.rg]}</span>{/if} · pop {fmtPop(hoverInfo.pop)}</div>
+        <div class="cr">{#if hoverInfo.rg != null}<span style="color:{REGIME_COL4[hoverInfo.rg]}">{REGIME_GLYPH[hoverInfo.rg]} {REGIME_LABELS[hoverInfo.rg]}</span>{#if hoverInfo.rgNote}&nbsp;<span class="muted">{hoverInfo.rgNote}</span>{/if}{/if} · pop {fmtPop(hoverInfo.pop)}</div>
+        {#if hoverInfo.cellNote}<div class="cr muted">{hoverInfo.cellNote}</div>{/if}
         {#if hoverInfo.conflicts.length}<div class="cr" style="color:#ef6a5a">{hoverInfo.conflicts.join(' · ')}</div>{/if}
         {#if hoverInfo.pacts.length}<div class="cr muted">pacts: {#each hoverInfo.pacts.slice(0, 4) as p, i}{i ? '; ' : ''}{#if p.greats.length}<span style="color:#6cb4ff">with {p.greats.join(', ')}</span>{#if p.partners.length > p.greats.length} +{p.partners.length - p.greats.length}{/if}{:else}{p.partners.length <= 2 ? p.partners.join(', ') : p.partners.length + ' partners'}{/if}{/each}</div>{/if}
         {#if hoverInfo.hosted.length}<div class="cr" style="color:#ffd166">foreign forces: {hoverInfo.hosted.join(' · ')}</div>{/if}
@@ -204,7 +207,7 @@
         <div class="bar" style="background: linear-gradient(90deg, {d3.range(0, 1.01, 0.1).map(t => scale.scale(scale.log ? Math.exp(Math.log(scale.domain[0]) + t * (Math.log(scale.domain[1]) - Math.log(scale.domain[0]))) : scale.domain[0] + t * (scale.domain[1] - scale.domain[0]))).join(',')})"></div>
         <div class="ticks"><span>{d3.format('.3~s')(scale.domain[0])}</span><span>{d3.format('.3~s')(scale.domain[1])}</span></div>
       {/if}
-      <div class="muted small">{variable.kind === 'forecast' ? (isForecastYear ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs` : 'before the forecast start: last observed state') : variable.kind === 'history' ? `historical panel · ${history?.meta.sources?.[variable.var] ?? ''}` : 'modern snapshot'}</div>
+      <div class="muted small">{variable.kind === 'forecast' ? (isForecastYear ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs` : 'before the forecast start: last observed state') : variable.kind === 'history' ? (isForecastYear ? (variable.var === 'regime' ? `after ${history.meta.y1}: the most likely state in each of ${forecast?.meta.runs} runs · colour washes to grey where the runs disagree` : `after ${history.meta.y1}: ensemble median where the engine carries the series, else the last observation · colour washes to grey with staleness`) : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''} · a series that stopped early is carried forward and washes to grey`) : 'modern snapshot'}</div>
     {/if}
     {#if fieldSpec}<div class="lt" style="margin-top:6px">{fieldSpec.label} <span class="muted">{fieldSpec.note}{layers.field === 'hazard' ? ` · blur ${fieldBlur.toFixed(0)} px` : ''}</span></div>
       {#if fieldSpec.paint === 'dominant'}{#each field?.groups ?? [] as g}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx, g)}"></i>{g}</span>{/each}{:else}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx)}"></i>intensity</span>{/if}{/if}
