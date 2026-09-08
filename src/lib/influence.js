@@ -92,13 +92,16 @@ export const FIELDS = {
   },
   conflict: {
     label: 'Belligerents',
-    note: 'who is at war, not where the fighting is: interstate war (w 1.0, λ 900 km), disputes (0.4, 600), internal armed conflict (0.6 / 1.0 by intensity, 500). Battle locations need UCDP GED (1989→)',
+    note: 'who is at war, not where the fighting is: interstate war (w 1.0, λ 900 km), disputes (0.4, 600), internal armed conflict (0.6 / 1.0 by intensity, 500). After the forecast seam the two war weights are the ensemble\'s occupancy — P(at war) and the expected internal-conflict weight — so the field fades with the runs\' disagreement instead of freezing. Battle locations need UCDP GED (1989→)',
     paint: 'heat',
     groups: () => ['conflict'],
+    // operator/occupancy: `atWar` and `intrastate` are both [id, weight] pairs. In history the weight is the panel's
+    // own flag (1.0 at war; 0.6 / 1.0 by internal-conflict intensity); after the seam Map.svelte passes the ensemble's
+    // P(at war) and its expected internal-conflict weight, which is the same quantity in expectation over the runs.
     sources: (ctx) => [
-      ...ctx.atWar.map(id => ({ group: 'conflict', lonlat: ctx.lonlat(id), polygonKey: ctx.neKey(id), w: 1.0, lambda: 900 })),
+      ...ctx.atWar.map(([id, w]) => ({ group: 'conflict', lonlat: ctx.lonlat(id), polygonKey: ctx.neKey(id), w, lambda: 900 })),
       ...ctx.disputes.map(id => ({ group: 'conflict', lonlat: ctx.lonlat(id), w: 0.4, lambda: 600 })),
-      ...ctx.intrastate.map(([id, level]) => ({ group: 'conflict', lonlat: ctx.lonlat(id), polygonKey: ctx.neKey(id), w: level >= 2 ? 1.0 : 0.6, lambda: 500 })),
+      ...ctx.intrastate.map(([id, w]) => ({ group: 'conflict', lonlat: ctx.lonlat(id), polygonKey: ctx.neKey(id), w, lambda: 500 })),
     ].filter(s => s.lonlat || s.polygonKey),
     color: () => '#ef6a5a',
     threshold: 0.3,
