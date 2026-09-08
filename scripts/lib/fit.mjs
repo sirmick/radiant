@@ -121,6 +121,10 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
         // ... and the last year the flag's own source covers is right-censored: a run still on when the dataset stops
         // may or may not have ended there, and keeping it as a non-ending would make every long conflict look finished.
         if (t.sample?.flag != null && y >= (panel.meta.vars?.[t.sample.flag]?.last ?? Infinity)) continue;
+        // era-1914-1945-r2/statistics-3: a state under foreign occupation is not at risk of a domestic transition, and
+        // its label is forced to 0 by the template's own `event_filter: { cause: null }`. Censor the row out of the
+        // denominator instead of scoring it as an observed non-event.
+        if (t.sample?.exclude_flag != null && (pv(id, t.sample.exclude_flag, y) ?? 0) > 0) continue;
         const feats = {}; let ok = true;
         for (const c of t.covariates) { const x = rawValue(id, c, y); if (x == null) { ok = false; break; } feats[c.var] = x; }
         if (!ok) continue;
@@ -305,6 +309,10 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
           mid_force: (() => { for (let k = 1; k <= 5; k++) if (hasDyadEvent('mid_force', a, b, y - k) || hasDyadEvent('mid_war', a, b, y - k)) return 1; return 0; })(),
           rivalry: rivalryScore(lastDisputeBefore(pairKey(a, b), y), y, DECAY),
           at_war_any: ((pv(a, 'at_war', y - 1) ?? 0) || (pv(b, 'at_war', y - 1) ?? 0)) ? 1 : 0,
+          // the era interaction on the contagion term (era-1914-1945-r2/engine-1): a DELTA on at_war_any above for
+          // y >= 1946, crossed with the same `pre_1946` constant this block already carries. Mirrored in
+          // src/engine/core.js:dyadHazards so the fit and the draw are one construction.
+          at_war_any_post46: (((pv(a, 'at_war', y - 1) ?? 0) || (pv(b, 'at_war', y - 1) ?? 0)) && y >= 1946) ? 1 : 0,
           nuclear_both: hasNukes(a, y) && hasNukes(b, y) ? 1 : 0,
           pre_1946: y < 1946 ? 1 : 0,   // era-1870-1914/statistics-6, a derived constant; candidate only
           // era-1914-1945/corridors-7, the dampener docs/schema.md specifies; built by src/engine/core.js so the
@@ -416,17 +424,33 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
     // prior and the term is not estimated — and `epv` is events per column actually estimated. mid_war at as-of 1900
     // was 8 events over 9 covariates, two of them constants, and the row carried the same fields as one fitted on 227.
     const degenerate = cols.filter(c => { const xs = rows.map(r => c.get(r)); return xs.every(x => x === xs[0]); }).map(c => c.name);
+    // era-1914-1945-r2/statistics-6: rows are not independent observations when a template declares `cluster:`.
+    // war_end's 421 dyadic spells are ~65 connected war components — spells that share a belligerent in a shared year,
+    // i.e. the pairs inside one war — and every dyad inside a coalition war ends on the same date, so its 362
+    // "endings" are about 65 independent terminations and `war_coalition` is constant WITHIN a component by
+    // construction. epv over rows said 135.7 where epv over clusters says about 65/4. Reported, not yet used to
+    // widen a confidence interval: a cluster bootstrap on the holdout AUC is the escalated half.
+    let clusters = null;
+    if (t.cluster === 'war_component' && rows.length && rows[0].a) {
+      const parent = new Map(); const find = (x) => { while (parent.get(x) !== x) { parent.set(x, parent.get(parent.get(x))); x = parent.get(x); } return x; };
+      const add = (x) => { if (!parent.has(x)) parent.set(x, x); };
+      const byActorYear = new Map();
+      for (const r of rows) { add(r.unit); for (const id of [r.a, r.b]) { const k = `${id}|${r.year}`; (byActorYear.get(k) ?? byActorYear.set(k, []).get(k)).push(r.unit); } }
+      for (const list of byActorYear.values()) { for (const u of list) add(u); for (let i = 1; i < list.length; i++) { const x = find(list[0]), y = find(list[i]); if (x !== y) parent.set(y, x); } }
+      clusters = new Set([...parent.keys()].map(find)).size;
+    }
     const fit = {
       ablation: ablationOut,
       status: 'fitted', unit: t.unit, event: t.event, n: rows.length, events: evn, base_rate: evn / rows.length, window: t.window,
       degenerate, epv: evn / Math.max(1, cols.length - degenerate.length),
+      ...(clusters != null ? { cluster: t.cluster, n_clusters: clusters, epv_clusters: clusters / Math.max(1, cols.length - degenerate.length) } : {}),
       trained_through: maxYear ?? Math.max(...years), train_years: [Math.min(...years), Math.max(...years)],
       intercept: beta[0], coefs: Object.fromEntries(cols.map((c, j) => [c.name, { value: beta[j + 1], prior: c.prior }])), stats,
       auc_in: auc(pIn, yv), brier_in: brier(pIn, yv), calibration: calibration(pIn, yv), holdout: hold,
       fitted: new Date().toISOString().slice(0, 10), source: `fit on data/panel.json + data/events.json, MAP logistic, prior sd ${Math.sqrt(1 / 2).toFixed(2)}`,
     };
     const top = cols.map((c, j) => `${c.name} ${beta[j + 1] >= 0 ? '+' : ''}${beta[j + 1].toFixed(2)}`).join('  ');
-    let line = `${t.id.padEnd(24)} n=${rows.length} ev=${evn} rate=${(evn / rows.length * 100).toFixed(2)}%  AUC in=${fit.auc_in?.toFixed(3)} hold=${hold?.auc?.toFixed(3) ?? '—'}(≥${split})\n${''.padEnd(24)} ${top}`;
+    let line = `${t.id.padEnd(24)} n=${rows.length}${clusters != null ? ` clusters=${clusters}` : ''} ev=${evn} rate=${(evn / rows.length * 100).toFixed(2)}%  AUC in=${fit.auc_in?.toFixed(3)} hold=${hold?.auc?.toFixed(3) ?? '—'}(≥${split})\n${''.padEnd(24)} ${top}`;
     if (ablationOut) for (const a of ablationOut) line += `\n${''.padEnd(24)} ablation ${a.variant.padEnd(16)} ${a.note ?? `n=${a.n} ev=${a.events}  hold AUC ${a.auc_holdout?.toFixed(3)}  brier ${a.brier_holdout?.toFixed(4)}  exp/obs ${a.exp_obs_holdout?.toFixed(2)}  ${Object.entries(a.coefs).map(([k, v]) => `${k} ${v >= 0 ? '+' : ''}${v.toFixed(2)}`).join(' ')}`}`;
     return { fit, line };
   }

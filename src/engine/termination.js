@@ -142,6 +142,10 @@ export function warEndFeatures({ a, b, age, coalition = 2, look }) {
   return {
     war_duration: age,
     war_coalition: coalition > 2 ? 1 : 0,
+    // the era constant the dyadic templates already carry (era-1870-1914/statistics-6), here because the observed
+    // termination hazard on this sample is 0.559 before 1914, 0.391 in 1914-45 and 0.296 after 1946 and no covariate
+    // in the block tracks it (era-1914-1945-r2/engine-5). Derived from the year, not typed per era.
+    pre_1946: look.year < 1946 ? 1 : 0,
     contiguous: (() => { const c = look.contiguous ? look.contiguous(a, b) : null; return c == null ? null : (c ? 1 : 0); })(),
     cap_ratio: ca == null || cb == null ? null : Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),
     major_power_any: (look.greatPower(a) || look.greatPower(b)) ? 1 : 0,

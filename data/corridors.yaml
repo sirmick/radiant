@@ -39,6 +39,8 @@
     - { year: 1869.0, status: open, controller: GBR, source: "Aden a British possession from 1839 and Perim fortified in 1857: as the canal opens, the southern gate of the Suez route is under British guns (era-1870-1914-r2/corridors-1)" }
     - { year: 1915.05, status: contested, source: "Ottoman force occupies Sheikh Said opposite Perim, Jan 1915" }
     - { year: 1915.50, status: open, controller: GBR, source: "British landing retakes Sheikh Said; the strait reopens" }
+    - { year: 1940.44, status: contested, source: "Italian entry 10 Jun 1940: the Massawa squadron makes the Red Sea a war zone, closed to US shipping by the combat-zone proclamation, and Middle East supply reroutes round the Cape" }
+    - { year: 1941.28, status: open, controller: GBR, source: "Massawa falls 8 Apr 1941; the Red Sea combat-zone designation is lifted 11 Apr 1941 and the Suez route reopens to American shipping" }
     - { year: 2023.9, status: contested, source: "Houthi campaign from Nov 2023" }
 
 - id: suez
@@ -129,6 +131,7 @@
     - { year: 1884.80, status: contested, source: "French blockade of Formosa declared 20 Oct 1884 (war record: sino_french); Keelung held, the Pescadores taken 31 Mar 1885" }
     - { year: 1885.44, status: open, source: "Treaty of Tientsin 9 Jun 1885; the French evacuate Keelung and the Pescadores" }
     - { year: 1895.23, status: open, controller: JPN, source: "Pescadores seized 23-26 Mar 1895; the Treaty of Shimonoseki 17 Apr 1895 cedes Formosa and the Pescadores" }
+    - { year: 1937.65, status: contested, controller: JPN, source: "Japanese naval blockade of the China coast declared 25 Aug 1937 and extended to the whole coast — the closure that makes the Burma Road and the Hump necessary (war record: sino_japanese_1937)" }
     - { year: 1945.70, status: open, controller: CHN, source: "Japanese surrender; the island returns to Chinese administration" }
     - { year: 1996.2, status: contested, source: "third Taiwan Strait crisis, missile tests" }
     - { year: 1996.4, status: open, source: "crisis ends" }
@@ -449,7 +452,7 @@
     - { year: 1900.70, status: building, source: "construction begins Sep 1900, funded by subscription across the Muslim world" }
     - { year: 1908.70, status: built, source: "Medina reached Sep 1908" }
     - { year: 1917.00, status: closed, source: "Arab Revolt sabotage 1916-18 — the first modern rail-cutting campaign" }
-    - { year: 1920.00, status: closed, source: "never restored north of Medina after the Arab Revolt; the mandate borders cut the line" }
+    - { year: 1920.00, status: abandoned, source: "never restored north of Medina after the Arab Revolt; the mandate borders cut the line. The status is `abandoned` and not `closed` from era-1914-1945-r2/corridors-3: the row's own text says the through corridor is terminal, while `closed` kept it in the record_reopen risk set as a 24-year guaranteed non-event — with german_atlantic_cables, 40% of the sample at labels <= 1940 and its two longest spells. The Amman-Maan section runs on under Transjordan as a local line; the through corridor is gone" }
   covered_through: 1945
   covered_through_source: "the line north of Medina is never rebuilt; the 1920 row is a statement about the whole window and not the last thing anyone checked (era-1870-1914-r2/engine-5)"
   notes: "Pilgrimage cover for a troop-movement line; its destruction is the era's cleanest corridor-denial campaign."
@@ -519,11 +522,18 @@
   status: built
   controller: RUS
   geometry: { line: [[49.9, 40.4], [46.0, 41.3], [44.8, 41.7], [43.0, 42.0], [41.6, 41.6]] }
-  transits: [RUS]
-  load_bearing_for: { RUS: 0.4 }
-  load_bearing_source: estimate
+  transits: [RUS, AZE, GEO]
+  load_bearing_for: { RUS: 0.8 }
+  load_bearing_source: "estimate: Baku supplied roughly 70% of Soviet crude in 1940, and the rail and the pipeline are the only outlet to the Black Sea"
+  parent: baku_batumi_pipeline        # the same alignment and the same control changes; kept as its own record rather than deleted
   history:
     - { year: 1883.70, status: built, controller: RUS, source: "through service 1883 — the rail predecessor of the 1906 pipeline" }
+    - { year: 1918.40, status: contested, source: "the Transcaucasian federation dissolves May 1918 and the Baku Commune falls; through traffic to Batumi stops" }
+    - { year: 1918.71, status: closed, controller: OTTOMAN, source: "the Army of Islam takes Baku 15 Sep 1918 after the Dunsterforce withdrawal" }
+    - { year: 1918.88, status: closed, controller: GBR, source: "British re-occupation of Baku 17 Nov 1918 and of Batumi Dec 1918 under the Mudros armistice" }
+    - { year: 1920.32, status: built, controller: RUS, source: "the 11th Red Army takes Baku 28 Apr 1920; Batumi follows with the Georgian SSR in Mar 1921 and the line is restored" }
+    - { year: 1942.56, status: contested, controller: RUS, source: "Operation Edelweiss from 25 Jul 1942: Maikop taken 9 Aug with its wells fired, Grozny bombed 10 Oct — the Caucasus oil corridor is the campaign's object" }
+    - { year: 1943.10, status: built, controller: RUS, source: "the German withdrawal from the Caucasus, Jan-Feb 1943" }
 
 - id: baku_batumi_pipeline
   name: Baku–Batumi kerosene pipeline
@@ -532,11 +542,18 @@
   status: built
   controller: RUS
   geometry: { line: [[49.9, 40.4], [46.0, 41.3], [44.8, 41.7], [43.0, 42.0], [41.6, 41.6]] }
-  transits: [RUS]
-  load_bearing_for: { RUS: 0.4 }
-  load_bearing_source: estimate
+  transits: [RUS, AZE, GEO]
+  load_bearing_for: { RUS: 0.8 }
+  load_bearing_source: "estimate: Baku supplied roughly 70% of Soviet crude in 1940"
   history:
     - { year: 1906.00, status: built, controller: RUS, source: "completed 1906; the world's first long-distance product pipeline" }
+    - { year: 1918.40, status: contested, source: "the Transcaucasian federation dissolves May 1918 and the Baku Commune falls; through traffic to Batumi stops" }
+    - { year: 1918.71, status: closed, controller: OTTOMAN, source: "the Army of Islam takes Baku 15 Sep 1918 after the Dunsterforce withdrawal" }
+    - { year: 1918.88, status: closed, controller: GBR, source: "British re-occupation of Baku 17 Nov 1918 and of Batumi Dec 1918 under the Mudros armistice" }
+    - { year: 1920.32, status: built, controller: RUS, source: "the 11th Red Army takes Baku 28 Apr 1920; Batumi follows with the Georgian SSR in Mar 1921 and the line is restored" }
+    - { year: 1942.56, status: contested, controller: RUS, source: "Operation Edelweiss from 25 Jul 1942: Maikop taken 9 Aug with its wells fired, Grozny bombed 10 Oct — the Caucasus oil corridor is the campaign's object" }
+    - { year: 1943.10, status: built, controller: RUS, source: "the German withdrawal from the Caucasus, Jan-Feb 1943" }
+  notes: "Both Baku-Batumi records were frozen at their construction year with controller RUS, so in an as-of 1910 or 1920 run the line was Russian, built and unimpaired through the Azerbaijan Democratic Republic, the Ottoman capture of Baku, the British occupation and the Red Army's return — four control changes and a multi-year cut, all invisible — and through Operation Edelweiss, the campaign fought for it (era-1914-1945-r2/corridors-6). The rail record carries the same history and a `parent:` pointing here: they are one corridor in two modes and should not be read as two independent units."
 
 - id: gotthard_tunnel
   name: Gotthard rail tunnel
@@ -615,6 +632,7 @@
     - { year: 1900.60, status: built, controller: DEU, source: "Emden–Azores–New York, 1900" }
     - { year: 1904.60, status: built, controller: DEU, source: "second cable, 1904" }
     - { year: 1914.60, status: closed, source: "cut by CS Alert in the Channel, 5 Aug 1914 — Germany's direct link to neutral opinion severed on day one" }
+    - { year: 1922.10, status: abandoned, source: "the cut cables were allocated away from Germany under the Versailles cable clauses (Art. 244 / Annex VII) and confirmed by the Washington cable settlement of 1922: the segments return to service under British, French and American ownership and the German direct link never does. The record is dead, not impaired — `abandoned` is in neither IMPAIRED nor ACTIVE_STATUS, so it leaves the record_reopen risk set without the history being deleted (era-1914-1945-r2/corridors-3)" }
   covered_through: 1945
   covered_through_source: "the cables are never relaid to Germany: the two Emden cables are diverted to Brest and Penzance in 1917 and awarded to the Allies by Versailles Art. 244 / Annex VII. The impairment is permanent through the record window, so these years are observed non-endings and not an uncoded tail (era-1870-1914-r2/engine-5)"
   notes: "Built as a bypass of the British spine and cut anyway: bypass reduces exposure only where the bypass avoids the adversary's water."
@@ -641,12 +659,16 @@
   mode: pipeline
   status: closed
   geometry: { line: [[44.4, 35.5], [40.0, 34.0], [36.3, 32.6], [35.0, 32.8]] }
-  transits: [IRQ, JOR, ISR]
+  transits: [IRQ, SYR, LBN, JOR, ISR]
   load_bearing_for: { IRQ: 0.5, GBR: 0.4, JOR: 0.3 }
   load_bearing_source: estimate
   history:
     - { year: 1935.00, status: built, source: "opened 1935 (Iraq Petroleum Company)" }
+    - { year: 1940.48, status: contested, source: "the French armistice 22 Jun 1940 puts the T-branch to Tripoli inside Vichy Syria and it stops pumping; only the Haifa line runs" }
+    - { year: 1941.34, status: closed, source: "the Rashid Ali coup 1 Apr 1941 and the Anglo-Iraqi war 2-31 May 1941 (war record: anglo_iraqi_1941): the pumping stations H3 and H4 and the pipeline road are fought over and the flow stops" }
+    - { year: 1941.58, status: built, controller: GBR, source: "Iraqi armistice 31 May 1941; the Syria-Lebanon campaign 8 Jun-14 Jul 1941 removes the Vichy threat and both branches run for the rest of the war" }
     - { year: 1948.40, status: closed, source: "closed on the founding of Israel, 1948 — a corridor killed by a new border" }
+  notes: "The IPC system was a Y: the T-branch ran through French-mandate Syria to Tripoli and the H-branch through Transjordan to Haifa, so SYR and LBN are transits and the record's adjacent_war / transit_at_war_any covariates are computed over them (era-1914-1945-r2/corridors-7). The record jumped 1935 -> 1948 and so missed the two wars it was fought over."
 
 - id: tapline
   name: Trans-Arabian Pipeline
@@ -817,6 +839,8 @@
     - { year: 1869.0, status: open, controller: DNK, source: "Copenhagen Convention 14 Mar 1857 abolishes the Sound Dues and makes the passage free against a capitalised payment" }
     - { year: 1914.59, status: contested, controller: DNK, source: "Denmark mines the Great Belt at German request 5 Aug 1914 — a neutral closing the Baltic gate under pressure" }
     - { year: 1919.50, status: open, controller: DNK, source: "the minefields cleared after the armistice; free passage restored" }
+    - { year: 1940.27, status: closed, controller: DEU, source: "Operation Weserubung 9 Apr 1940: Denmark occupied, the Belts and the Sound pass under German control and the Baltic exits are mined — the Baltic is a closed German sea for five years (occupation record: DNK 1940.27-1945.35)" }
+    - { year: 1945.35, status: open, controller: DNK, source: "German capitulation in Denmark 5 May 1945; minefield clearance runs into 1947, so the reopening month is an estimate" }
   notes: "The Baltic's only exit, and the reason the Kiel Canal record exists — Kiel is the bypass."
 
 - id: magellan_strait
@@ -849,6 +873,8 @@
     - { year: 1869.0, status: open, controller: NLD, source: "the Netherlands Indies hold both shores; the strait is the southern alternative to Malacca" }
     - { year: 1883.65, status: closed, source: "Krakatoa 26-27 Aug 1883: the strait is unusable and uncharted, pumice-choked and the soundings gone" }
     - { year: 1884.30, status: open, controller: NLD, source: "resurveyed and reopened to navigation 1884" }
+    - { year: 1942.16, status: closed, controller: JPN, source: "Battle of Sunda Strait 28 Feb-1 Mar 1942 (Houston and Perth sunk) and the Japanese landings at Bantam Bay; Java surrenders 9 Mar 1942 and both shores pass to Japan" }
+    - { year: 1945.70, status: open, controller: NLD, source: "Japanese surrender 15 Aug / 2 Sep 1945; Allied reoccupation of the Indies" }
   notes: "The layer's one natural closure — an impairment with no belligerent behind it, which is what a reopen hazard needs to not be a war hazard."
 
 - id: corinth_canal
@@ -864,7 +890,9 @@
   history:
     - { year: 1882.30, status: building, controller: GRC, source: "works begin 1882 under the Société Internationale du Canal Maritime de Corinthe" }
     - { year: 1893.60, status: open, controller: GRC, source: "opened 6 Aug 1893" }
-  notes: "The only chokepoint transition the layer had in 1891-1900; it was missing."
+    - { year: 1941.32, status: closed, controller: DEU, source: "German airborne seizure of the Corinth bridge 26 Apr 1941; the demolished bridge falls into the cut and blocks the canal" }
+    - { year: 1948.51, status: open, controller: GRC, source: "cleared by US Army engineers and reopened 7 Jul 1948 — outside the chokepoint coverage window, recorded so the spell is not right-censored forever" }
+  notes: "The only chokepoint transition the layer had in 1891-1900; it was missing. The 1941 closure and the 1948 reopening were added in era-1914-1945-r2: the record had the canal open through the German seizure and the demolition."
 
 - id: panama_railway
   name: Panama Railway
@@ -975,3 +1003,65 @@
     - { year: 1897.0, status: built, controller: CHN, source: "the Peking-Tientsin line opened 1897; the Imperial Railways of North China reach Shanhaiguan" }
     - { year: 1900.45, status: closed, source: "Boxer destruction of the Peking-Tientsin line, Jun 1900 (war record: boxer)" }
     - { year: 1901.60, status: built, controller: CHN, source: "restored and reopened under the Boxer Protocol of 7 Sep 1901, with foreign guards on the line" }
+
+# ---------------------------------------------------------------- records the 1914-1945 wars were fought over and this
+# layer did not have (turn era-1914-1945-r2, corridors/4, added 2026-09-07). The file had the Persian Corridor and the
+# Bosphorus closure that made it necessary but not the northern route to Russia; the Swedish ore railway and the Soviet
+# oil lines but not the Romanian oil route; Malacca, Sunda, Magellan and the Corinth Canal but not the Channel.
+# `load_bearing_for` values are estimates; every dated row carries its source.
+
+- id: murmansk_railway
+  name: Murmansk (Kirov) railway and the Arctic route
+  kind: corridor
+  mode: rail
+  status: built
+  controller: RUS
+  geometry: { line: [[30.3, 59.9], [34.35, 61.79], [34.60, 64.95], [32.41, 67.15], [33.08, 68.97]] }
+  transits: [RUS]
+  load_bearing_for: { RUS: 0.5, GBR: 0.2, USA: 0.2 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1916.98, status: built, controller: RUS, source: "the line to Romanov-na-Murmane opened Nov-Dec 1916, built in 20 months because the Ottoman closure of the Straits in Nov 1914 and the German Baltic had sealed every other import route" }
+    - { year: 1918.18, status: contested, controller: GBR, source: "Allied landing at Murmansk 6 Mar 1918; the line is the axis of the North Russia intervention" }
+    - { year: 1920.20, status: built, controller: RUS, source: "the Red Army enters Murmansk 13 Mar 1920 after the Allied evacuation of Oct 1919" }
+    - { year: 1941.50, status: contested, controller: RUS, source: "Operation Silberfuchs from 29 Jun 1941; the Finns cut the line at Petrozavodsk 1 Oct 1941 and traffic runs only over the wartime Sorokskaya-Obozerskaya bypass" }
+    - { year: 1944.72, status: built, controller: RUS, source: "the Moscow Armistice with Finland 19 Sep 1944 and the Petsamo-Kirkenes operation Oct 1944 clear the line" }
+  notes: "The other half of the sentence the bosphorus 1939.67 row already writes: the Persian Corridor's destination was in the file and its origin was not. Arctic convoy terminus 1941-45."
+
+- id: danube_ploiesti
+  name: Ploiesti oil and the Danube route to central Europe
+  kind: corridor
+  mode: multimodal
+  status: built
+  controller: ROU
+  geometry: { line: [[26.02, 44.94], [25.97, 43.90], [22.67, 44.62], [19.06, 47.50], [16.37, 48.21], [13.74, 48.57]] }
+  transits: [ROU, BGR, SRB, HUN, AUT, DEU]
+  load_bearing_for: { DEU: 0.6, ROU: 0.5, ITA: 0.3 }
+  load_bearing_source: "estimate: Romanian crude was roughly a third of German oil supply 1941-43 and the only significant non-synthetic source"
+  history:
+    - { year: 1900.00, status: built, controller: ROU, source: "Romanian crude output passes 1 Mt; the Danube barge route and the Constanta link carry it into central Europe" }
+    - { year: 1918.35, status: built, controller: DEU, source: "Treaty of Bucharest 7 May 1918: a 90-year lease of the Romanian oil industry to Germany — the one war aim the Central Powers achieved" }
+    - { year: 1918.87, status: built, controller: ROU, source: "the armistice of 11 Nov 1918 voids the Treaty of Bucharest" }
+    - { year: 1940.78, status: built, controller: DEU, source: "German 'training troops' into Romania 12 Oct 1940 to garrison the oilfields; the Danube becomes the Reich's main crude import" }
+    - { year: 1943.58, status: contested, controller: DEU, source: "Operation Tidal Wave, the low-level raid on Ploiesti 1 Aug 1943" }
+    - { year: 1944.32, status: contested, controller: DEU, source: "Allied mining of the Danube from Apr 1944 (Operation Gardening) halts barge traffic; the Ploiesti bombing campaign runs Apr-Aug 1944" }
+    - { year: 1944.66, status: closed, controller: RUS, source: "Romania changes sides 23 Aug 1944; Soviet forces take Ploiesti 30 Aug 1944 and Germany's last crude source is gone" }
+  notes: "Dated from 1900 deliberately: the record's two most informative transitions are 1918.35 and 1918.87, and a first entry in 1918 would make it unborn at as-of 1910 and cost them."
+
+- id: dover_strait
+  name: Strait of Dover / English Channel
+  kind: chokepoint
+  mode: sea
+  status: open
+  controller: GBR
+  geometry: { point: [1.5, 51.0] }
+  transits: [GBR, FRA]
+  load_bearing_for: { GBR: 0.8, BEL: 0.7, FRA: 0.6, NLD: 0.5, DEU: 0.3 }
+  load_bearing_source: estimate
+  history:
+    - { year: 1869.00, status: open, controller: GBR, source: "the Channel policed by the Royal Navy; the Dover-Calais packet and the cross-Channel cables are the busiest passage in the world" }
+    - { year: 1914.62, status: contested, controller: GBR, source: "the Dover Patrol from Aug 1914 closes the strait to German surface traffic and escorts the BEF; the first Dover barrage laid Feb 1915" }
+    - { year: 1918.87, status: open, controller: GBR, source: "armistice 11 Nov 1918; the deep minefield cleared during 1919" }
+    - { year: 1940.47, status: contested, controller: GBR, source: "the French armistice 22 Jun 1940 puts the southern shore in German hands; the Channel is closed to British through-convoys after convoy CW9 (Aug 1940) and is fought over by artillery and E-boats for four years" }
+    - { year: 1944.43, status: open, controller: GBR, source: "Operation Neptune 6 Jun 1944; the Pas-de-Calais batteries cleared Sep 1944 and PLUTO in service from Aug 1944" }
+  notes: "Open before every as-of year in the 1910-1940 turn, so it is a scored unit and not `unborn`."

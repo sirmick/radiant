@@ -3,9 +3,9 @@
 // autocratization/democratization episode onsets (V-Dem ERT), militarized disputes (CoW MID 3.02 dyads),
 // interstate/intrastate onsets (UCDP). Hand-coded: data/history/events.yaml (wars, chokepoints, corridors, nuclear...).
 // Output: { events: [ {kind, year, actor|a,b, ...} ], counts: {kind: n} }
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap } from './lib/hist.mjs';
-import { warSpells } from '../src/engine/termination.js';
+import { warSpells, RESOLVED } from '../src/engine/termination.js';
 
 const actors = loadActors(); const code = makeCodeMap(actors); const gw = makeCodeMap(actors, 'gw'); const owid = makeOwidMap(actors);
 const H = 'data/raw/hist/'; const events = [];
@@ -74,7 +74,10 @@ function occupationCause(actor, year) {
 // inside mid_force instead of being disjoint from it.
 {
   const disp = new Map();
-  for (const r of readCsv(H + 'midb_3.02.csv')) { const y = +r.styear, id = code(r.ccode, y); if (!id) continue; (disp.get(r.dispnum) ?? disp.set(r.dispnum, []).get(r.dispnum)).push({ id, side: r.sidea, y, ey: +r.endyear, hl: +r.hostlev }); }
+  let nDisjoint = 0;
+  // Two rows in midb 3.02 carry an endyear before their own styear (dispnum 2004, hostlev 1 and 2, outside this
+  // sample anyway); clamp the span at read time so a participant's own interval is never negative.
+  for (const r of readCsv(H + 'midb_3.02.csv')) { const y = +r.styear, id = code(r.ccode, y); if (!id) continue; (disp.get(r.dispnum) ?? disp.set(r.dispnum, []).get(r.dispnum)).push({ id, side: r.sidea, y, ey: Math.max(+r.endyear, y), hl: +r.hostlev }); }
   for (const [num, ps] of disp) {
     const A = ps.filter(p => p.side === '1'), B = ps.filter(p => p.side === '0');
     const multilateral = ps.length > 2;
@@ -84,16 +87,20 @@ function occupationCause(actor, year) {
       const y = Math.max(a.y, b.y);
       // the year the pair's dispute stops being a pair dispute: the EARLIER of the two exits, by the same argument
       // that makes the onset the later of the two entries — neither side can be engaged after the less engaged of the
-      // two has gone. Two rows in midb 3.02 carry an endyear before their own styear (dispnum 2004, hostlev 1 and 2,
-      // outside this sample anyway); the max() clamps them rather than emitting a negative spell.
+      // two has gone. If that exit precedes the later entry the two participants' spans do NOT overlap: there is no
+      // dyad-year and the pair is not a dyad. Clamping instead of dropping fabricated 62 one-year dyads out of MID
+      // 258 (WWII) alone, where the side-switchers (USR, FRN, ITA, BUL, RUM, FIN) are paired with co-belligerents
+      // across disjoint periods — 56 of them at hostlev >= 5, holding the war_end termination rate up.
       // This is what the termination templates read (operator/termination, package 8): src/engine/termination.js
       // merges a pair's overlapping spans into the spell the engine carries as `at_war`.
-      const end = Math.max(y, Math.min(a.ey, b.ey));
-      const base = { a: a.id, b: b.id, year: y, end, dispnum: num, hostlev: hl, n_participants: ps.length, multilateral, source: 'CoW MID 3.02 (dyad hostility = min of the pair, onset = max of the pair, end = min of the pair)' };
+      const end = Math.min(a.ey, b.ey);
+      if (end < y) { nDisjoint++; continue; }
+      const base = { a: a.id, b: b.id, year: y, end, dispnum: num, hostlev: hl, n_participants: ps.length, multilateral, source: 'CoW MID 3.02 (dyad hostility = min of the pair, onset = max of the pair, end = min of the pair; a pair whose CoW participant spans do not overlap is not a dyad and is dropped)' };
       events.push({ kind: 'mid_force', ...base });
       if (hl >= 5) events.push({ kind: 'mid_war', ...base });
     }
   }
+  console.log(`dyads: ${nDisjoint} pairs dropped (CoW participant spans do not overlap)`);
 }
 
 // ---- UCDP onsets (first year of each conflict episode)
@@ -155,6 +162,17 @@ function occupationCause(actor, year) {
     if (e.kind === 'territory' && !terrIds.has(e.id)) bad.push(`territory ${e.id} @${e.year} — no record in data/territories.yaml`);
   }
   if (bad.length) { console.error(`build-events: ${bad.length} unresolvable event ids\n  ${[...new Set(bad)].join('\n  ')}`); process.exit(1); }
+  // era-1914-1945-r2/data-5: a record whose top-level `status` says the contest is over while its own dated history
+  // never reaches a resolved status is a permanent non-event in the contest_settle sample — five records contributed
+  // 90 unsettled spell-years inside 1911-1960 alone against an at-risk set of 13-22 units. The disagreement is a build
+  // failure now, so it cannot be reintroduced silently. A record that is genuinely unresolved must say so at the top.
+  {
+    const unresolved = territories.filter(t => t.status === 'settled' && !(t.history ?? []).some(h => RESOLVED.has(h.status)));
+    if (unresolved.length) {
+      console.error(`build-events: ${unresolved.length} territory records declare status: settled and never reach a resolved status in their own history\n  ${unresolved.map(t => `${t.id} (last history status: ${(t.history ?? []).slice(-1)[0]?.status ?? 'none'})`).join('\n  ')}\n  Add the dated settlement row, or change the top-level status to what the history says.`);
+      process.exit(1);
+    }
+  }
   for (const e of hand) events.push({ ...e, source: e.source ?? 'data/history/events.yaml' });
 
   // the records' own `history:` rows ARE observations: emit any dated row that has no hand event within 0.1y,
@@ -177,3 +195,28 @@ events.sort((a, b) => (a.year ?? a.start) - (b.year ?? b.start));
 const counts = {}; for (const e of events) counts[e.kind] = (counts[e.kind] ?? 0) + 1;
 writeFileSync('data/events.json', JSON.stringify({ meta: { built: new Date().toISOString() }, counts, events }));
 console.log(`events.json: ${events.length} events`); console.log(Object.entries(counts).map(([k, v]) => `${k}=${v}`).join('  '));
+
+// ---- era-1914-1945-r2/data-2: the hand `at_war` list against the label set the model actually fits on.
+// The panel's at_war column is written from data/history/events.yaml's `kind: war` records alone, and it was silently
+// drifting behind the CoW MID hostlev-5 dyads: 1946-1949 read as four consecutive years of global peace while two
+// inter-state wars were running. Reported every build, so the gap is a number in the log rather than a discovery.
+try {
+  const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
+  const P0 = panel.meta.y0;
+  const spellYears = new Set();
+  for (const [k, spells] of warSpells(events, { kind: 'mid_war' })) {
+    const i = k.indexOf('|'); const a = k.slice(0, i), b = k.slice(i + 1);
+    for (const sp of spells) for (let y = sp.y0; y <= sp.y1; y++) { spellYears.add(`${a}|${y}`); spellYears.add(`${b}|${y}`); }
+  }
+  let hand = 0, real = 0, agree = 0; const missByDecade = {};
+  for (const [id, vars] of Object.entries(panel.actors)) {
+    for (let i = 0; i < (vars.live?.length ?? 0); i++) {
+      const y = P0 + i; if (vars.live[i] !== 1 || y > 2001) continue;
+      const h = (vars.at_war?.[i] ?? 0) > 0, r = spellYears.has(`${id}|${y}`);
+      if (h) hand++; if (r) real++; if (h && r) agree++;
+      if (r && !h) { const d = Math.floor(y / 10) * 10; missByDecade[d] = (missByDecade[d] ?? 0) + 1; }
+    }
+  }
+  const worst = Object.entries(missByDecade).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([d, n]) => `${d}s=${n}`).join(' ');
+  console.log(`at_war coverage: hand list ${hand} actor-years, mid_war spell-years ${real}, agreement ${agree} (${real ? (100 * agree / real).toFixed(0) : 0}% of the label set's war-years); worst decades ${worst}`);
+} catch { /* panel.json not built yet: the report is a diagnostic, not a dependency */ }

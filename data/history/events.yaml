@@ -31,8 +31,21 @@
     notes: "Per-participant entry/exit: the war-level span used to stamp at_war=1 on the USA from 1914 and on Italy, Romania, Greece and Bulgaria before they entered" }
 - { kind: war, id: polish_soviet, start: 1919.2, end: 1920.8, sides: [[POL], [RUS]] }
 - { kind: war, id: greco_turkish, start: 1919.4, end: 1922.8, sides: [[GRC], [TUR]] }
-- { kind: war, id: chaco, start: 1932.5, end: 1935.5, sides: [[PRY], [BOL]] }
-- { kind: war, id: italo_ethiopian, start: 1935.8, end: 1936.4, sides: [[ITA], [ETH]] }
+# Wars the hand list did not name, added in turn era-1914-1945-r2 (data/2). Each one had hostlev-5 CoW MID rows for
+# every belligerent while `at_war` read 0 for all of them: the covariate saw 55% of the war-years its own label set counts,
+# and 1946-1949 read as four consecutive years of global peace.
+- { kind: war, id: hungarian_adversaries_1919, start: 1919.30, end: 1919.65, sides: [[ROU, CZECHOSLOVAKIA], [HUN]], source: "CoW war 107 (Hungarian Adversaries): Czechoslovak advance from Apr 1919, Romanian offensive across the Tisza 20 Jul, Budapest occupied 4 Aug 1919" }
+- { kind: war, id: franco_turkish_1919, start: 1919.90, end: 1921.80, sides: [[FRA], [OTTOMAN]], source: "CoW war 109 (Franco-Turkish): French occupation of Cilicia from Nov 1919, Marash Jan-Feb 1920, Ankara accord 20 Oct 1921", notes: "The Turkish side is coded OTTOMAN: TUR is not live in data/history/actors.yaml until 1923, and CoW's ccode 640 is continuous across the change" }
+- { kind: war, id: polish_lithuanian_1920, start: 1920.75, end: 1920.95, sides: [[POL], [LTU]], source: "Zeligowski's mutiny 9 Oct 1920 and the fighting for Vilnius; League-mediated ceasefire 29 Nov 1920 (territory record: vilnius)" }
+- { kind: war, id: kashmir_1947, start: 1947.83, end: 1948.99, sides: [[IND], [PAK]], source: "tribal invasion of Kashmir 22 Oct 1947, Indian airlift to Srinagar 27 Oct; UN ceasefire in force 1 Jan 1949" }
+- { kind: war, id: palestine_1948, start: 1948.37, end: 1949.58, sides: [[ISR], [EGY, IRQ, SYR, LBN, JOR, SAU]],
+    entries: { ISR: 1948.37, EGY: 1948.37, IRQ: 1948.37, SYR: 1948.37, LBN: 1948.37, JOR: 1948.37, SAU: 1948.40 },
+    exits: { EGY: 1949.15, LBN: 1949.22, JOR: 1949.26, IRQ: 1949.25, SAU: 1949.15, SYR: 1949.55 },
+    source: "Arab entry 15 May 1948; armistices Egypt 24 Feb 1949, Lebanon 23 Mar, Jordan 3 Apr, Syria 20 Jul 1949. Iraq withdrew without signing (Mar 1949) and Saudi contingents served under Egyptian command",
+    notes: "CoW MID carries hostlev-5 rows for EGY, IRQ, SYR, LBN, JOR and ISR in 1948 while the panel had every one of them at peace" }
+- { kind: war, id: hungary_1956, start: 1956.82, end: 1956.87, sides: [[RUS], [HUN]], source: "Operation Whirlwind, Soviet intervention 4 Nov 1956; organised resistance ends 10 Nov 1956" }
+- { kind: war, id: chaco, start: 1932.5, end: 1935.5, sides: [[PRY], [BOL]], notes: "CoW MID codes the pair from 1931 — the Boqueron fort incidents — and the war proper from Jun 1932. The hand span is the war (CoW Inter-State War 4.0), so 1931 is a dispute year, not a war year, and at_war is 0 there by intent", source: "CoW war 121 (Chaco); ceasefire 12 Jun 1935" }
+- { kind: war, id: italo_ethiopian, start: 1935.8, end: 1936.4, sides: [[ITA], [ETH]], notes: "CoW MID carries ITA|ETH from 1934 (the Walwal incident, 5 Dec 1934); the war begins 3 Oct 1935. The 1934 dispute year is deliberately not a war year", source: "CoW war 127 (Second Italo-Ethiopian); Addis Ababa 5 May 1936" }
 - { kind: war, id: sino_japanese_1937, start: 1937.5, end: 1945.6, sides: [[JPN], [CHN]] }
 - { kind: war, id: ww2, start: 1939.7, end: 1945.6, sides: [[GBR, FRA, RUS, USA, CHN, CAN, AUS, NZL, ZAF, POL, GRC, NLD, BEL, NOR, BRA, DNK, LUX, SRB, EGY], [DEU, ITA, JPN, HUN, ROU, BGR, FIN, THA]],
     entries: { POL: 1939.67, GBR: 1939.67, FRA: 1939.67, DEU: 1939.67, AUS: 1939.67, NZL: 1939.67, ZAF: 1939.68, CAN: 1939.69, DNK: 1940.27, NOR: 1940.27, NLD: 1940.36, BEL: 1940.36, LUX: 1940.36, ITA: 1940.44, GRC: 1940.82, SRB: 1941.26, RUS: 1941.47, FIN: 1941.48, HUN: 1941.49, ROU: 1941.47, USA: 1941.94, JPN: 1941.94, BGR: 1941.94, THA: 1942.07, BRA: 1942.64, EGY: 1945.15 },
@@ -49,7 +62,10 @@
 - { kind: war, id: franco_thai, start: 1940.90, end: 1941.40, sides: [[THA], [FRA]], notes: "Tokyo mediation 9 May 1941", source: "CoW war 145 (Franco-Thai)" }
 - { kind: war, id: anglo_iraqi_1941, start: 1941.33, end: 1941.44, sides: [[GBR], [IRQ]], notes: "Rashid Ali coup; Habbaniya and the Kirkuk-Haifa pipeline corridor; armistice 31 May 1941", source: "Anglo-Iraqi War, 2-31 May 1941" }
 - { kind: war, id: iran_1941, start: 1941.65, end: 1941.67, sides: [[GBR, RUS], [IRN]], notes: "Anglo-Soviet invasion 25-31 Aug 1941 to open the Persian Corridor for Lend-Lease", source: "Operation Countenance, 25-31 Aug 1941" }
-- { kind: war, id: korean, start: 1950.5, end: 1953.6, sides: [[KOR, USA, GBR, TUR, CAN, AUS], [PRK, CHN]] }
+- { kind: war, id: korean, start: 1950.5, end: 1953.6, sides: [[KOR, USA, GBR, TUR, CAN, AUS, FRA, NLD, BEL, GRC, THA, PHL, NZL, ZAF, ETH, COL, LUX], [PRK, CHN]],
+    entries: { KOR: 1950.48, USA: 1950.50, GBR: 1950.53, AUS: 1950.53, NZL: 1950.55, NLD: 1950.58, PHL: 1950.71, ZAF: 1950.83, THA: 1950.83, CAN: 1950.60, TUR: 1950.79, FRA: 1950.87, GRC: 1950.92, BEL: 1951.05, LUX: 1951.05, ETH: 1951.40, COL: 1951.50, PRK: 1950.48, CHN: 1950.79 },
+    source: "CoW MID 51 participant list. The hand record named five contributors; the other eleven carry hostlev-5 rows of their own and were entering the panel as states at peace. Entry dates are the arrival of each contingent in theatre: UK 27 Bde 29 Aug 1950, Netherlands Nov 1950, Philippines Sep 1950, South Africa (2 Sqn SAAF) Nov 1950, Thailand Nov 1950, Turkey Oct 1950, France Nov 1950, Greece Dec 1950, Belgium and Luxembourg Jan 1951, Ethiopia May 1951, Colombia Jun 1951; Chinese entry 19 Oct 1950",
+    notes: "Armistice 27 Jul 1953 ends the war-level span for every participant" }
 - { kind: war, id: suez_1956, start: 1956.8, end: 1956.9, sides: [[ISR, GBR, FRA], [EGY]] }
 - { kind: war, id: sino_indian, start: 1962.8, end: 1962.9, sides: [[CHN], [IND]] }
 - { kind: war, id: vietnam, start: 1965.2, end: 1975.3, sides: [[USA, KOR, AUS, THA], [VNM]] }
@@ -254,6 +270,16 @@
 #      (ceil(start)..floor(end)), so an occupied year is unknown rather than a peaceful non-event.
 #   3. the occupied years are visible as data rather than as an unexplained hole in the series.
 # `imposed_until` is the end of externally-written politics; where it is not a treaty date it is an estimate.
+# First World War spans (turn era-1914-1945-r2, data/6). The layer began in 1936, so Belgium's 1914 collapse (3->0) and
+# its 1919 restoration (0->1) were scored as domestic regime change while the identical 1940/1946 pair was correctly caused.
+# `partial: true` marks an occupation of part of a state whose own government kept functioning on its own soil: the cause
+# stamp applies (a regime step there is not domestic) but scripts/build-panel.mjs does not null the capability series,
+# because the state was still raising and fielding one.
+- { kind: occupation, actor: BEL, start: 1914.60, end: 1918.86, by: DEU, imposed_until: 1919.9, source: "invasion 4 Aug 1914, Antwerp falls 10 Oct 1914; the government sits at Le Havre and the army holds the Yser; liberation Nov 1918" }
+- { kind: occupation, actor: LUX, start: 1914.60, end: 1918.86, by: DEU, imposed_until: 1919.9, source: "occupied 2 Aug 1914; German withdrawal Nov 1918" }
+- { kind: occupation, actor: SRB, start: 1915.86, end: 1918.83, by: AUT_HUN, imposed_until: 1919.9, source: "Central Powers offensive Oct 1915, the retreat through Albania Nov-Dec 1915; Belgrade retaken 1 Nov 1918" }
+- { kind: occupation, actor: ROU, start: 1916.95, end: 1918.86, by: DEU, imposed_until: 1919.9, partial: true, source: "Bucharest falls 6 Dec 1916; the government and army hold Moldavia from Iasi and fight at Marasesti Aug 1917; the Treaty of Bucharest 7 May 1918 is voided by the armistice 11 Nov 1918" }
+- { kind: occupation, actor: ALB, start: 1916.00, end: 1920.00, by: AUT_HUN, imposed_until: 1921.9, source: "Austro-Hungarian and Italian occupation from Jan 1916; the Congress of Lushnje Jan 1920 and the Italian withdrawal from Vlore Aug 1920 restore an Albanian government" }
 - { kind: occupation, actor: ETH, start: 1936.35, end: 1941.35, by: ITA, imposed_until: 1941.9, source: "Addis Ababa falls 5 May 1936, annexation 9 May 1936; liberated 5 May 1941" }
 - { kind: occupation, actor: AUT, start: 1938.19, end: 1955.37, by: DEU, imposed_until: 1955.9, source: "Anschluss 12 Mar 1938; Allied occupation 1945-55; State Treaty 15 May 1955" }
 - { kind: occupation, actor: CZECHOSLOVAKIA, start: 1939.20, end: 1945.35, by: DEU, imposed_until: 1946.9, source: "Protectorate of Bohemia and Moravia 15 Mar 1939; liberation 9 May 1945" }

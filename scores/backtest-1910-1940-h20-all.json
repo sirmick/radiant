@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run": "2026-09-07T14:46:40.389Z",
+  "run": "2026-09-08T04:54:15.150Z",
   "from": 1910,
   "to": 1940,
   "step": 10,
@@ -24,39 +24,37 @@
    "actors": 55,
    "window_actors": 70,
    "dyad_actors": 70,
-   "ms": 2346,
+   "ms": 5466,
    "templates": {
-    "autocratization_onset": {
-     "n": 0,
-     "reason": "no fit at as-of: n=196, events=2 in years ≤ 1910",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
-    },
-    "democratization_onset": {
-     "n": 0,
-     "reason": "no fit at as-of: n=261, events=4 in years ≤ 1910",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
-    },
     "democratize_step": {
-     "n": 0,
-     "reason": "no fit at as-of: n=261, events=3 in years ≤ 1910",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
+     "n": 62,
+     "n_at_risk": 46,
+     "n_structural_miss": 7,
+     "predicted": 12.08,
+     "observed": 30,
+     "observed_at_risk": 23,
+     "brier": 0.3466709677419355,
+     "auc": 0.5458333333333333,
+     "auc_at_risk": 0.5396975425330813,
+     "scored_years": 20,
+     "fit_split": 1910,
+     "fit_n": 2285,
+     "fit_events": 48,
+     "fit_source": "refit on labels ≤ 1910 (n=2285, events=48)",
      "leaky": false,
-     "scored_years": 20
-    },
-    "autocratize_step": {
-     "n": 0,
-     "reason": "no fit at as-of: n=196, events=2 in years ≤ 1910",
-     "fit_source": "none (no training data at as-of)",
-     "fit_split": null,
-     "leaky": false,
-     "scored_years": 20
+     "n_excluded_no_covariate": 16,
+     "n_excluded_with_event": 7,
+     "excluded_vars": {
+      "log_gdp_pc": 16,
+      "gdp_growth": 16,
+      "regime": 1
+     },
+     "epv": 8,
+     "n_degenerate": 2,
+     "degenerate": [
+      "win5(leader_exit_recent)",
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 0,
@@ -75,84 +73,174 @@
      "scored_years": 20
     },
     "autocratic_closure": {
+     "n": 26,
+     "n_at_risk": 24,
+     "n_structural_miss": 1,
+     "predicted": 5.2,
+     "observed": 9,
+     "observed_at_risk": 8,
+     "brier": 0.22340769230769228,
+     "auc": 0.6797385620915033,
+     "auc_at_risk": 0.74609375,
+     "scored_years": 20,
+     "fit_split": 1910,
+     "fit_n": 899,
+     "fit_events": 37,
+     "fit_source": "refit on labels ≤ 1910 (n=899, events=37)",
+     "leaky": false,
+     "n_excluded_no_covariate": 2,
+     "n_excluded_with_event": 1,
+     "excluded_vars": {
+      "log_gdp_pc": 2,
+      "gdp_growth": 2
+     },
+     "epv": 9.25,
+     "n_degenerate": 4,
+     "degenerate": [
+      "lag1(intrastate)",
+      "win5(coup_attempt)",
+      "aid_conditionality",
+      "great_game"
+     ]
+    },
+    "mid_force": {
+     "n": 2415,
+     "n_at_risk": 436,
+     "n_structural_miss": 17,
+     "predicted": 34.51,
+     "observed": 99,
+     "observed_at_risk": 82,
+     "brier": 0.03537238095238097,
+     "auc": 0.8577113972191692,
+     "auc_at_risk": 0.6579337191677002,
+     "scored_years": 20,
+     "fit_split": 1910,
+     "fit_n": 16785,
+     "fit_events": 101,
+     "fit_source": "refit on labels ≤ 1910 (n=16785, events=101)",
+     "leaky": false,
+     "n_excluded_no_covariate": 15,
+     "n_excluded_with_event": 4,
+     "excluded_vars": {
+      "cinc": 15,
+      "regime": 3
+     },
+     "epv": 14.428571428571429,
+     "n_degenerate": 1,
+     "degenerate": [
+      "lag1(at_war_any_post46)"
+     ]
+    },
+    "mid_war": {
+     "n": 2415,
+     "n_at_risk": 303,
+     "n_structural_miss": 13,
+     "predicted": 14.299999999999956,
+     "observed": 50,
+     "observed_at_risk": 37,
+     "brier": 0.019536066252588014,
+     "auc": 0.8241353065539112,
+     "auc_at_risk": 0.6246189798821378,
+     "scored_years": 20,
+     "fit_split": 1910,
+     "fit_n": 16785,
+     "fit_events": 41,
+     "fit_source": "refit on labels ≤ 1910 (n=16785, events=41)",
+     "leaky": false,
+     "n_excluded_no_covariate": 15,
+     "n_excluded_with_event": 0,
+     "excluded_vars": {
+      "cinc": 15,
+      "regime": 3
+     },
+     "epv": 5.857142857142857,
+     "n_degenerate": 3,
+     "degenerate": [
+      "nuclear_both",
+      "pre_1946",
+      "lag1(at_war_any_post46)"
+     ]
+    },
+    "war_end": {
      "n": 0,
-     "reason": "no fit at as-of: n=160, events=2 in years ≤ 1910",
+     "reason": "the war-spell mechanism is a candidate (data/templates.yaml, dyadic war template `duration.status`); the engine fires no war_end. Run with WAR_DURATION_ON=1 to score it",
+     "scored_years": 20
+    },
+    "record_reopen": {
+     "n": 0,
+     "reason": "no fit at as-of: n=10, events=6 in years ≤ 1910",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
      "scored_years": 20
     },
-    "mid_force": {
-     "n": 2415,
-     "n_at_risk": 308,
-     "n_structural_miss": 31,
-     "predicted": 26.559999999999988,
-     "observed": 99,
-     "observed_at_risk": 68,
-     "brier": 0.035460703933747444,
-     "auc": 0.8050321871565395,
-     "auc_at_risk": 0.6884191176470589,
+    "contest_settle": {
+     "n": 26,
+     "n_at_risk": 15,
+     "n_structural_miss": 0,
+     "predicted": 6.03,
+     "observed": 6,
+     "observed_at_risk": 6,
+     "brier": 0.17314999999999997,
+     "auc": 0.6625,
+     "auc_at_risk": 0.25,
      "scored_years": 20,
      "fit_split": 1910,
-     "fit_n": 7178,
-     "fit_events": 37,
-     "fit_source": "refit on labels ≤ 1910 (n=7178, events=37)",
-     "leaky": false
-    },
-    "mid_war": {
-     "n": 2415,
-     "n_at_risk": 218,
-     "n_structural_miss": 15,
-     "predicted": 9.76999999999998,
-     "observed": 50,
-     "observed_at_risk": 35,
-     "brier": 0.01935250517598345,
-     "auc": 0.8160887949260043,
-     "auc_at_risk": 0.5882123341139734,
-     "scored_years": 20,
-     "fit_split": 1910,
-     "fit_n": 7178,
-     "fit_events": 12,
-     "fit_source": "refit on labels ≤ 1910 (n=7178, events=12)",
-     "leaky": false
+     "fit_n": 419,
+     "fit_events": 9,
+     "fit_source": "refit on labels ≤ 1910 (n=419, events=9)",
+     "leaky": false,
+     "n_unborn_records": 49,
+     "n_unborn_events": 5,
+     "epv": 3,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "chokepoint_status": {
-     "n": 9,
-     "n_at_risk": 7,
+     "n": 15,
+     "n_at_risk": 15,
      "n_structural_miss": 0,
-     "predicted": 3.26,
-     "observed": 4,
-     "observed_at_risk": 4,
-     "brier": 0.19835555555555556,
-     "auc": 0.725,
-     "auc_at_risk": 0.5416666666666666,
+     "predicted": 6.079999999999999,
+     "observed": 8,
+     "observed_at_risk": 8,
+     "brier": 0.26122666666666666,
+     "auc": 0.5267857142857143,
+     "auc_at_risk": 0.5267857142857143,
      "scored_years": 20,
      "fit_split": 1910,
-     "fit_n": 221,
-     "fit_events": 6,
-     "fit_source": "refit on labels ≤ 1910 (n=221, events=6)",
+     "fit_n": 506,
+     "fit_events": 14,
+     "fit_source": "refit on labels ≤ 1910 (n=506, events=14)",
      "leaky": false,
      "n_unborn_records": 0,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 7,
+     "n_degenerate": 1,
+     "degenerate": [
+      "adjacent_intrastate"
+     ]
     },
     "corridor_status": {
-     "n": 20,
-     "n_at_risk": 20,
+     "n": 28,
+     "n_at_risk": 28,
      "n_structural_miss": 0,
-     "predicted": 6.960000000000001,
-     "observed": 7,
-     "observed_at_risk": 7,
-     "brier": 0.20631,
-     "auc": 0.6923076923076923,
-     "auc_at_risk": 0.6923076923076923,
+     "predicted": 12.060000000000002,
+     "observed": 12,
+     "observed_at_risk": 12,
+     "brier": 0.20843571428571428,
+     "auc": 0.5807291666666666,
+     "auc_at_risk": 0.5807291666666666,
      "scored_years": 20,
      "fit_split": 1910,
-     "fit_n": 387,
-     "fit_events": 7,
-     "fit_source": "refit on labels ≤ 1910 (n=387, events=7)",
+     "fit_n": 535,
+     "fit_events": 24,
+     "fit_source": "refit on labels ≤ 1910 (n=535, events=24)",
      "leaky": false,
-     "n_unborn_records": 18,
-     "n_unborn_events": 0
+     "n_unborn_records": 19,
+     "n_unborn_events": 1,
+     "epv": 6,
+     "n_degenerate": 0,
+     "degenerate": []
     }
    }
   },
@@ -162,30 +250,36 @@
    "actors": 62,
    "window_actors": 69,
    "dyad_actors": 69,
-   "ms": 3217,
+   "ms": 6260,
    "templates": {
     "democratize_step": {
      "n": 53,
      "n_at_risk": 46,
      "n_structural_miss": 4,
-     "predicted": 19.71,
+     "predicted": 15.84,
      "observed": 21,
      "observed_at_risk": 17,
-     "brier": 0.2832547169811321,
-     "auc": 0.5186011904761905,
-     "auc_at_risk": 0.5912778904665315,
+     "brier": 0.310588679245283,
+     "auc": 0.3869047619047619,
+     "auc_at_risk": 0.4117647058823529,
      "scored_years": 20,
      "fit_split": 1920,
-     "fit_n": 530,
-     "fit_events": 17,
-     "fit_source": "refit on labels ≤ 1920 (n=530, events=17)",
+     "fit_n": 2612,
+     "fit_events": 63,
+     "fit_source": "refit on labels ≤ 1920 (n=2612, events=63)",
      "leaky": false,
      "n_excluded_no_covariate": 7,
      "n_excluded_with_event": 4,
      "excluded_vars": {
       "log_gdp_pc": 7,
       "gdp_growth": 7
-     }
+     },
+     "epv": 10.5,
+     "n_degenerate": 2,
+     "degenerate": [
+      "win5(leader_exit_recent)",
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 0,
@@ -197,7 +291,7 @@
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=78, events=2 in years ≤ 1920",
+     "reason": "no fit at as-of: n=78, events=1 in years ≤ 1920",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -205,98 +299,187 @@
     },
     "autocratic_closure": {
      "n": 39,
-     "n_at_risk": 35,
+     "n_at_risk": 34,
      "n_structural_miss": 3,
-     "predicted": 9.969999999999999,
+     "predicted": 11.639999999999999,
      "observed": 19,
      "observed_at_risk": 16,
-     "brier": 0.31057179487179487,
-     "auc": 0.6289473684210526,
-     "auc_at_risk": 0.7286184210526315,
+     "brier": 0.27337435897435897,
+     "auc": 0.6473684210526316,
+     "auc_at_risk": 0.7326388888888888,
      "scored_years": 20,
      "fit_split": 1920,
-     "fit_n": 361,
-     "fit_events": 8,
-     "fit_source": "refit on labels ≤ 1920 (n=361, events=8)",
+     "fit_n": 1113,
+     "fit_events": 43,
+     "fit_source": "refit on labels ≤ 1920 (n=1113, events=43)",
      "leaky": false,
-     "n_excluded_no_covariate": 4,
+     "n_excluded_no_covariate": 5,
      "n_excluded_with_event": 3,
      "excluded_vars": {
       "log_gdp_pc": 4,
       "gdp_growth": 4
-     }
+     },
+     "epv": 10.75,
+     "n_degenerate": 4,
+     "degenerate": [
+      "lag1(intrastate)",
+      "win5(coup_attempt)",
+      "aid_conditionality",
+      "great_game"
+     ]
     },
     "mid_force": {
      "n": 2346,
-     "n_at_risk": 413,
-     "n_structural_miss": 12,
-     "predicted": 94.13000000000007,
-     "observed": 91,
+     "n_at_risk": 452,
+     "n_structural_miss": 7,
+     "predicted": 70.32999999999997,
+     "observed": 86,
      "observed_at_risk": 79,
-     "brier": 0.03021470588235295,
-     "auc": 0.8927072927072927,
-     "auc_at_risk": 0.7543015235352081,
+     "brier": 0.02882570332480821,
+     "auc": 0.9099891953076765,
+     "auc_at_risk": 0.7190416398004548,
      "scored_years": 20,
      "fit_split": 1920,
-     "fit_n": 10625,
-     "fit_events": 142,
-     "fit_source": "refit on labels ≤ 1920 (n=10625, events=142)",
-     "leaky": false
+     "fit_n": 20346,
+     "fit_events": 206,
+     "fit_source": "refit on labels ≤ 1920 (n=20346, events=206)",
+     "leaky": false,
+     "n_excluded_no_covariate": 4,
+     "n_excluded_with_event": 2,
+     "excluded_vars": {
+      "cinc": 4,
+      "regime": 1
+     },
+     "epv": 29.428571428571427,
+     "n_degenerate": 1,
+     "degenerate": [
+      "lag1(at_war_any_post46)"
+     ]
     },
     "mid_war": {
      "n": 2346,
-     "n_at_risk": 391,
-     "n_structural_miss": 9,
-     "predicted": 47.669999999999966,
-     "observed": 52,
-     "observed_at_risk": 43,
-     "brier": 0.019575234441602717,
-     "auc": 0.8618218094024546,
-     "auc_at_risk": 0.6929965249933173,
+     "n_at_risk": 400,
+     "n_structural_miss": 8,
+     "predicted": 33.94999999999998,
+     "observed": 47,
+     "observed_at_risk": 39,
+     "brier": 0.01852587382779198,
+     "auc": 0.8542798441505558,
+     "auc_at_risk": 0.6373677107749129,
      "scored_years": 20,
      "fit_split": 1920,
-     "fit_n": 10625,
-     "fit_events": 63,
-     "fit_source": "refit on labels ≤ 1920 (n=10625, events=63)",
-     "leaky": false
+     "fit_n": 20346,
+     "fit_events": 92,
+     "fit_source": "refit on labels ≤ 1920 (n=20346, events=92)",
+     "leaky": false,
+     "n_excluded_no_covariate": 4,
+     "n_excluded_with_event": 1,
+     "excluded_vars": {
+      "cinc": 4,
+      "regime": 1
+     },
+     "epv": 13.142857142857142,
+     "n_degenerate": 3,
+     "degenerate": [
+      "nuclear_both",
+      "pre_1946",
+      "lag1(at_war_any_post46)"
+     ]
     },
-    "chokepoint_status": {
-     "n": 9,
-     "n_at_risk": 7,
+    "war_end": {
+     "n": 0,
+     "reason": "the war-spell mechanism is a candidate (data/templates.yaml, dyadic war template `duration.status`); the engine fires no war_end. Run with WAR_DURATION_ON=1 to score it",
+     "scored_years": 20
+    },
+    "record_reopen": {
+     "n": 44,
+     "n_at_risk": 44,
      "n_structural_miss": 0,
-     "predicted": 5.51,
+     "predicted": 22.249999999999996,
      "observed": 4,
      "observed_at_risk": 4,
-     "brier": 0.19518888888888888,
-     "auc": 0.9,
-     "auc_at_risk": 0.8333333333333334,
+     "brier": 0.22719772727272736,
+     "auc": 0.834375,
+     "auc_at_risk": 0.834375,
      "scored_years": 20,
      "fit_split": 1920,
-     "fit_n": 291,
+     "fit_n": 58,
      "fit_events": 19,
-     "fit_source": "refit on labels ≤ 1920 (n=291, events=19)",
-     "leaky": false,
-     "n_unborn_records": 0,
-     "n_unborn_events": 0
-    },
-    "corridor_status": {
-     "n": 20,
-     "n_at_risk": 20,
-     "n_structural_miss": 0,
-     "predicted": 7.159999999999999,
-     "observed": 5,
-     "observed_at_risk": 5,
-     "brier": 0.17775999999999997,
-     "auc": 0.6266666666666667,
-     "auc_at_risk": 0.6266666666666667,
-     "scored_years": 20,
-     "fit_split": 1920,
-     "fit_n": 587,
-     "fit_events": 14,
-     "fit_source": "refit on labels ≤ 1920 (n=587, events=14)",
+     "fit_source": "refit on labels ≤ 1920 (n=58, events=19)",
      "leaky": false,
      "n_unborn_records": 18,
-     "n_unborn_events": 1
+     "n_unborn_events": 0,
+     "epv": 4.75,
+     "n_degenerate": 0,
+     "degenerate": []
+    },
+    "contest_settle": {
+     "n": 35,
+     "n_at_risk": 22,
+     "n_structural_miss": 0,
+     "predicted": 6.85,
+     "observed": 11,
+     "observed_at_risk": 11,
+     "brier": 0.21622000000000005,
+     "auc": 0.6401515151515151,
+     "auc_at_risk": 0.21487603305785125,
+     "scored_years": 20,
+     "fit_split": 1920,
+     "fit_n": 579,
+     "fit_events": 11,
+     "fit_source": "refit on labels ≤ 1920 (n=579, events=11)",
+     "leaky": false,
+     "n_unborn_records": 40,
+     "n_unborn_events": 1,
+     "epv": 3.6666666666666665,
+     "n_degenerate": 0,
+     "degenerate": []
+    },
+    "chokepoint_status": {
+     "n": 15,
+     "n_at_risk": 15,
+     "n_structural_miss": 0,
+     "predicted": 9.02,
+     "observed": 8,
+     "observed_at_risk": 8,
+     "brier": 0.21154666666666666,
+     "auc": 0.7857142857142857,
+     "auc_at_risk": 0.7857142857142857,
+     "scored_years": 20,
+     "fit_split": 1920,
+     "fit_n": 656,
+     "fit_events": 34,
+     "fit_source": "refit on labels ≤ 1920 (n=656, events=34)",
+     "leaky": false,
+     "n_unborn_records": 0,
+     "n_unborn_events": 0,
+     "epv": 17,
+     "n_degenerate": 1,
+     "degenerate": [
+      "adjacent_intrastate"
+     ]
+    },
+    "corridor_status": {
+     "n": 29,
+     "n_at_risk": 29,
+     "n_structural_miss": 0,
+     "predicted": 15.959999999999999,
+     "observed": 7,
+     "observed_at_risk": 7,
+     "brier": 0.20435862068965524,
+     "auc": 0.7922077922077922,
+     "auc_at_risk": 0.7922077922077922,
+     "scored_years": 20,
+     "fit_split": 1920,
+     "fit_n": 820,
+     "fit_events": 41,
+     "fit_source": "refit on labels ≤ 1920 (n=820, events=41)",
+     "leaky": false,
+     "n_unborn_records": 18,
+     "n_unborn_events": 2,
+     "epv": 10.25,
+     "n_degenerate": 0,
+     "degenerate": []
     }
    }
   },
@@ -306,34 +489,40 @@
    "actors": 65,
    "window_actors": 84,
    "dyad_actors": 84,
-   "ms": 3529,
+   "ms": 6585,
    "templates": {
     "democratize_step": {
      "n": 59,
      "n_at_risk": 53,
      "n_structural_miss": 1,
-     "predicted": 21.150000000000006,
+     "predicted": 17.68,
      "observed": 27,
      "observed_at_risk": 26,
-     "brier": 0.26442542372881356,
-     "auc": 0.6255787037037037,
-     "auc_at_risk": 0.5811965811965812,
+     "brier": 0.28702711864406777,
+     "auc": 0.5567129629629629,
+     "auc_at_risk": 0.4964387464387464,
      "scored_years": 20,
      "fit_split": 1930,
-     "fit_n": 792,
-     "fit_events": 25,
-     "fit_source": "refit on labels ≤ 1930 (n=792, events=25)",
+     "fit_n": 2949,
+     "fit_events": 71,
+     "fit_source": "refit on labels ≤ 1930 (n=2949, events=71)",
      "leaky": false,
      "n_excluded_no_covariate": 6,
      "n_excluded_with_event": 1,
      "excluded_vars": {
       "log_gdp_pc": 6,
       "gdp_growth": 6
-     }
+     },
+     "epv": 11.833333333333334,
+     "n_degenerate": 2,
+     "degenerate": [
+      "win5(leader_exit_recent)",
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 0,
-     "reason": "no fit at as-of: n=130, events=3 in years ≤ 1930",
+     "reason": "no fit at as-of: n=136, events=3 in years ≤ 1930",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -341,7 +530,7 @@
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=161, events=2 in years ≤ 1930",
+     "reason": "no fit at as-of: n=161, events=1 in years ≤ 1930",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -349,99 +538,187 @@
     },
     "autocratic_closure": {
      "n": 33,
-     "n_at_risk": 28,
+     "n_at_risk": 30,
      "n_structural_miss": 2,
-     "predicted": 5.589999999999999,
+     "predicted": 5.619999999999999,
      "observed": 17,
      "observed_at_risk": 15,
-     "brier": 0.39302121212121216,
-     "auc": 0.5165441176470589,
-     "auc_at_risk": 0.47435897435897434,
+     "brier": 0.404539393939394,
+     "auc": 0.4834558823529412,
+     "auc_at_risk": 0.5133333333333333,
      "scored_years": 20,
      "fit_split": 1930,
-     "fit_n": 617,
-     "fit_events": 16,
-     "fit_source": "refit on labels ≤ 1930 (n=617, events=16)",
+     "fit_n": 1397,
+     "fit_events": 54,
+     "fit_source": "refit on labels ≤ 1930 (n=1397, events=54)",
      "leaky": false,
-     "n_excluded_no_covariate": 5,
+     "n_excluded_no_covariate": 3,
      "n_excluded_with_event": 2,
      "excluded_vars": {
       "log_gdp_pc": 3,
-      "gdp_growth": 3,
-      "not_live_at_as_of": 2
-     }
+      "gdp_growth": 3
+     },
+     "epv": 13.5,
+     "n_degenerate": 4,
+     "degenerate": [
+      "lag1(intrastate)",
+      "win5(coup_attempt)",
+      "aid_conditionality",
+      "great_game"
+     ]
     },
     "mid_force": {
      "n": 3486,
-     "n_at_risk": 471,
-     "n_structural_miss": 105,
-     "predicted": 75.28000000000006,
-     "observed": 261,
-     "observed_at_risk": 156,
-     "brier": 0.06079770510613888,
-     "auc": 0.7639050758858297,
-     "auc_at_risk": 0.737952787952788,
+     "n_at_risk": 550,
+     "n_structural_miss": 79,
+     "predicted": 56.05000000000005,
+     "observed": 220,
+     "observed_at_risk": 141,
+     "brier": 0.05417495697074021,
+     "auc": 0.7762504871123977,
+     "auc_at_risk": 0.7293866722155751,
      "scored_years": 20,
      "fit_split": 1930,
-     "fit_n": 15096,
-     "fit_events": 161,
-     "fit_source": "refit on labels ≤ 1930 (n=15096, events=161)",
-     "leaky": false
+     "fit_n": 24848,
+     "fit_events": 225,
+     "fit_source": "refit on labels ≤ 1930 (n=24848, events=225)",
+     "leaky": false,
+     "n_excluded_no_covariate": 7,
+     "n_excluded_with_event": 4,
+     "excluded_vars": {
+      "cinc": 6,
+      "regime": 2
+     },
+     "epv": 32.142857142857146,
+     "n_degenerate": 1,
+     "degenerate": [
+      "lag1(at_war_any_post46)"
+     ]
     },
     "mid_war": {
      "n": 3486,
-     "n_at_risk": 434,
-     "n_structural_miss": 79,
-     "predicted": 35.53000000000002,
-     "observed": 202,
-     "observed_at_risk": 123,
-     "brier": 0.05117271944922552,
-     "auc": 0.767888261116002,
-     "auc_at_risk": 0.6870049407889577,
+     "n_at_risk": 447,
+     "n_structural_miss": 68,
+     "predicted": 25.190000000000005,
+     "observed": 164,
+     "observed_at_risk": 96,
+     "brier": 0.04362957544463578,
+     "auc": 0.7516317675217692,
+     "auc_at_risk": 0.6904380341880342,
      "scored_years": 20,
      "fit_split": 1930,
-     "fit_n": 15096,
-     "fit_events": 64,
-     "fit_source": "refit on labels ≤ 1930 (n=15096, events=64)",
-     "leaky": false
-    },
-    "chokepoint_status": {
-     "n": 9,
-     "n_at_risk": 7,
-     "n_structural_miss": 1,
-     "predicted": 4.2700000000000005,
-     "observed": 5,
-     "observed_at_risk": 4,
-     "brier": 0.2639888888888889,
-     "auc": 0.75,
-     "auc_at_risk": 0.875,
-     "scored_years": 15,
-     "fit_split": 1930,
-     "fit_n": 361,
-     "fit_events": 20,
-     "fit_source": "refit on labels ≤ 1930 (n=361, events=20)",
+     "fit_n": 24848,
+     "fit_events": 93,
+     "fit_source": "refit on labels ≤ 1930 (n=24848, events=93)",
      "leaky": false,
-     "n_unborn_records": 0,
-     "n_unborn_events": 0
+     "n_excluded_no_covariate": 7,
+     "n_excluded_with_event": 4,
+     "excluded_vars": {
+      "cinc": 6,
+      "regime": 2
+     },
+     "epv": 13.285714285714286,
+     "n_degenerate": 3,
+     "degenerate": [
+      "nuclear_both",
+      "pre_1946",
+      "lag1(at_war_any_post46)"
+     ]
     },
-    "corridor_status": {
-     "n": 20,
-     "n_at_risk": 20,
+    "war_end": {
+     "n": 0,
+     "reason": "the war-spell mechanism is a candidate (data/templates.yaml, dyadic war template `duration.status`); the engine fires no war_end. Run with WAR_DURATION_ON=1 to score it",
+     "scored_years": 20
+    },
+    "record_reopen": {
+     "n": 44,
+     "n_at_risk": 44,
      "n_structural_miss": 0,
-     "predicted": 5.6000000000000005,
-     "observed": 5,
-     "observed_at_risk": 5,
-     "brier": 0.17573,
-     "auc": 0.64,
-     "auc_at_risk": 0.64,
+     "predicted": 12.849999999999998,
+     "observed": 17,
+     "observed_at_risk": 17,
+     "brier": 0.23304772727272727,
+     "auc": 0.5773420479302832,
+     "auc_at_risk": 0.5773420479302832,
      "scored_years": 15,
      "fit_split": 1930,
-     "fit_n": 787,
-     "fit_events": 17,
-     "fit_source": "refit on labels ≤ 1930 (n=787, events=17)",
+     "fit_n": 75,
+     "fit_events": 21,
+     "fit_source": "refit on labels ≤ 1930 (n=75, events=21)",
      "leaky": false,
      "n_unborn_records": 18,
-     "n_unborn_events": 2
+     "n_unborn_events": 2,
+     "epv": 5.25,
+     "n_degenerate": 0,
+     "degenerate": []
+    },
+    "contest_settle": {
+     "n": 37,
+     "n_at_risk": 15,
+     "n_structural_miss": 0,
+     "predicted": 5.74,
+     "observed": 9,
+     "observed_at_risk": 9,
+     "brier": 0.10664324324324324,
+     "auc": 0.9484126984126984,
+     "auc_at_risk": 0.7592592592592593,
+     "scored_years": 20,
+     "fit_split": 1930,
+     "fit_n": 773,
+     "fit_events": 20,
+     "fit_source": "refit on labels ≤ 1930 (n=773, events=20)",
+     "leaky": false,
+     "n_unborn_records": 38,
+     "n_unborn_events": 6,
+     "epv": 6.666666666666667,
+     "n_degenerate": 0,
+     "degenerate": []
+    },
+    "chokepoint_status": {
+     "n": 15,
+     "n_at_risk": 15,
+     "n_structural_miss": 0,
+     "predicted": 6.37,
+     "observed": 11,
+     "observed_at_risk": 11,
+     "brier": 0.30626000000000003,
+     "auc": 0.4431818181818182,
+     "auc_at_risk": 0.4431818181818182,
+     "scored_years": 15,
+     "fit_split": 1930,
+     "fit_n": 806,
+     "fit_events": 35,
+     "fit_source": "refit on labels ≤ 1930 (n=806, events=35)",
+     "leaky": false,
+     "n_unborn_records": 0,
+     "n_unborn_events": 0,
+     "epv": 17.5,
+     "n_degenerate": 1,
+     "degenerate": [
+      "adjacent_intrastate"
+     ]
+    },
+    "corridor_status": {
+     "n": 29,
+     "n_at_risk": 29,
+     "n_structural_miss": 0,
+     "predicted": 9.27,
+     "observed": 9,
+     "observed_at_risk": 9,
+     "brier": 0.20788620689655166,
+     "auc": 0.4111111111111111,
+     "auc_at_risk": 0.4111111111111111,
+     "scored_years": 15,
+     "fit_split": 1930,
+     "fit_n": 1110,
+     "fit_events": 45,
+     "fit_source": "refit on labels ≤ 1930 (n=1110, events=45)",
+     "leaky": false,
+     "n_unborn_records": 18,
+     "n_unborn_events": 3,
+     "epv": 11.25,
+     "n_degenerate": 0,
+     "degenerate": []
     }
    }
   },
@@ -451,34 +728,40 @@
    "actors": 63,
    "window_actors": 112,
    "dyad_actors": 112,
-   "ms": 4095,
+   "ms": 8351,
    "templates": {
     "democratize_step": {
      "n": 96,
      "n_at_risk": 87,
      "n_structural_miss": 0,
-     "predicted": 36.63999999999999,
+     "predicted": 31.450000000000003,
      "observed": 52,
      "observed_at_risk": 52,
-     "brier": 0.3625354166666667,
-     "auc": 0.5041520979020979,
-     "auc_at_risk": 0.37664835164835164,
+     "brier": 0.3423010416666666,
+     "auc": 0.5408653846153846,
+     "auc_at_risk": 0.4228021978021978,
      "scored_years": 20,
      "fit_split": 1940,
-     "fit_n": 1106,
-     "fit_events": 37,
-     "fit_source": "refit on labels ≤ 1940 (n=1106, events=37)",
+     "fit_n": 3327,
+     "fit_events": 85,
+     "fit_source": "refit on labels ≤ 1940 (n=3327, events=85)",
      "leaky": false,
      "n_excluded_no_covariate": 9,
      "n_excluded_with_event": 0,
      "excluded_vars": {
       "log_gdp_pc": 9,
       "gdp_growth": 9
-     }
+     },
+     "epv": 14.166666666666666,
+     "n_degenerate": 2,
+     "degenerate": [
+      "win5(leader_exit_recent)",
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 0,
-     "reason": "no fit at as-of: n=202, events=3 in years ≤ 1940",
+     "reason": "no fit at as-of: n=209, events=3 in years ≤ 1940",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -486,7 +769,7 @@
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=251, events=2 in years ≤ 1940",
+     "reason": "no fit at as-of: n=251, events=1 in years ≤ 1940",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -496,17 +779,17 @@
      "n": 49,
      "n_at_risk": 33,
      "n_structural_miss": 0,
-     "predicted": 6.120000000000001,
+     "predicted": 4.919999999999999,
      "observed": 18,
      "observed_at_risk": 18,
-     "brier": 0.23719999999999997,
-     "auc": 0.8853046594982079,
-     "auc_at_risk": 0.762962962962963,
+     "brier": 0.25864489795918366,
+     "auc": 0.8566308243727598,
+     "auc_at_risk": 0.7037037037037037,
      "scored_years": 20,
      "fit_split": 1940,
-     "fit_n": 843,
-     "fit_events": 31,
-     "fit_source": "refit on labels ≤ 1940 (n=843, events=31)",
+     "fit_n": 1637,
+     "fit_events": 70,
+     "fit_source": "refit on labels ≤ 1940 (n=1637, events=70)",
      "leaky": false,
      "n_excluded_no_covariate": 16,
      "n_excluded_with_event": 0,
@@ -514,267 +797,498 @@
       "log_gdp_pc": 1,
       "gdp_growth": 1,
       "not_live_at_as_of": 15
-     }
+     },
+     "epv": 17.5,
+     "n_degenerate": 4,
+     "degenerate": [
+      "lag1(intrastate)",
+      "win5(coup_attempt)",
+      "aid_conditionality",
+      "great_game"
+     ]
     },
     "mid_force": {
      "n": 6216,
-     "n_at_risk": 481,
-     "n_structural_miss": 128,
-     "predicted": 150.57999999999987,
-     "observed": 239,
-     "observed_at_risk": 111,
-     "brier": 0.03343796653796653,
-     "auc": 0.7080370149730172,
-     "auc_at_risk": 0.7355247139030923,
+     "n_at_risk": 764,
+     "n_structural_miss": 92,
+     "predicted": 113.48000000000022,
+     "observed": 202,
+     "observed_at_risk": 110,
+     "brier": 0.027952670527670562,
+     "auc": 0.7351534538222695,
+     "auc_at_risk": 0.7912844036697247,
      "scored_years": 20,
      "fit_split": 1940,
-     "fit_n": 19799,
-     "fit_events": 250,
-     "fit_source": "refit on labels ≤ 1940 (n=19799, events=250)",
-     "leaky": false
+     "fit_n": 29581,
+     "fit_events": 311,
+     "fit_source": "refit on labels ≤ 1940 (n=29581, events=311)",
+     "leaky": false,
+     "n_excluded_no_covariate": 8,
+     "n_excluded_with_event": 4,
+     "excluded_vars": {
+      "cinc": 5,
+      "regime": 4
+     },
+     "epv": 44.42857142857143,
+     "n_degenerate": 1,
+     "degenerate": [
+      "lag1(at_war_any_post46)"
+     ]
     },
     "mid_war": {
      "n": 6216,
-     "n_at_risk": 477,
-     "n_structural_miss": 87,
-     "predicted": 98.64999999999995,
-     "observed": 174,
-     "observed_at_risk": 87,
-     "brier": 0.02391388352638352,
-     "auc": 0.7260726637674212,
-     "auc_at_risk": 0.7586206896551724,
+     "n_at_risk": 696,
+     "n_structural_miss": 68,
+     "predicted": 63.55,
+     "observed": 140,
+     "observed_at_risk": 72,
+     "brier": 0.020119514157014202,
+     "auc": 0.7216407646007712,
+     "auc_at_risk": 0.8000467414529915,
      "scored_years": 20,
      "fit_split": 1940,
-     "fit_n": 19799,
-     "fit_events": 112,
-     "fit_source": "refit on labels ≤ 1940 (n=19799, events=112)",
-     "leaky": false
-    },
-    "chokepoint_status": {
-     "n": 9,
-     "n_at_risk": 7,
-     "n_structural_miss": 1,
-     "predicted": 3.4299999999999997,
-     "observed": 4,
-     "observed_at_risk": 3,
-     "brier": 0.22861111111111113,
-     "auc": 0.775,
-     "auc_at_risk": 1,
-     "scored_years": 5,
-     "fit_split": 1940,
-     "fit_n": 431,
-     "fit_events": 24,
-     "fit_source": "refit on labels ≤ 1940 (n=431, events=24)",
+     "fit_n": 29581,
+     "fit_events": 138,
+     "fit_source": "refit on labels ≤ 1940 (n=29581, events=138)",
      "leaky": false,
-     "n_unborn_records": 0,
-     "n_unborn_events": 0
+     "n_excluded_no_covariate": 8,
+     "n_excluded_with_event": 2,
+     "excluded_vars": {
+      "cinc": 5,
+      "regime": 4
+     },
+     "epv": 19.714285714285715,
+     "n_degenerate": 3,
+     "degenerate": [
+      "nuclear_both",
+      "pre_1946",
+      "lag1(at_war_any_post46)"
+     ]
     },
-    "corridor_status": {
-     "n": 23,
-     "n_at_risk": 23,
+    "war_end": {
+     "n": 0,
+     "reason": "the war-spell mechanism is a candidate (data/templates.yaml, dyadic war template `duration.status`); the engine fires no war_end. Run with WAR_DURATION_ON=1 to score it",
+     "scored_years": 20
+    },
+    "record_reopen": {
+     "n": 47,
+     "n_at_risk": 47,
      "n_structural_miss": 0,
-     "predicted": 5.43,
-     "observed": 6,
-     "observed_at_risk": 6,
-     "brier": 0.1809434782608696,
-     "auc": 0.7107843137254902,
-     "auc_at_risk": 0.7107843137254902,
+     "predicted": 10.699999999999998,
+     "observed": 16,
+     "observed_at_risk": 16,
+     "brier": 0.13673617021276596,
+     "auc": 0.8165322580645161,
+     "auc_at_risk": 0.8165322580645161,
      "scored_years": 5,
      "fit_split": 1940,
-     "fit_n": 999,
-     "fit_events": 23,
-     "fit_source": "refit on labels ≤ 1940 (n=999, events=23)",
+     "fit_n": 96,
+     "fit_events": 24,
+     "fit_source": "refit on labels ≤ 1940 (n=96, events=24)",
      "leaky": false,
      "n_unborn_records": 15,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 6,
+     "n_degenerate": 0,
+     "degenerate": []
+    },
+    "contest_settle": {
+     "n": 46,
+     "n_at_risk": 22,
+     "n_structural_miss": 0,
+     "predicted": 7.229999999999999,
+     "observed": 17,
+     "observed_at_risk": 17,
+     "brier": 0.18323260869565217,
+     "auc": 0.896551724137931,
+     "auc_at_risk": 0.4,
+     "scored_years": 20,
+     "fit_split": 1940,
+     "fit_n": 949,
+     "fit_events": 23,
+     "fit_source": "refit on labels ≤ 1940 (n=949, events=23)",
+     "leaky": false,
+     "n_unborn_records": 29,
+     "n_unborn_events": 0,
+     "epv": 7.666666666666667,
+     "n_degenerate": 0,
+     "degenerate": []
+    },
+    "chokepoint_status": {
+     "n": 15,
+     "n_at_risk": 15,
+     "n_structural_miss": 0,
+     "predicted": 8.430000000000001,
+     "observed": 11,
+     "observed_at_risk": 11,
+     "brier": 0.16654,
+     "auc": 0.8295454545454546,
+     "auc_at_risk": 0.8295454545454546,
+     "scored_years": 5,
+     "fit_split": 1940,
+     "fit_n": 956,
+     "fit_events": 43,
+     "fit_source": "refit on labels ≤ 1940 (n=956, events=43)",
+     "leaky": false,
+     "n_unborn_records": 0,
+     "n_unborn_events": 0,
+     "epv": 21.5,
+     "n_degenerate": 1,
+     "degenerate": [
+      "adjacent_intrastate"
+     ]
+    },
+    "corridor_status": {
+     "n": 32,
+     "n_at_risk": 32,
+     "n_structural_miss": 0,
+     "predicted": 6.13,
+     "observed": 11,
+     "observed_at_risk": 11,
+     "brier": 0.223215625,
+     "auc": 0.6818181818181818,
+     "auc_at_risk": 0.6818181818181818,
+     "scored_years": 5,
+     "fit_split": 1940,
+     "fit_n": 1412,
+     "fit_events": 53,
+     "fit_source": "refit on labels ≤ 1940 (n=1412, events=53)",
+     "leaky": false,
+     "n_unborn_records": 15,
+     "n_unborn_events": 0,
+     "epv": 13.25,
+     "n_degenerate": 0,
+     "degenerate": []
     }
    }
   }
  ],
  "pooled": {
+  "democratize_step": {
+   "n": 270,
+   "n_distinct_units": 107,
+   "n_as_of_rows": 4,
+   "predicted": 77.04999999999998,
+   "observed": 130,
+   "brier": 0.3250011111111111,
+   "brier_base": 0.24965706447187933,
+   "skill": -0.3017901648351644,
+   "auc": 0.5202747252747253,
+   "auc_ci95_by_unit": [
+    0.44988344988344986,
+    0.5856302465463679
+   ],
+   "skill_ci95_by_unit": [
+    -0.5019785706574551,
+    -0.16014462127426898
+   ],
+   "calibration": [
+    [
+     0.011851851851851855,
+     0.4444444444444444
+    ],
+    [
+     0.1446296296296297,
+     0.5370370370370371
+    ],
+    [
+     0.2698148148148148,
+     0.4444444444444444
+    ],
+    [
+     0.40925925925925916,
+     0.48148148148148145
+    ],
+    [
+     0.5912962962962963,
+     0.5
+    ]
+   ]
+  },
+  "autocratic_closure": {
+   "n": 147,
+   "n_distinct_units": 72,
+   "n_as_of_rows": 4,
+   "predicted": 27.380000000000006,
+   "observed": 63,
+   "brier": 0.28907210884353735,
+   "brier_base": 0.24489795918367344,
+   "skill": -0.18037777777777775,
+   "auc": 0.671957671957672,
+   "auc_ci95_by_unit": [
+    0.5548844537815126,
+    0.7872851365015167
+   ],
+   "skill_ci95_by_unit": [
+    -0.40082283132530083,
+    0.019038451612903184
+   ],
+   "calibration": [
+    [
+     0.0010344827586206897,
+     0.2413793103448276
+    ],
+    [
+     0.042068965517241395,
+     0.27586206896551724
+    ],
+    [
+     0.12200000000000003,
+     0.43333333333333335
+    ],
+    [
+     0.2517241379310345,
+     0.6551724137931034
+    ],
+    [
+     0.5056666666666667,
+     0.5333333333333333
+    ]
+   ]
+  },
   "mid_force": {
    "n": 14463,
-   "predicted": 346.55000000000035,
-   "observed": 690,
-   "brier": 0.039847369148862624,
-   "brier_base": 0.04543189645005789,
-   "skill": 0.12292084939342551,
-   "auc": 0.7645761977067083,
+   "n_distinct_units": 6422,
+   "n_as_of_rows": 4,
+   "predicted": 274.37,
+   "observed": 607,
+   "brier": 0.035653536610661826,
+   "brier_base": 0.04020775207402062,
+   "skill": 0.11326709971188376,
+   "auc": 0.7926750578318387,
+   "auc_ci95_by_unit": [
+    0.7817897469020622,
+    0.8120647314573517
+   ],
+   "skill_ci95_by_unit": [
+    0.10969851082304627,
+    0.13320577336417483
+   ],
    "calibration": [
     [
      0,
-     0.010719225449515906
+     0.006224066390041493
     ],
     [
      0,
-     0.018320082958866227
+     0.011406844106463879
     ],
     [
      0,
-     0.028008298755186723
+     0.02351313969571231
     ],
     [
      0,
-     0.026270307639128933
+     0.01693743518838576
     ],
     [
-     0.11978914621500183,
-     0.15520221223643277
+     0.09483926719668197,
+     0.1517455928102316
     ]
    ]
   },
   "mid_war": {
    "n": 14463,
-   "predicted": 191.6200000000002,
-   "observed": 478,
-   "brier": 0.02901864066929411,
-   "brier_base": 0.0319575586708968,
-   "skill": 0.09196315750736961,
-   "auc": 0.7648689645062029,
+   "n_distinct_units": 6422,
+   "n_as_of_rows": 4,
+   "predicted": 136.9900000000002,
+   "observed": 401,
+   "brier": 0.02543019428887511,
+   "brier_base": 0.02695719460361602,
+   "skill": 0.05664537193852048,
+   "auc": 0.7587468003295701,
+   "auc_ci95_by_unit": [
+    0.751520601721733,
+    0.7831266400967831
+   ],
+   "skill_ci95_by_unit": [
+    0.06575718466851688,
+    0.07787386254619089
+   ],
    "calibration": [
     [
      0,
-     0.005186721991701245
+     0.004840940525587829
     ],
     [
      0,
-     0.010715520221223643
+     0.008641548565502939
     ],
     [
      0,
-     0.022821576763485476
+     0.021784232365145227
     ],
     [
      0,
-     0.020048392671966817
+     0.012098167991704113
     ],
     [
-     0.06623574144486694,
-     0.10646387832699619
+     0.04735222951952976,
+     0.09125475285171103
+    ]
+   ]
+  },
+  "contest_settle": {
+   "n": 144,
+   "n_distinct_units": 46,
+   "n_as_of_rows": 4,
+   "predicted": 25.849999999999994,
+   "observed": 43,
+   "brier": 0.16975069444444435,
+   "brier_base": 0.20944251543209874,
+   "skill": 0.18951176606032727,
+   "auc": 0.8031314759382915,
+   "auc_ci95_by_unit": [
+    0.6896175946106597,
+    0.8909494053618222
+   ],
+   "skill_ci95_by_unit": [
+    0.08730204081632698,
+    0.2843363194819213
+   ],
+   "calibration": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0.12551724137931033,
+     0.3793103448275862
+    ],
+    [
+     0.32655172413793093,
+     0.6206896551724138
+    ],
+    [
+     0.43931034482758635,
+     0.4827586206896552
     ]
    ]
   },
   "chokepoint_status": {
-   "n": 36,
-   "predicted": 16.47,
-   "observed": 17,
-   "brier": 0.2215361111111111,
-   "brier_base": 0.2492283950617284,
-   "skill": 0.11111207430340564,
-   "auc": 0.739938080495356,
+   "n": 60,
+   "n_distinct_units": 15,
+   "n_as_of_rows": 4,
+   "predicted": 29.899999999999995,
+   "observed": 38,
+   "brier": 0.2363933333333333,
+   "brier_base": 0.23222222222222222,
+   "skill": -0.01796172248803818,
+   "auc": 0.6351674641148325,
+   "auc_ci95_by_unit": [
+    0.4828042328042328,
+    0.7714120370370371
+   ],
+   "skill_ci95_by_unit": [
+    -0.7682300556586266,
+    0.1626446886446884
+   ],
    "calibration": [
     [
-     0,
-     0.14285714285714285
+     0.2625,
+     0.5833333333333334
     ],
     [
-     0.3028571428571429,
-     0.42857142857142855
+     0.39833333333333326,
+     0.5833333333333334
     ],
     [
-     0.5257142857142857,
-     0.42857142857142855
+     0.4749999999999999,
+     0.4166666666666667
     ],
     [
-     0.6042857142857142,
-     0.5714285714285714
+     0.5783333333333333,
+     0.6666666666666666
     ],
     [
-     0.8050000000000002,
-     0.75
+     0.7775000000000002,
+     0.9166666666666666
     ]
    ]
   },
   "corridor_status": {
-   "n": 83,
-   "predicted": 25.15000000000001,
-   "observed": 23,
-   "brier": 0.18503253012048193,
-   "brier_base": 0.20031934968790827,
-   "skill": 0.07631224637681155,
-   "auc": 0.6753623188405797,
+   "n": 118,
+   "n_distinct_units": 32,
+   "n_as_of_rows": 4,
+   "predicted": 43.42000000000002,
+   "observed": 39,
+   "brier": 0.21130677966101696,
+   "brier_base": 0.2212726228095375,
+   "skill": 0.045038753651411856,
+   "auc": 0.5616682895163908,
+   "auc_ci95_by_unit": [
+    0.4169871794871795,
+    0.6969202898550725
+   ],
+   "skill_ci95_by_unit": [
+    -0.17073098921706542,
+    0.20073010273972602
+   ],
    "calibration": [
     [
-     0.13874999999999998,
-     0.125
+     0.1373913043478261,
+     0.21739130434782608
     ],
     [
-     0.21882352941176475,
-     0.17647058823529413
+     0.24916666666666665,
+     0.4583333333333333
     ],
     [
-     0.29437500000000005,
-     0.1875
+     0.3234782608695652,
+     0.2608695652173913
     ],
     [
-     0.35294117647058826,
-     0.47058823529411764
+     0.41833333333333345,
+     0.25
     ],
     [
-     0.5,
-     0.4117647058823529
+     0.7000000000000001,
+     0.4583333333333333
     ]
    ]
   },
-  "democratize_step": {
-   "n": 208,
-   "predicted": 77.5,
-   "observed": 100,
-   "brier": 0.3145048076923077,
-   "brier_base": 0.24963017751479288,
-   "skill": -0.2598829629629631,
-   "auc": 0.5309722222222222,
+  "record_reopen": {
+   "n": 135,
+   "n_distinct_units": 47,
+   "n_as_of_rows": 3,
+   "predicted": 45.80000000000004,
+   "observed": 37,
+   "brier": 0.19761037037037027,
+   "brier_base": 0.19895747599451302,
+   "skill": 0.006770821842250863,
+   "auc": 0.630584666298952,
+   "auc_ci95_by_unit": [
+    0.5124570446735395,
+    0.7654970760233918
+   ],
+   "skill_ci95_by_unit": [
+    -0.20010714285714237,
+    0.17230855629877417
+   ],
    "calibration": [
     [
-     0.02,
-     0.4146341463414634
+     0.06370370370370373,
+     0.14814814814814814
     ],
     [
-     0.2176190476190476,
-     0.5
+     0.1718518518518519,
+     0.2962962962962963
     ],
     [
-     0.3880487804878049,
-     0.4878048780487805
+     0.30037037037037034,
+     0.25925925925925924
     ],
     [
-     0.5140476190476189,
-     0.47619047619047616
+     0.4392592592592593,
+     0.18518518518518517
     ],
     [
-     0.7152380952380952,
-     0.5238095238095238
-    ]
-   ]
-  },
-  "autocratic_closure": {
-   "n": 121,
-   "predicted": 21.680000000000003,
-   "observed": 54,
-   "brier": 0.30334545454545453,
-   "brier_base": 0.24711426815108256,
-   "skill": -0.2275513543394141,
-   "auc": 0.693200663349917,
-   "calibration": [
-    [
-     0,
-     0.20833333333333334
-    ],
-    [
-     0.0425,
-     0.2916666666666667
-    ],
-    [
-     0.1425,
-     0.5416666666666666
-    ],
-    [
-     0.25166666666666665,
-     0.625
-    ],
-    [
-     0.4480000000000001,
-     0.56
+     0.7211111111111111,
+     0.48148148148148145
     ]
    ]
   }

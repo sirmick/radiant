@@ -679,6 +679,12 @@ export function dyadHazards(world, a, b) {
     major_power_any: (a.cur.great_power || b.cur.great_power) ? 1 : 0,
     rivalry: rivalryScore(world.dyadRecent.get(k), world.year, world.rivalryDecay),
     at_war_any: (a.prev.at_war || b.prev.at_war) ? 1 : 0,
+    // the era interaction on the contagion term (era-1914-1945-r2/engine-1). One pooled coefficient (+1.77 on the
+    // war template) was doing two jobs: the stratified log-odds ratio on the fitter's own rows is +2.02 before 1946
+    // and +0.50 after, so the modern dyad was handed 4.8x the odds multiplier its own era supports and the simulated
+    // at-war count climbed monotonically instead of staying flat. Entered as a delta on at_war_any above, over the
+    // same `pre_1946` constant already in this block; same construction in scripts/lib/fit.mjs.
+    at_war_any_post46: ((a.prev.at_war || b.prev.at_war) && world.year >= 1946) ? 1 : 0,
     nuclear_both: world.nukes.has(a.id) && world.nukes.has(b.id) ? 1 : 0,
     // era term (era-1870-1914/statistics-6): a derived constant, mirrored in scripts/lib/fit.mjs's dyad feature block
     pre_1946: world.year < 1946 ? 1 : 0,
@@ -968,9 +974,16 @@ export function stepYear(world, rng, opts = {}) {
   for (const entry of world.corridors ?? []) {
     const impaired = entry.state != null && IMPAIRED.has(entry.state.status);
     const reopen = impaired && !NO_TERM.record ? reopenHazard(world, entry) : null;
-    if (impaired && !NO_TERM.record) {
+    // ... and the substitution is conditional on the reopen hazard EXISTING (era-1914-1945-r2/corridors-1). The
+    // template has no fit at every as-of year — at 1890/1900/1910/1920 it reports `n=0, no fit at as-of` — and the
+    // impaired branch used to `continue` on a null hazard, so the record fell through the reopen draw AND never
+    // reached the generic status draw below it: the impaired state was absorbing and the record carried zero mass for
+    // the whole horizon. At as-of 1920 that was 4 of 27 corridor units and 2 of the 5 observed changes
+    // (chinese_eastern_railway -> built 1924.41, berlin_baghdad -> built 1940.5), reported as n_structural_miss.
+    // With no fitted reopen hazard the record falls back to the generic status hazard, which is what the engine did
+    // before the termination package and is fitted at every as-of year in this window.
+    if (impaired && !NO_TERM.record && reopen != null) {
       entry.impairAge = (entry.impairAge ?? 0) + 1;
-      if (reopen == null) continue;
       if (rng() < reopen) {
         const to = BASE_STATUS[entry.rec.kind] ?? 'open';
         const t = world.templates.find(x => x.unit === CORRIDOR_UNIT[entry.rec.kind] && !x.spell);
@@ -980,6 +993,7 @@ export function stepYear(world, rng, opts = {}) {
       }
       continue;
     }
+    if (impaired) entry.impairAge = (entry.impairAge ?? 0) + 1;   // the age is state, not a by-product of the reopen draw
     const hz = corridorHazards(world, entry); if (!hz) continue;
     if (rng() < hz.p) {
       const to = drawCorridorStatus(world, entry, rng);
@@ -1041,6 +1055,13 @@ function coalitionJoin(world, rng, warPairs, y) {
         if (rng() < p) joined[s].push(c);
       }
     }
+    // the size of the war component after this round's draws: the two initiators plus everyone who joined either side,
+    // minus anyone allied to both (who stays out). That count is `war_coalition`'s own definition and the covariate
+    // war_end is fitted on — openWarSpell defaulted it to 2, so every pair a coalition draw created entered its spell
+    // as a two-state war and its termination hazard was evaluated at war_coalition = 2 for ever, and the initiating
+    // pair kept the 2 it was opened with even when its war became a world war (era-1914-1945-r2/engine-8).
+    const both = joined[0].filter(c => joined[1].includes(c));
+    const size = 2 + joined[0].filter(c => !both.includes(c)).length + joined[1].filter(c => !both.includes(c)).length;
     for (let s = 0; s < 2; s++) for (const c of joined[s]) {
       if (joined[1 - s].includes(c)) continue;   // an ally of both sides stays out
       const j = world.actors[c]; j.cur.at_war = 1; j.cur.mid_war = 1; j.cur.mid_force = 1;
@@ -1050,9 +1071,11 @@ function coalitionJoin(world, rng, warPairs, y) {
         out.push({ kind: 'mid_force', a: c, b: o, year: y, via: 'coalition' });
         out.push({ kind: 'mid_war', a: c, b: o, year: y, via: 'coalition' });
         world.dyadRecent.set(k, y); warPairs.push([c, o]);
-        if (world.warDuration) openWarSpell(world, k, c, o, y, rng, out);
+        if (world.warDuration) openWarSpell(world, k, c, o, y, rng, out, size);
       }
     }
+    // ... and the pair that started it is inside the same component, so its spell carries the same count
+    if (size > 2 && world.warDuration) { const sp = world.warSpells.get(pairKey(ida, idb)); if (sp && sp.coalition < size) sp.coalition = size; }
   }
   return out;
 }

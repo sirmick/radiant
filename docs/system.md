@@ -53,13 +53,22 @@ No country names in `data/templates.yaml`. Each template predicts one event kind
 | intrastate_onset | actor-year | UCDP 1946–2024 | 0.83 |
 | mid_force | dyad-year | CoW MID 1816–2001 | 0.86 |
 | mid_war | dyad-year | CoW MID | 0.74 |
-| chokepoint_status | chokepoint-year | data/corridors.yaml dated histories 1869–2025 | 0.58 (≥1946) |
-| corridor_status | corridor-year | data/corridors.yaml dated histories 1869–2025 | 0.68 (≥1946) |
-| war_end | war-year (dyadic spell) | CoW MID 3.02 hostlev-5 spells 1816–2001 | 0.61 (≥1946) |
+| chokepoint_status | chokepoint-year | data/corridors.yaml dated histories 1869–1945 | 0.77 (≥1907) |
+| corridor_status | corridor-year | data/corridors.yaml dated histories 1869–1945 | 0.81 (≥1907) |
+| war_end | war-year (dyadic spell) | CoW MID 3.02 hostlev-5 spells 1816–2001 | 0.63 (≥1946), 0.53 (≥1975, the declared split) |
 | intrastate_end | actor-year (spell) | UCDP conflict runs 1946–2024 | 0.73 (≥1985) |
-| record_reopen | record-year (impaired) | data/corridors.yaml 1869–1945 | 0.74 (≥1930) |
-| contest_settle | territory-year (unsettled) | data/territories.yaml dated histories 1871–2025 | 0.65 (≥1946) |
+| record_reopen | record-year (impaired) | data/corridors.yaml 1869–1945 | 0.50 (≥1930) |
+| contest_settle | territory-year (unsettled) | data/territories.yaml dated histories 1871–2026 | **0.45 (≥1946)** — anti-predictive out of sample, see below |
 | weaponization, sovereign_default | — | prior only (no panel sample yet) | — |
+
+`contest_settle`'s number is the one to read carefully, and it is corrected here rather than left standing
+(era-1914-1945-r2/engine-3): the table said 0.65 while `data/fits.json` said 0.356, and after this turn's sample work
+(five missing settlement rows, five new records with dated endings) it is 0.449 on 43 events — still worse than chance
+out of sample. Its rolling-origin backtest skill is positive (+0.19 pooled over the 1910–1940 as-of years, AUC 0.80)
+because the refit at each as-of year never has to forecast one era's settlement process from another's, and its
+at-risk ranking is where the damage shows: `auc_at_risk` 0.25 / 0.21 / 0.76 / 0.40 at as-of 1910 / 1920 / 1930 / 1940
+against 0.22 / 0.28 / 0.21 / 0.47 before. The template stays on with those numbers on the record; demoting it to a
+candidate behind an env switch is the open option and is written up in `docs/escalations.md`.
 
 ## Faithful first (2026-09-07)
 

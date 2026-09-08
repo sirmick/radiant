@@ -5,6 +5,17 @@
 # owid: entity code in OWID/Maddison files (modern-borders series stand in for predecessors; flagged in `series_note`).
 # great_power: years in the CoW major-power list (drives the 'major power' dyad term).
 # Modern actors from data/actors.yaml are merged on top of this at build; entries here add lifecycle + codes.
+# capability_from: the first year the capability source (CoW NMC) has a row for this actor, declared where the actor is
+#   live before it (era-1914-1945-r2/data-7). scripts/lib/fit.mjs drops a dyad-year whose cinc is null on either side,
+#   so those years are silently outside mid_force/mid_war — never at risk, never scored. The `introduced` dates are NOT
+#   changed: the corridor and territory layers need the dominions alive from 1867/1901/1907/1910. Actors that reach the
+#   panel through the countrycode file rather than this list (NPL, LBR, CRI 1920; OMN 1971; MNE 2006; BTN 1971) have the
+#   same hole; scripts/build-panel.mjs prints every one of them each build.
+# Economic gaps this loop has looked for and cannot fill from the current source: LVA and LTU have no Maddison gdp_pc
+#   row before 1973 and EST none between 1913 and 1990, so LVA:1934/1935, LTU:1927 and EST:1934/1935 — the Baltic
+#   interwar coups — stay outside the regime fits with `[outside]` covariates. They are a declared gap, not a bug: the
+#   log-linear interpolation added in era-1914-1945-r2/data-3 fills inside an actor's own observed range and never
+#   extrapolates, and inventing a number here would be the one thing worse than the hole.
 
 - { id: GBR, name: United Kingdom, introduced: 1816, gw: 200, owid: GBR, great_power: [1816, null] }
 - { id: FRA, name: France, introduced: 1816, gw: 220, owid: FRA, great_power: [1816, null] }
@@ -195,7 +206,7 @@
 - { id: ARE, name: United Arab Emirates, introduced: 1971, gw: 696, owid: ARE }
 - { id: QAT, name: Qatar, introduced: 1971, gw: 694, owid: QAT }
 - { id: USA, name: United States, introduced: 1816, gw: 2, owid: USA, great_power: [1898, null] }
-- { id: CAN, name: Canada, introduced: 1867, gw: 20, owid: CAN, notes: "Dominion 1867; GW system 1920. Model uses 1867 for the CPR/rail era" }
+- { id: CAN, name: Canada, introduced: 1867, gw: 20, owid: CAN, notes: "Dominion 1867; GW system 1920. Model uses 1867 for the CPR/rail era" , capability_from: 1920, capability_from_source: "CoW NMC has no row before the Gilpin-Wallace system entry of 1920; the model keeps introduced: 1867 because the corridor and territory layers need Canada alive for the Canadian Pacific" }
 - { id: MEX, name: Mexico, introduced: 1821, gw: 70, owid: MEX }
 - { id: BRA, name: Brazil, introduced: 1822, gw: 140, owid: BRA }
 - { id: ARG, name: Argentina, introduced: 1816, gw: 160, owid: ARG }
@@ -214,9 +225,9 @@
 - { id: PHL, name: Philippines, introduced: 1946, gw: 840, owid: PHL }
 - { id: MYS, name: Malaysia, introduced: 1957, gw: 820, owid: MYS }
 - { id: SGP, name: Singapore, introduced: 1965, gw: 830, owid: SGP }
-- { id: AUS, name: Australia, introduced: 1901, gw: 900, owid: AUS }
-- { id: NZL, name: New Zealand, introduced: 1907, gw: 920, owid: NZL }
-- { id: ZAF, name: South Africa, introduced: 1910, gw: 560, owid: ZAF }
+- { id: AUS, name: Australia, introduced: 1901, gw: 900, owid: AUS , capability_from: 1920, capability_from_source: "CoW NMC from 1920; introduced 1901 for the corridor layer (all_red_pacific)" }
+- { id: NZL, name: New Zealand, introduced: 1907, gw: 920, owid: NZL , capability_from: 1920, capability_from_source: "CoW NMC from 1920; introduced 1907 for the corridor layer" }
+- { id: ZAF, name: South Africa, introduced: 1910, gw: 560, owid: ZAF , capability_from: 1920, capability_from_source: "CoW NMC from 1920; introduced 1910 for the corridor and territory layers (delagoa_bay_railway)" }
 - { id: ETH, name: Ethiopia, spans: [[1855, 1937], [1941, null]], gw: 530, owid: ETH, notes: "Italian annexation 9 May 1936 (Africa Orientale Italiana); liberated 5 May 1941. 1936 is kept live: Ethiopia fought the war." }
 - { id: NGA, name: Nigeria, introduced: 1960, gw: 475, owid: NGA }
 - { id: KAZ, name: Kazakhstan, introduced: 1991, gw: 705, owid: KAZ }

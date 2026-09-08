@@ -680,3 +680,168 @@ opened and is left uncommitted — its provenance is not this turn's.*
 *Rule check: no country ids were added to `data/templates.yaml` or `src/engine/`. `record_building` and `BUILDING`
 in `src/engine/core.js` are status words, not places; every hand number added to `data/corridors.yaml` and
 `data/territories.yaml` carries a `source:` or the literal `estimate`.*
+
+---
+
+## Turn era-1914-1945-r2 — 2026-09-07
+
+Backtest range `--from 1910 --to 1940 --step 10 --horizon 20 --runs 100 --universe all`.
+
+**A note on the baseline, because it changes every number below.** `scores/backtest-1910-1940-h20-all.json` as
+committed was written on 2026-09-07T14:46 by `implement(era-1914-1945/corridors-7)` and was never regenerated after
+`refine(era-1870-1914-r2)` landed CoW Direct Contiguity back to 1816 — at as-of 1910 it reported a dyad fit sample of
+7,178 rows against the current tree's 16,785. Comparing to it would have credited this turn with the previous turn's
+work and would have read the era split as a regression it is not. Every before/after below is against the as-of 1910,
+1920, 1930 and 1940 rows of `scores/backtest-1870-2010-h20-all.json` (run 2026-09-08T03:53, the current baseline), and
+the stale turn file is overwritten by this turn's run.
+
+### Applied
+
+| finding | change | files | effect |
+|---|---|---|---|
+| data/1 | The WWII dyad cross-product no longer clamps a pair whose CoW participant spans do not overlap: `end = min(a.ey, b.ey)` and the pair is dropped when that precedes the later entry. The two `dispnum 2004` rows whose own `endyear` precedes their `styear` are clamped at read time instead, which is what they actually needed. The build prints the count. | `scripts/build-events.mjs` | **62 fabricated dyads dropped, 56 at hostlev ≥ 5, every one from dispnum 258 (WWII)**, dated 1940:5 1941:34 1943:2 1944:14 1945:7. `war_end` n 1041→995, events 407→**362**, base rate 39.10%→36.38%, `z(war_duration)` +0.086→**+0.21**, `contiguous` +0.25→+0.37, holdout (≥1946) AUC 0.632→**0.634**, Brier 0.2230→**0.2152**, exp/obs 1.45→**1.36** — the finding predicted 0.634 / 0.2149 / 1.36. Observed `mid_war` in the scored windows falls 202→164 at as-of 1930 and 174→140 at 1940. |
+| data/2 | Six wars the hand `at_war` list never named added to `data/history/events.yaml` with per-participant entry/exit dates and sources: `hungarian_adversaries_1919`, `franco_turkish_1919` (coded OTTOMAN — TUR is not live until 1923), `polish_lithuanian_1920`, `kashmir_1947`, `palestine_1948`, `hungary_1956`. `korean`'s `sides` extended from 5 contributors to 16 with contingent-arrival dates from CoW MID 51. `chaco` and `italo_ethiopian` keep their CoW war dates with a `notes` saying why they differ from the MID onset. `scripts/build-events.mjs` now prints the hand list against the label set every build. | `data/history/events.yaml`, `scripts/build-events.mjs` | at_war coverage of the `mid_war` spell-year set **400/732 (55%) → 454/732 (62%)**. The four years of declared global peace are gone: at_war positives by year 1946:0 1947:0 1948:0 1949:0 → **1946:0 1947:2 1948:9 1949:7** (1946 is genuinely 0 — Indonesia and Indochina are colonial wars, not interstate ones in this list). Korea's contingents: 1951 goes from 12 to 19 actors at war. |
+| data/3 | The log-linear Maddison benchmark interpolation that `derived_series` actors already had is extended to **every** actor, inside that actor's own observed range only, never extrapolated, never across a gap wider than 40 years, never on a `derived_series` actor (that block owns its window and deliberately nulls territory-change years). `gdp_pc_interp` = 1 marks every filled year. | `scripts/build-panel.mjs`, `data/history/actors.yaml` | 2,110 actor-years filled across 72 actors. Live actor-years with null `log_gdp_pc`: 1911–1930 **377 → 247**, 1921–1940 363 → 222, 1931–1950 367 → 196, 1941–1960 232 → 131; null `gdp_growth` 404 → 258 in 1911–1930. Of the 247 that remain, **19 are interior gaps** (EST, whose Maddison gap is wider than 40 years) and 228 are outside the actor's observed range or have no series at all — the finding's target of ≤ 200 counted those as recoverable and they are not, without extrapolating. POL 1914–1919 and 1921–1928, ALB 1932/1938 and THA 1933 are now non-null with `gdp_growth`; **LVA 1934/1935, LTU 1927 and EST 1934/1935 stay null and are declared in `data/history/actors.yaml`** — no pre-1950 Maddison row exists for them and inventing one would be worse than the hole. `democratize_step` n 8,571→9,378 events 333→354; `autocratic_closure` 6,488→6,700 / 266→288, both with holdout AUC flat (0.597→0.596, 0.584→0.584). |
+| data/4, statistics/3 | The occupation null split into the two things it was doing. Capabilities (`cinc`, `irst`, `milex`, `milper`, `energy_nmc`, `tpop`, `upop`) now carry the last **pre-occupation** observation forward instead of being nulled, so the actor survives the dyad filter; the dispute/alliance flags stay null; `at_war` **keeps its 1** where the war list says the actor is a belligerent and is null otherwise. A new `occupied` column marks every fully occupied actor-year, and an occupation declared `partial: true` marks and causes without touching the series. The backtest reports `n_excluded_no_covariate` / `excluded_vars` on dyad rows. | `scripts/build-panel.mjs`, `scripts/backtest.mjs`, `data/history/events.yaml` | 113 occupied actor-years marked, 243 capability values carried, 43 `at_war = 1` kept (FRA/NLD/BEL/LUX/NOR/DNK/SRB/GRC 1941–45 stop being coded as peace). Dyad exclusions are now visible: 15 actors at as-of 1910, 4 / 7 / 8 at 1920 / 1930 / 1940. `mid_force`/`mid_war` fit sample 78,915 → 79,207 rows with 888 → 890 and 257 → 258 events. |
+| data/5 | The five records whose top-level `status: settled` their own history never reaches: dated settlement rows added to `eastern_poland` (1945.62, Moscow agreement 16 Aug 1945), `bessarabia_bukovina` and `karelia_ceded` (1947.11, the Paris peace treaties) and `baltic_annexation` (1991.63 — the 47 unsettled years 1944–1991 stand, they are real non-endings); `hatay`'s top-level status corrected to `disputed`, because Syria has never renounced the claim, which makes it the counter-case that keeps the sample from being selected on settlement. `scripts/build-events.mjs` now **fails the build** if a record declares `settled` and never reaches a resolved status. | `data/territories.yaml`, `scripts/build-events.mjs` | `contest_settle` n 1,649→1,453 events 34→**43**. `auc_at_risk` at as-of 1930 **0.21 → 0.76** and at 1910 0.22 → 0.25; at 1920 0.28 → 0.21 and at 1940 0.47 → 0.40. Pooled 1870–2010 skill **+0.178 → +0.248**, AUC 0.793 → **0.840**. The claim that the inversion was a homogeneous-at-risk-set artefact is **half falsified** — see engine/3 under escalations. |
+| data/6 | The First World War's occupation spans, absent from a layer that began in 1936: BEL and LUX 1914.60–1918.86 (DEU), SRB 1915.86–1918.83 (AUT_HUN), ROU 1916.95–1918.86 (DEU, `partial: true` — the Iasi government kept fielding an army), ALB 1916–1920 (AUT_HUN). MNE is not live in the panel in 1916 and is not coded. | `data/history/events.yaml` | BEL's 1914 3→0 collapse and its 1919 0→1 restoration now carry `cause: occupation` and `cause: imposed` and leave the domestic regime templates, as the identical 1940/1946 pair already did. `autocratic_closure` `auc_at_risk` at as-of 1910 0.73 → 0.75; `democratize_step` at as-of 1910 0.49 → 0.54. |
+| data/7 | `capability_from` + `capability_from_source` declared on CAN, AUS, NZL and ZAF (CoW NMC has no row before 1920 while the corridor layer needs them alive from 1867/1901/1907/1910). `scripts/build-panel.mjs` prints every actor live before its capability source covers it. | `data/history/actors.yaml`, `scripts/build-panel.mjs` | The build now says: **50 actors live before CoW NMC covers them, 1,926 actor-years outside every dyadic template, 46 without a declaration**. The remaining 46 reach the panel through `codelist_panel.csv` rather than `actors.yaml` (NPL, LBR, CRI from 1920; OMN 1971; MNE 2006; BTN 1971) and declaring them needs a lifecycle entry each — the hole is now reported every build instead of being discovered. |
+| corridors/1 | An impaired record whose `record_reopen` template has no fit at the as-of year no longer falls through both draws. The substitution of the reopen hazard for the generic status hazard is now conditional on the reopen hazard existing; `impairAge` increments on both paths. | `src/engine/core.js` | The absorbing state is gone. At as-of 1910 `record_reopen` is still unfitted (n=10, 6 events ≤ 1910) and the four impaired records of 1920 now reach the status hazard. `corridor_status` at as-of 1920 `n_structural_miss` **2 → 0** and observed_at_risk 3 → 7. |
+| corridors/2 | Five records that stopped before the war they were fought in: `sunda_strait` (1942.16 closed/JPN, 1945.70 open/NLD), `danish_straits` (1940.27 closed/DEU — Weserübung, 1945.35 open/DNK), `corinth_canal` (1941.32 closed/DEU, 1948.51 open/GRC), `bab_al_mandab` (1940.44 contested — the Red Sea combat zone, 1941.28 open/GBR), `taiwan_strait` (1937.65 contested/JPN — the blockade that makes the Burma Road necessary). | `data/corridors.yaml` | `chokepoint_status` observed in the scored windows: as-of 1910 7 → 8, 1920 **4 → 8**, 1930 **6 → 11**, 1940 **6 → 11**. Fit sample 2,052 → 1,031 rows (the window truncation of statistics/5) with events 54 → 56. |
+| corridors/3 | `german_atlantic_cables` gets a dated `abandoned` row (1922.10, the Versailles cable clauses and the 1922 Washington settlement) and `hejaz_railway`'s 1920 row changes from `closed` to `abandoned` — its own source text said the through corridor was never restored. `abandoned` is in neither IMPAIRED nor ACTIVE_STATUS, so both leave the reopen risk set without a line of history being deleted. | `data/corridors.yaml` | The two longest phantom spells are out of `record_reopen`: base rate 16.2% → **27.0%** on n 154 → 148 with events 25 → 40 (the new dated histories supply the rest). This is also the one clear regression below. |
+| corridors/4 | Three records the era's wars were fought over and the layer did not have: `murmansk_railway` (1916.98 built — the line the Bosphorus closure forced, 1918.18 contested/GBR, 1920.20 built/RUS, 1941.50 contested, 1944.72 built), `danube_ploiesti` (1900 built/ROU through 1944.66 closed/RUS, seven dated rows), `dover_strait` (1869 open through 1944.43 open, five dated rows). | `data/corridors.yaml` | 59 → 62 records, 14 → 15 chokepoints. `corridor_status` units 27 → 28/29/29/32 across the four as-of years, `chokepoint_status` 14 → 15 at every one, `n_unborn_records` 0 for all three. |
+| corridors/6 | Both Baku–Batumi records were frozen at their construction year with `controller: RUS`. Six dated rows added to each (1918.40 contested, 1918.71 closed/OTTOMAN, 1918.88 closed/GBR, 1920.32 built/RUS, 1942.56 contested — Operation Edelweiss, 1943.10 built), `transits` widened to RUS/AZE/GEO, `load_bearing_for` raised to 0.8 with a sourced estimate (Baku was roughly 70% of Soviet crude in 1940), and the rail record carries `parent: baku_batumi_pipeline` so a reader knows the two are one corridor in two modes. | `data/corridors.yaml` | Four control changes and a multi-year cut become visible in the as-of 1910 and as-of 1920 horizons, where the model previously ran a Russian, built, unimpaired line straight through. |
+| corridors/7 | `kirkuk_haifa_pipeline` jumped 1935 → 1948 and so missed the two 1941 wars fought over it: 1940.48 contested (the T-branch inside Vichy Syria stops pumping), 1941.34 closed (the Rashid Ali coup and the Anglo-Iraqi war), 1941.58 built/GBR. `transits` corrected to IRQ/SYR/LBN/JOR/ISR — the IPC system was a Y and half of it ran through the French mandate. | `data/corridors.yaml` | A genuine short impaired spell (1941.34 → 1941.58) enters `record_reopen`, against a sample whose spells were 24–27 year phantoms. |
+| corridors/8 | Five territory records with dated endings, chosen because the era's territorial wars had none and the interwar arbitrations — the natural control group of contests that end by award — were absent: `chaco_boreal`, `smyrna_ionia`, `vilnius`, `mosul_vilayet`, `upper_silesia`. | `data/territories.yaml` | 70 → 75 records. With data/5, `contest_settle` events 34 → 43 and pooled 1870–2010 AUC 0.793 → 0.840. |
+| statistics/5 | `chokepoint_status` and `corridor_status` fitting windows moved [1869, 2026] → **[1869, 1945]**, the window `scripts/backtest.mjs` already scores their ground truth in. | `data/templates.yaml` | Base rates stop being halved by un-coded years: corridor 1.37% on 4,085 rows → **4.45%** on 1,572; chokepoint 2.63% on 2,052 → **5.43%** on 1,031. `adjacent_intrastate` on the chokepoint template **flips from −0.48 to +1.00**, exactly as the finding predicted. Holdout moves to the fitter's own choice (≥1907): chokepoint AUC 0.661 → 0.771, corridor 0.830 → 0.811 — and the old 0.830 was measured against a post-1946 half with exp/obs 8.06, which is the signature of scoring against a layer that is not there. |
+| statistics/6 | `war_end` declares `cluster: war_component`; the fitter reports `n_clusters` and `epv_clusters` alongside `epv`. | `scripts/lib/fit.mjs`, `data/templates.yaml` | `war_end` prints **n=995 clusters=32 ev=362**. The union-find here is over spell-YEARS that share a belligerent in a year and so chains transitively (the adversary's count over spells was 65); either number says the effective sample is two orders below `n`, and `epv: 135.7` was a number about rows. The cluster bootstrap on the holdout AUC is the half not built. |
+| statistics/8 | The recency-weighting result recorded under `rejected:` on the war template with its full τ sweep, so the loop does not chase it. | `data/templates.yaml` | No score change; a closed door with numbers on it. |
+| engine/1 | The contagion term is era-interacted: `lag1(at_war_any)` keeps its pooled coefficient and `lag1(at_war_any_post46)` enters as a **delta** with prior 0, built identically in `scripts/lib/fit.mjs` and `src/engine/core.js`. `holdout_split` 1939 → 1975 on the war template and 1975 declared on the dispute template, because at 1946 and earlier the interaction has no within-training variation. | `data/templates.yaml`, `scripts/lib/fit.mjs`, `src/engine/core.js` | Fitted: `mid_war` at_war_any **+1.90** with delta **−1.19** (post-1946 effective +0.71); `mid_force` +1.15 and −0.60 (+0.55). **1950–2000 pooled `mid_war` exp/obs 2.62 → 1.91 and Brier skill −0.530 → −0.122; `mid_force` 1.17 → 0.98 and +0.008 → +0.112.** Pooled 1870–2010 `mid_war` skill −0.015 → +0.033 and `mid_force` +0.100 → +0.124. |
+| engine/1 (form) | The **two-dummy** form the finding proposed was built and measured first and is recorded, not just described: it gives 1950–2000 `mid_war` 1.87 and `mid_force` 0.95 — marginally better than the delta — and costs this turn's own window, `mid_war` pooled exp/obs 0.34 → **0.28** and `mid_force` 0.45 → 0.40, because at as-of ≤ 1940 the post-1946 half is unidentified and 15 of the 20 horizon years take a prior of +0.4 where the pooled term has +1.70. The delta form gives a forecaster with no post-1946 rows the pooled coefficient instead of a prior. The reasoning is in the covariate's own `source:`. | | |
+| engine/5 | `pre_1946` added to `war_end`, built in `src/engine/termination.js:warEndFeatures` so the fitter and the engine read one construction. | `data/templates.yaml`, `src/engine/termination.js` | The template's own sample says the constant is wrong by era: observed termination hazard 0.559 pre-1914 / 0.391 in 1914–45 / 0.296 post-1946. Fitted **+0.47**. At split 1975, where the term is identified: AUC 0.534 → 0.531 (−0.003), Brier 0.2323 → **0.2201**, holdout exp/obs 1.40 → **1.14**. It buys calibration, which is what a level-per-era term is for, and does not buy discrimination — stated rather than smoothed. |
+| engine/8 | `coalitionJoin` passes the war component's size to `openWarSpell` instead of letting it default to 2, and raises the initiating pair's own spell to the same count when a joining draw enlarges it. | `src/engine/core.js` | No scored change today — the coalition rule is a switched-off candidate — but the engine can now produce the object `war_coalition` was added for, and `engine/4` or `statistics/4` will not silently inherit the bug. |
+| engine/3 (partial) | `docs/system.md`'s holdout table corrected where it disagreed with `data/fits.json`: `contest_settle` 0.65 → **0.45**, `record_reopen` 0.74 → 0.50, `war_end` 0.61 → 0.63 (≥1946) / 0.53 (≥1975, the declared split), and the two record templates' windows and holdouts restated. A paragraph under the table says what `contest_settle`'s numbers are and that demotion is the open option. | `docs/system.md` | The published table stops advertising a discrimination the fit does not have. |
+
+### Skipped
+
+| finding | reason |
+|---|---|
+| statistics/7 (at_war_any built from `warSpells`) | Overlaps data/2 and engine/1 and would be inseparable from them in this turn's numbers. data/2 raised the hand list's coverage of the label set from 55% to 62% (the population half of the complaint) and engine/1 took ~1.2 log-odds out of the post-1946 coefficient by a different route (the size half). The residual mismatch is real — the finding measured it at 0.2–0.3 log-odds on its own — and it should be re-measured against this tree rather than stacked on top of two changes that move the same number. The structural answer is the deferred CoW Inter-State War v4.0 ingest. |
+| engine/4 (split the coalition `status` into relevance and joining) | Its own evidence is conditional on `engine/1` landing and was measured with the two-dummy form and `WAR_DURATION_ON=1`. The era interaction that landed here is the delta form and the war spell is still a candidate, so every number in the finding (2.59x, 2.92x, 12.41x) is from a tree that no longer exists. It is the first thing to re-measure next turn, and `statistics/4` — a fitted joining hazard rather than a constant — is escalated in the same area. |
+| data/8 (Otranto barrage, the `chokepoint_*` panel column audit) | The Arctic route and the Danube–Ploiesti and Dover records it asks for landed under corridors/4. The Otranto barrage and the audit of the five `chokepoint_*` panel columns against fifteen records are the remainder and are hygiene against a layer this turn already grew by three records; adding more units in the same turn would make the chokepoint row's movement unattributable. |
+| corridors/2 (`mediterranean_route` double counting) | Left alone deliberately. It restates `suez`'s 1940.44/1943.4 and Gibraltar's absent 1940–43 history from the same cause, so two of fifteen chokepoint units fire on one event — but demoting it to a `corridor` or deleting its rows changes the unit count in the same turn that five records gained wartime histories, and the two effects would not be separable. Recorded here so the next turn can take it with a clean baseline. |
+
+### Escalated
+
+`statistics/1` (a system-war-share covariate — a new derived panel column with an engine mirror), `statistics/2` (a
+static-forecast baseline and the guard restated as amplification), `statistics/4` (coalition joining as a fitted
+ally-year hazard — a new template kind), `corridors/5` (corridor denial as a dyadic and a war-duration covariate — new
+constructions in the engine, with a mandatory `default_outside` honesty condition on the post-1945 coverage boundary),
+`engine/2` (a two-component growth shock — a new engine dynamic feeding five templates), `engine/3` (demote
+`contest_settle` or give it covariates that discriminate), `engine/6` (a controller-transfer branch in the corridor
+draw), `engine/7` (occupation as an engine state — this turn landed its data half). All eight are written up in
+`docs/escalations.md` with the evidence, the data they need, the templates they feed and the test that would decide
+them.
+
+### Before / after — the turn's own as-of rows
+
+Against `scores/backtest-1870-2010-h20-all.json` as it stood at 2026-09-08T03:53. Format: n / expected / observed /
+structural-miss / Brier / auc@risk.
+
+| as-of | template | before | after |
+|---|---|---|---|
+| 1910 | mid_force | 2415 / 34.3 / 99 / 20 / 0.036 / 0.67 | 2415 / 34.5 / 99 / **17** / 0.035 / 0.66 |
+| 1910 | mid_war | 2415 / 14.4 / 50 / 14 / 0.020 / 0.60 | 2415 / 14.3 / 50 / **13** / 0.020 / **0.62** |
+| 1910 | democratize_step | 62 / 10.6 / 32 / 8 / 0.390 / 0.49 | 62 / 12.1 / 30 / 7 / **0.347** / **0.54** |
+| 1910 | autocratic_closure | 26 / 4.7 / 9 / 1 / 0.231 / 0.73 | 26 / 5.2 / 9 / 1 / 0.223 / **0.75** |
+| 1910 | chokepoint_status | 14 / 6.3 / 7 / 0 / 0.282 / 0.36 | **15** / 6.1 / **8** / 0 / **0.261** / **0.53** |
+| 1910 | corridor_status | 27 / 11.8 / 9 / 0 / 0.173 / 0.66 | **28** / 12.1 / **12** / 0 / 0.208 / 0.58 |
+| 1910 | contest_settle | 25 / 5.1 / 6 / 0 / 0.179 / 0.22 | 26 / 6.0 / 6 / 0 / 0.173 / 0.25 |
+| 1920 | mid_force | 2346 / 71.0 / 91 / 9 / 0.031 / 0.73 | 2346 / 70.3 / 86 / **7** / **0.029** / 0.72 |
+| 1920 | mid_war | 2346 / 34.2 / 52 / 8 / 0.020 / 0.61 | 2346 / 33.9 / 47 / 8 / 0.019 / **0.64** |
+| 1920 | chokepoint_status | 14 / 8.9 / 4 / 0 / 0.302 / 0.79 | **15** / 9.0 / **8** / 0 / **0.212** / 0.79 |
+| 1920 | corridor_status | 27 / 9.0 / 5 / **2** / 0.201 / 0.87 | **29** / 16.0 / 7 / **0** / 0.204 / 0.79 |
+| 1920 | record_reopen | no fit at as-of | 44 / 22.2 / 4 / 0 / 0.227 / 0.83 |
+| 1930 | mid_force | 3486 / 59.4 / **261** / 102 / 0.064 / 0.75 | 3486 / 56.1 / **220** / **79** / **0.054** / 0.73 |
+| 1930 | mid_war | 3486 / 26.5 / **202** / 85 / 0.053 / 0.69 | 3486 / 25.2 / **164** / **68** / **0.044** / 0.69 |
+| 1930 | contest_settle | 32 / 5.1 / 6 / 0 / 0.113 / **0.21** | 37 / 5.7 / 9 / 0 / 0.107 / **0.76** |
+| 1930 | chokepoint_status | 14 / 6.1 / 6 / 0 / 0.224 / 0.68 | 15 / 6.4 / **11** / 0 / 0.306 / 0.44 |
+| 1930 | corridor_status | 27 / 6.6 / 5 / 0 / 0.148 / 0.50 | 29 / 9.3 / 9 / 0 / 0.208 / 0.41 |
+| 1940 | mid_force | 6216 / 122.6 / 239 / 114 / 0.033 / 0.79 | 6216 / 113.5 / 202 / **92** / **0.028** / 0.79 |
+| 1940 | mid_war | 6216 / 71.5 / 174 / 85 / 0.024 / 0.80 | 6216 / 63.5 / 140 / **68** / **0.020** / 0.80 |
+| 1940 | chokepoint_status | 14 / 5.6 / 6 / 0 / 0.137 / 0.97 | 15 / 8.4 / **11** / 0 / 0.167 / 0.83 |
+| 1940 | corridor_status | 30 / 3.5 / 6 / 0 / 0.173 / 0.43 | 32 / 6.1 / **11** / 0 / 0.223 / **0.68** |
+| 1940 | contest_settle | 41 / 6.0 / 14 / 0 / 0.198 / 0.47 | 46 / 7.2 / 17 / 0 / 0.183 / 0.40 |
+
+Pooled over the four as-of years, this turn's window: `mid_force` exp/obs 287.3/690 = **0.42 → 274.4/607 = 0.45**,
+`mid_war` 146.6/478 = **0.31 → 136.9/401 = 0.34** — both move toward 1 from below, and the fabricated-label half of the
+move is honest deflation of the denominator rather than better forecasting.
+
+### Out-of-turn regression check — pooled 1870–2010
+
+| template | n before → after | exp/obs | skill | AUC |
+|---|---|---|---|---|
+| mid_force | 113,477 → 113,477 | 0.78 → 0.71 | +0.100 → **+0.124** | 0.797 → **0.806** |
+| mid_war | 113,477 → 113,477 | 0.81 → 0.68 | −0.015 → **+0.033** | 0.771 → **0.778** |
+| contest_settle | 169 → 190 | 0.71 → 0.63 | +0.178 → **+0.248** | 0.793 → **0.840** |
+| corridor_status | 132 → 140 | 1.20 → **1.09** | +0.081 → **+0.106** | 0.627 → 0.626 |
+| chokepoint_status | 80 → 86 | 1.17 → **0.85** | −0.021 → **−0.007** | 0.565 → 0.569 |
+| democratize_step | 1,170 → 1,224 | 0.79 → 0.82 | −0.237 → **−0.204** | 0.540 → 0.547 |
+| autocratic_closure | 768 → 798 | 0.64 → 0.66 | −0.158 → −0.153 | 0.603 → 0.596 |
+| intrastate_onset | 1,105 → 1,105 | 0.95 → 0.94 | +0.194 → +0.201 | 0.770 → 0.775 |
+| intrastate_end | 1,105 → 1,105 | 1.00 → 0.99 | +0.112 → +0.109 | 0.734 → 0.735 |
+| leader_exit / coup_attempt | 1,105 → 1,105 | unchanged | ±0.008 | ±0.007 |
+| irregular_exit | 948 → 948 | 2.43 → 2.45 | −0.639 → −0.644 | 0.719 → **0.728** |
+| democratic_deepening | 95 → 95 | 2.46 → 2.49 | −0.590 → −0.620 | 0.598 → 0.592 |
+| **record_reopen** | 85 → 135 | 0.93 → **1.24** | **+0.255 → +0.007** | 0.760 → **0.631** |
+
+And the 1950–2000 guard, which is what `engine/1` was taken for: `mid_war` exp/obs **2.62 → 1.91** and skill −0.530 →
+−0.122; `mid_force` 1.17 → 0.98 and +0.008 → +0.112; `contest_settle` 2.00 → 0.87 and +0.083 → +0.429;
+`intrastate_onset` 1.07 → 0.95. Against it, `irregular_exit` 2.00 → 2.48 (skill −0.485 → −0.712) and
+`democratic_deepening` 1.18 → 2.15 (−0.006 → −0.457) — both on the actor-year side, both fitted on samples the gdp
+interpolation changed, and `democratic_deepening` is a 47-unit single-as-of row.
+
+### Reading it honestly
+
+- **`record_reopen` is the turn's one clear loss and it is attributable.** Pooled skill +0.255 → +0.007. Two things
+  did it, and both are correct data work. Retiring the two permanently dead records (corridors/3) removed the sample's
+  two longest guaranteed non-events, and dating five wartime impairments (corridors/2, /7) added real short spells: the
+  base rate goes 16.2% → 27.0% on n 154 → 148 with events 25 → 40. A hazard fitted at 27% run forward for twenty years
+  over-fires, and the as-of 1920 row shows it — expected 22.2 against 4 observed. Part of the pooled fall is also an
+  honesty artefact: as-of 1920 previously reported `no fit at as-of` and was **out of pooled**, and it is now a scored
+  row with a bad number in it. The template's covariate block (`impair_duration` −0.26, `adjacent_war` −0.30,
+  `guarantor_presence` −0.02, `sponsor_great_power` −0.74) does not discriminate at the declared split (holdout AUC
+  0.500) and that is the next adversary's, not something to paper over by putting the phantom spells back.
+- **`data/5`'s and `corridors/8`'s central claim is half falsified, by their own test.** They said `contest_settle`'s
+  inverted at-risk ranking was an artefact of a homogeneous Versailles-bloc denominator and set the falsifier: if
+  `auc_at_risk` does not rise above 0.5 at as-of 1910, 1920 **and** 1930 with the records in, the cause is the
+  covariates. It rose at 1930 (0.21 → 0.76) and did not at 1910 (0.25) or 1920 (0.21). The sample was part of it; the
+  covariate block is the rest, and that is `engine/3`'s (b), escalated.
+- **The era interaction is the turn's largest number and it is a post-1945 result, not an interwar one.** 1950–2000
+  `mid_war` exp/obs 2.62 → 1.91 with skill −0.530 → −0.122; the 1910–1940 window gains only what the label fix gives
+  it, because at as-of ≤ 1940 the interaction is unidentified and sits at 0 by design. The two-dummy form buys another
+  0.04 on the guard and costs 0.06 on this turn's window; the delta form was chosen and both numbers are recorded.
+- **`mid_war` and `mid_force` still under-predict this era by 2–3x and the reason is unchanged.** Structural miss at
+  as-of 1930 is 68 of 164 observed and at 1940 68 of 140 — pairs the relevance filter never admits, which is the
+  coalition-relevance question (`engine/4`) and the fitted joining hazard (`statistics/4`), both open.
+- **`war_end` improves on every number except the one its own `rejected:` entry already said not to trust.** Duration
+  dependence more than doubles (+0.086 → +0.21), the base rate falls 3 points onto the real sample, holdout Brier and
+  calibration improve at both splits — and holdout AUC is 0.634 at 1946 and 0.531 at 1975, on 32 war components. The
+  template is a baseline hazard with a duration shape, not a discriminator, and the cluster count now says so in the
+  fit line.
+
+### Deferred
+
+| finding | dataset | note |
+|---|---|---|
+| data/2 (the general case) | **CoW Inter-State War v4.0** participant-level dates | Six wars and eleven Korean contingents added by hand; the list is still a hand list and still sees only 62% of the label set's war-years. The worst remaining decades are outside this turn (1860s 63 actor-years, 1970s 44, 1990s 37). `peacesciencer` ships `cow_war_inter`; `scripts/fetch-contdir.mjs` is the fetch pattern. |
+| data/3 (the residue) | a pre-1950 Baltic income series | LVA and LTU have no Maddison `gdp_pc` before 1973 and EST none between 1913 and 1990, so the Baltic interwar coups stay outside the regime fits. Declared in `data/history/actors.yaml` rather than filled. |
+| data/7 (the 46 undeclared) | — | The actors that reach the panel through `codelist_panel.csv` need a lifecycle entry each before `capability_from` can be declared on them. The build now prints all 50 every run. |
+| corridors/5, statistics/2 (the post-1945 record layer) | — | `COVERAGE` and now the two status templates' `window` both stop at 1945. Nothing after it is scored or fitted, so no corridor mechanism can be guarded post-war until the record histories are extended — Suez 1956–57 and 1967–75, Hormuz 1980–88, the Berlin corridors 1948–49, the Panama handovers. |
+
+*Published slices (`public/*.json`) are deliberately not rebuilt: they are regenerated as one set at a re-baseline.*
+
+*Rule check: no country ids were added to `data/templates.yaml` or `src/engine/`. `at_war_any_post46`, `pre_1946`,
+`occupied` and `abandoned` are derived constants and status words, not places; every hand number added to
+`data/corridors.yaml`, `data/territories.yaml` and `data/history/events.yaml` carries a `source:` or the literal
+`estimate`.*

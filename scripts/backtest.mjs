@@ -183,6 +183,22 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
       }
     } else if (!skipDyads) {
       for (let i = 0; i < dyadIds.length; i++) for (let j = i + 1; j < dyadIds.length; j++) { const k = `${kind}|${pairKey(dyadIds[i], dyadIds[j])}`; pairs.push([covYears < horizon ? ens.pAnyWithin(k, covYears) : (ens.pAnyDyad[k] ?? 0), real.dy.has(k) ? 1 : 0, k]); }
+      // era-1914-1945-r2/data-4 (b): the dyad sample drops an actor entirely for a null covariate, and until now
+      // nothing reported it — unlike the actor-year templates, which carry n_excluded_no_covariate, the dyad rows
+      // simply did not exist, so "unreachable because a covariate is null" was counted as "unreachable because of the
+      // relevance gate" inside n_structural_miss. Counted here over the actors live at any point in the window whose
+      // cinc or regime is null at the year they are first live: the same filter scripts/lib/fit.mjs:dyadFeatureRows
+      // and src/engine/core.js:dyadHazards apply.
+      for (const id of windowIds) {
+        const a0 = w0.actors[id]; const y0 = firstLive[id];
+        const cinc = a0 ? a0.cur.cinc : panel.actors[id].cinc?.[y0 - Y0];
+        const regime = a0 ? a0.cur.regime : panel.actors[id].regime?.[y0 - Y0];
+        if (cinc != null && regime != null) continue;
+        excluded++;
+        if (cinc == null) excludedVars.cinc = (excludedVars.cinc ?? 0) + 1;
+        if (regime == null) excludedVars.regime = (excludedVars.regime ?? 0) + 1;
+        for (const k of real.dy) if (k.startsWith(`${kind}|`) && k.slice(kind.length + 1).split('|').includes(id)) { excludedWithEvent++; break; }
+      }
     }
     // a template that never fires is reported, not dropped: silence about a dead template reads as a clean score
     if (!pairs.length) { row.templates[t.id] = { n: 0, reason: 'no at-risk unit with complete covariates', scored_years: covYears }; continue; }
@@ -205,7 +221,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     rec.fit_split = f.trained_through ?? null; rec.fit_n = f.n; rec.fit_events = f.events;
     rec.fit_source = REFIT ? `refit on labels ≤ ${f.trained_through} (n=${f.n}, events=${f.events})` : 'full-sample fit (data/fits.json)';
     rec.leaky = rec.fit_split == null ? null : rec.fit_split > asOf;
-    if (t.unit === 'actor-year') { rec.n_excluded_no_covariate = excluded; rec.n_excluded_with_event = excludedWithEvent; rec.excluded_vars = excludedVars; }
+    if (t.unit === 'actor-year' || t.unit === 'dyad-year') { rec.n_excluded_no_covariate = excluded; rec.n_excluded_with_event = excludedWithEvent; rec.excluded_vars = excludedVars; }
     if (RECORD_UNITS.has(t.unit) || t.unit === SPELL_UNITS.record || t.unit === SPELL_UNITS.territory) { rec.n_unborn_records = unborn; rec.n_unborn_events = unbornEvents; }
     // the pooled guard applies to EVERY unit type (era-1870-1914-r2/statistics-5). It used to test `t.unit ===
     // 'actor-year'`, so half the record rows entered pooled at n_at_risk < 10 — chokepoint_status was pooled at 7

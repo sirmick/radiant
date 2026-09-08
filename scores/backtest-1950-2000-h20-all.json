@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run": "2026-09-08T01:36:49.353Z",
+  "run": "2026-09-08T04:50:56.252Z",
   "from": 1950,
   "to": 2000,
   "step": 10,
@@ -24,7 +24,7 @@
    "actors": 80,
    "window_actors": 136,
    "dyad_actors": 136,
-   "ms": 9092,
+   "ms": 11413,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -54,28 +54,34 @@
      "n": 104,
      "n_at_risk": 103,
      "n_structural_miss": 0,
-     "predicted": 45.76999999999999,
+     "predicted": 41.719999999999985,
      "observed": 63,
      "observed_at_risk": 63,
-     "brier": 0.3281336538461538,
-     "auc": 0.46902826171118855,
-     "auc_at_risk": 0.45575396825396824,
+     "brier": 0.3243730769230769,
+     "auc": 0.4893534649632211,
+     "auc_at_risk": 0.4765873015873016,
      "scored_years": 20,
      "fit_split": 1950,
-     "fit_n": 1421,
-     "fit_events": 51,
-     "fit_source": "refit on labels ≤ 1950 (n=1421, events=51)",
+     "fit_n": 3711,
+     "fit_events": 100,
+     "fit_source": "refit on labels ≤ 1950 (n=3711, events=100)",
      "leaky": false,
      "n_excluded_no_covariate": 1,
      "n_excluded_with_event": 0,
      "excluded_vars": {
       "log_gdp_pc": 1,
       "gdp_growth": 1
-     }
+     },
+     "epv": 16.666666666666668,
+     "n_degenerate": 2,
+     "degenerate": [
+      "win5(leader_exit_recent)",
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 0,
-     "reason": "no fit at as-of: n=244, events=4 in years ≤ 1950",
+     "reason": "no fit at as-of: n=250, events=4 in years ≤ 1950",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -83,7 +89,7 @@
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=333, events=2 in years ≤ 1950",
+     "reason": "no fit at as-of: n=336, events=1 in years ≤ 1950",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -93,39 +99,46 @@
      "n": 70,
      "n_at_risk": 66,
      "n_structural_miss": 0,
-     "predicted": 24.64,
+     "predicted": 22.34,
      "observed": 37,
      "observed_at_risk": 37,
-     "brier": 0.32786000000000004,
-     "auc": 0.6416871416871417,
-     "auc_at_risk": 0.592264678471575,
+     "brier": 0.3316885714285714,
+     "auc": 0.6502866502866503,
+     "auc_at_risk": 0.6020503261882573,
      "scored_years": 20,
      "fit_split": 1950,
-     "fit_n": 1049,
-     "fit_events": 44,
-     "fit_source": "refit on labels ≤ 1950 (n=1049, events=44)",
+     "fit_n": 1866,
+     "fit_events": 86,
+     "fit_source": "refit on labels ≤ 1950 (n=1866, events=86)",
      "leaky": false,
      "n_excluded_no_covariate": 4,
      "n_excluded_with_event": 0,
      "excluded_vars": {
       "not_live_at_as_of": 4
-     }
+     },
+     "epv": 17.2,
+     "n_degenerate": 3,
+     "degenerate": [
+      "win5(coup_attempt)",
+      "aid_conditionality",
+      "great_game"
+     ]
     },
     "intrastate_onset": {
      "n": 136,
      "n_at_risk": 132,
      "n_structural_miss": 1,
-     "predicted": 74.01999999999997,
+     "predicted": 60.169999999999995,
      "observed": 38,
      "observed_at_risk": 37,
-     "brier": 0.3130529411764706,
-     "auc": 0.635875402792696,
-     "auc_at_risk": 0.641678520625889,
+     "brier": 0.24194338235294116,
+     "auc": 0.6701127819548872,
+     "auc_at_risk": 0.6779516358463726,
      "scored_years": 20,
      "fit_split": 1950,
-     "fit_n": 229,
-     "fit_events": 8,
-     "fit_source": "refit on labels ≤ 1950 (n=229, events=8)",
+     "fit_n": 294,
+     "fit_events": 13,
+     "fit_source": "refit on labels ≤ 1950 (n=294, events=13)",
      "leaky": false,
      "n_excluded_no_covariate": 4,
      "n_excluded_with_event": 1,
@@ -135,41 +148,52 @@
       "gdp_growth": 3,
       "population": 2,
       "not_live_at_as_of": 1
-     }
+     },
+     "epv": 1.625,
+     "n_degenerate": 0,
+     "degenerate": [],
+     "underpowered": true,
+     "underpowered_reason": "events per estimated covariate 1.63 < 3"
     },
     "mid_force": {
      "n": 9180,
-     "n_at_risk": 459,
-     "n_structural_miss": 49,
-     "predicted": 176.02000000000024,
+     "n_at_risk": 809,
+     "n_structural_miss": 33,
+     "predicted": 131.73999999999998,
      "observed": 104,
-     "observed_at_risk": 55,
-     "brier": 0.01407355119825709,
-     "auc": 0.7490486320642777,
-     "auc_at_risk": 0.7923492349234923,
+     "observed_at_risk": 71,
+     "brier": 0.01021849673202614,
+     "auc": 0.8181086212157168,
+     "auc_at_risk": 0.8137906026947593,
      "scored_years": 20,
      "fit_split": 1950,
-     "fit_n": 23177,
-     "fit_events": 366,
-     "fit_source": "refit on labels ≤ 1950 (n=23177, events=366)",
-     "leaky": false
+     "fit_n": 33094,
+     "fit_events": 432,
+     "fit_source": "refit on labels ≤ 1950 (n=33094, events=432)",
+     "leaky": false,
+     "epv": 54,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_war": {
      "n": 9180,
-     "n_at_risk": 459,
-     "n_structural_miss": 12,
-     "predicted": 155.62000000000018,
+     "n_at_risk": 786,
+     "n_structural_miss": 10,
+     "predicted": 86.68000000000015,
      "observed": 29,
-     "observed_at_risk": 17,
-     "brier": 0.009037930283224409,
-     "auc": 0.7753722035277848,
-     "auc_at_risk": 0.7267101410700026,
+     "observed_at_risk": 19,
+     "brier": 0.004250958605664484,
+     "auc": 0.798631391330889,
+     "auc_at_risk": 0.7358814245522541,
      "scored_years": 20,
      "fit_split": 1950,
-     "fit_n": 23177,
-     "fit_events": 184,
-     "fit_source": "refit on labels ≤ 1950 (n=23177, events=184)",
-     "leaky": false
+     "fit_n": 33094,
+     "fit_events": 214,
+     "fit_source": "refit on labels ≤ 1950 (n=33094, events=214)",
+     "leaky": false,
+     "epv": 21.4,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "war_end": {
      "n": 0,
@@ -178,30 +202,33 @@
     },
     "intrastate_end": {
      "n": 0,
-     "reason": "no fit at as-of: n=26, events=9 in years ≤ 1950",
+     "reason": "no fit at as-of: n=33, events=10 in years ≤ 1950",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
      "scored_years": 20
     },
     "contest_settle": {
-     "n": 28,
-     "n_at_risk": 14,
+     "n": 46,
+     "n_at_risk": 10,
      "n_structural_miss": 0,
-     "predicted": 5.08,
+     "predicted": 4.359999999999999,
      "observed": 5,
      "observed_at_risk": 5,
-     "brier": 0.09704285714285713,
-     "auc": 0.8782608695652174,
-     "auc_at_risk": 0.6888888888888889,
+     "brier": 0.05532608695652174,
+     "auc": 0.9341463414634147,
+     "auc_at_risk": 0.46,
      "scored_years": 20,
      "fit_split": 1950,
-     "fit_n": 901,
-     "fit_events": 15,
-     "fit_source": "refit on labels ≤ 1950 (n=901, events=15)",
+     "fit_n": 1111,
+     "fit_events": 35,
+     "fit_source": "refit on labels ≤ 1950 (n=1111, events=35)",
      "leaky": false,
      "n_unborn_records": 29,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 11.666666666666666,
+     "n_degenerate": 0,
+     "degenerate": []
     }
    }
   },
@@ -211,18 +238,18 @@
    "actors": 109,
    "window_actors": 157,
    "dyad_actors": 157,
-   "ms": 14077,
+   "ms": 16395,
    "templates": {
     "leader_exit": {
      "n": 157,
      "n_at_risk": 101,
      "n_structural_miss": 32,
-     "predicted": 99.50999999999995,
+     "predicted": 99.52999999999996,
      "observed": 120,
      "observed_at_risk": 88,
-     "brier": 0.2819191082802549,
-     "auc": 0.7438063063063063,
-     "auc_at_risk": 0.7049825174825175,
+     "brier": 0.2827687898089173,
+     "auc": 0.7230855855855856,
+     "auc_at_risk": 0.6245629370629371,
      "scored_years": 20,
      "fit_split": 1960,
      "fit_n": 769,
@@ -238,18 +265,21 @@
       "leader_tenure": 4,
       "leader_age": 4,
       "at_war": 2
-     }
+     },
+     "epv": 21.25,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "irregular_exit": {
      "n": 157,
      "n_at_risk": 101,
      "n_structural_miss": 18,
-     "predicted": 58.370000000000005,
+     "predicted": 58.59999999999996,
      "observed": 58,
      "observed_at_risk": 40,
-     "brier": 0.2530108280254777,
-     "auc": 0.6637931034482759,
-     "auc_at_risk": 0.7989754098360655,
+     "brier": 0.25682165605095547,
+     "auc": 0.6644026471612678,
+     "auc_at_risk": 0.8004098360655738,
      "scored_years": 20,
      "fit_split": 1960,
      "fit_n": 769,
@@ -267,23 +297,28 @@
       "leader_age": 4,
       "at_war": 2,
       "leader_irregular_entry": 4
-     }
+     },
+     "epv": 2.6,
+     "n_degenerate": 0,
+     "degenerate": [],
+     "underpowered": true,
+     "underpowered_reason": "events per estimated covariate 2.60 < 3"
     },
     "coup_attempt": {
      "n": 157,
      "n_at_risk": 100,
      "n_structural_miss": 21,
-     "predicted": 54.640000000000015,
+     "predicted": 54.78,
      "observed": 70,
      "observed_at_risk": 49,
-     "brier": 0.2467796178343948,
-     "auc": 0.6791461412151067,
-     "auc_at_risk": 0.7979191676670668,
+     "brier": 0.24314140127388545,
+     "auc": 0.6810344827586207,
+     "auc_at_risk": 0.8025210084033614,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 760,
+     "fit_n": 761,
      "fit_events": 54,
-     "fit_source": "refit on labels ≤ 1960 (n=760, events=54)",
+     "fit_source": "refit on labels ≤ 1960 (n=761, events=54)",
      "leaky": false,
      "n_excluded_no_covariate": 57,
      "n_excluded_with_event": 21,
@@ -295,36 +330,45 @@
       "leader_military": 4,
       "intrastate": 2,
       "milper_share": 2
-     }
+     },
+     "epv": 4.909090909090909,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "democratize_step": {
      "n": 114,
-     "n_at_risk": 109,
-     "n_structural_miss": 2,
-     "predicted": 62.29999999999999,
+     "n_at_risk": 108,
+     "n_structural_miss": 3,
+     "predicted": 56.56999999999999,
      "observed": 56,
-     "observed_at_risk": 54,
-     "brier": 0.3048052631578948,
-     "auc": 0.5207820197044335,
-     "auc_at_risk": 0.513973063973064,
+     "observed_at_risk": 53,
+     "brier": 0.2837956140350877,
+     "auc": 0.5652709359605911,
+     "auc_at_risk": 0.5737564322469982,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 1951,
-     "fit_events": 73,
-     "fit_source": "refit on labels ≤ 1960 (n=1951, events=73)",
+     "fit_n": 4254,
+     "fit_events": 123,
+     "fit_source": "refit on labels ≤ 1960 (n=4254, events=123)",
      "leaky": false,
-     "n_excluded_no_covariate": 5,
-     "n_excluded_with_event": 2,
+     "n_excluded_no_covariate": 6,
+     "n_excluded_with_event": 3,
      "excluded_vars": {
+      "not_live_at_as_of": 1,
       "regime": 2,
       "at_war": 2,
       "log_gdp_pc": 3,
       "gdp_growth": 3
-     }
+     },
+     "epv": 17.571428571428573,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 0,
-     "reason": "no fit at as-of: n=325, events=4 in years ≤ 1960",
+     "reason": "no fit at as-of: n=331, events=4 in years ≤ 1960",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -332,7 +376,7 @@
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=481, events=2 in years ≤ 1960",
+     "reason": "no fit at as-of: n=484, events=1 in years ≤ 1960",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -341,88 +385,103 @@
     "autocratic_closure": {
      "n": 75,
      "n_at_risk": 73,
-     "n_structural_miss": 2,
-     "predicted": 29.49000000000001,
+     "n_structural_miss": 1,
+     "predicted": 28.140000000000015,
      "observed": 44,
-     "observed_at_risk": 42,
-     "brier": 0.23683066666666666,
-     "auc": 0.7635630498533724,
-     "auc_at_risk": 0.7999231950844854,
+     "observed_at_risk": 43,
+     "brier": 0.228144,
+     "auc": 0.7917888563049853,
+     "auc_at_risk": 0.8034883720930233,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 1377,
-     "fit_events": 63,
-     "fit_source": "refit on labels ≤ 1960 (n=1377, events=63)",
+     "fit_n": 2197,
+     "fit_events": 106,
+     "fit_source": "refit on labels ≤ 1960 (n=2197, events=106)",
      "leaky": false,
      "n_excluded_no_covariate": 2,
-     "n_excluded_with_event": 2,
+     "n_excluded_with_event": 1,
      "excluded_vars": {
       "log_gdp_pc": 1,
       "gdp_growth": 1,
       "at_war": 1,
       "intrastate": 1,
       "not_live_at_as_of": 1
-     }
+     },
+     "epv": 15.142857142857142,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "intrastate_onset": {
      "n": 157,
-     "n_at_risk": 150,
+     "n_at_risk": 144,
      "n_structural_miss": 2,
-     "predicted": 49.19000000000002,
+     "predicted": 47.99,
      "observed": 52,
      "observed_at_risk": 50,
-     "brier": 0.21490509554140114,
-     "auc": 0.6733516483516484,
-     "auc_at_risk": 0.6843,
+     "brier": 0.20994076433121012,
+     "auc": 0.6994505494505494,
+     "auc_at_risk": 0.6931914893617022,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 1009,
-     "fit_events": 29,
-     "fit_source": "refit on labels ≤ 1960 (n=1009, events=29)",
+     "fit_n": 1074,
+     "fit_events": 34,
+     "fit_source": "refit on labels ≤ 1960 (n=1074, events=34)",
      "leaky": false,
-     "n_excluded_no_covariate": 7,
+     "n_excluded_no_covariate": 13,
      "n_excluded_with_event": 2,
      "excluded_vars": {
       "regime": 4,
       "log_gdp_pc": 5,
       "gdp_growth": 5,
       "population": 2,
-      "at_war": 2
-     }
+      "at_war": 2,
+      "not_live_at_as_of": 2
+     },
+     "epv": 4.25,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_force": {
      "n": 12246,
-     "n_at_risk": 632,
-     "n_structural_miss": 70,
-     "predicted": 146.8000000000001,
+     "n_at_risk": 890,
+     "n_structural_miss": 59,
+     "predicted": 121.00000000000007,
      "observed": 132,
-     "observed_at_risk": 62,
-     "brier": 0.010887391801404538,
-     "auc": 0.7172451983930439,
-     "auc_at_risk": 0.7680107526881721,
+     "observed_at_risk": 73,
+     "brier": 0.009695492405683485,
+     "auc": 0.7543835457096972,
+     "auc_at_risk": 0.8107342264549555,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 28024,
-     "fit_events": 435,
-     "fit_source": "refit on labels ≤ 1960 (n=28024, events=435)",
-     "leaky": false
+     "fit_n": 37985,
+     "fit_events": 502,
+     "fit_source": "refit on labels ≤ 1960 (n=37985, events=502)",
+     "leaky": false,
+     "epv": 62.75,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_war": {
      "n": 12246,
-     "n_at_risk": 622,
-     "n_structural_miss": 12,
-     "predicted": 65.17999999999996,
+     "n_at_risk": 822,
+     "n_structural_miss": 11,
+     "predicted": 55.19000000000002,
      "observed": 21,
-     "observed_at_risk": 9,
-     "brier": 0.0023229136044422673,
-     "auc": 0.6950043821209465,
-     "auc_at_risk": 0.7694399129961936,
+     "observed_at_risk": 10,
+     "brier": 0.0019635881104033957,
+     "auc": 0.7182568896679327,
+     "auc_at_risk": 0.922783251231527,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 28024,
-     "fit_events": 196,
-     "fit_source": "refit on labels ≤ 1960 (n=28024, events=196)",
-     "leaky": false
+     "fit_n": 37985,
+     "fit_events": 226,
+     "fit_source": "refit on labels ≤ 1960 (n=37985, events=226)",
+     "leaky": false,
+     "epv": 22.6,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "war_end": {
      "n": 0,
@@ -431,47 +490,56 @@
     },
     "intrastate_end": {
      "n": 157,
-     "n_at_risk": 102,
+     "n_at_risk": 98,
      "n_structural_miss": 7,
-     "predicted": 35.93,
+     "predicted": 35.53000000000001,
      "observed": 43,
      "observed_at_risk": 36,
-     "brier": 0.19374713375796188,
-     "auc": 0.7035903712770298,
-     "auc_at_risk": 0.6536195286195287,
+     "brier": 0.1982987261146497,
+     "auc": 0.6993064055487556,
+     "auc_at_risk": 0.6155913978494624,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 82,
-     "fit_events": 27,
-     "fit_source": "refit on labels ≤ 1960 (n=82, events=27)",
+     "fit_n": 89,
+     "fit_events": 28,
+     "fit_source": "refit on labels ≤ 1960 (n=89, events=28)",
      "leaky": false,
-     "n_excluded_no_covariate": 55,
+     "n_excluded_no_covariate": 59,
      "n_excluded_with_event": 7,
      "excluded_vars": {
       "not_live_at_as_of": 48,
-      "conflict_duration": 5,
+      "conflict_duration": 9,
       "regime": 4,
       "log_gdp_pc": 5
-     }
+     },
+     "epv": 4.666666666666667,
+     "n_degenerate": 1,
+     "degenerate": [
+      "regime=3"
+     ]
     },
     "contest_settle": {
-     "n": 28,
-     "n_at_risk": 9,
+     "n": 46,
+     "n_at_risk": 5,
      "n_structural_miss": 0,
-     "predicted": 2.9799999999999995,
+     "predicted": 2.79,
      "observed": 0,
      "observed_at_risk": 0,
-     "brier": 0.04060714285714286,
+     "brier": 0.03430217391304348,
      "auc": null,
      "auc_at_risk": null,
      "scored_years": 20,
      "fit_split": 1960,
-     "fit_n": 1018,
-     "fit_events": 20,
-     "fit_source": "refit on labels ≤ 1960 (n=1018, events=20)",
+     "fit_n": 1188,
+     "fit_events": 40,
+     "fit_source": "refit on labels ≤ 1960 (n=1188, events=40)",
      "leaky": false,
      "n_unborn_records": 29,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 13.333333333333334,
+     "n_degenerate": 0,
+     "degenerate": [],
+     "underpowered": true
     }
    }
   },
@@ -481,18 +549,18 @@
    "actors": 135,
    "window_actors": 164,
    "dyad_actors": 164,
-   "ms": 17142,
+   "ms": 19374,
    "templates": {
     "leader_exit": {
      "n": 164,
      "n_at_risk": 127,
      "n_structural_miss": 24,
-     "predicted": 122.40999999999995,
+     "predicted": 121.88999999999997,
      "observed": 135,
      "observed_at_risk": 111,
-     "brier": 0.23261402439024384,
-     "auc": 0.8057471264367816,
-     "auc_at_risk": 0.8758445945945946,
+     "brier": 0.22919207317073173,
+     "auc": 0.8099616858237548,
+     "auc_at_risk": 0.8851351351351351,
      "scored_years": 20,
      "fit_split": 1970,
      "fit_n": 1891,
@@ -508,18 +576,21 @@
       "leader_tenure": 2,
       "leader_age": 2,
       "at_war": 1
-     }
+     },
+     "epv": 43.25,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "irregular_exit": {
      "n": 164,
      "n_at_risk": 127,
      "n_structural_miss": 11,
-     "predicted": 70.56,
+     "predicted": 71.60000000000001,
      "observed": 48,
      "observed_at_risk": 37,
-     "brier": 0.26808536585365855,
-     "auc": 0.6288613505747126,
-     "auc_at_risk": 0.7196696696696697,
+     "brier": 0.27613536585365855,
+     "auc": 0.6236530172413793,
+     "auc_at_risk": 0.710960960960961,
      "scored_years": 20,
      "fit_split": 1970,
      "fit_n": 1891,
@@ -537,25 +608,28 @@
       "leader_age": 2,
       "leader_irregular_entry": 2,
       "at_war": 1
-     }
+     },
+     "epv": 7.6,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "coup_attempt": {
      "n": 164,
-     "n_at_risk": 120,
+     "n_at_risk": 119,
      "n_structural_miss": 16,
-     "predicted": 53.490000000000016,
+     "predicted": 53.86999999999998,
      "observed": 71,
      "observed_at_risk": 55,
-     "brier": 0.2377201219512196,
-     "auc": 0.6720430107526881,
-     "auc_at_risk": 0.7478321678321679,
+     "brier": 0.24082378048780484,
+     "auc": 0.6661366045736786,
+     "auc_at_risk": 0.7305397727272728,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 1644,
+     "fit_n": 1645,
      "fit_events": 116,
-     "fit_source": "refit on labels ≤ 1970 (n=1644, events=116)",
+     "fit_source": "refit on labels ≤ 1970 (n=1645, events=116)",
      "leaky": false,
-     "n_excluded_no_covariate": 44,
+     "n_excluded_no_covariate": 45,
      "n_excluded_with_event": 16,
      "excluded_vars": {
       "not_live_at_as_of": 29,
@@ -565,48 +639,55 @@
       "milper_share": 2,
       "leader_military": 3,
       "intrastate": 1
-     }
+     },
+     "epv": 10.545454545454545,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "democratize_step": {
      "n": 113,
-     "n_at_risk": 106,
+     "n_at_risk": 107,
      "n_structural_miss": 3,
-     "predicted": 63.359999999999985,
+     "predicted": 60.30000000000001,
      "observed": 57,
      "observed_at_risk": 54,
-     "brier": 0.30816283185840704,
-     "auc": 0.5266290726817042,
-     "auc_at_risk": 0.5195868945868946,
+     "brier": 0.2932106194690266,
+     "auc": 0.537750626566416,
+     "auc_at_risk": 0.5415793151642209,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 2762,
-     "fit_events": 90,
-     "fit_source": "refit on labels ≤ 1970 (n=2762, events=90)",
+     "fit_n": 5065,
+     "fit_events": 140,
+     "fit_source": "refit on labels ≤ 1970 (n=5065, events=140)",
      "leaky": false,
-     "n_excluded_no_covariate": 7,
+     "n_excluded_no_covariate": 6,
      "n_excluded_with_event": 3,
      "excluded_vars": {
       "log_gdp_pc": 5,
       "gdp_growth": 5,
-      "not_live_at_as_of": 1,
       "regime": 1
-     }
+     },
+     "epv": 20,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 18,
      "n_at_risk": 14,
      "n_structural_miss": 0,
-     "predicted": 3.3899999999999997,
+     "predicted": 3.4299999999999997,
      "observed": 3,
      "observed_at_risk": 3,
-     "brier": 0.13397222222222224,
-     "auc": 0.7222222222222222,
-     "auc_at_risk": 0.6212121212121212,
+     "brier": 0.12367222222222225,
+     "auc": 0.7555555555555555,
+     "auc_at_risk": 0.6666666666666666,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 452,
+     "fit_n": 458,
      "fit_events": 7,
-     "fit_source": "refit on labels ≤ 1970 (n=452, events=7)",
+     "fit_source": "refit on labels ≤ 1970 (n=458, events=7)",
      "leaky": false,
      "n_excluded_no_covariate": 4,
      "n_excluded_with_event": 0,
@@ -616,11 +697,18 @@
       "gdp_growth": 1,
       "at_war": 1,
       "intrastate": 1
-     }
+     },
+     "epv": 1.4,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ],
+     "underpowered": true,
+     "underpowered_reason": "events per estimated covariate 1.40 < 3"
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=646, events=2 in years ≤ 1970",
+     "reason": "no fit at as-of: n=649, events=1 in years ≤ 1970",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -630,17 +718,17 @@
      "n": 58,
      "n_at_risk": 55,
      "n_structural_miss": 1,
-     "predicted": 25.029999999999998,
+     "predicted": 23.869999999999994,
      "observed": 28,
      "observed_at_risk": 27,
-     "brier": 0.27256724137931027,
-     "auc": 0.5535714285714286,
-     "auc_at_risk": 0.5423280423280423,
+     "brier": 0.2855258620689656,
+     "auc": 0.5577380952380953,
+     "auc_at_risk": 0.546957671957672,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 1871,
-     "fit_events": 100,
-     "fit_source": "refit on labels ≤ 1970 (n=1871, events=100)",
+     "fit_n": 2691,
+     "fit_events": 143,
+     "fit_source": "refit on labels ≤ 1970 (n=2691, events=143)",
      "leaky": false,
      "n_excluded_no_covariate": 3,
      "n_excluded_with_event": 1,
@@ -650,23 +738,28 @@
       "not_live_at_as_of": 1,
       "at_war": 1,
       "intrastate": 1
-     }
+     },
+     "epv": 20.428571428571427,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "intrastate_onset": {
      "n": 164,
      "n_at_risk": 152,
      "n_structural_miss": 4,
-     "predicted": 50.05000000000001,
+     "predicted": 49.90999999999998,
      "observed": 62,
      "observed_at_risk": 58,
-     "brier": 0.21501524390243895,
-     "auc": 0.7093611638203668,
-     "auc_at_risk": 0.7347762289068231,
+     "brier": 0.21372865853658535,
+     "auc": 0.7217741935483871,
+     "auc_at_risk": 0.7491746148202495,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 2141,
-     "fit_events": 68,
-     "fit_source": "refit on labels ≤ 1970 (n=2141, events=68)",
+     "fit_n": 2206,
+     "fit_events": 73,
+     "fit_source": "refit on labels ≤ 1970 (n=2206, events=73)",
      "leaky": false,
      "n_excluded_no_covariate": 12,
      "n_excluded_with_event": 4,
@@ -677,41 +770,50 @@
       "regime": 4,
       "population": 3,
       "at_war": 1
-     }
+     },
+     "epv": 9.125,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_force": {
      "n": 13366,
-     "n_at_risk": 817,
-     "n_structural_miss": 58,
-     "predicted": 149.44000000000008,
+     "n_at_risk": 964,
+     "n_structural_miss": 50,
+     "predicted": 129.35,
      "observed": 132,
-     "observed_at_risk": 74,
-     "brier": 0.009149229387999391,
-     "auc": 0.762196832309799,
-     "auc_at_risk": 0.816621803499327,
+     "observed_at_risk": 82,
+     "brier": 0.00847433039054317,
+     "auc": 0.7912745407833817,
+     "auc_at_risk": 0.8379514407388972,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 35533,
-     "fit_events": 520,
-     "fit_source": "refit on labels ≤ 1970 (n=35533, events=520)",
-     "leaky": false
+     "fit_n": 45517,
+     "fit_events": 587,
+     "fit_source": "refit on labels ≤ 1970 (n=45517, events=587)",
+     "leaky": false,
+     "epv": 73.375,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_war": {
      "n": 13366,
-     "n_at_risk": 736,
+     "n_at_risk": 812,
      "n_structural_miss": 9,
-     "predicted": 43.969999999999956,
+     "predicted": 39.320000000000036,
      "observed": 24,
      "observed_at_risk": 15,
-     "brier": 0.0018965659135118963,
-     "auc": 0.7937418802778194,
-     "auc_at_risk": 0.7446139620896902,
+     "brier": 0.0018188089181505292,
+     "auc": 0.7954657597561585,
+     "auc_at_risk": 0.8437473860309493,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 35533,
-     "fit_events": 202,
-     "fit_source": "refit on labels ≤ 1970 (n=35533, events=202)",
-     "leaky": false
+     "fit_n": 45517,
+     "fit_events": 232,
+     "fit_source": "refit on labels ≤ 1970 (n=45517, events=232)",
+     "leaky": false,
+     "epv": 23.2,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "war_end": {
      "n": 0,
@@ -722,17 +824,17 @@
      "n": 164,
      "n_at_risk": 124,
      "n_structural_miss": 7,
-     "predicted": 43.77,
+     "predicted": 44.11999999999999,
      "observed": 49,
      "observed_at_risk": 42,
-     "brier": 0.21789085365853653,
-     "auc": 0.659094942324756,
-     "auc_at_risk": 0.6424216027874564,
+     "brier": 0.21489878048780492,
+     "auc": 0.6759538598047915,
+     "auc_at_risk": 0.6700058072009292,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 209,
-     "fit_events": 53,
-     "fit_source": "refit on labels ≤ 1970 (n=209, events=53)",
+     "fit_n": 216,
+     "fit_events": 54,
+     "fit_source": "refit on labels ≤ 1970 (n=216, events=54)",
      "leaky": false,
      "n_excluded_no_covariate": 40,
      "n_excluded_with_event": 7,
@@ -741,26 +843,33 @@
       "conflict_duration": 9,
       "log_gdp_pc": 9,
       "regime": 4
-     }
+     },
+     "epv": 7.714285714285714,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "contest_settle": {
-     "n": 28,
-     "n_at_risk": 9,
+     "n": 46,
+     "n_at_risk": 5,
      "n_structural_miss": 0,
-     "predicted": 3.2099999999999995,
+     "predicted": 2.23,
      "observed": 0,
      "observed_at_risk": 0,
-     "brier": 0.045767857142857145,
+     "brier": 0.021697826086956525,
      "auc": null,
      "auc_at_risk": null,
      "scored_years": 20,
      "fit_split": 1970,
-     "fit_n": 1108,
-     "fit_events": 20,
-     "fit_source": "refit on labels ≤ 1970 (n=1108, events=20)",
+     "fit_n": 1238,
+     "fit_events": 40,
+     "fit_source": "refit on labels ≤ 1970 (n=1238, events=40)",
      "leaky": false,
      "n_unborn_records": 29,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 13.333333333333334,
+     "n_degenerate": 0,
+     "degenerate": [],
+     "underpowered": true
     }
    }
   },
@@ -770,18 +879,18 @@
    "actors": 156,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 21684,
+   "ms": 22471,
    "templates": {
     "leader_exit": {
      "n": 195,
      "n_at_risk": 146,
      "n_structural_miss": 38,
-     "predicted": 136.40999999999997,
+     "predicted": 136.4199999999999,
      "observed": 170,
      "observed_at_risk": 132,
-     "brier": 0.2679235897435899,
-     "auc": 0.7265882352941176,
-     "auc_at_risk": 0.7721861471861472,
+     "brier": 0.2664112820512822,
+     "auc": 0.7249411764705882,
+     "auc_at_risk": 0.7683982683982684,
      "scored_years": 20,
      "fit_split": 1980,
      "fit_n": 3177,
@@ -796,18 +905,21 @@
       "not_live_at_as_of": 28,
       "leader_tenure": 1,
       "leader_age": 1
-     }
+     },
+     "epv": 68.125,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "irregular_exit": {
      "n": 195,
      "n_at_risk": 146,
      "n_structural_miss": 4,
-     "predicted": 96.51999999999995,
+     "predicted": 97.62999999999998,
      "observed": 35,
      "observed_at_risk": 31,
-     "brier": 0.28960615384615396,
-     "auc": 0.7567857142857143,
-     "auc_at_risk": 0.7722300140252455,
+     "brier": 0.28998102564102557,
+     "auc": 0.7932142857142858,
+     "auc_at_risk": 0.82945301542777,
      "scored_years": 20,
      "fit_split": 1980,
      "fit_n": 3177,
@@ -824,25 +936,28 @@
       "leader_tenure": 1,
       "leader_age": 1,
       "leader_irregular_entry": 1
-     }
+     },
+     "epv": 12.5,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "coup_attempt": {
      "n": 195,
-     "n_at_risk": 128,
+     "n_at_risk": 129,
      "n_structural_miss": 7,
-     "predicted": 52.800000000000004,
+     "predicted": 53.57999999999998,
      "observed": 60,
      "observed_at_risk": 53,
-     "brier": 0.16893846153846145,
-     "auc": 0.7808024691358024,
-     "auc_at_risk": 0.7382389937106918,
+     "brier": 0.16897538461538464,
+     "auc": 0.7817283950617284,
+     "auc_at_risk": 0.7444141012909633,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 2850,
+     "fit_n": 2851,
      "fit_events": 190,
-     "fit_source": "refit on labels ≤ 1980 (n=2850, events=190)",
+     "fit_source": "refit on labels ≤ 1980 (n=2851, events=190)",
      "leaky": false,
-     "n_excluded_no_covariate": 67,
+     "n_excluded_no_covariate": 66,
      "n_excluded_with_event": 7,
      "excluded_vars": {
       "regime": 10,
@@ -850,23 +965,26 @@
       "gdp_growth": 17,
       "not_live_at_as_of": 39,
       "leader_military": 1
-     }
+     },
+     "epv": 17.272727272727273,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "democratize_step": {
      "n": 125,
      "n_at_risk": 117,
      "n_structural_miss": 3,
-     "predicted": 65.7,
+     "predicted": 62.439999999999976,
      "observed": 86,
      "observed_at_risk": 83,
-     "brier": 0.2495216000000001,
-     "auc": 0.6003279666070364,
-     "auc_at_risk": 0.5637845499645642,
+     "brier": 0.2578032,
+     "auc": 0.5957066189624329,
+     "auc_at_risk": 0.5582919914953933,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 3720,
-     "fit_events": 125,
-     "fit_source": "refit on labels ≤ 1980 (n=3720, events=125)",
+     "fit_n": 6023,
+     "fit_events": 175,
+     "fit_source": "refit on labels ≤ 1980 (n=6023, events=175)",
      "leaky": false,
      "n_excluded_no_covariate": 8,
      "n_excluded_with_event": 3,
@@ -874,35 +992,47 @@
       "log_gdp_pc": 7,
       "gdp_growth": 7,
       "regime": 1
-     }
+     },
+     "epv": 25,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 22,
-     "n_at_risk": 15,
-     "n_structural_miss": 2,
-     "predicted": 4.769999999999998,
+     "n_at_risk": 16,
+     "n_structural_miss": 0,
+     "predicted": 4.169999999999999,
      "observed": 6,
-     "observed_at_risk": 4,
-     "brier": 0.2521136363636363,
-     "auc": 0.5104166666666666,
-     "auc_at_risk": 0.5454545454545454,
+     "observed_at_risk": 6,
+     "brier": 0.25675,
+     "auc": 0.5885416666666666,
+     "auc_at_risk": 0.3416666666666667,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 576,
+     "fit_n": 582,
      "fit_events": 10,
-     "fit_source": "refit on labels ≤ 1980 (n=576, events=10)",
+     "fit_source": "refit on labels ≤ 1980 (n=582, events=10)",
      "leaky": false,
-     "n_excluded_no_covariate": 7,
-     "n_excluded_with_event": 2,
+     "n_excluded_no_covariate": 6,
+     "n_excluded_with_event": 0,
      "excluded_vars": {
-      "not_live_at_as_of": 4,
+      "not_live_at_as_of": 3,
       "log_gdp_pc": 3,
       "gdp_growth": 3
-     }
+     },
+     "epv": 2,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ],
+     "underpowered": true,
+     "underpowered_reason": "events per estimated covariate 2.00 < 3"
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=847, events=2 in years ≤ 1980",
+     "reason": "no fit at as-of: n=850, events=1 in years ≤ 1980",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -910,42 +1040,48 @@
     },
     "autocratic_closure": {
      "n": 74,
-     "n_at_risk": 67,
-     "n_structural_miss": 4,
-     "predicted": 27.06999999999999,
+     "n_at_risk": 65,
+     "n_structural_miss": 5,
+     "predicted": 25.29,
      "observed": 30,
-     "observed_at_risk": 26,
-     "brier": 0.278404054054054,
-     "auc": 0.568939393939394,
-     "auc_at_risk": 0.625703564727955,
+     "observed_at_risk": 25,
+     "brier": 0.263804054054054,
+     "auc": 0.6071969696969697,
+     "auc_at_risk": 0.6915,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 2341,
-     "fit_events": 130,
-     "fit_source": "refit on labels ≤ 1980 (n=2341, events=130)",
+     "fit_n": 3161,
+     "fit_events": 173,
+     "fit_source": "refit on labels ≤ 1980 (n=3161, events=173)",
      "leaky": false,
-     "n_excluded_no_covariate": 7,
-     "n_excluded_with_event": 4,
+     "n_excluded_no_covariate": 9,
+     "n_excluded_with_event": 5,
      "excluded_vars": {
       "log_gdp_pc": 7,
-      "gdp_growth": 7
-     }
+      "gdp_growth": 7,
+      "not_live_at_as_of": 2
+     },
+     "epv": 24.714285714285715,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "intrastate_onset": {
      "n": 195,
      "n_at_risk": 172,
      "n_structural_miss": 6,
-     "predicted": 57.260000000000005,
+     "predicted": 57.16999999999997,
      "observed": 68,
      "observed_at_risk": 62,
-     "brier": 0.2026399999999999,
-     "auc": 0.7211093098656786,
-     "auc_at_risk": 0.751099706744868,
+     "brier": 0.20502307692307684,
+     "auc": 0.7277674849467346,
+     "auc_at_risk": 0.7595307917888563,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 3437,
-     "fit_events": 112,
-     "fit_source": "refit on labels ≤ 1980 (n=3437, events=112)",
+     "fit_n": 3502,
+     "fit_events": 117,
+     "fit_source": "refit on labels ≤ 1980 (n=3502, events=117)",
      "leaky": false,
      "n_excluded_no_covariate": 23,
      "n_excluded_with_event": 6,
@@ -954,42 +1090,51 @@
       "log_gdp_pc": 17,
       "gdp_growth": 17,
       "population": 3,
-      "not_live_at_as_of": 3
-     }
+      "not_live_at_as_of": 2
+     },
+     "epv": 14.625,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_force": {
      "n": 18915,
-     "n_at_risk": 925,
-     "n_structural_miss": 59,
-     "predicted": 153.73999999999984,
+     "n_at_risk": 1090,
+     "n_structural_miss": 53,
+     "predicted": 136.10000000000014,
      "observed": 136,
-     "observed_at_risk": 77,
-     "brier": 0.0064405604017975255,
-     "auc": 0.7698864971197489,
-     "auc_at_risk": 0.8667529404557707,
+     "observed_at_risk": 83,
+     "brier": 0.006212751784298187,
+     "auc": 0.7902197542311029,
+     "auc_at_risk": 0.8631507160718345,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 44376,
-     "fit_events": 613,
-     "fit_source": "refit on labels ≤ 1980 (n=44376, events=613)",
-     "leaky": false
+     "fit_n": 54329,
+     "fit_events": 681,
+     "fit_source": "refit on labels ≤ 1980 (n=54329, events=681)",
+     "leaky": false,
+     "epv": 85.125,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_war": {
      "n": 18915,
-     "n_at_risk": 780,
+     "n_at_risk": 851,
      "n_structural_miss": 13,
-     "predicted": 36.84000000000003,
+     "predicted": 34.21000000000004,
      "observed": 24,
      "observed_at_risk": 11,
-     "brier": 0.0013321913825006613,
-     "auc": 0.7136114199001288,
-     "auc_at_risk": 0.7571816999645348,
+     "brier": 0.001321802802008985,
+     "auc": 0.7125339667919468,
+     "auc_at_risk": 0.7747835497835498,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 44376,
-     "fit_events": 210,
-     "fit_source": "refit on labels ≤ 1980 (n=44376, events=210)",
-     "leaky": false
+     "fit_n": 54329,
+     "fit_events": 241,
+     "fit_source": "refit on labels ≤ 1980 (n=54329, events=241)",
+     "leaky": false,
+     "epv": 24.1,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "war_end": {
      "n": 0,
@@ -998,47 +1143,54 @@
     },
     "intrastate_end": {
      "n": 195,
-     "n_at_risk": 136,
+     "n_at_risk": 135,
      "n_structural_miss": 13,
-     "predicted": 49.61000000000002,
+     "predicted": 49.709999999999994,
      "observed": 63,
      "observed_at_risk": 50,
-     "brier": 0.19728564102564103,
-     "auc": 0.7158489658489658,
-     "auc_at_risk": 0.78,
+     "brier": 0.20012769230769228,
+     "auc": 0.7183742183742183,
+     "auc_at_risk": 0.7808235294117647,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 411,
-     "fit_events": 78,
-     "fit_source": "refit on labels ≤ 1980 (n=411, events=78)",
+     "fit_n": 418,
+     "fit_events": 79,
+     "fit_source": "refit on labels ≤ 1980 (n=418, events=79)",
      "leaky": false,
-     "n_excluded_no_covariate": 59,
+     "n_excluded_no_covariate": 60,
      "n_excluded_with_event": 13,
      "excluded_vars": {
-      "conflict_duration": 19,
+      "conflict_duration": 20,
       "regime": 10,
       "log_gdp_pc": 17,
       "not_live_at_as_of": 39
-     }
+     },
+     "epv": 11.285714285714286,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "contest_settle": {
-     "n": 28,
-     "n_at_risk": 9,
+     "n": 46,
+     "n_at_risk": 5,
      "n_structural_miss": 0,
-     "predicted": 2.56,
-     "observed": 2,
-     "observed_at_risk": 2,
-     "brier": 0.03134285714285715,
-     "auc": 1,
-     "auc_at_risk": 1,
+     "predicted": 2.16,
+     "observed": 3,
+     "observed_at_risk": 3,
+     "brier": 0.030969565217391307,
+     "auc": 0.9689922480620154,
+     "auc_at_risk": 0.3333333333333333,
      "scored_years": 20,
      "fit_split": 1980,
-     "fit_n": 1198,
-     "fit_events": 20,
-     "fit_source": "refit on labels ≤ 1980 (n=1198, events=20)",
+     "fit_n": 1288,
+     "fit_events": 40,
+     "fit_source": "refit on labels ≤ 1980 (n=1288, events=40)",
      "leaky": false,
      "n_unborn_records": 29,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 13.333333333333334,
+     "n_degenerate": 0,
+     "degenerate": [],
+     "underpowered": true
     }
    }
   },
@@ -1048,18 +1200,18 @@
    "actors": 163,
    "window_actors": 197,
    "dyad_actors": 197,
-   "ms": 20483,
+   "ms": 24701,
    "templates": {
     "leader_exit": {
      "n": 197,
      "n_at_risk": 155,
      "n_structural_miss": 32,
-     "predicted": 145.98000000000002,
+     "predicted": 146.01999999999995,
      "observed": 173,
      "observed_at_risk": 141,
-     "brier": 0.22545380710659899,
-     "auc": 0.7544556840077071,
-     "auc_at_risk": 0.7915400202634245,
+     "brier": 0.22917055837563452,
+     "auc": 0.7132707129094412,
+     "auc_at_risk": 0.7049138804457954,
      "scored_years": 20,
      "fit_split": 1990,
      "fit_n": 4522,
@@ -1075,25 +1227,28 @@
       "not_live_at_as_of": 16,
       "leader_tenure": 2,
       "leader_age": 2
-     }
+     },
+     "epv": 92,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "irregular_exit": {
      "n": 197,
-     "n_at_risk": 154,
+     "n_at_risk": 155,
      "n_structural_miss": 1,
-     "predicted": 87.21000000000004,
+     "predicted": 88.21999999999996,
      "observed": 26,
      "observed_at_risk": 25,
-     "brier": 0.23403604060913716,
-     "auc": 0.8311965811965812,
-     "auc_at_risk": 0.8137984496124031,
+     "brier": 0.23466192893401017,
+     "auc": 0.8580746738641476,
+     "auc_at_risk": 0.8521538461538462,
      "scored_years": 20,
      "fit_split": 1990,
      "fit_n": 4522,
      "fit_events": 147,
      "fit_source": "refit on labels ≤ 1990 (n=4522, events=147)",
      "leaky": false,
-     "n_excluded_no_covariate": 43,
+     "n_excluded_no_covariate": 42,
      "n_excluded_with_event": 1,
      "excluded_vars": {
       "regime": 15,
@@ -1104,23 +1259,26 @@
       "leader_tenure": 2,
       "leader_age": 2,
       "leader_irregular_entry": 2
-     }
+     },
+     "epv": 14.7,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "coup_attempt": {
      "n": 197,
      "n_at_risk": 119,
      "n_structural_miss": 2,
-     "predicted": 27.01999999999999,
+     "predicted": 26.74000000000001,
      "observed": 40,
      "observed_at_risk": 38,
-     "brier": 0.13656751269035533,
-     "auc": 0.8054936305732484,
-     "auc_at_risk": 0.6804743339831059,
+     "brier": 0.14011573604060912,
+     "auc": 0.7886146496815286,
+     "auc_at_risk": 0.6460363872644574,
      "scored_years": 20,
      "fit_split": 1990,
-     "fit_n": 4185,
+     "fit_n": 4186,
      "fit_events": 247,
-     "fit_source": "refit on labels ≤ 1990 (n=4185, events=247)",
+     "fit_source": "refit on labels ≤ 1990 (n=4186, events=247)",
      "leaky": false,
      "n_excluded_no_covariate": 78,
      "n_excluded_with_event": 2,
@@ -1132,23 +1290,26 @@
       "intrastate": 2,
       "info_access": 4,
       "leader_military": 2
-     }
+     },
+     "epv": 22.454545454545453,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "democratize_step": {
      "n": 110,
      "n_at_risk": 101,
      "n_structural_miss": 6,
-     "predicted": 54.339999999999975,
+     "predicted": 53.879999999999995,
      "observed": 70,
      "observed_at_risk": 64,
-     "brier": 0.28831090909090895,
-     "auc": 0.5067857142857143,
-     "auc_at_risk": 0.5143581081081081,
+     "brier": 0.2821636363636363,
+     "auc": 0.54875,
+     "auc_at_risk": 0.5639780405405406,
      "scored_years": 20,
      "fit_split": 1990,
-     "fit_n": 4697,
-     "fit_events": 171,
-     "fit_source": "refit on labels ≤ 1990 (n=4697, events=171)",
+     "fit_n": 7000,
+     "fit_events": 221,
+     "fit_source": "refit on labels ≤ 1990 (n=7000, events=221)",
      "leaky": false,
      "n_excluded_no_covariate": 9,
      "n_excluded_with_event": 6,
@@ -1158,23 +1319,28 @@
       "regime": 2,
       "not_live_at_as_of": 1,
       "at_war": 1
-     }
+     },
+     "epv": 31.571428571428573,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "democratic_deepening": {
      "n": 34,
      "n_at_risk": 28,
      "n_structural_miss": 0,
-     "predicted": 8.76,
+     "predicted": 9.690000000000003,
      "observed": 10,
      "observed_at_risk": 10,
-     "brier": 0.13333529411764708,
-     "auc": 0.8875,
-     "auc_at_risk": 0.85,
+     "brier": 0.12901470588235292,
+     "auc": 0.9,
+     "auc_at_risk": 0.8666666666666667,
      "scored_years": 20,
      "fit_split": 1990,
-     "fit_n": 717,
+     "fit_n": 723,
      "fit_events": 13,
-     "fit_source": "refit on labels ≤ 1990 (n=717, events=13)",
+     "fit_source": "refit on labels ≤ 1990 (n=723, events=13)",
      "leaky": false,
      "n_excluded_no_covariate": 6,
      "n_excluded_with_event": 0,
@@ -1182,11 +1348,18 @@
       "log_gdp_pc": 4,
       "gdp_growth": 4,
       "not_live_at_as_of": 2
-     }
+     },
+     "epv": 2.6,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ],
+     "underpowered": true,
+     "underpowered_reason": "events per estimated covariate 2.60 < 3"
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=1085, events=2 in years ≤ 1990",
+     "reason": "no fit at as-of: n=1088, events=1 in years ≤ 1990",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -1196,40 +1369,45 @@
      "n": 89,
      "n_at_risk": 83,
      "n_structural_miss": 4,
-     "predicted": 36.529999999999994,
+     "predicted": 35.22999999999999,
      "observed": 35,
      "observed_at_risk": 31,
-     "brier": 0.26207977528089893,
-     "auc": 0.5843915343915344,
-     "auc_at_risk": 0.6442307692307693,
+     "brier": 0.26356067415730333,
+     "auc": 0.5822751322751323,
+     "auc_at_risk": 0.6417493796526055,
      "scored_years": 20,
      "fit_split": 1990,
-     "fit_n": 2883,
-     "fit_events": 147,
-     "fit_source": "refit on labels ≤ 1990 (n=2883, events=147)",
+     "fit_n": 3703,
+     "fit_events": 190,
+     "fit_source": "refit on labels ≤ 1990 (n=3703, events=190)",
      "leaky": false,
      "n_excluded_no_covariate": 6,
      "n_excluded_with_event": 4,
      "excluded_vars": {
       "log_gdp_pc": 6,
       "gdp_growth": 6
-     }
+     },
+     "epv": 27.142857142857142,
+     "n_degenerate": 1,
+     "degenerate": [
+      "aid_conditionality"
+     ]
     },
     "intrastate_onset": {
      "n": 197,
      "n_at_risk": 172,
      "n_structural_miss": 3,
-     "predicted": 65.33999999999999,
+     "predicted": 64.53000000000002,
      "observed": 59,
      "observed_at_risk": 56,
-     "brier": 0.1702020304568526,
-     "auc": 0.7784942274625399,
-     "auc_at_risk": 0.7810190886699507,
+     "brier": 0.16212741116751272,
+     "auc": 0.7939081306804225,
+     "auc_at_risk": 0.8003386699507389,
      "scored_years": 20,
      "fit_split": 1990,
-     "fit_n": 4792,
-     "fit_events": 162,
-     "fit_source": "refit on labels ≤ 1990 (n=4792, events=162)",
+     "fit_n": 4857,
+     "fit_events": 167,
+     "fit_source": "refit on labels ≤ 1990 (n=4857, events=167)",
      "leaky": false,
      "n_excluded_no_covariate": 25,
      "n_excluded_with_event": 3,
@@ -1239,41 +1417,50 @@
       "gdp_growth": 21,
       "at_war": 2,
       "population": 2
-     }
+     },
+     "epv": 20.875,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_force": {
      "n": 19306,
-     "n_at_risk": 897,
-     "n_structural_miss": 47,
-     "predicted": 85.10000000000011,
+     "n_at_risk": 996,
+     "n_structural_miss": 41,
+     "predicted": 76.76000000000005,
      "observed": 98,
-     "observed_at_risk": 51,
-     "brier": 0.004509872578473017,
-     "auc": 0.7469188008397861,
-     "auc_at_risk": 0.8811709080795439,
+     "observed_at_risk": 57,
+     "brier": 0.004480752097793436,
+     "auc": 0.7751261166690749,
+     "auc_at_risk": 0.807830278571829,
      "scored_years": 11,
      "fit_split": 1990,
-     "fit_n": 53696,
-     "fit_events": 699,
-     "fit_source": "refit on labels ≤ 1990 (n=53696, events=699)",
-     "leaky": false
+     "fit_n": 63617,
+     "fit_events": 770,
+     "fit_source": "refit on labels ≤ 1990 (n=63617, events=770)",
+     "leaky": false,
+     "epv": 96.25,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_war": {
      "n": 19306,
-     "n_at_risk": 652,
+     "n_at_risk": 623,
      "n_structural_miss": 14,
-     "predicted": 17.199999999999907,
+     "predicted": 15.78999999999989,
      "observed": 18,
      "observed_at_risk": 4,
-     "brier": 0.0009572775303014601,
-     "auc": 0.5944196737176829,
-     "auc_at_risk": 0.5142746913580247,
+     "brier": 0.0009516471563244574,
+     "auc": 0.5962313931517581,
+     "auc_at_risk": 0.6635702746365105,
      "scored_years": 11,
      "fit_split": 1990,
-     "fit_n": 53696,
-     "fit_events": 219,
-     "fit_source": "refit on labels ≤ 1990 (n=53696, events=219)",
-     "leaky": false
+     "fit_n": 63617,
+     "fit_events": 250,
+     "fit_source": "refit on labels ≤ 1990 (n=63617, events=250)",
+     "leaky": false,
+     "epv": 25,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "war_end": {
      "n": 0,
@@ -1282,47 +1469,54 @@
     },
     "intrastate_end": {
      "n": 197,
-     "n_at_risk": 138,
+     "n_at_risk": 137,
      "n_structural_miss": 12,
-     "predicted": 56.250000000000014,
+     "predicted": 54.95999999999997,
      "observed": 55,
      "observed_at_risk": 43,
-     "brier": 0.1817497461928934,
-     "auc": 0.7168373879641485,
-     "auc_at_risk": 0.8067319461444309,
+     "brier": 0.1816456852791877,
+     "auc": 0.7142125480153649,
+     "auc_at_risk": 0.7981197427016329,
      "scored_years": 20,
      "fit_split": 1990,
-     "fit_n": 685,
-     "fit_events": 109,
-     "fit_source": "refit on labels ≤ 1990 (n=685, events=109)",
+     "fit_n": 692,
+     "fit_events": 110,
+     "fit_source": "refit on labels ≤ 1990 (n=692, events=110)",
      "leaky": false,
-     "n_excluded_no_covariate": 59,
+     "n_excluded_no_covariate": 60,
      "n_excluded_with_event": 12,
      "excluded_vars": {
-      "conflict_duration": 22,
+      "conflict_duration": 23,
       "regime": 15,
       "log_gdp_pc": 21,
       "not_live_at_as_of": 34
-     }
+     },
+     "epv": 15.714285714285714,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "contest_settle": {
-     "n": 28,
-     "n_at_risk": 9,
+     "n": 46,
+     "n_at_risk": 5,
      "n_structural_miss": 0,
-     "predicted": 2.25,
-     "observed": 2,
-     "observed_at_risk": 2,
-     "brier": 0.04413214285714286,
-     "auc": 0.9326923076923077,
-     "auc_at_risk": 0.75,
+     "predicted": 1.82,
+     "observed": 3,
+     "observed_at_risk": 3,
+     "brier": 0.03383913043478261,
+     "auc": 0.9728682170542635,
+     "auc_at_risk": 0.4166666666666667,
      "scored_years": 20,
      "fit_split": 1990,
-     "fit_n": 1288,
-     "fit_events": 20,
-     "fit_source": "refit on labels ≤ 1990 (n=1288, events=20)",
+     "fit_n": 1338,
+     "fit_events": 40,
+     "fit_source": "refit on labels ≤ 1990 (n=1338, events=40)",
      "leaky": false,
      "n_unborn_records": 29,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 13.333333333333334,
+     "n_degenerate": 0,
+     "degenerate": [],
+     "underpowered": true
     }
    }
   },
@@ -1332,23 +1526,23 @@
    "actors": 192,
    "window_actors": 196,
    "dyad_actors": 196,
-   "ms": 23709,
+   "ms": 28265,
    "templates": {
     "leader_exit": {
      "n": 196,
      "n_at_risk": 158,
      "n_structural_miss": 31,
-     "predicted": 152.40000000000003,
+     "predicted": 152.32999999999993,
      "observed": 173,
      "observed_at_risk": 142,
-     "brier": 0.22699897959183676,
-     "auc": 0.7694144257351093,
-     "auc_at_risk": 0.8622359154929577,
+     "brier": 0.22712806122448995,
+     "auc": 0.7484292535813019,
+     "auc_at_risk": 0.8254841549295775,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 6066,
+     "fit_n": 6069,
      "fit_events": 1020,
-     "fit_source": "refit on labels ≤ 2000 (n=6066, events=1020)",
+     "fit_source": "refit on labels ≤ 2000 (n=6069, events=1020)",
      "leaky": false,
      "n_excluded_no_covariate": 38,
      "n_excluded_with_event": 31,
@@ -1359,23 +1553,26 @@
       "leader_tenure": 1,
       "leader_age": 1,
       "at_war": 1
-     }
+     },
+     "epv": 127.5,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "irregular_exit": {
      "n": 196,
      "n_at_risk": 158,
      "n_structural_miss": 3,
-     "predicted": 56.489999999999995,
+     "predicted": 57.08999999999996,
      "observed": 18,
      "observed_at_risk": 15,
-     "brier": 0.16633622448979576,
-     "auc": 0.642478152309613,
-     "auc_at_risk": 0.6904428904428904,
+     "brier": 0.1666841836734694,
+     "auc": 0.650749063670412,
+     "auc_at_risk": 0.7027972027972028,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 6066,
+     "fit_n": 6069,
      "fit_events": 169,
-     "fit_source": "refit on labels ≤ 2000 (n=6066, events=169)",
+     "fit_source": "refit on labels ≤ 2000 (n=6069, events=169)",
      "leaky": false,
      "n_excluded_no_covariate": 38,
      "n_excluded_with_event": 3,
@@ -1388,23 +1585,26 @@
       "leader_age": 1,
       "leader_irregular_entry": 1,
       "at_war": 1
-     }
+     },
+     "epv": 16.9,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "coup_attempt": {
      "n": 196,
      "n_at_risk": 139,
      "n_structural_miss": 4,
-     "predicted": 17.640000000000004,
+     "predicted": 17.639999999999997,
      "observed": 27,
      "observed_at_risk": 23,
-     "brier": 0.11382857142857153,
-     "auc": 0.6801446416831032,
-     "auc_at_risk": 0.6666041979010495,
+     "brier": 0.11604285714285716,
+     "auc": 0.6763094455402148,
+     "auc_at_risk": 0.6600449775112444,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 5687,
+     "fit_n": 5691,
      "fit_events": 298,
-     "fit_source": "refit on labels ≤ 2000 (n=5687, events=298)",
+     "fit_source": "refit on labels ≤ 2000 (n=5691, events=298)",
      "leaky": false,
      "n_excluded_no_covariate": 57,
      "n_excluded_with_event": 4,
@@ -1416,23 +1616,26 @@
       "info_access": 3,
       "leader_military": 1,
       "intrastate": 1
-     }
+     },
+     "epv": 27.09090909090909,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "democratize_step": {
      "n": 87,
      "n_at_risk": 74,
      "n_structural_miss": 6,
-     "predicted": 54.90000000000002,
+     "predicted": 53.720000000000006,
      "observed": 43,
      "observed_at_risk": 37,
-     "brier": 0.33798850574712636,
-     "auc": 0.5459830866807611,
-     "auc_at_risk": 0.550036523009496,
+     "brier": 0.32795172413793094,
+     "auc": 0.5517970401691332,
+     "auc_at_risk": 0.5580715850986121,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 5485,
-     "fit_events": 233,
-     "fit_source": "refit on labels ≤ 2000 (n=5485, events=233)",
+     "fit_n": 7791,
+     "fit_events": 283,
+     "fit_source": "refit on labels ≤ 2000 (n=7791, events=283)",
      "leaky": false,
      "n_excluded_no_covariate": 13,
      "n_excluded_with_event": 6,
@@ -1440,23 +1643,26 @@
       "log_gdp_pc": 7,
       "gdp_growth": 7,
       "not_live_at_as_of": 1
-     }
+     },
+     "epv": 35.375,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "democratic_deepening": {
      "n": 47,
      "n_at_risk": 38,
      "n_structural_miss": 1,
-     "predicted": 12.649999999999997,
+     "predicted": 12.93,
      "observed": 6,
      "observed_at_risk": 5,
-     "brier": 0.15860212765957446,
-     "auc": 0.6565040650406504,
-     "auc_at_risk": 0.7121212121212122,
+     "brier": 0.1622234042553191,
+     "auc": 0.6585365853658537,
+     "auc_at_risk": 0.7151515151515152,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 1048,
+     "fit_n": 1054,
      "fit_events": 20,
-     "fit_source": "refit on labels ≤ 2000 (n=1048, events=20)",
+     "fit_source": "refit on labels ≤ 2000 (n=1054, events=20)",
      "leaky": false,
      "n_excluded_no_covariate": 9,
      "n_excluded_with_event": 1,
@@ -1464,11 +1670,14 @@
       "log_gdp_pc": 4,
       "gdp_growth": 4,
       "not_live_at_as_of": 1
-     }
+     },
+     "epv": 3.3333333333333335,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "liberal_erosion": {
      "n": 0,
-     "reason": "no fit at as-of: n=1414, events=2 in years ≤ 2000",
+     "reason": "no fit at as-of: n=1417, events=1 in years ≤ 2000",
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
@@ -1476,42 +1685,46 @@
     },
     "autocratic_closure": {
      "n": 102,
-     "n_at_risk": 90,
-     "n_structural_miss": 5,
-     "predicted": 27.339999999999996,
+     "n_at_risk": 87,
+     "n_structural_miss": 7,
+     "predicted": 27.81999999999998,
      "observed": 45,
-     "observed_at_risk": 40,
-     "brier": 0.2795058823529411,
-     "auc": 0.5994152046783626,
-     "auc_at_risk": 0.62,
+     "observed_at_risk": 38,
+     "brier": 0.27774705882352957,
+     "auc": 0.6216374269005848,
+     "auc_at_risk": 0.6780343716433942,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 3718,
-     "fit_events": 174,
-     "fit_source": "refit on labels ≤ 2000 (n=3718, events=174)",
+     "fit_n": 4538,
+     "fit_events": 217,
+     "fit_source": "refit on labels ≤ 2000 (n=4538, events=217)",
      "leaky": false,
-     "n_excluded_no_covariate": 12,
-     "n_excluded_with_event": 5,
+     "n_excluded_no_covariate": 15,
+     "n_excluded_with_event": 7,
      "excluded_vars": {
       "log_gdp_pc": 7,
-      "gdp_growth": 7
-     }
+      "gdp_growth": 7,
+      "not_live_at_as_of": 1
+     },
+     "epv": 27.125,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "intrastate_onset": {
      "n": 196,
      "n_at_risk": 163,
      "n_structural_miss": 4,
-     "predicted": 63.929999999999964,
+     "predicted": 64.51999999999995,
      "observed": 58,
      "observed_at_risk": 54,
-     "brier": 0.13439234693877553,
-     "auc": 0.8470764617691154,
-     "auc_at_risk": 0.8759768943255182,
+     "brier": 0.13853979591836735,
+     "auc": 0.8397676161919041,
+     "auc_at_risk": 0.8660380564050288,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 6346,
-     "fit_events": 251,
-     "fit_source": "refit on labels ≤ 2000 (n=6346, events=251)",
+     "fit_n": 6414,
+     "fit_events": 256,
+     "fit_source": "refit on labels ≤ 2000 (n=6414, events=256)",
      "leaky": false,
      "n_excluded_no_covariate": 33,
      "n_excluded_with_event": 4,
@@ -1521,41 +1734,50 @@
       "gdp_growth": 31,
       "population": 1,
       "at_war": 1
-     }
+     },
+     "epv": 32,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_force": {
      "n": 19110,
-     "n_at_risk": 475,
-     "n_structural_miss": 8,
-     "predicted": 10.219999999999938,
+     "n_at_risk": 486,
+     "n_structural_miss": 7,
+     "predicted": 9.909999999999943,
      "observed": 16,
-     "observed_at_risk": 8,
-     "brier": 0.0007976766091051793,
-     "auc": 0.740456753430397,
-     "auc_at_risk": 0.7196199143468951,
+     "observed_at_risk": 9,
+     "brier": 0.0007904918890633155,
+     "auc": 0.774466128103069,
+     "auc_at_risk": 0.9061262520382017,
      "scored_years": 1,
      "fit_split": 2000,
-     "fit_n": 67837,
-     "fit_events": 801,
-     "fit_source": "refit on labels ≤ 2000 (n=67837, events=801)",
-     "leaky": false
+     "fit_n": 77771,
+     "fit_events": 878,
+     "fit_source": "refit on labels ≤ 2000 (n=77771, events=878)",
+     "leaky": false,
+     "epv": 109.75,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "mid_war": {
      "n": 19110,
-     "n_at_risk": 105,
-     "n_structural_miss": 6,
-     "predicted": 1.1000000000000008,
+     "n_at_risk": 130,
+     "n_structural_miss": 4,
+     "predicted": 1.490000000000001,
      "observed": 6,
-     "observed_at_risk": 0,
-     "brier": 0.00031459968602825665,
-     "auc": 0.49725188442211055,
-     "auc_at_risk": null,
+     "observed_at_risk": 2,
+     "brier": 0.0003129199372056514,
+     "auc": 0.6631944444444444,
+     "auc_at_risk": 0.4453125,
      "scored_years": 1,
      "fit_split": 2000,
-     "fit_n": 67837,
-     "fit_events": 223,
-     "fit_source": "refit on labels ≤ 2000 (n=67837, events=223)",
-     "leaky": false
+     "fit_n": 77771,
+     "fit_events": 254,
+     "fit_source": "refit on labels ≤ 2000 (n=77771, events=254)",
+     "leaky": false,
+     "epv": 25.4,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "war_end": {
      "n": 0,
@@ -1566,17 +1788,17 @@
      "n": 196,
      "n_at_risk": 159,
      "n_structural_miss": 3,
-     "predicted": 60.529999999999966,
+     "predicted": 60.910000000000025,
      "observed": 48,
      "observed_at_risk": 45,
-     "brier": 0.12279336734693878,
-     "auc": 0.8492398648648649,
-     "auc_at_risk": 0.8678362573099415,
+     "brier": 0.12746377551020407,
+     "auc": 0.8435388513513513,
+     "auc_at_risk": 0.8599415204678362,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 975,
-     "fit_events": 162,
-     "fit_source": "refit on labels ≤ 2000 (n=975, events=162)",
+     "fit_n": 982,
+     "fit_events": 163,
+     "fit_source": "refit on labels ≤ 2000 (n=982, events=163)",
      "leaky": false,
      "n_excluded_no_covariate": 37,
      "n_excluded_with_event": 3,
@@ -1585,26 +1807,33 @@
       "regime": 22,
       "log_gdp_pc": 31,
       "not_live_at_as_of": 4
-     }
+     },
+     "epv": 23.285714285714285,
+     "n_degenerate": 0,
+     "degenerate": []
     },
     "contest_settle": {
-     "n": 28,
-     "n_at_risk": 7,
+     "n": 46,
+     "n_at_risk": 2,
      "n_structural_miss": 0,
-     "predicted": 1.96,
+     "predicted": 0.89,
      "observed": 0,
      "observed_at_risk": 0,
-     "brier": 0.020135714285714285,
+     "brier": 0.008610869565217392,
      "auc": null,
      "auc_at_risk": null,
      "scored_years": 20,
      "fit_split": 2000,
-     "fit_n": 1369,
-     "fit_events": 22,
-     "fit_source": "refit on labels ≤ 2000 (n=1369, events=22)",
+     "fit_n": 1370,
+     "fit_events": 43,
+     "fit_source": "refit on labels ≤ 2000 (n=1370, events=43)",
      "leaky": false,
      "n_unborn_records": 29,
-     "n_unborn_events": 0
+     "n_unborn_events": 0,
+     "epv": 14.333333333333334,
+     "n_degenerate": 0,
+     "degenerate": [],
+     "underpowered": true
     }
    }
   }
@@ -1612,140 +1841,149 @@
  "pooled": {
   "democratize_step": {
    "n": 653,
-   "predicted": 346.3700000000003,
+   "n_distinct_units": 140,
+   "n_as_of_rows": 6,
+   "predicted": 328.63000000000017,
    "observed": 375,
-   "brier": 0.3001615620214395,
+   "brier": 0.2925199081163862,
    "brier_base": 0.24448358266359294,
-   "skill": -0.22773708872901688,
-   "auc": 0.513726618705036,
+   "skill": -0.1964807817745815,
+   "auc": 0.5352470023980815,
+   "auc_ci95_by_unit": [
+    0.47139032815198617,
+    0.5941637881404721
+   ],
+   "skill_ci95_by_unit": [
+    -0.32943509577444585,
+    -0.09547526807333173
+   ],
    "calibration": [
     [
-     0.16138461538461527,
+     0.14138461538461536,
      0.5769230769230769
     ],
     [
-     0.4132824427480918,
+     0.38282442748091583,
+     0.5572519083969466
+    ],
+    [
+     0.5085384615384616,
+     0.5307692307692308
+    ],
+    [
+     0.6492366412213735,
      0.5419847328244275
     ],
     [
-     0.5386153846153844,
-     0.5923076923076923
-    ],
-    [
-     0.6775572519083969,
-     0.549618320610687
-    ],
-    [
-     0.8585496183206105,
-     0.6106870229007634
+     0.8316030534351148,
+     0.6641221374045801
     ]
    ]
   },
   "autocratic_closure": {
    "n": 468,
-   "predicted": 170.09999999999997,
+   "n_distinct_units": 134,
+   "n_as_of_rows": 6,
+   "predicted": 162.69000000000014,
    "observed": 219,
-   "brier": 0.275551282051282,
+   "brier": 0.2739275641025641,
    "brier_base": 0.24897271531886916,
-   "skill": -0.10675292952632431,
-   "auc": 0.5961563147567439,
+   "skill": -0.10023125928371002,
+   "auc": 0.6155672919990464,
+   "auc_ci95_by_unit": [
+    0.5585899249265586,
+    0.6827547571119298
+   ],
+   "skill_ci95_by_unit": [
+    -0.2298201731468692,
+    0.02137650183150175
+   ],
    "calibration": [
     [
-     0.03698924731182796,
-     0.46236559139784944
+     0.02784946236559141,
+     0.3763440860215054
     ],
     [
-     0.20095744680851077,
+     0.15872340425531922,
      0.32978723404255317
     ],
     [
-     0.37956989247311845,
-     0.3870967741935484
+     0.33731182795698933,
+     0.4731182795698925
     ],
     [
-     0.5227659574468085,
-     0.5212765957446809
+     0.5163829787234047,
+     0.5
     ],
     [
-     0.673723404255319,
-     0.6382978723404256
-    ]
-   ]
-  },
-  "intrastate_onset": {
-   "n": 1045,
-   "predicted": 359.79000000000025,
-   "observed": 337,
-   "brier": 0.20187875598086133,
-   "brier_base": 0.21848950344543394,
-   "skill": 0.07602537972136958,
-   "auc": 0.7227656792234572,
-   "calibration": [
-    [
-     0.02239234449760767,
-     0.10526315789473684
-    ],
-    [
-     0.13287081339712936,
-     0.1674641148325359
-    ],
-    [
-     0.29822966507177046,
-     0.3253588516746411
-    ],
-    [
-     0.4863636363636363,
-     0.4688995215311005
-    ],
-    [
-     0.7816267942583732,
-     0.5454545454545454
+     0.6943617021276594,
+     0.6595744680851063
     ]
    ]
   },
   "mid_force": {
    "n": 92123,
-   "predicted": 721.319999999984,
+   "n_distinct_units": 19851,
+   "n_as_of_rows": 6,
+   "predicted": 604.8599999999749,
    "observed": 618,
-   "brier": 0.006610132105988822,
+   "brier": 0.005915250263234992,
    "brier_base": 0.006663419503653078,
-   "skill": 0.00799700478636256,
-   "auc": 0.7507554453052152,
+   "skill": 0.1122800748186299,
+   "auc": 0.787719586299509,
+   "auc_ci95_by_unit": [
+    0.7693086219842821,
+    0.7823959395796339
+   ],
+   "skill_ci95_by_unit": [
+    0.05137319212110858,
+    0.0692282799332975
+   ],
    "calibration": [
     [
      0,
-     0.00504776378636561
+     0.00401650021710812
     ],
     [
      0,
-     0.0050474898236092264
+     0.00417910447761194
     ],
     [
      0,
-     0.0028766825879287888
+     0.002496743378202345
     ],
     [
      0,
-     0.002496607869742198
+     0.0022252374491180463
     ],
     [
-     0.03914898236092241,
-     0.01807327001356852
+     0.03282822252374483,
+     0.02062415196743555
     ]
    ]
   },
   "mid_war": {
    "n": 92123,
-   "predicted": 319.9099999999902,
+   "n_distinct_units": 19851,
+   "n_as_of_rows": 6,
+   "predicted": 232.6799999999989,
    "observed": 122,
-   "brier": 0.0020239864094743626,
+   "brier": 0.0014842590883927334,
    "brier_base": 0.0013225625891343691,
-   "skill": -0.5303520801983992,
-   "auc": 0.7157268515078506,
+   "skill": -0.12225999781545038,
+   "auc": 0.7345761655120997,
+   "auc_ci95_by_unit": [
+    0.7484459844991631,
+    0.7753671264918317
+   ],
+   "skill_ci95_by_unit": [
+    -0.13543919484153033,
+    -0.10380933084277766
+   ],
    "calibration": [
     [
      0,
-     0.0009227095093356491
+     0.0007598784194528875
     ],
     [
      0,
@@ -1760,19 +1998,29 @@
      0.0007598371777476255
     ],
     [
-     0.017362822252374413,
-     0.0032564450474898234
+     0.012628493894165378,
+     0.003419267299864315
     ]
    ]
   },
   "contest_settle": {
-   "n": 168,
-   "predicted": 18.04,
-   "observed": 9,
-   "brier": 0.0465047619047619,
-   "brier_base": 0.050701530612244895,
-   "skill": 0.08277400419287206,
-   "auc": 0.923130677847659,
+   "n": 46,
+   "n_distinct_units": 46,
+   "n_as_of_rows": 1,
+   "predicted": 4.359999999999999,
+   "observed": 5,
+   "brier": 0.05532608695652174,
+   "brier_base": 0.09688090737240075,
+   "skill": 0.4289268292682926,
+   "auc": 0.9341463414634147,
+   "auc_ci95_by_unit": [
+    0.8452380952380952,
+    1
+   ],
+   "skill_ci95_by_unit": [
+    -0.3124311111111113,
+    0.5822751219512194
+   ],
    "calibration": [
     [
      0,
@@ -1787,85 +2035,74 @@
      0
     ],
     [
-     0.14735294117647058,
-     0.058823529411764705
+     0,
+     0
     ],
     [
-     0.3832352941176471,
-     0.20588235294117646
+     0.43599999999999994,
+     0.5
     ]
    ]
   },
   "leader_exit": {
    "n": 909,
-   "predicted": 656.7100000000025,
+   "n_distinct_units": 200,
+   "n_as_of_rows": 5,
+   "predicted": 656.1900000000034,
    "observed": 771,
-   "brier": 0.24594202420242092,
+   "brier": 0.24598030803080395,
    "brier_base": 0.1287673321787624,
-   "skill": -0.9099721959059437,
-   "auc": 0.7528994905919284,
+   "skill": -0.9102695060057591,
+   "auc": 0.741757363860223,
+   "auc_ci95_by_unit": [
+    0.6902087296282967,
+    0.7842866285163097
+   ],
+   "skill_ci95_by_unit": [
+    -1.443596425549925,
+    -0.560749706825983
+   ],
    "calibration": [
     [
      0,
      0.6795580110497238
     ],
     [
-     0.6634065934065944,
-     0.7362637362637363
+     0.6578021978021984,
+     0.7472527472527473
     ],
     [
-     0.9587912087912069,
+     0.9621428571428547,
      0.8956043956043956
     ],
     [
-     0.9862637362637368,
+     0.9855494505494515,
      0.945054945054945
     ],
     [
-     0.9998351648351649,
-     0.9835164835164835
-    ]
-   ]
-  },
-  "irregular_exit": {
-   "n": 909,
-   "predicted": 369.15000000000015,
-   "observed": 185,
-   "brier": 0.24077986798679868,
-   "brier_base": 0.16209981834267034,
-   "skill": -0.4853802456323728,
-   "auc": 0.6841421532029267,
-   "calibration": [
-    [
-     0,
-     0.18232044198895028
-    ],
-    [
-     0.0928571428571429,
-     0.027472527472527472
-    ],
-    [
-     0.40983516483516463,
-     0.11538461538461539
-    ],
-    [
-     0.6870329670329666,
-     0.2857142857142857
-    ],
-    [
-     0.8385714285714279,
-     0.4065934065934066
+     0.999945054945055,
+     0.9725274725274725
     ]
    ]
   },
   "coup_attempt": {
    "n": 909,
-   "predicted": 205.58999999999975,
+   "n_distinct_units": 200,
+   "n_as_of_rows": 5,
+   "predicted": 206.60999999999973,
    "observed": 268,
-   "brier": 0.1758940594059407,
+   "brier": 0.17707997799779993,
    "brier_base": 0.20790505893273595,
-   "skill": 0.15396931508603573,
-   "auc": 0.7415157054043355,
+   "skill": 0.14826517975644327,
+   "auc": 0.7393182294455958,
+   "auc_ci95_by_unit": [
+    0.7018613130343345,
+    0.8028720937146935
+   ],
+   "skill_ci95_by_unit": [
+    0.08226552246758523,
+    0.24850901766069966
+   ],
    "calibration": [
     [
      0,
@@ -1876,78 +2113,180 @@
      0.03296703296703297
     ],
     [
-     0.12357142857142867,
-     0.18681318681318682
+     0.1251098901098901,
+     0.2087912087912088
     ],
     [
-     0.362142857142857,
-     0.3901098901098901
+     0.3599999999999995,
+     0.33516483516483514
     ],
     [
-     0.6387912087912091,
-     0.6208791208791209
+     0.645,
+     0.6538461538461539
+    ]
+   ]
+  },
+  "intrastate_onset": {
+   "n": 909,
+   "n_distinct_units": 200,
+   "n_as_of_rows": 5,
+   "predicted": 284.11999999999983,
+   "observed": 299,
+   "brier": 0.18381144114411466,
+   "brier_base": 0.22073604500163987,
+   "skill": 0.1672794484346718,
+   "auc": 0.7563517736718022,
+   "auc_ci95_by_unit": [
+    0.701068365543022,
+    0.8087284156524707
+   ],
+   "skill_ci95_by_unit": [
+    0.07188223587715004,
+    0.260769970351991
+   ],
+   "calibration": [
+    [
+     0.01574585635359117,
+     0.12154696132596685
+    ],
+    [
+     0.11186813186813194,
+     0.1043956043956044
+    ],
+    [
+     0.25313186813186844,
+     0.35714285714285715
+    ],
+    [
+     0.4470879120879122,
+     0.4340659340659341
+    ],
+    [
+     0.7333516483516482,
+     0.6263736263736264
     ]
    ]
   },
   "intrastate_end": {
    "n": 909,
-   "predicted": 246.09000000000017,
+   "n_distinct_units": 200,
+   "n_as_of_rows": 5,
+   "predicted": 245.23000000000025,
    "observed": 258,
-   "brier": 0.18096292629262936,
+   "brier": 0.18280341034103417,
    "brier_base": 0.20326983193368842,
-   "skill": 0.10974036544850452,
-   "auc": 0.7262500148846736,
+   "skill": 0.10068597685135539,
+   "auc": 0.7262261994069946,
+   "auc_ci95_by_unit": [
+    0.6700799230815456,
+    0.776833870333527
+   ],
+   "skill_ci95_by_unit": [
+    -0.007358062015505595,
+    0.1900250917328361
+   ],
    "calibration": [
     [
      0,
-     0.1712707182320442
+     0.16574585635359115
     ],
     [
-     0.03412087912087912,
-     0.08241758241758242
+     0.034395604395604386,
+     0.08791208791208792
     ],
     [
-     0.19384615384615372,
-     0.21428571428571427
+     0.184065934065934,
+     0.22527472527472528
     ],
     [
-     0.3868131868131868,
+     0.38499999999999973,
      0.3901098901098901
     ],
     [
-     0.7373626373626372,
-     0.5604395604395604
+     0.743956043956044,
+     0.5494505494505495
+    ]
+   ]
+  },
+  "irregular_exit": {
+   "n": 752,
+   "n_distinct_units": 199,
+   "n_as_of_rows": 4,
+   "predicted": 314.54000000000065,
+   "observed": 127,
+   "brier": 0.24033377659574448,
+   "brier_base": 0.14036151822091442,
+   "skill": -0.7122483401574793,
+   "auc": 0.7221858267716535,
+   "auc_ci95_by_unit": [
+    0.653577097505669,
+    0.7872028283168389
+   ],
+   "skill_ci95_by_unit": [
+    -1.142521555878084,
+    -0.3530819536423846
+   ],
+   "calibration": [
+    [
+     0,
+     0.11333333333333333
+    ],
+    [
+     0.11513333333333331,
+     0.02666666666666667
+    ],
+    [
+     0.4219867549668875,
+     0.09933774834437085
+    ],
+    [
+     0.6976666666666664,
+     0.22666666666666666
+    ],
+    [
+     0.8536423841059603,
+     0.37748344370860926
     ]
    ]
   },
   "democratic_deepening": {
-   "n": 121,
-   "predicted": 29.570000000000007,
-   "observed": 25,
-   "brier": 0.16484049586776856,
-   "brier_base": 0.16392322928761696,
-   "skill": -0.005595708333333116,
-   "auc": 0.7008333333333333,
+   "n": 47,
+   "n_distinct_units": 47,
+   "n_as_of_rows": 1,
+   "predicted": 12.93,
+   "observed": 6,
+   "brier": 0.1622234042553191,
+   "brier_base": 0.11136260751471254,
+   "skill": -0.45671341463414583,
+   "auc": 0.6585365853658537,
+   "auc_ci95_by_unit": [
+    0.29941860465116277,
+    0.943089430894309
+   ],
+   "skill_ci95_by_unit": [
+    -3.34656,
+    0.18024378378378392
+   ],
    "calibration": [
     [
      0,
-     0.125
+     0.1111111111111111
     ],
     [
-     0.058750000000000004,
-     0.08333333333333333
+     0.05,
+     0.1111111111111111
     ],
     [
-     0.17125,
-     0.125
+     0.169,
+     0
     ],
     [
-     0.35375,
-     0.2916666666666667
+     0.41333333333333333,
+     0.2222222222222222
     ],
     [
-     0.6224,
-     0.4
+     0.7070000000000001,
+     0.2
     ]
    ]
   }

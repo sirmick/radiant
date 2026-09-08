@@ -156,16 +156,45 @@ for (const [id, vars] of Object.entries(panel)) {
 // CoW NMC codes the rump regimes without a flag (France tpop 41.9M in 1939 -> 8.0M in 1941-42, a round Vichy placeholder,
 // cinc 0.0396 -> 0.0758 -> 0.0158), and the FLAGS fill above writes a 0 dispute-year for every occupied year.
 // Both are nulled for the fully occupied years (ceil(start)..floor(end)); the invasion year keeps its war.
+// One null was doing two different jobs, and it did the second one wrong (era-1914-1945-r2/statistics-3, data/4):
+//   (a) CoW's rump-regime capability figures are not the state's capability — but nulling them dropped the actor from
+//       EVERY dyad that year (scripts/lib/fit.mjs requires non-null cinc on both sides), and with it 24% of the
+//       1930-1960 dyadic war record: 60 of 250 mid_war events had no row. The last PRE-occupation observation is
+//       carried forward instead, which is what a forecaster in 1941 would use for France, and the row survives.
+//   (b) the FLAGS fill writing a 0 dispute-year for an occupied year IS the defect the null was reaching for, so the
+//       dispute/alliance flags stay null. `at_war` keeps its 1 where the war list says the actor is a belligerent:
+//       a state under occupation by a power it is at war with is not at peace, and `?? 0` downstream read the null as
+//       peace for FRA/NLD/BEL/NOR/DNK/SRB/GRC through the whole 1941-45 core of the era.
+// `occupied` is the marker column: 1 for every fully occupied actor-year, so the sample of a template that should not
+// score domestic politics under occupation can be defined on it (data/templates.yaml `sample: { exclude_flag: ... }`).
+// An occupation declared `partial: true` (part of the territory, the state's own government still fielding an army on
+// its own soil) marks the years and stamps the regime cause but does not touch the series.
 {
-  const OCC_NULL = ['cinc', 'irst', 'milex', 'milper', 'energy_nmc', 'tpop', 'upop', 'at_war', 'mid_force', 'mid_war', 'defence_pacts'];
-  let n = 0;
+  const OCC_CARRY = ['cinc', 'irst', 'milex', 'milper', 'energy_nmc', 'tpop', 'upop'];
+  const OCC_NULL = ['mid_force', 'mid_war', 'defence_pacts'];
+  let nCarry = 0, nNull = 0, nMark = 0, nWarKept = 0;
+  for (const [id, vars] of Object.entries(panel)) vars.occupied ??= new Array(YEARS.length).fill(null);
   for (const o of handEvents) {
     if (o.kind !== 'occupation') continue;
     const vars = panel[o.actor]; if (!vars) continue;
-    for (let y = Math.ceil(o.start); y <= Math.floor(o.end); y++) for (const v of OCC_NULL) { const i = y - Y0; if (vars[v] && i >= 0 && i < YEARS.length && vars[v][i] != null) { vars[v][i] = null; n++; } }
+    for (let y = Math.ceil(o.start); y <= Math.floor(o.end); y++) {
+      const i = y - Y0; if (i < 0 || i >= YEARS.length) continue;
+      vars.occupied[i] = 1; nMark++;
+      if (o.partial) continue;
+      for (const v of OCC_CARRY) {
+        const col = vars[v]; if (!col || col[i] == null) continue;
+        let last = null; for (let k = i - 1; k >= 0; k--) if (col[k] != null) { last = col[k]; break; }
+        col[i] = last; nCarry++;
+      }
+      for (const v of OCC_NULL) { const col = vars[v]; if (col && col[i] != null) { col[i] = null; nNull++; } }
+      const w = vars.at_war; if (w && w[i] != null) { if (w[i] > 0) nWarKept++; else { w[i] = null; nNull++; } }
+    }
   }
-  console.log(`occupation: nulled ${n} capability/flag values across ${handEvents.filter(e => e.kind === 'occupation').length} occupation spans`);
-  sources.at_war += '; occupied years (data/history/events.yaml kind: occupation) are null, not 0';
+  for (const [id, vars] of Object.entries(panel)) { const a = actors.get(id); YEARS.forEach((y, i) => { if (a && isLive(a, y) && vars.occupied[i] == null) vars.occupied[i] = 0; }); }
+  console.log(`occupation: ${nMark} occupied actor-years marked; ${nCarry} capability values carried forward from the last pre-occupation observation, ${nNull} dispute/alliance flags nulled, ${nWarKept} at_war=1 kept`);
+  sources.occupied = 'data/history/events.yaml kind: occupation — 1 for the fully occupied years (ceil(start)..floor(end)) of every dated occupation span; the invasion year keeps its war';
+  sources.at_war += '; in an occupied year at_war keeps the 1 the war list gives it and is null otherwise (an occupied year is not a peaceful one)';
+  sources.cinc += '; occupied years carry the last pre-occupation observation forward rather than CoW\'s rump-regime figure (data/history/events.yaml kind: occupation, `occupied` = 1)';
 }
 
 // ---- empire-wide series: gdp_pc and population as a successor-state sum (data/history/actors.yaml `derived_series`)
@@ -231,6 +260,40 @@ for (const [id, vars] of Object.entries(panel)) {
   sources.gdp_pc_derived = sources.population_derived = 'derived (successor-state sum), see data/history/actors.yaml `derived_series`';
   sources.gdp_pc_interp = 'share of the derived gdp_pc weight that came from a log-linear interpolation between Maddison benchmark years (1 = no annual observation behind the value)';
   console.log(`derived empire series: ${rep.join('; ')}`);
+}
+
+// ---- Maddison is benchmark years before 1950, so a series with holes loses log_gdp_pc on the hole AND gdp_growth on
+// the year after it. 31% of live actor-years in 1911-1930 had no log_gdp_pc, and the actor list was the interwar
+// breakdown cohort itself (POL, EST, LVA, ALB, THA, CHN, EGY, IRQ, TUR...): 30 interwar regime steps sat on rows the
+// fit could not see, Pilsudski's 1926 coup and the Baltic coups among them. The same log-linear benchmark
+// interpolation the `derived_series` block already applies to empire-wide actors is extended here to every actor.
+// Rules: inside each actor's OWN observed range only (never extrapolated), never across a gap wider than MAXGAP_ALL,
+// and never on a `derived_series` actor — that block owns its window and deliberately nulls territory-change years.
+// `gdp_pc_interp` = 1 marks every filled year, so an imputed value is visible in the panel and in public/history.json.
+{
+  const MAXGAP_ALL = 40;
+  let nFill = 0, nActors = 0;
+  for (const [id, vars] of Object.entries(panel)) {
+    const a = actors.get(id); if (!a || a.derived_series) continue;
+    const g = vars.gdp_pc; if (!g) continue;
+    const obs = []; for (let i = 0; i < g.length; i++) if (g[i] != null && g[i] > 0) obs.push(i);
+    if (obs.length < 2) continue;
+    vars.gdp_pc_interp ??= new Array(YEARS.length).fill(null);
+    let filled = 0;
+    for (let k = 0; k + 1 < obs.length; k++) {
+      const lo = obs[k], hi = obs[k + 1];
+      if (hi - lo < 2 || hi - lo > MAXGAP_ALL) continue;
+      const va = g[lo], vb = g[hi];
+      for (let i = lo + 1; i < hi; i++) {
+        g[i] = Math.exp(Math.log(va) + (Math.log(vb) - Math.log(va)) * (i - lo) / (hi - lo));
+        vars.gdp_pc_interp[i] = 1; filled++;
+      }
+    }
+    if (filled) { nFill += filled; nActors++; }
+  }
+  sources.gdp_pc += `; a gap inside an actor's own observed Maddison range is filled by log-linear interpolation (never extrapolated, never across a gap > ${MAXGAP_ALL}y) and flagged in gdp_pc_interp`;
+  sources.gdp_pc_interp = (sources.gdp_pc_interp ?? '') + (sources.gdp_pc_interp ? '; ' : '') + 'derived: 1 where gdp_pc was log-linearly interpolated between the actor\'s own observed Maddison years (no annual observation behind the value, and its gdp_growth is a smooth fill)';
+  console.log(`gdp_pc interpolation: ${nFill} actor-years filled across ${nActors} actors (inside each actor's own observed range)`);
 }
 
 // ---- the modern fold: the 2000-2025 measured layer and the 2026 actor snapshot, on the panel clock
@@ -588,6 +651,27 @@ for (const [id, vars] of Object.entries(panel)) {
     if (ys.length) dup.push(`code ${c}: ${list[i].id} and ${list[j].id} both live ${ys[0]}-${ys[ys.length - 1]} (${ys.length}y)`);
   }
   console.log(dup.length ? `duplicate entities: ${dup.length}\n  ${dup.join('\n  ')}` : 'duplicate entities: none (no two actors share a CoW/GW code in the same year)');
+}
+
+// ---- era-1914-1945-r2/data-7: actors that are LIVE before their capability source covers them. Those actor-years are
+// silently absent from every dyadic template (scripts/lib/fit.mjs drops a dyad whose cinc is null on either side) and
+// nothing reported them. Printed every build, with the actor's own declared `capability_from` where it has one.
+{
+  const holes = [];
+  for (const [id, vars] of Object.entries(panel)) {
+    const a = actors.get(id); if (!a || !vars.cinc) continue;
+    let firstLive = null, firstCinc = null, gap = 0;
+    YEARS.forEach((y, i) => {
+      if (!isLive(a, y)) return;
+      if (firstLive == null) firstLive = y;
+      if (vars.cinc[i] != null) { if (firstCinc == null) firstCinc = y; } else gap++;
+    });
+    if (gap > 0 && (firstCinc == null || firstCinc > firstLive)) holes.push({ id, firstLive, firstCinc, gap, declared: a.capability_from ?? null });
+  }
+  holes.sort((x, y) => y.gap - x.gap);
+  const undeclared = holes.filter(h => h.declared == null);
+  console.log(`capability coverage: ${holes.length} actors live before CoW NMC covers them (${holes.reduce((n, h) => n + h.gap, 0)} actor-years outside every dyadic template); ${undeclared.length} without a capability_from declaration in data/history/actors.yaml`);
+  console.log(`  ${holes.slice(0, 12).map(h => `${h.id} live ${h.firstLive} cinc ${h.firstCinc ?? 'never'} (${h.gap}y${h.declared ? ', declared' : ''})`).join('; ')}`);
 }
 
 // ---- write

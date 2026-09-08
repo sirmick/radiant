@@ -844,3 +844,216 @@ changes no fitted number until that candidate is re-proposed, so the two belong 
 **Test that decides it.** The share of pre-1915 records whose `load_bearing_for` names a non-transit state must rise
 from 8/25 to ≥ 18/25; then `corridor_stake` must be re-measured on `mid_force` at split 1946 with the share of
 pre-1914 dyad-years on which it is non-zero printed, against the near-constant zero it is today.
+
+## era-1914-1945-r2 / statistics-1 — a system-war-share covariate on the dyadic templates
+
+**What it would add.** A panel-year scalar `sys_war_share` = (live actors with `at_war` = 1) / (live actors), entered
+lagged one year on `mid_war` (and tested as a candidate on `mid_force`), built once in `scripts/build-panel.mjs` and
+mirrored in `src/engine/core.js` from the simulated world's own `at_war` so the fit and the draw are one construction.
+It is a mean field over the whole system, so it must be computed before any dyad draw in the step and cannot be
+updated by the same year's onsets.
+
+**Why.** The adversary built it and ran a static rolling-origin forecast (fit on labels ≤ as-of, score the next 20
+years on observed covariates — no engine, so no feedback). `mid_war` exp/obs, base → with the term, holdout AUC in
+brackets: as-of 1920 0.66→0.62 [0.813→0.836], 1930 0.29→0.40 [0.764→0.781], 1940 0.59→0.92 [0.776→0.799], 1950
+5.33→3.23 [0.887→0.876], 1960 3.31→2.71, 1970 1.96→1.67, 1980 2.39→2.09, 1990 2.07→1.91. Every row moves toward 1.0;
+pooled 1910–1940 0.44→0.56 and 1950–1990 3.17→2.38, with AUC better on five of eight rows. The mechanism is visible in
+the coefficients: `lag1(at_war_any)` falls from +1.91 to +1.12 on `mid_war` and +1.45 to +0.93 on `mid_force` at as-of
+1950 — about 0.8 log-odds moves out of the PAIRWISE branching term, which multiplies per belligerent's other dyads and
+is what makes the process supercritical, into a bounded system-level scalar. `pre_1946` shrinks with it, confirming the
+era dummy was partly proxying "this is a world-war year". Unlike `pre_1946` it is identified at every as-of year.
+
+**Why it is escalated and not applied.** It is a new derived panel column with an engine mirror — a new variable and a
+new engine reading, which `agent/fixer.md` reserves. This turn applied the era interaction on the same coefficient
+(`engine-1`), which takes about 1.2 log-odds out of the post-1946 half by a different route; the two overlap and must
+be measured together, not stacked blind.
+
+**Data it needs.** None: `at_war` and `live` are already panel columns. (Its quality is the `data-2` question, and this
+turn moved the hand list's coverage of the label set from 55% to 62%.)
+
+**Templates it would feed.** `mid_war` (promote), `mid_force` (candidate, ablate).
+
+**Test.** `node scripts/fit-hazards.mjs mid_war mid_force` — promote only if the ≥1975 ablation holds holdout AUC and
+moves holdout exp/obs toward 1, and if the fitted `lag1(at_war_any)` falls by ≥0.5 **on top of** this turn's era
+interaction. Then the static rolling-origin check (pooled 1910–1940 exp/obs must rise, 1950–1990 must fall, no per-as-of
+AUC falling more than 0.015), then `node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100
+--universe all`: pooled `mid_war` exp/obs toward 1 with Brier skill not falling.
+
+## era-1914-1945-r2 / statistics-2 — a static-forecast baseline, and the guard restated as amplification
+
+**What it would add.** `scripts/analysis/static-forecast.mjs`: for each as-of year, fit each template on labels ≤ as-of
+and score the next H years on the OBSERVED panel covariates (no simulation, no feedback, no recurrence writes),
+emitting predicted/observed per template per as-of. Then every `byAsOf[].templates[]` row in `scripts/backtest.mjs`
+carries `exp_obs_static` and `amplification` = exp_obs / exp_obs_static, and the guard on an engine mechanism becomes
+`amplification ≤ 1.2 with AUC held` instead of an absolute `exp/obs ≤ 1.5`.
+
+**Why.** The adversary ran the fitted one-year `mid_war` model as a pure static forecast: pooled 1950–1990 exp/obs =
+3.17 (228 predicted / 72 observed; per as-of 5.33, 3.31, 1.96, 2.39, 2.07), against the dynamic engine's published
+1950–2000 pooled 2.62. The engine reproduces the fit's miscalibration and adds essentially nothing to it — on the
+post-war window it over-predicts *less* than the coefficients it draws from. The pre-1946 half agrees the same way
+(static 1910–1940 0.44 against the engine's 0.40). Both `war_end` (2.62 → 3.57) and `coalition_join` (→ 28.00) were
+rejected on that absolute number alone, and its floor — what a perfectly faithful engine would score — is already ~3.
+Under the amplification form `war_end`'s 1950–2000 number is 3.57/3.17 = 1.13, not 3.57, while `coalition_join`'s is
+28.00/3.17 = 8.8 and the guard still rejects it.
+
+**Why it is escalated.** It redefines the promotion contract that `era-1914-1945/engine-5` and `engine-1` were decided
+under, and it is new scoring infrastructure rather than a fix to existing scoring. It should be built and its own
+numbers checked before any mechanism is re-taken under it. Note the denominators are not identical (the backtest scores
+modeled actors inside `COVERAGE`, the static test every politically relevant dyad-year), so the claim is about ratios
+and directions.
+
+**Test.** `node scripts/analysis/static-forecast.mjs --from 1910 --to 1990 --step 10 --horizon 20` must reproduce
+`mid_war` pooled exp/obs 3.17 for 1950–1990 and 0.44 for 1910–1940 (±0.05) on the pre-turn tree. Then re-score the two
+rejected mechanisms under the amplification form: `WAR_DURATION_ON=1`'s 1950–2000 amplification below 1.2 and
+`COALITION_ON=1`'s not.
+
+## era-1914-1945-r2 / statistics-4 — coalition joining as a fitted ally-year hazard
+
+**What it would add.** A `coalition_join` template replacing the constant `coalition.p_join` in `data/templates.yaml`:
+unit ally-war-year, sample = every live state holding a defence pact with a belligerent and not itself in the war, one
+row per war component per year (not per fired dyad — that is the 3.84-allies-per-dyadic-war-year over-draw the existing
+`rejected: coalition_join` record measured). Covariates: `contiguous_to_belligerent` (+2.0), `major_power` (+1.2),
+`pact_with_both_sides` (−), `z(war_coalition)`. The sample must be built in a shared module the way
+`src/engine/termination.js` is shared, so the fitter and the engine cannot drift.
+
+**Why.** Rebuilding the coalition-calib at-risk set as one row per (war, ally-at-risk) gives 305 rows, 30 joiners,
+pooled p = 0.0984 (reproducing `scripts/analysis/coalition-calib.mjs`). A likelihood-ratio test of homogeneity across
+the 32 wars with a non-empty at-risk set gives **G = 98.1 on 31 df**, p < 1e-8: one constant p is rejected by its own
+calibration sample. The discriminator is already in the repo — `data/contiguity.json`: ally contiguous to a belligerent
+22/95 = 0.2316 against 8/210 = 0.0381 not contiguous, a 6.1x rate ratio (+2.03 log-odds); great power 10/39 = 0.2564
+against 20/266 = 0.0752. The era effect the rejection blamed is mostly composition: 163 of the 200 post-1946 ally-rows
+are non-contiguous and join at 0.0245, while 58 of the 105 pre-1946 rows are contiguous and join at 0.2931. This is not
+a re-proposal of the rejected constant — that entry's own closing sentence asks for a rate calibrated per dyadic
+war-year and a draw made per war component; this adds the covariates that make such a hazard fire in the right era.
+
+**Data it needs.** None new: `data/history/events.yaml` `sides:`, CoW alliance v3.03, `data/contiguity.json`.
+
+**Test.** `node scripts/analysis/coalition-calib.mjs --verbose` must reproduce 30/305 and the contiguity split.
+`node scripts/fit-hazards.mjs coalition_join`: n ≥ 300, events = 30, positive fitted contiguity coefficient, holdout
+AUC > 0.65 on a leave-one-war-out or by-component split (not a year split — see `statistics-6`). Then `COALITION_ON=1`
+at 1910–1940 and 1950–2000: promote only if `mid_war` `n_structural_miss` at as-of 1930/1940 falls from 68/68 toward
+20 with `auc_at_risk` ≥ 0.74, AND the 1950–2000 amplification (`statistics-2`'s form) stays ≤ 1.2.
+
+## era-1914-1945-r2 / corridors-5 — corridor denial as a dyadic and a war-duration covariate
+
+**What it would add.** Three candidates built next to `corridorStake` in `src/engine/core.js` so the fitter and the
+engine read one construction: `corridor_denial` on `mid_force`/`mid_war` (max over records active in the year of
+`load_bearing_for[a]` where b is a transit or the controller, and symmetrically — asymmetric dependence, the opposite
+construction to `corridor_stake` and the opposite predicted sign); `corridor_denial_impaired` (the same restricted to
+records impaired that year — coercion realised rather than latent); and `war_corridor_impaired` on `war_end`, prior
+−0.5: a war whose object or sustaining line is a chokepoint runs long.
+
+**Why.** `corridorStake` is the only route from the corridor layer into any conflict hazard and its inner loop skips
+the two states in the dyad by construction (`if (c === a || c === b) continue`), so "B can shut a corridor A lives on"
+is not measurable in this model — while the era's wars are corridor-coercion wars that the corridor file's own source
+lines name (`trans_iranian_railway` 1941.65 cites `war record: iran_1941`; `burma_road` 1940.55; `narvik_ore_railway`
+1940.27; `bosphorus` 1914.8). The dampener's ablation is worth nothing here (1910–1940 `mid_force` skill 0.1229 off
+against 0.1208 on, `mid_war` 0.0920 against 0.0870). `war_corridor_impaired` is the era-asymmetric duration term the
+war-spell mechanism needs: it fires almost every year 1914–18 and 1939–45 and rarely in 1950–2000.
+
+**Honesty condition, mandatory.** `scripts/backtest.mjs` sets `COVERAGE` for chokepoint/corridor/record_reopen to
+[1869, 1945] because the hand record layer is complete only where this loop has been, and this turn moved the two
+status templates' fitting `window` to the same bound for the same reason. A measured 0 after 1945 is data absence, not
+peace. So `war_corridor_impaired` must carry `default_outside: { window: [1869, 1945], value: null }` and be fitted on
+that subsample; treated as a measured zero it would fit a negative coefficient on the loop's own coverage boundary and
+read as "wars got shorter after 1945" — an era dummy wearing a mechanism's name. Falsification stated up front: fill
+the post-1945 record layer, refit, and if the coefficient survives at the same magnitude it is a mechanism.
+
+**Test.** `node scripts/fit-hazards.mjs mid_war mid_force --split 1975` and `war_end --split 1975`, with and without
+each term. Then ablation backtests on both windows: `mid_war` predicted/observed must move up from 0.34 on 1910–1940
+while the 1950–2000 ratio does not rise, and with `WAR_DURATION_ON=1` the 1950–2000 guard must pass. Print the term's
+per-decade mean over the war-spell sample so the era asymmetry is a number in the record.
+
+## era-1914-1945-r2 / engine-2 — a two-component growth shock instead of a uniform one
+
+**What it would add.** Replace `src/engine/core.js`'s `shock = (rng() - 0.5) * 0.04` with (a) a world-year common shock
+drawn with the panel's own year-mean sd computed at as-of (the way `warRunLengths(panel, asOf)` already computes a
+distribution at as-of), applied to every actor in the step, and (b) an idiosyncratic shock resampled from the panel's
+within-year residual distribution — resampling, not a Gaussian, because the tail is the point. `warShock` set from the
+measured at-war growth differential rather than the typed −0.04, with the at-war variance inflation modelled.
+
+**Why.** The engine's macro process cannot produce an economic crisis. Measured against the panel over the same horizon
+(10 runs, all states, refit per as-of): as-of 1930, 11,710 simulated actor-years, sd 0.0154, **0.0% below −5%**, minimum
+−0.045, against observed sd 0.0891, 15.3% below −5%, 7.1% below −10%, minimum −0.423. Variance decomposition of the
+panel 1900–1960: common (year-mean) sd 0.0258, idiosyncratic 0.0672; the engine has neither component. `z(gdp_growth)`
+is standardised on the panel's sd, so in simulation the covariate never leaves ±0.18 sd and its coefficients on
+`autocratic_closure`, `democratize_step`, `intrastate_onset`, `irregular_exit` and `coup_attempt` are inert — which is
+why `autocratic_closure` scores exp/obs 0.33 and 0.28 at as-of 1930 and 1940 on 17 and 18 observed closures. The typed
+constants also fail their own data: the observed at-war growth differential is −0.0250 (n=367) against the typed −0.04,
+and at-war years carry sd 0.1056 against 0.0634 in peace.
+
+**Why it is escalated.** A new engine dynamic (a common shock is a new world-level state), and it feeds five templates
+at once.
+
+**Test.** Simulated `gdp_growth` from as-of 1930 reaching sd ≥ 0.06 and share below −5% within 5 points of 15.3%, mean
+unchanged within 0.003; `autocratic_closure` exp/obs at as-of 1930/1940 rising from 0.33/0.28 with `auc_at_risk` not
+below 0.51/0.70; guard on 1950–2000 that `autocratic_closure`, `democratize_step` and `coup_attempt` do not move above
+1.5 exp/obs or lose skill.
+
+## era-1914-1945-r2 / engine-3 — demote `contest_settle` to a candidate, or give it covariates that discriminate
+
+**What it would add.** Either (a) `status: candidate` behind an env switch the way `war_duration` and `coalition` ship,
+restoring the engine's pre-package behaviour for territories; or (b) covariates that can discriminate — the capability
+ratio between controller and claimant (`termLook` already exposes `cinc`), whether the pair is at war or allied, a
+great-power-guarantee term from `data/presence.yaml` through `src/engine/presence.js`, and an era interaction on
+`contest_reversible`, whose sign flips across eras (pre-1914 lOR ≈ −1.93, 1914–45 +0.73, post-1946 +2.15).
+
+**Why.** `contest_settle` is one of the three terminations shipped ON and its holdout is anti-predictive: 0.356 before
+this turn and **0.449** after it, on a sample this turn grew from 34 to 43 events by adding five missing settlement
+rows and five records with dated endings. Its at-risk ranking is inverted in this turn's own rows: `auc_at_risk` 0.25 /
+0.21 / 0.76 / 0.40 at as-of 1910 / 1920 / 1930 / 1940. The sample fix was the falsifiable half of `data-5`'s and
+`corridors-8`'s claim that the inversion was a homogeneous-at-risk-set artefact; it moved as-of 1930 from 0.21 to 0.76
+and left 1910 and 1920 below 0.3, so the claim is half falsified and the residual is the covariate block.
+
+**Why it is escalated.** (a) changes a shipped engine mechanism's status and the territory layer's simulated behaviour;
+(b) is three new covariate constructions in `src/engine/termination.js`. Both are more than a data or template edit,
+and the corrected numbers now stand in `docs/system.md` so nothing is dressed up while it waits.
+
+**Test.** `node scripts/fit-hazards.mjs contest_settle --split 1946` — holdout AUC must clear 0.60 before the template
+is allowed to stay `fitted`. Then `node scripts/backtest.mjs --from 1900 --to 1950`: `auc_at_risk` above 0.5 at as-of
+1910, 1920 and 1930. If (a) is taken, the row must report `n: 0` with a candidate reason exactly as `war_end` does, and
+`ENGINE_ABLATE=contest_settle` must reproduce the new baseline byte-for-byte.
+
+## era-1914-1945-r2 / engine-6 — a controller-transfer branch in the corridor draw
+
+**What it would add.** A control-change branch alongside `drawCorridorStatus`: when a record transition fires, draw
+whether it is a status change, a control change, or both from the record layer's own observed mix computed **at as-of**
+(42 / 9 / 19 over 1911–1960 is the empirical prior and must not be typed), and where control changes, draw the new
+controller from the record's dated transits plus the current controller's war partners in the simulated year.
+
+**Why.** `src/engine/core.js` carries the as-of controller forward untouched for the whole horizon and says so. Of the
+83 transitions dated 1911–1960 in `data/corridors.yaml`, 9 are controller-only — at probability exactly zero for the
+engine — and on the 19 that are both, the engine can fire the status half while the controller stays wrong from that
+year on. Since `corridorFeatures` counts the controller as a transit and `corridorStake` / `guarantorLevel` /
+`guarantorFall` are keyed on who holds the record, a missed transfer poisons every later covariate on that record. This
+era is exactly the one where corridors change hands: the Ottoman straits, the Baghdad railway, Kiel, the Chinese
+Eastern Railway, and — added this turn — Baku–Batumi's four control changes in 1918–20 and the Danube–Ploiesti route's
+four between 1918 and 1944.
+
+**Test.** Corridor `auc` clearing 0.55 at as-of 1920/1930/1940 with exp/obs inside 0.7–1.4, and a direct falsifier: in
+an ensemble from as-of 1910 at least one run must move a record's controller (today the count is exactly zero across
+every run and every record). Note the guard cannot reach past 1945 until the post-war record layer lands.
+
+## era-1914-1945-r2 / engine-7 — occupation as an engine state
+
+**What it would add.** When `war_end` fires on a pair, draw an occupation outcome for the loser from the record's own
+rate (occupations per dyadic war ending, computed at as-of from `data/history/events.yaml` — no typed number),
+conditioned on the capability ratio at the spell's end, contiguity, and whether the winner is a great power. A drawn
+occupation sets `occupied_until` on the loser for a length drawn from the observed span distribution; during it the
+actor's domestic templates and its dyad block are skipped the way the panel now marks them, and any regime step is
+emitted with `cause: occupation` so the engine's event stream and the fitter's `event_filter` finally agree.
+
+**Why.** Occupation is data with no engine representation. 51 of 1,347 live actor-years in the 1931–1950 horizon (3.8%)
+and 54 of 1,567 in 1941–1960 (3.4%) are occupied; the panel nulls or marks them and `scripts/backtest.mjs` filters the
+32 `cause: occupation` / `cause: imposed` regime changes out of the truth set, while the engine draws `leader_exit`,
+`irregular_exit`, `coup_attempt`, `autocratic_closure`, `democratize_step`, `intrastate_onset` and the full dyad block
+on every one of them at sovereign rates. It is a one-sided miscount landing on the era's largest actors. The other half
+is that occupation is unreachable: `applyActorEvent` has rewrites for eleven onset kinds and none removes an actor's
+sovereignty, so no run from as-of 1930 or 1940 can produce the 1938–45 wave of state deaths and imposed regimes at all.
+This turn added the panel's `occupied` column and the fit-side censoring (`sample: { exclude_flag: occupied }`), which
+is the data half; the engine half is this.
+
+**Test.** Simulated occupied actor-years from as-of 1930 within a factor of 2 of the observed 51 over 1931–1950 (today
+exactly 0); `autocratic_closure` / `democratize_step` `predicted` falling by roughly the excluded share without
+`auc_at_risk` dropping; guard that pooled `leader_exit`, `coup_attempt` and `irregular_exit` exp/obs on 1950–2000 move
+by less than 0.05; `ENGINE_ABLATE=occupation` reproduces the pre-package baseline exactly.

@@ -659,7 +659,9 @@
   name: Hatay (Sanjak of Alexandretta)
   controller: TUR
   claimants: [SYR]
-  status: settled
+  status: disputed          # era-1914-1945-r2/data-5: was `settled`, which its own history never reaches. Syria has
+                            # never renounced the claim, so this is the counter-case that keeps the contest_settle
+                            # sample from being selected on settlement — the record stays unsettled and pays for it.
   stakes: { TUR: 0.7, SYR: 0.5, FRA: 0.4 }
   stakes_source: estimate
   geometry: { point: [36.16, 36.2], geometry_source: "point estimate (historical territory)" }
@@ -679,6 +681,7 @@
     - { year: 1939.72, controller: RUS, status: annexed, source: "Soviet invasion 17 Sep 1939 under the Molotov-Ribbentrop secret protocol" }
     - { year: 1941.47, controller: DEU, status: occupied, source: "German invasion 22 Jun 1941" }
     - { year: 1944.55, controller: RUS, status: annexed, source: "Soviet reconquest 1944; Curzon line confirmed at Yalta Feb 1945" }
+    - { year: 1945.62, controller: RUS, status: settled, source: "Soviet-Polish border agreement, Moscow 16 Aug 1945, ratified 5 Feb 1946 — the missing terminal row (era-1914-1945-r2/data-5): the record declared `status: settled` at the top and never reached a resolved status in its own history, so it contributed unsettled spell-years to contest_settle for ever" }
 
 - id: bessarabia_bukovina
   name: Bessarabia and Northern Bukovina
@@ -693,6 +696,7 @@
     - { year: 1940.49, controller: RUS, status: annexed, source: "Soviet ultimatum 26 Jun 1940; occupation 28 Jun 1940" }
     - { year: 1941.47, controller: ROU, status: annexed, source: "retaken with the German invasion, Jul 1941 — the reason Romania joins" }
     - { year: 1944.65, controller: RUS, status: annexed, source: "Soviet reconquest Aug 1944" }
+    - { year: 1947.11, controller: RUS, status: settled, source: "Paris peace treaty with Romania, 10 Feb 1947, Art. 1" }
 
 - id: karelia_ceded
   name: Ceded Karelia
@@ -706,6 +710,7 @@
     - { year: 1940.20, controller: RUS, status: annexed, source: "Moscow Peace 12 Mar 1940 ends the Winter War (war record: winter_war)" }
     - { year: 1941.65, controller: FIN, status: annexed, source: "Finnish reconquest Aug 1941 (Continuation War)" }
     - { year: 1944.72, controller: RUS, status: annexed, source: "Moscow Armistice 19 Sep 1944" }
+    - { year: 1947.11, controller: RUS, status: settled, source: "Paris peace treaty with Finland, 10 Feb 1947, confirming the Moscow armistice of 19 Sep 1944" }
 
 - id: baltic_annexation
   name: Estonia, Latvia and Lithuania (Soviet annexation)
@@ -720,6 +725,7 @@
     - { year: 1940.60, controller: RUS, status: annexed, source: "incorporation as Soviet republics 3-6 Aug 1940; the three actors leave system membership until 1991" }
     - { year: 1941.52, controller: DEU, status: occupied, source: "German occupation from Jul 1941" }
     - { year: 1944.80, controller: RUS, status: annexed, source: "Soviet reconquest 1944-45" }
+    - { year: 1991.63, controller: EST, status: settled, source: "restoration of independence Aug 1991 and Soviet recognition 6 Sep 1991; the controller field names the first of the three actors the record covers. The 47 unsettled years 1944-1991 stand: they are real non-endings and the record pays for them (era-1914-1945-r2/data-5)" }
 
 - id: ethiopia_italian
   name: Ethiopia (Italian East Africa)
@@ -905,3 +911,77 @@
     - { year: 1911.84, status: disputed, source: "Agadir 1 Jul 1911; the Franco-German convention of 4 Nov 1911 trades Congo territory for a free hand" }
     - { year: 1912.24, controller: FRA, status: settled, source: "Treaty of Fez 30 Mar 1912 and the Franco-Spanish convention of 27 Nov 1912" }
   notes: "Two crises, one settlement, and the record the era's alliance politics turned on. MAR leaves the actor universe at the protectorate."
+
+# ---------------------------------------------------------------- the territorial wars and the interwar arbitrations
+# (turn era-1914-1945-r2, corridors/8, added 2026-09-07). Four of the era's twelve interstate wars were territorial wars
+# with no territory record (chaco, greco_turkish, polish_soviet, saudi_yemeni) and the interwar arbitration cases — the
+# era's own natural control group, contests that end by award rather than by force — were absent entirely. What the file
+# held for 1908-46 was 26 near-homogeneous Versailles-system revisionist cases that mostly settle by German or Soviet
+# force in a five-year burst, which is the shape that produces contest_settle's inverted at-risk ranking (auc_at_risk
+# 0.219 / 0.280 / 0.214 / 0.473 at as-of 1910 / 1920 / 1930 / 1940). Every record below has a dated ending.
+
+- id: chaco_boreal
+  name: Chaco Boreal
+  controller: PRY
+  claimants: [BOL, PRY]
+  status: settled
+  stakes: { BOL: 0.8, PRY: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [-60.0, -21.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1907.00, status: disputed, source: "Pinilla-Soler protocol leaves the boundary open and fort-building begins on both sides" }
+    - { year: 1932.50, status: contested_active, source: "Chaco War from Jun 1932 (war record: chaco)" }
+    - { year: 1935.45, status: frozen, source: "ceasefire 12 Jun 1935" }
+    - { year: 1938.55, controller: PRY, status: settled, source: "Buenos Aires treaty 21 Jul 1938: about three quarters of the Chaco to Paraguay" }
+
+- id: smyrna_ionia
+  name: Smyrna and Ionia
+  controller: TUR
+  claimants: [GRC, TUR]
+  status: settled
+  stakes: { GRC: 0.9, TUR: 0.9 }
+  stakes_source: estimate
+  geometry: { point: [27.14, 38.42], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1919.37, controller: GRC, status: occupied, source: "Greek landing at Smyrna 15 May 1919 under Allied authority" }
+    - { year: 1920.61, controller: GRC, status: league_mandate, source: "Treaty of Sevres 10 Aug 1920: Greek administration with a plebiscite after five years (never ratified)" }
+    - { year: 1922.69, controller: TUR, status: settled, source: "Turkish recapture of Smyrna 9 Sep 1922; Lausanne 24 Jul 1923 and the population exchange (war record: greco_turkish)" }
+
+- id: vilnius
+  name: Vilnius region
+  controller: LTU
+  claimants: [POL, LTU]
+  status: settled
+  stakes: { POL: 0.7, LTU: 0.95 }
+  stakes_source: estimate
+  geometry: { point: [25.28, 54.69], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1920.78, controller: POL, status: occupied, source: "Zeligowski's mutiny 9 Oct 1920 and the Republic of Central Lithuania (war record: polish_lithuanian_1920)" }
+    - { year: 1922.23, controller: POL, status: annexed, source: "incorporation into Poland 24 Mar 1922; the Conference of Ambassadors recognises it 15 Mar 1923 and Lithuania never does" }
+    - { year: 1939.78, controller: LTU, status: settled, source: "Soviet-Lithuanian mutual assistance treaty 10 Oct 1939 transfers Vilnius" }
+
+- id: mosul_vilayet
+  name: Mosul vilayet
+  controller: IRQ
+  claimants: [TUR, IRQ]
+  status: settled
+  stakes: { TUR: 0.7, IRQ: 0.9, GBR: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [43.13, 36.34], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1918.87, controller: GBR, status: occupied, source: "British occupation of Mosul 3-15 Nov 1918, after the Mudros armistice of 30 Oct" }
+    - { year: 1925.96, controller: GBR, status: league_mandate, source: "League Council award 16 Dec 1925" }
+    - { year: 1926.42, controller: IRQ, status: settled, source: "Anglo-Turkish-Iraqi treaty 5 Jun 1926: Turkey renounces Mosul for 10% of the oil royalties for 25 years — the settlement that makes the Kirkuk-Haifa pipeline buildable (corridor record: kirkuk_haifa_pipeline)" }
+
+- id: upper_silesia
+  name: Upper Silesia
+  controller: POL
+  claimants: [DEU, POL]
+  status: settled
+  stakes: { DEU: 0.8, POL: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [18.65, 50.3], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1919.66, status: disputed, source: "Versailles 28 Jun 1919 orders a plebiscite; three Polish risings 1919-21" }
+    - { year: 1921.21, status: contested_active, source: "plebiscite 20 Mar 1921 and the third rising May-Jul 1921" }
+    - { year: 1922.79, controller: POL, status: settled, source: "League partition and the Geneva Convention 15 May 1922: the industrial triangle to Poland" }
