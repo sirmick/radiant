@@ -1417,3 +1417,43 @@ conflict and under-counts HOW MANY onsets each has, and the error grows as the h
 
 **Test.** `count_ratio` for the pair at as-of 1990 / 2000 / 2010 moves toward 1 without the onset AUC falling below
 0.85, and the mean simulated actor-years with `intrastate = 1` over 2011-2025 matches the panel's observed count.
+
+## operator / occupancy — state occupancy as the forward contract, and its backtest (package 11)
+
+**Adds.** The forward run and the backtest report *what state the world is in each year*, not only when events first fire. `runEnsemble` (`src/engine/core.js`) tracks, per year offset and per unit, with `track: true`:
+
+- actors: P(`at_war`), P(`intrastate` ≥ 1), P(`intrastate` ≥ 2), the capability-share quantiles (p10 / p50 / p90 of `cinc` as the engine carries it), P(`occupied`) if the engine carries it, alongside the regime distribution, GDP and information access it already tracks;
+- dyads: P(at war this year) for every pair with any war-year in any run (the existing `dyads` block keys on first occurrence only);
+- records: the status distribution of every corridor, chokepoint and territory record per year (e.g. `hormuz: { open: 0.71, contested: 0.22, closed: 0.07 }`).
+
+`scripts/run-forward.mjs` writes these under a new top-level `state` block (`state.actors[id][var][k]`, `state.dyads[pair][k]`, `state.records[id][k]`) with a `meta.state` list of what is carried. `scripts/backtest.mjs` gains an **occupancy score**: at every rolling origin, for each tracked state variable, the Brier score of P(state in year as-of+k) against the panel's actual state (`at_war`, `intrastate`, record status from the dated histories), reported per lead year k = 1…20 and pooled, with the base-rate skill the event scores use, plus the rank correlation of the median capability share against CoW's at k = 10 and 20. Written to `scores/*.json` under `occupancy` and shown on the viewer's Scores tab as a second table.
+
+**Viewer.** `seriesAt` reads `state` after the seam for `at_war` and `intrastate` (P as the value, washed by 1 − P for the modal state) and for capability (p50 with the p10–p90 band on the hover card); the Conflict view's belligerents field and the conflict outlines read the ensemble's expected state instead of the panel; the Routes view's corridor, chokepoint and territory layers draw the record's modal status with the probability as saturation and the distribution on the hover card. Past-as-of ensembles get the same block, so "forecast from 1955" shows P(at war) over what happened.
+
+**Why.** Conflict and Routes are modelled and backtested but not projected: the map freezes them at the last record while Politics moves. And the event backtest scores first occurrence within a horizon, which cannot see whether the simulated war process runs hot for twenty years — the standing supercritical-war problem (`war_end` off on its own guard). Occupancy is the score that sees it.
+
+**Data it needs.** None new. The panel's `at_war`, `intrastate`, `cinc`; the dated record histories already in `data/corridors.yaml` and `data/territories.yaml` (status at year end via `corridorStateAt` / the territory equivalent).
+
+**Templates it feeds.** None directly; it is output and scoring. Every dyadic and record template becomes visible on the map after the seam.
+
+**Test that decides it.** (a) `node scripts/run-forward.mjs --runs 20 --horizon 40 --out <scratch>` produces `state` for ≥ 190 actors, ≥ 500 dyads and every open record, and the file grows by < 2× at 300 × 100. (b) At as-of 1955, 1975 and 1990 (100 runs, +20), the occupancy Brier of P(at_war) per lead year is reported with its base-rate skill; the package does not require skill > 0 — it requires the number to exist and to be honest, and the log must state where the simulated war occupancy exceeds the panel's (the hot-process diagnosis). (c) Chokepoint status occupancy at as-of 1955 gives Suez a closed/contested mass in 1956–57 and 1967–75 above its 1955–2025 mean. (d) The full 1870–2010 event backtest is unchanged to stream noise (the tracking must consume no random numbers). (e) The viewer's Conflict and Routes views at 2036 show simulated state (screenshot via `scripts/shot2.mjs`), and `docs/ui.md`, `docs/schema.md` and `docs/runbook.md` describe the block and the score.
+
+**Status:** approved 2026-09-08 (operator: "back to modelling", after the plan in the session).
+
+## operator / capability-waves — manufacturing, technology attainment and displacement as fitted capability (package 12)
+
+**Adds.** Capability as a portfolio of waves (`data/waves.yaml`) instead of CoW's steel-energy-soldiers-spending index, in three fitted pieces:
+
+1. **Attainment** — per actor and wave, a hazard of reaching sovereign production (`I → S`), on industrial base (steel and energy historically, manufacturing value added and R&D share modern; the panel now carries `manuf_va`, `hitech_exports`, `rd_gdp`, `electricity_generation`), access to the leading producer (defence pact, trade), demand (rivalry, war) and income. Unit: `actor-wave-year` while `I` and the wave is introduced. Fitted on the historical waves' `sovereign_by` dates.
+2. **Mass** — each wave carries a `mass` coefficient (how much of its military value is production rate rather than possession: stealth low, drones and munitions high; hand-typed per wave with a source or `estimate`). An actor's contribution from a wave is attainment × (its share of world manufacturing output)^mass.
+3. **Displacement** — a wave's weight rises from `introduced`, saturates at `saturates`, and decays after `retired`, the schedule already in the file. Effective capability = Σ waves weight(t) × attained × mass factor, normalised to a world share; the derived polarity (`src/engine/polarity.js`) and the dyadic capability ratio read it in place of `cinc` behind an `ENGINE_ABLATE=waves` switch so the two can be scored apart.
+
+**Why.** CINC would call a drone war for the bigger steel producer. The operator's question — whether a shrinking manufacturing base loses the mass-heavy waves to a larger one even while leading the low-mass ones — is a question the current capability measure cannot express, let alone test.
+
+**Data it needs.** Dated attainment histories for the modern waves per actor (first sovereign production of jets, ballistic missiles, satellites and launch, precision strike, stealth, armed drones, hypersonics), sourced or `estimate`, into `sovereign_by`; the WDI manufacturing and high-tech series are fetched (`scripts/fetch-wb.mjs`, 1960–2024; US manufacturing 1997–2021 only in WDI — a second source, UNIDO or BEA, is needed to carry it to 2024); historical shipbuilding tonnage (Lloyd's Register via Mitchell) as the mass analogue for the dreadnought era, `estimate` where the volume is not published. Export control (EUV, advanced packaging) stays a typed rule with a declared coverage window, as the presence terms are.
+
+**Templates it feeds.** Everything that reads `cinc`, `cap_ratio`, `pol_share`, the polarity flags; the new `wave_attain` template itself.
+
+**Test that decides it.** (a) *Attainment timing, held-out waves:* fit on the waves introduced before 1900 (steam, telegraph, steel, electricity, …) and predict the order and decade of sovereign attainment for the 20th-century waves (aviation, radio/radar, nuclear, launch, semiconductors) for every actor with a dated `sovereign_by`; report the Spearman rank correlation of predicted vs actual attainment year per wave and the share of actors whose decade is right; the bar is rank r ≥ 0.6 on at least three of five waves. (b) *Outcomes:* wave-weighted capability must predict CoW militarised-dispute outcomes (MID 3.02 `outcome` / victory codes, 1900–2001) at rolling origins at least as well as CINC (holdout AUC of "the stronger side prevails"), and better by ≥ 0.02 after 1945. If (b) fails the mass and displacement weights are recorded as rejected and CINC stays. (c) The polarity series derived from it does not move any derived era boundary by more than 5 years without a stated reason. (d) 1870–2010 event backtest within stream noise with `ENGINE_ABLATE=waves`, and the changes with it on reported per template.
+
+**Status:** written up 2026-09-08 for the operator's decision; not started. Depends on package 11 only for the viewer's after-seam plumbing.
