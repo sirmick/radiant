@@ -105,6 +105,15 @@ export const FIELDS = {
   },
 };
 
+FIELDS.industry = {
+  label: 'Industrial mass',
+  note: 'estimate: each state\'s share of world industrial output (steel, then electricity, then manufacturing value added) spread from its territory, so industrial regions read across borders',
+  paint: 'heat',
+  groups: () => ['industry'],
+  sources: (ctx) => ctx.industry.map(a => ({ group: 'industry', polygonKey: a.key, lonlat: a.lonlat, w: Math.sqrt(a.w), lambda: 600 })),   // sqrt: mid-sized producers stay visible next to the largest
+  color: () => '#ffd166',
+  threshold: 0.3,
+};
 FIELDS.routes = {
   label: 'Routes',
   note: 'estimate: corridors and chokepoints in service, weighted by how many states they are load-bearing for; contested/closed routes in red',

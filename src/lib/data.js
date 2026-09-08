@@ -92,9 +92,28 @@ export function regimeAt(history, forecast, id, year) {
 const GRADIENT_STOPS = [0.085, 0.281, 0.649, 0.843];
 export const regimePosition = (poly) => { if (poly == null) return null; const S = GRADIENT_STOPS; if (poly <= S[0]) return 0; if (poly >= S[3]) return 3; for (let k = 0; k < 3; k++) if (poly <= S[k + 1]) return k + (poly - S[k]) / (S[k + 1] - S[k]); return 3; };
 export const GRADIENT_VAR = { id: 'h_regime_gradient', group: 'history', label: 'Regime (gradient)', unit: 'V-Dem polyarchy on the 0 closed … 3 liberal axis; ensemble mean after the seam', kind: 'history', scope: 'actor', var: 'polyarchy', gradient: true, display: { map: true, format: '.2f' } };
+// Industrial base as a share of the world: the series that best covers the year's states — manufacturing value added
+// (WDI, from the late 1990s once the largest producers report), else electricity generation (from the 1960s), else iron
+// and steel (CoW NMC, 1816-). A state's value is carried up to 3 years so a late reporter does not vanish from the total.
+export const INDUSTRY_VAR = { id: 'h_industry', group: 'history', label: 'Industrial base', unit: 'share of world · steel → electricity → manufacturing value added', kind: 'history', scope: 'actor', var: 'irst', industry: true, display: { map: true, format: '.1%', log: true } };
+const INDUSTRY_SERIES = [['manuf_va', 'manufacturing value added (WDI)', 100], ['electricity_generation', 'electricity generation (OWID)', 40], ['irst', 'iron and steel (CoW NMC)', 1]];
+export function industryAt(h, year) {
+  const out = {}; if (!h) return out;
+  const y = Math.round(year); const i = Math.min(y, h.meta.y1) - h.meta.y0; if (i < 0) return out;
+  const live = Object.entries(h.actors).filter(([, a]) => a.live[i]); const liveIds = new Set(live.map(([id]) => id));
+  const lastAt = (arr, upto) => { for (let j = Math.min(upto, arr.length - 1); j >= Math.max(0, upto - 3); j--) if (arr[j] != null) return [arr[j], j]; return [null, -1]; };
+  for (const [v, label, minN] of INDUSTRY_SERIES) {
+    const rows = []; for (const [id, a] of live) { if (!a[v]) continue; const [val, j] = lastAt(a[v], i); if (val != null && val > 0) rows.push([id, a, val, j]); }
+    if (rows.length < minN) continue;
+    const total = rows.reduce((t, r) => t + r[2], 0);
+    for (const [id, a, val, j] of rows) { const key = liveIds.has(a.map_to) ? null : (a.map_to ?? id); if (!key) continue; const stale = y - (h.meta.y0 + j); out[key] = { value: val / total, year, actor: id, name: a.name, history: y <= h.meta.y1, carried: y > h.meta.y1, observed: h.meta.y0 + j, stale, conf: stale <= 0 ? 1 : Math.max(0.3, 1 - 0.12 * stale), series: label, raw: val }; }
+    break;
+  }
+  return out;
+}
 export function historyVariables(h) {
   if (!h) return [];
-  return [GRADIENT_VAR, ...Object.entries(h.vars).map(([id, spec]) => ({ id: `h_${id}`, group: 'history', label: spec.label, unit: spec.unit, kind: 'history', scope: 'actor', var: id, display: { map: true, format: spec.format, log: spec.log, categorical: spec.categorical, categoricalLabels: id === 'regime' ? REGIME_LABELS : id === 'intrastate' ? ['none', 'minor', 'war'] : spec.categorical ? ['no', 'yes'] : undefined } }))];
+  return [GRADIENT_VAR, INDUSTRY_VAR, ...Object.entries(h.vars).map(([id, spec]) => ({ id: `h_${id}`, group: 'history', label: spec.label, unit: spec.unit, kind: 'history', scope: 'actor', var: id, display: { map: true, format: spec.format, log: spec.log, categorical: spec.categorical, categoricalLabels: id === 'regime' ? REGIME_LABELS : id === 'intrastate' ? ['none', 'minor', 'war'] : spec.categorical ? ['no', 'yes'] : undefined } }))];
 }
 /** Values per Natural-Earth id for a history variable at a year: live actors, historical entities mapped to their successor polygon when the successor is not itself live. */
 export function historyAt(h, variable, year) {
@@ -117,6 +136,7 @@ export function historyAt(h, variable, year) {
  * carry stay at their last observation and fade. Nothing switches palette at the forecast start — the colour only washes.
  */
 export function seriesAt(h, fc, variable, year) {
+  if (variable.industry) return industryAt(h, year);
   const out = {}; if (!h) return out;
   const y = Math.round(year); const i = y - h.meta.y0; if (i < 0) return out;
   const v = variable.var; const fade = (stale) => (stale <= 0 ? 1 : Math.max(0.3, 1 - 0.12 * stale));

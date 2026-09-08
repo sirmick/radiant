@@ -1,4 +1,4 @@
-// Pull World Bank WDI indicators for all countries, 2000-2024 -> data/raw/wb/<indicator>.json
+// Pull World Bank WDI indicators for all countries, 1960-2024 -> data/raw/wb/<indicator>.json
 import { writeFileSync } from 'node:fs';
 const IND = {
   'SP.POP.TOTL': 'population',
@@ -27,6 +27,8 @@ const IND = {
   'SP.DYN.IMRT.IN': 'infant_mortality',
   'SP.URB.TOTL.IN.ZS': 'urban_share',
   'DT.ODA.ODAT.GN.ZS': 'aid_gni',
+  'NV.IND.MANF.CD': 'manuf_va',            // manufacturing value added, current US$ (shares of the world total are what the model reads)
+  'TX.VAL.TECH.CD': 'hitech_exports',      // high-technology exports, current US$
 };
 for (const [code, name] of Object.entries(IND)) {
   const url = `https://api.worldbank.org/v2/country/all/indicator/${code}?format=json&per_page=20000&date=1960:2024`;

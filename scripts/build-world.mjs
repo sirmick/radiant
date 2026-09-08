@@ -20,6 +20,7 @@ const registry = Y('variables'), actors = Y('actors'), territories = Y('territor
 // They load if present so the origin layer can still be compiled for reference, otherwise compile as empty.
 const hazards = existsSync('data/hazards.yaml') ? Y('hazards') : [];
 const claims = existsSync('data/claims.yaml') ? Y('claims') : [];
+const waves = existsSync('data/waves.yaml') ? (Y('waves').waves ?? []) : [];   // capability waves with dated sovereign attainment (data, no model yet)
 const ACTORS = new Set(actors.map(a => a.id));
 const overrides = existsSync('data/overrides.yaml') ? Y('overrides') : {};
 const warn = [], errors = [];
@@ -185,7 +186,7 @@ const world = {
   actors: compiledActors, world: worldVars, territories,
   // the published corridor snapshot is derived from each record's dated history at T0 (era-modern-2000-2025/data-7)
   corridors: corridors.map(c => { const st = corridorLastYear(c, Infinity) < Math.floor(T0_YEAR) ? null : corridorStateAt(c, Math.floor(T0_YEAR)); return st ? { ...c, status: st.status ?? c.status, controller: st.controller ?? c.controller ?? null, state_source: `derived from this record's dated history at ${Math.floor(T0_YEAR)}` } : c; }),
-  hazards, claims,
+  hazards, claims, waves,
 };
 writeFileSync('public/world.json', JSON.stringify(world));
 copyFileSync('data/geo/world.topo.json', 'public/geo.topo.json');

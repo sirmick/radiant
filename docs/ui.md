@@ -19,6 +19,7 @@ A view is a preset of fill variable + layers + field. One click each; the advanc
 | Power | capability share | spheres of influence | great-power pacts, military presence |
 | Conflict | at war | belligerents (heat) | territories, corridors, conflict outlines and arcs |
 | Routes | primary energy | routes (open green / contested red, weighted by how many states each is load-bearing for) | corridors and chokepoints |
+| Industry | industrial base (share of world: steel → electricity → manufacturing value added) | industrial mass (heat) | industrial qualities roses, capability-wave marks |
 | Forecast | regime gradient, jumps the slider to 2036 if it is in the past | forecast hazard | flags · regime glyphs |
 
 ## Across the seam
@@ -26,6 +27,8 @@ A view is a preset of fill variable + layers + field. One click each; the advanc
 A history variable is one series from 1870 to 2066; nothing switches palette at the forecast start. Before the panel ends it is the observed value, carried forward where a source stopped early and washed toward grey by staleness (GDP stops in 2022, so 2023–2025 are already a little pale). After it, regime is the *most likely* category in each of the 300 runs, painted in the same four colours with the modal share as saturation — a state at 90% keeps its colour, a 50/50 one goes grey. Continuous series the engine carries (GDP per head, information access) show the ensemble median with a slow wash by lead; the rest hold their last observation and fade. The hover card says which: "in 63% of runs", "23.4k median (20k–26.8k)", or "as of 2022". The ensemble mean of the regime level and its entropy remain as separate forecast variables.
 
 **Regime (gradient)**, the default fill, is V-Dem's continuous polyarchy score placed on the four-category axis: the panel's median polyarchy inside each Regimes-of-the-World category (0.085, 0.281, 0.649, 0.843 — an estimate, recorded in `src/lib/data.js`) maps to 0, 1, 2, 3 and the colour ramp passes through the four category colours at those points. Hungary drifts from blue toward orange instead of flipping; a state with a category but no polyarchy score (before 1900) is painted flat and washed. After the seam the same axis carries the ensemble mean of the level, washed by the entropy of the run distribution. The liberal democracy index (`libdem`) is on the panel as well for the non-electoral dimension.
+
+**Industry** paints each state's share of world industrial output on a log ramp, using whichever series covers the year best: iron and steel (CoW NMC) to the 1960s, electricity generation (OWID) after, manufacturing value added (WDI) once the largest producers report it (late 1990s). A state is carried up to three years so a late reporter does not drop out of the total; the legend names the series in use. The roses switch to steel · electricity · R&D share · manufacturing · high-tech exports. The ⬢ marks are the sovereign producers of the newest capability wave that still discriminates (`data/waves.yaml`: introduced by the year, not yet saturated), bright when attained in the last five years; the hover card lists every wave a state holds. After the seam the shares are held still: there is no industrial model yet (see the wave package in `docs/escalations.md` once written).
 
 ## Renderer
 

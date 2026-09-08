@@ -24,7 +24,7 @@
     const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
     return () => clearInterval(t);
   });
-  let layers = $state({ territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false });
+  let layers = $state({ territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false, waves: false });
   let mode = $state('2d');
   let view = $state('politics');
   let advanced = $state(false);
@@ -33,6 +33,7 @@
     power:    { label: 'Power',    layers: { territories: false, corridors: false, alliances: 'major', conflicts: false, presence: true, field: 'influence', labels: false, glyphs: false }, variable: () => 'h_cinc' },
     conflict: { label: 'Conflict', layers: { territories: true, corridors: true, alliances: false, conflicts: true, presence: false, field: 'conflict', labels: false, glyphs: false }, variable: () => 'h_at_war' },
     routes:   { label: 'Routes',   layers: { territories: false, corridors: true, alliances: false, conflicts: false, presence: false, field: 'routes', labels: false, glyphs: false }, variable: () => 'h_energy_twh' },
+    industry: { label: 'Industry', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'industry', labels: false, glyphs: 'industry', waves: true }, variable: () => 'h_industry' },
     forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'h_regime_gradient', year: 2036 },
   };
   function applyView(v) { view = v; const V = VIEWS[v]; if (V.year && year < 2026) year = V.year; for (const k of Object.keys(V.layers)) layers[k] = V.layers[k]; const want = V.variable(year); if (mapVars.some(x => x.id === want)) varId = want; }
@@ -98,12 +99,12 @@
     {#if advanced}
       <div class="drawer">
         <span class="muted tiny">layers</span>
-        {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
+        {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities'], ['waves', 'capability waves']] as [k, label]}
           <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
         {/each}
         <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>
         <label class="asof" title="Continuous geographic fields, painted like weather">field
-          <select value={layers.field || ''} onchange={(e) => layers.field = e.target.value || false}><option value="">none</option><option value="influence">spheres of influence</option><option value="hazard">forecast hazard</option><option value="conflict">belligerents</option><option value="routes">routes</option></select>
+          <select value={layers.field || ''} onchange={(e) => layers.field = e.target.value || false}><option value="">none</option><option value="influence">spheres of influence</option><option value="hazard">forecast hazard</option><option value="conflict">belligerents</option><option value="routes">routes</option><option value="industry">industrial mass</option></select>
         </label>
       </div>
     {/if}

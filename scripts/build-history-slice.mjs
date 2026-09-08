@@ -22,6 +22,12 @@ const VARS = {
   leader_tenure: { label: 'Leader tenure', unit: 'years', format: '.1f', dp: 1 },
   infant_mortality: { label: 'Infant mortality', unit: 'per 1000', format: '.0f', dp: 1 },
   urban_share: { label: 'Urban share', unit: '%', format: '.0f', dp: 1 },
+  electricity_generation: { label: 'Electricity generation', unit: 'TWh', format: '.3s', log: true, dp: 1 },
+  renewables_share_elec: { label: 'Renewables share of electricity', unit: '%', format: '.0f', dp: 1 },
+  manuf_va: { label: 'Manufacturing value added', unit: 'current US$', format: '.3s', log: true, dp: 0 },
+  hitech_exports: { label: 'High-tech exports', unit: 'current US$', format: '.3s', log: true, dp: 0 },
+  rd_gdp: { label: 'R&D spending', unit: '% of GDP', format: '.2f', dp: 2 },
+  milex: { label: 'Military expenditure (CoW)', unit: 'thousand US$', format: '.3s', log: true, dp: 0 },
 };
 const actors = loadActors();
 // ISO2 (for emoji flags) from the countrycode list; historical entities map to the successor's flag or none

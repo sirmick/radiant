@@ -241,7 +241,7 @@ sources.at_war_ucdp = 'derived: 1 where the at_war year came from UCDP/PRIO type
 // ---- World Bank WDI 1960+ (fetched by scripts/fetch-wb.mjs): information access, infant mortality, urbanisation
 {
   const wb = (name) => JSON.parse(readFileSync(`data/raw/wb/${name}.json`, 'utf8')).data;
-  for (const [name, v] of [['internet_users', 'internet_users'], ['mobile_subs', 'mobile_subs'], ['fixed_lines', 'fixed_lines'], ['infant_mortality', 'infant_mortality'], ['urban_share', 'urban_share'], ['aid_gni', 'aid_gni']]) {
+  for (const [name, v] of [['internet_users', 'internet_users'], ['mobile_subs', 'mobile_subs'], ['fixed_lines', 'fixed_lines'], ['infant_mortality', 'infant_mortality'], ['urban_share', 'urban_share'], ['aid_gni', 'aid_gni'], ['manuf_va', 'manuf_va'], ['hitech_exports', 'hitech_exports']]) {
     const d = wb(name);
     for (const [iso, years] of Object.entries(d)) for (const [y, val] of Object.entries(years)) { const id = owid(iso, +y); if (id) put(id, v, +y, +val); }
     sources[v] = `World Bank WDI (${name})`;
