@@ -1,452 +1,232 @@
 <script>
+  // Canvas map: one scene description, one renderer, two projections (2D Natural Earth, 3D orthographic).
   import * as d3 from 'd3';
-  import * as topojson from 'topojson-client';
+  import { loadGeometry, buildOwnerGrid, makeProjection, unproject, visible } from './geo.js';
+  import { drawScene } from './render.js';
   import { buildGrid, FIELDS, evaluateField } from './influence.js';
   import { valueAt, forecastAt, historyAt, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
-  let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, selected, onSelect } = $props();
-  let hover = $state(null); let mapEl = $state(null); let canvasEl = $state(null);
+  let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, mode = '2d', selected, onSelect } = $props();
 
   let width = $state(800), height = $state(600);
-  let gEl = $state(null), svgEl = $state(null);
-  let transform = $state(d3.zoomIdentity);
+  let canvasEl = $state(null), mapEl = $state(null);
+  let hover = $state(null);
+  let view2d = $state({ k: 1, x: 0, y: 0 });
+  let rotate = $state([-20, -20]);
+  let k3d = $state(1);
+  const fieldCanvas = document.createElement('canvas');
 
-  // d3-geo wants clockwise exterior rings; GIS data and hand sketches are often the reverse, which renders as the whole sphere.
-  const rewind = (f) => {
-    const g = f.geometry; if (!g) return f;
-    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : null;
-    if (!polys) return f;
-    for (const rings of polys) rings.forEach((ring, i) => {
-      const area = d3.geoArea({ type: 'Polygon', coordinates: [ring] });
-      if ((i === 0) === (area > 2 * Math.PI)) ring.reverse();
-    });
-    return f;
-  };
-  const countries = $derived(topojson.feature(geo, geo.objects.countries).features.map(rewind));
-  const disputed = $derived(topojson.feature(geo, geo.objects.disputed).features.map(rewind));
-  const borders = $derived(topojson.mesh(geo, geo.objects.countries, (a, b) => a !== b));
+  // ---- geometry (once)
+  const geom = $derived(loadGeometry(geo));
+  const owner = $derived(buildOwnerGrid(geom.countries, 0.5));
+  const grid = $derived(buildGrid(geom.countries, 2));
+  const projection = $derived(makeProjection(mode, width, height, mode === '3d' ? { k: k3d, rotate } : view2d));
+  const zoomK = $derived(mode === '3d' ? k3d : view2d.k);
+  const terrByNe = $derived.by(() => { const m = new Map(); for (const t of world.territories) for (const id of t.geometry?.ne_ids ?? []) if (!m.has(`ne-${id}`)) m.set(`ne-${id}`, t); return m; });
 
-  const projection = $derived(d3.geoNaturalEarth1().fitExtent([[8, 8], [width - 8, height - 8]], { type: 'Sphere' }));
-  const path = $derived(d3.geoPath(projection));
+  // ---- year context
+  const yi = $derived(history ? Math.round(year) - history.meta.y0 : -1);
+  const inHist = $derived(history && yi >= 0 && yi <= history.meta.y1 - history.meta.y0);
+  const liveNow = $derived.by(() => { const s = new Set(); if (!inHist) return s; for (const [id, a] of Object.entries(history.actors)) if (a.live[yi]) s.add(id); return s; });
+  const neKey = (id) => { const a = history?.actors?.[id]; if (!a) return id; if (a.map_to && !liveNow.has(a.map_to)) return a.map_to; return id; };
+  const lonlat = (id) => geom.centroid.get(neKey(id)) ?? null;
+  const neToActor = $derived.by(() => { const m = new Map(); if (!inHist) return m; for (const id of liveNow) m.set(neKey(id), id); return m; });
+  const actorOfNe = (neId) => neToActor.get(neId) ?? neId;
+  const lastNonNull = (arr, upto) => { if (!arr) return null; for (let i = Math.min(arr.length - 1, upto ?? arr.length - 1); i >= 0; i--) if (arr[i] != null) return arr[i]; return null; };
+  const popAt = (id) => { const a = history?.actors?.[id]; if (!a) return 0; return (yi >= 0 ? lastNonNull(a.population, yi) : lastNonNull(a.population)) ?? 0; };
+  const capOf = (id) => { const a = history?.actors?.[id]; if (!a?.cinc) return 0; return (yi >= 0 ? lastNonNull(a.cinc, yi) : lastNonNull(a.cinc)) ?? 0; };
+  const atWar = (id) => { const a = history?.actors?.[id]; return a && inHist ? (a.at_war?.[yi] ?? 0) > 0 : false; };
+  const intrastateOf = (id) => { const a = history?.actors?.[id]; return a && inHist ? (a.intrastate?.[yi] ?? 0) : 0; };
+  const isGreat = (id) => { const a = history?.actors?.[id]; return a && inHist ? (a.great_power?.[yi] ?? 0) > 0 : ['USA', 'CHN', 'RUS', 'GBR', 'FRA', 'IND', 'JPN', 'TUR'].includes(id); };
+  const yearItems = $derived(news?.years?.[Math.round(year)] ?? []);
+  const isForecastYear = $derived(forecast && Math.round(year) >= forecast.meta.from);
 
-  // NE disputed feature -> territory (first wins)
-  const terrByNe = $derived.by(() => {
-    const m = new Map();
-    for (const t of world.territories) for (const id of t.geometry?.ne_ids ?? []) if (!m.has(`ne-${id}`)) m.set(`ne-${id}`, t);
-    return m;
-  });
-  const sketches = $derived(world.territories.filter(t => t.geometry?.sketch).map(t => ({ t, feature: rewind({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...t.geometry.sketch, t.geometry.sketch[0]]] } }) })));
-
-  // actor values at year -> colour
+  // ---- fills
   const values = $derived.by(() => {
-    const out = {};
-    if (!variable) return out;
+    const out = {}; if (!variable) return out;
     if (variable.kind === 'forecast') { for (const id of Object.keys(forecast?.actors ?? {})) out[id] = forecastAt(forecast, variable, id, year, variable.template ? horizon : 0); return out; }
     if (variable.kind === 'history') return historyAt(history, variable, year);
     for (const [id, a] of Object.entries(world.actors)) out[id] = valueAt(a.vars[variable.id], year);
     return out;
   });
+  const scale = $derived(colorScale(variable, Object.values(values).map(v => v.value)));
+  const fills = $derived.by(() => { const o = {}; for (const f of geom.countries) { const v = values[f.id]; if (v) { const c = scale.color(v.value); if (c) o[f.id] = c; } } return o; });
   const selectable = (id) => !!world.actors[id] || !!forecast?.actors?.[id] || !!history?.actors?.[id];
 
-  // ---- per-actor geometry: NE polygon centroid (lon/lat), keyed by NE id; historical entities resolve to a successor polygon
-  const centroidByNe = $derived.by(() => { const m = new Map(); for (const f of countries) { try { m.set(f.id, d3.geoCentroid(f)); } catch { } } return m; });
-  const yi = $derived(history ? Math.round(year) - history.meta.y0 : -1);
-  const liveNow = $derived.by(() => { const s = new Set(); if (!history || yi < 0) return s; for (const [id, a] of Object.entries(history.actors)) if (a.live[yi]) s.add(id); return s; });
-  const neKey = (id) => { const a = history?.actors?.[id]; if (!a) return id; if (a.map_to && !liveNow.has(a.map_to)) return a.map_to; return id; };
-  const lonlat = (id) => centroidByNe.get(neKey(id)) ?? null;
-
-  // ---- which actors get labels / glyphs: the selected one, plus the largest by population at the year (or by forecast presence)
+  // ---- featured actors (labels / roses)
   const featured = $derived.by(() => {
     const ids = [];
-    if (history && yi >= 0 && yi <= history.meta.y1 - history.meta.y0) {
-      for (const [id, a] of Object.entries(history.actors)) if (a.live[yi]) ids.push([id, a.population?.[yi] ?? 0]);
-    } else if (forecast) for (const id of Object.keys(forecast.actors)) ids.push([id, history?.actors?.[id]?.population?.at(-1) ?? 0]);
+    if (inHist) { for (const [id, a] of Object.entries(history.actors)) if (a.live[yi]) ids.push([id, a.population?.[yi] ?? 0]); }
+    else if (forecast) for (const id of Object.keys(forecast.actors)) ids.push([id, lastNonNull(history?.actors?.[id]?.population) ?? 0]);
     ids.sort((a, b) => b[1] - a[1]);
-    const n = transform.k >= 3 ? 200 : transform.k >= 1.8 ? 90 : 45;
+    const n = zoomK >= 3 ? 200 : zoomK >= 1.8 ? 90 : 45;
     const set = new Set(ids.slice(0, n).map(x => x[0])); if (selected?.kind === 'actor') set.add(selected.id);
     return [...set];
   });
-  const regimeOf = (id) => regimeAt(history, forecast, id, year);
-  const flagOf = (id) => { const a = history?.actors?.[id]; return flagEmoji(a?.iso2 ?? (id.length === 3 ? null : null)); };
 
-  // ---- qualities glyph: percentile ranks among live actors at the year, five axes
-  const AXES = [['regime', 'regime'], ['gdp_pc', 'GDP/cap'], ['cinc', 'capability'], ['info_access', 'info access'], ['urban_share', 'urban']];
-  const ranks = $derived.by(() => {
-    const out = {}; if (!history || yi < 0 || yi > history.meta.y1 - history.meta.y0) return out;
-    for (const [v] of AXES) {
-      const vals = []; for (const [id, a] of Object.entries(history.actors)) { const x = a[v]?.[yi]; if (a.live[yi] && x != null) vals.push([id, x]); }
-      vals.sort((p, q) => p[1] - q[1]); const n = vals.length;
-      vals.forEach(([id, x], i) => { (out[id] ??= {})[v] = v === 'regime' ? x / 3 : n > 1 ? i / (n - 1) : 0.5; });
-    }
-    return out;
-  });
-  const glyphPath = (id, r) => { const q = ranks[id]; if (!q) return null; const pts = AXES.map(([v], i) => { const ang = -Math.PI / 2 + (i / AXES.length) * 2 * Math.PI; const rr = r * (0.15 + 0.85 * (q[v] ?? 0)); return [Math.cos(ang) * rr, Math.sin(ang) * rr]; }); return 'M' + pts.map(p => p.join(',')).join('L') + 'Z'; };
-  const atWar = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.at_war?.[yi] ?? 0) > 0 : false; };
-
-  // ---- alliance edges at the year (great-circle arcs between centroids)
-  const lastNonNull = (arr, upto) => { if (!arr) return null; for (let i = Math.min(arr.length - 1, upto ?? arr.length - 1); i >= 0; i--) if (arr[i] != null) return arr[i]; return null; };
-  const popAt = (id) => { const a = history?.actors?.[id]; if (!a) return 0; return (yi >= 0 ? lastNonNull(a.population, yi) : lastNonNull(a.population)) ?? 0; };
-  const isGreat = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.great_power?.[yi] ?? 0) > 0 : false; };
-  const allianceView = $derived(alliancesAt(alliances, year, (members) => { const gp = members.filter(isGreat); const pool = gp.length ? gp : members; return pool.reduce((best, m) => (popAt(m) > popAt(best) ? m : best), pool[0]); }));
-  // pact membership per actor (for the hover card)
+  // ---- alliances
   const pactsOf = $derived.by(() => { const m = new Map(); if (!alliances) return m; const yy = Math.min(Math.round(year), alliances.meta.coverage[1]); for (const [pid, members] of Object.entries(alliances.years[yy] ?? {})) for (const x of members) (m.get(x) ?? m.set(x, []).get(x)).push({ pid, members }); return m; });
-  const allianceArcs = $derived.by(() => {
-    const out = []; const sel = selected?.kind === 'actor' ? selected.id : null;
-    for (const e of allianceView.edges) {
-      const mine = sel && (e.a === sel || e.b === sel);
-      if (layers.alliances === 'major' && !mine && !(isGreat(e.a) || isGreat(e.b))) continue;
-      const p = lonlat(e.a), q = lonlat(e.b); if (!p || !q) continue; out.push({ ...e, d: path({ type: 'LineString', coordinates: [p, q] }) });
-    }
-    return out;
-  });
-  // ---- conflicts: NE id -> actor id at the year; war arcs between the principal belligerents of each war/dispute this year
-  const neToActor = $derived.by(() => { const m = new Map(); if (!history || yi < 0) return m; for (const id of liveNow) m.set(neKey(id), id); return m; });
-  const actorOfNe = (neId) => neToActor.get(neId) ?? neId;
-  const intrastateOf = (id) => { const a = history?.actors?.[id]; return a && yi >= 0 ? (a.intrastate?.[yi] ?? 0) : 0; };
-  const conflictStroke = (neId) => { const id = actorOfNe(neId); if (!layers.conflicts) return null; if (atWar(id)) return { c: '#ef6a5a', w: 1.4, d: null }; const it = intrastateOf(id); if (it > 0) return { c: '#e8a04f', w: it >= 2 ? 1.2 : 0.8, d: '2 2' }; return null; };
-  const yearItems = $derived(news?.years?.[Math.round(year)] ?? []);
-  const warArcs = $derived.by(() => {
-    if (!layers.conflicts) return []; const out = []; const seen = new Set();
-    for (const it of yearItems) {
-      if (!it.sides || it.sides.length < 2) continue;
-      const hub = (side) => side.reduce((b, m) => (popAt(m) > popAt(b) ? m : b), side[0]);
-      const a = hub(it.sides[0]), b = hub(it.sides[1]); const k = a < b ? `${a}|${b}` : `${b}|${a}`; if (seen.has(k)) continue; seen.add(k);
-      const p = lonlat(a), q = lonlat(b); if (!p || !q) continue;
-      out.push({ a, b, war: it.k === 'war', ongoing: !!it.ongoing, t: it.t, d: path({ type: 'LineString', coordinates: [p, q] }) });
-    }
-    return out;
-  });
-  // ---- military presence at the year
-  const presenceNow = $derived(layers.presence ? presenceAt(presence, year) : []);
-  const presenceCounts = $derived.by(() => { const m = {}; for (const r of presenceNow) m[r.actor] = (m[r.actor] ?? 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1]); });
+  const allianceView = $derived(alliancesAt(alliances, year, (members) => { const gp = members.filter(isGreat); const pool = gp.length ? gp : members; return pool.reduce((best, m) => (popAt(m) > popAt(best) ? m : best), pool[0]); }));
 
-  // ---- sphere-of-influence raster (see influence.js)
-  const grid = $derived(countries.length ? buildGrid(countries, 2) : null);
-  const capOf = (id) => { const a = history?.actors?.[id]; if (!a) return 0; const arr = a.cinc; if (!arr) return 0; for (let i = Math.min(arr.length - 1, yi >= 0 ? yi : arr.length - 1); i >= 0; i--) if (arr[i] != null) return arr[i]; return 0; };
+  // ---- presence, powers, fields
+  const presenceNow = $derived(presenceAt(presence, year));
   const powersNow = $derived.by(() => {
     if (!history) return [];
-    const cands = Object.keys(POWER_COLORS).filter(id => history.actors[id] && (yi < 0 || yi > history.meta.y1 - history.meta.y0 ? true : history.actors[id].live[yi]));
-    const isGP = (id) => (yi >= 0 && yi <= history.meta.y1 - history.meta.y0) ? (history.actors[id].great_power?.[yi] ?? 0) > 0 : ['USA', 'CHN', 'RUS', 'GBR', 'FRA', 'IND', 'JPN', 'TUR'].includes(id);
-    const stations = presenceAt(presence, year);
-    return cands.filter(id => isGP(id) || stations.some(r => r.actor === id)).map(id => {
-      const key = neKey(id);
-      const partners = (pactsOf.get(id) ?? []).flatMap(p => p.members.filter(m => m !== id).map(m => ({ key: neKey(m), centroid: lonlat(m), w: p.members.length <= 3 ? 0.6 : 0.35 })));
-      const st = stations.filter(r => r.actor === id).map(r => ({ lonlat: r.geometry, w: (r.kind === 'fleet' ? 0.3 : r.kind === 'advisors' ? 0.12 : 0.25) * r.level, lambda: r.kind === 'fleet' ? 1500 : 1000 }));
-      return { id, cap: capOf(id), polygonKey: key, centroid: lonlat(id), partners, stations: st };
-    });
+    const cands = Object.keys(POWER_COLORS).filter(id => history.actors[id] && (inHist ? history.actors[id].live[yi] : true));
+    return cands.filter(id => isGreat(id) || presenceNow.some(r => r.actor === id)).map(id => ({
+      id, cap: capOf(id), polygonKey: neKey(id), centroid: lonlat(id),
+      partners: (pactsOf.get(id) ?? []).flatMap(p => p.members.filter(m => m !== id).map(m => ({ key: neKey(m), centroid: lonlat(m), w: p.members.length <= 3 ? 0.6 : 0.35 }))),
+      stations: presenceNow.filter(r => r.actor === id).map(r => ({ lonlat: r.geometry, w: (r.kind === 'fleet' ? 0.3 : r.kind === 'advisors' ? 0.12 : 0.25) * r.level, lambda: r.kind === 'fleet' ? 1500 : 1000 })),
+    }));
   });
   const fieldSpec = $derived(layers.field && FIELDS[layers.field] ? FIELDS[layers.field] : null);
   const fieldCtx = $derived.by(() => {
     if (!fieldSpec || !history) return null;
-    const live = yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? [...liveNow] : Object.keys(history.actors);
-    const atWarIds = live.filter(id => atWar(id)); const intra = live.map(id => [id, intrastateOf(id)]).filter(([, l]) => l > 0);
-    const disputeIds = [...new Set(yearItems.filter(it => it.k === 'dispute' && it.a).flatMap(it => it.a))];
-    return { powers: powersNow, colors: POWER_COLORS, lonlat, neKey, atWar: atWarIds, intrastate: intra, disputes: disputeIds };
+    const live = inHist ? [...liveNow] : Object.keys(forecast?.actors ?? history.actors);
+    const ctx = { powers: powersNow, colors: POWER_COLORS, lonlat, neKey, atWar: live.filter(atWar), intrastate: live.map(id => [id, intrastateOf(id)]).filter(([, l]) => l > 0), disputes: [...new Set(yearItems.filter(it => it.k === 'dispute' && it.a).flatMap(it => it.a))], actorHazards: [], dyadHazards: [], routes: [] };
+    if (layers.field === 'hazard' && forecast) {
+      const tpls = forecast.meta.templates.filter(t => t.unit === 'actor-year' && !/leader_exit/.test(t.id));
+      for (const id of Object.keys(forecast.actors)) { let w = 0; for (const t of tpls) { const v = forecastAt(forecast, { template: t.id }, id, year, horizon).value; if (v != null) w = 1 - (1 - w) * (1 - v); } ctx.actorHazards.push({ key: neKey(id), lonlat: lonlat(id), w }); }
+      // paint the excess over the typical actor, so the field shows where risk concentrates rather than that every state has some
+      const ws = ctx.actorHazards.map(h => h.w).sort((p, q) => p - q); const med = ws[Math.floor(ws.length / 2)] ?? 0; ctx.actorHazards = ctx.actorHazards.map(h => ({ ...h, w: Math.max(0, h.w - med) / Math.max(0.05, 1 - med) })).filter(h => h.w > 0.03);
+      const k = Math.max(0, Math.round(year) - forecast.meta.from);
+      for (const [pair, d] of Object.entries(forecast.dyads ?? {})) { const [a, b] = pair.split('|'); const A = lonlat(a), B = lonlat(b); if (!A || !B) continue; let w = 0; for (const v of Object.values(d)) { const c = v.curve; if (!c) continue; const before = k > 0 ? c[k - 1] ?? 0 : 0; const end = c[Math.min(c.length - 1, k - 1 + horizon)] ?? 0; const p = before >= 1 ? 0 : (end - before) / (1 - before); w = 1 - (1 - w) * (1 - p); } if (w < 0.05) continue; const mid = d3.geoInterpolate(A, B)(0.5); const dist = d3.geoDistance(A, B) * 6371; ctx.dyadHazards.push({ a: A, b: B, mid, w, lambda: Math.max(300, Math.min(1500, dist / 2.5)) }); }
+      ctx.dyadHazards.sort((p, q) => q.w - p.w); ctx.dyadHazards.length = Math.min(ctx.dyadHazards.length, 150);   // the pairs that matter; the rest would only add cost
+    }
+    if (layers.field === 'routes') for (const c of world.corridors) { const st = statusAt(c, year); if (!st.exists || st.status === 'abandoned' || st.status === 'planned') continue; const w = Object.values(c.load_bearing_for ?? {}).reduce((s, x) => s + x, 0) * (st.status === 'building' ? 0.4 : 1); const contested = st.status === 'closed' || st.status === 'contested'; if (c.geometry.point) ctx.routes.push({ lonlat: c.geometry.point, w, lambda: 700, contested }); else if (c.geometry.line) for (const p of c.geometry.line) ctx.routes.push({ lonlat: p, w: w / Math.max(1, c.geometry.line.length / 2), lambda: 500, contested }); }
+    return ctx;
   });
   const field = $derived(fieldSpec && grid && fieldCtx ? evaluateField(grid, fieldSpec, fieldCtx) : null);
-  $effect(() => {
-    if (!canvasEl) return; const ctx = canvasEl.getContext('2d'); canvasEl.width = width; canvasEl.height = height; ctx.clearRect(0, 0, width, height);
-    if (!field || !grid) return;
-    ctx.save(); ctx.translate(transform.x, transform.y); ctx.scale(transform.k, transform.k);
-    const h = grid.step / 2;
-    for (let i = 0; i < grid.cells.length; i++) {
-      const p = field.dominant[i]; const a = field.alpha[i]; if (p < 0 || a < 0.03) continue;
-      const [lon, lat] = grid.cells[i];
-      const corners = [[lon - h, lat + h], [lon + h, lat + h], [lon + h, lat - h], [lon - h, lat - h]].map(c => projection(c)); if (corners.some(c => !c)) continue;
-      ctx.beginPath(); ctx.moveTo(corners[0][0], corners[0][1]); for (let k = 1; k < 4; k++) ctx.lineTo(corners[k][0], corners[k][1]); ctx.closePath();
-      ctx.fillStyle = fieldSpec.color(fieldCtx, field.groups[p]); ctx.globalAlpha = a; ctx.fill();
-    }
-    ctx.restore();
+  const fieldBlur = $derived.by(() => { if (!fieldSpec) return 0; if (layers.field !== 'hazard' || !forecast) return 7; const ahead = Math.max(0, Math.round(year) - forecast.meta.from); return Math.min(28, 5 + 0.5 * ahead + 0.4 * horizon); });
+
+  // ---- vector marks (thin at world zoom; full on selection or zoom)
+  const zoomedIn = $derived(zoomK >= 2.2);
+  const arcs = $derived.by(() => {
+    const out = []; const sel = selected?.kind === 'actor' ? selected.id : null;
+    if (layers.alliances) for (const e of allianceView.edges) { const mine = sel && (e.a === sel || e.b === sel); if (layers.alliances === 'major' && !mine && !(isGreat(e.a) || isGreat(e.b))) continue; if (!mine && !zoomedIn && layers.alliances !== 'all' && !isGreat(e.a) && !isGreat(e.b)) continue; const p = lonlat(e.a), q = lonlat(e.b); if (!p || !q) continue; out.push({ coords: [p, q], color: e.multilateral ? '#8ab4e8' : '#6cb4ff', alpha: mine ? 0.95 : e.multilateral ? 0.22 : 0.45, width: mine ? 1.6 : e.multilateral ? 0.6 : 0.9, dash: e.multilateral ? [3, 2] : null }); }
+    if (layers.conflicts) { const seen = new Set(); for (const it of yearItems) { if (!it.sides || it.sides.length < 2) continue; const hub = (side) => side.reduce((b, m) => (popAt(m) > popAt(b) ? m : b), side[0]); const a = hub(it.sides[0]), b = hub(it.sides[1]); const key = a < b ? `${a}|${b}` : `${b}|${a}`; if (seen.has(key)) continue; seen.add(key); const p = lonlat(a), q = lonlat(b); if (!p || !q) continue; out.push({ coords: [p, q], color: it.k === 'war' ? '#ef6a5a' : '#e8a04f', alpha: it.ongoing ? 0.45 : 0.85, width: it.k === 'war' ? 1.4 : 0.8, dash: it.ongoing ? [4, 3] : null }); } }
+    return out;
   });
+  const conflictStroke = $derived.by(() => { const o = {}; if (!layers.conflicts) return o; for (const f of geom.countries) { const id = actorOfNe(f.id); if (atWar(id)) o[f.id] = { c: '#ef6a5a', w: 1.4 }; else { const it = intrastateOf(id); if (it > 0) o[f.id] = { c: '#e8a04f', w: it >= 2 ? 1.2 : 0.8, d: true }; } } return o; });
+  const territoriesScene = $derived.by(() => { if (!layers.territories) return []; const out = []; for (const f of geom.disputed) { const t = terrByNe.get(f.id); if (!t) continue; const st = statusAt(t, year); if (!st.exists || st.status === 'settled') continue; out.push({ feature: f, color: STATUS_COLORS[st.status] ?? '#8b94a3', selected: selected?.kind === 'territory' && selected.id === t.id, id: t.id }); } for (const t of world.territories) { if (t.geometry?.sketch) { const st = statusAt(t, year); if (!st.exists) continue; out.push({ feature: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...t.geometry.sketch, t.geometry.sketch[0]]] } }, color: STATUS_COLORS[st.status] ?? '#8b94a3', sketch: true, selected: selected?.kind === 'territory' && selected.id === t.id, id: t.id }); } else if (t.geometry?.point && !t.geometry.ne_ids) { const st = statusAt(t, year); if (!st.exists || st.status === 'settled') continue; out.push({ point: t.geometry.point, color: STATUS_COLORS[st.status] ?? '#8b94a3', id: t.id }); } } return out; });
+  const corridorsScene = $derived.by(() => { if (!layers.corridors) return []; const out = []; for (const c of world.corridors) { const st = statusAt(c, year); if (!st.exists || st.status === 'abandoned') continue; const color = STATUS_COLORS[st.status] ?? '#8b94a3'; const dash = st.status === 'planned' ? [2, 4] : st.status === 'building' ? [6, 3] : c.mode === 'cable' ? [1, 3] : []; out.push({ id: c.id, line: c.geometry.line, point: c.geometry.point, color, dash, mode: c.mode, selected: selected?.kind === 'corridor' && selected.id === c.id }); } return out; });
+  const AXES = [['regime', 'regime'], ['gdp_pc', 'GDP/cap'], ['cinc', 'capability'], ['info_access', 'info access'], ['urban_share', 'urban']];
+  const ranks = $derived.by(() => { const out = {}; if (!inHist) return out; for (const [v] of AXES) { const vals = []; for (const [id, a] of Object.entries(history.actors)) { const x = a[v]?.[yi]; if (a.live[yi] && x != null) vals.push([id, x]); } vals.sort((p, q) => p[1] - q[1]); const n = vals.length; vals.forEach(([id, x], i) => { (out[id] ??= {})[v] = v === 'regime' ? x / 3 : n > 1 ? i / (n - 1) : 0.5; }); } return out; });
+  const marks = $derived.by(() => {
+    const out = [];
+    if (layers.presence) for (const r of presenceNow) { if (!zoomedIn && r.level < 2 && !(selected?.kind === 'actor' && (r.actor === selected.id || r.host === selected.id))) continue; out.push({ lonlat: r.geometry, kind: r.kind, color: POWER_COLORS[r.actor] ?? '#8b94a3', size: r.kind === 'fleet' ? (r.level === 3 ? 26 : r.level === 2 ? 18 : 12) / Math.sqrt(zoomK) : (r.level === 3 ? 7 : r.level === 2 ? 5 : 3.5), emphasis: r.operator, title: `${r.actor} ${r.kind}: ${r.name} · since ${r.from}` }); }
+    if (layers.glyphs) for (const id of featured) { const ll = lonlat(id), q = ranks[id]; if (!ll || !q) continue; const r = 8; const pts = AXES.map(([v], i) => { const ang = -Math.PI / 2 + (i / AXES.length) * 2 * Math.PI; const rr = r * (0.15 + 0.85 * (q[v] ?? 0)); return [Math.cos(ang) * rr, Math.sin(ang) * rr]; }); out.push({ lonlat: ll, kind: 'rose', size: r, stroke: atWar(id) ? '#ef6a5a' : '#3a4250', strokeWidth: atWar(id) ? 1.4 : 0.5, pathD: 'M' + pts.map(p => p.join(',')).join('L') + 'Z' }); }
+    return out;
+  });
+  const labels = $derived.by(() => { if (!layers.labels) return []; const out = []; for (const id of featured) { const ll = lonlat(id); if (!ll) continue; const rg = regimeAt(history, forecast, id, year); const pop = popAt(id); out.push({ lonlat: ll, flag: flagEmoji(history?.actors?.[id]?.iso2), glyph: rg != null ? REGIME_GLYPH[rg] : null, glyphColor: rg != null ? REGIME_COL4[rg] : '#fff', size: 11, dy: layers.glyphs ? 16 : 0, popR: layers.field ? 0 : Math.min(26, 2 + Math.sqrt(Math.max(0, pop) / 1e6) * 1.4) / Math.sqrt(zoomK) }); } return out; });
+  const selectedFeature = $derived(selected?.kind === 'actor' ? geom.countries.find(f => f.id === neKey(selected.id)) ?? null : null);
+
+  // ---- draw (coalesced)
+  let raf = 0;
+  $effect(() => {
+    const S = { mode, width, height, projection, k: zoomK, geom, fills, field: field ? { grid, dominant: field.dominant, alpha: field.alpha, colorOf: (p) => fieldSpec.color(fieldCtx, field.groups[p]), blur: fieldBlur } : null, fieldCanvas, territories: territoriesScene, corridors: corridorsScene, arcs, marks, labels, selectedFeature, conflictStroke };
+    if (!canvasEl) return;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => { const dpr = window.devicePixelRatio || 1; canvasEl.width = width * dpr; canvasEl.height = height * dpr; const ctx = canvasEl.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); drawScene(ctx, S); });
+  });
+
+  // ---- interaction: drag (pan 2D / rotate 3D), wheel zoom, hover, click
+  let drag = null;
+  const onDown = (e) => { drag = { x: e.clientX, y: e.clientY, moved: false, v: { ...view2d }, r: [...rotate] }; };
+  const onMove = (e) => {
+    const r = mapEl.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+    if (drag && (e.buttons & 1)) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true; if (mode === '3d') rotate = [drag.r[0] + dx * 0.35 / k3d, Math.max(-90, Math.min(90, drag.r[1] - dy * 0.35 / k3d))]; else view2d = { k: drag.v.k, x: drag.v.x + dx, y: drag.v.y + dy }; hover = null; return; }
+    const ll = unproject(projection, [x, y]); const neId = ll ? owner.at(ll[0], ll[1]) : null;
+    const pt = ll ? hitPoint(x, y) : null;
+    hover = pt ?? (neId && selectable(actorOfNe(neId)) ? { neId, x, y } : null);
+  };
+  const hitPoint = (x, y) => { let best = null, bd = 9; const test = (lonlat, hit) => { if (!lonlat || !visible(mode, projection, lonlat)) return; const p = projection(lonlat); if (!p) return; const d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; best = hit; } }; for (const c of corridorsScene) if (c.point) test(c.point, { corridor: c.id, x, y }); for (const t of territoriesScene) if (t.point) test(t.point, { territory: t.id, x, y }); for (const m of marks) if (m.title) test(m.lonlat, { mark: m.title, x, y }); return best; };
+  const onUp = (e) => { if (drag && !drag.moved) { const r = mapEl.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; const ll = unproject(projection, [x, y]); const neId = ll ? owner.at(ll[0], ll[1]) : null; const pt = hitPoint(x, y); if (pt?.corridor) onSelect({ kind: 'corridor', id: pt.corridor }); else if (pt?.territory) onSelect({ kind: 'territory', id: pt.territory }); else if (neId && selectable(actorOfNe(neId))) onSelect({ kind: 'actor', id: actorOfNe(neId) }); } drag = null; };
+  const onWheel = (e) => { e.preventDefault(); const f = Math.exp(-e.deltaY * 0.0015); if (mode === '3d') k3d = Math.max(0.6, Math.min(12, k3d * f)); else { const r = mapEl.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top; const nk = Math.max(1, Math.min(12, view2d.k * f)); const s = nk / view2d.k; view2d = { k: nk, x: mx - (mx - view2d.x) * s, y: my - (my - view2d.y) * s }; } };
+  export function resetZoom() { view2d = { k: 1, x: 0, y: 0 }; k3d = 1; rotate = [-20, -20]; }
+  let spinning = $state(false);
+  $effect(() => { if (mode !== '3d' || !spinning) return; const t = setInterval(() => { rotate = [rotate[0] + 0.25, rotate[1]]; }, 40); return () => clearInterval(t); });
 
   // ---- hover card
   const hoverInfo = $derived.by(() => {
-    if (!hover) return null; const id = actorOfNe(hover.id); const ha = history?.actors?.[id]; const wa = world.actors[id];
-    const name = wa?.name ?? ha?.name ?? countries.find(f => f.id === hover.id)?.properties.name ?? id;
-    const rg = regimeAt(history, forecast, id, year); const lastPop = (arr) => { if (!arr) return null; for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return arr[i]; return null; };
-    const pop = ha && yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? (ha.population?.[yi] ?? lastPop(ha.population?.slice(0, yi + 1))) : lastPop(ha?.population);
-    const pacts = (pactsOf.get(id) ?? []).map(p => ({ pid: p.pid, partners: p.members.filter(m => m !== id), greats: p.members.filter(m => m !== id && isGreat(m)) }));
+    if (!hover) return null;
+    if (hover.mark) return { title: hover.mark };
+    if (hover.corridor) { const c = world.corridors.find(x => x.id === hover.corridor); const st = statusAt(c, year); return { title: `${c.name} — ${st.status}${st.controller ? ` (${st.controller})` : ''}` }; }
+    if (hover.territory) { const t = world.territories.find(x => x.id === hover.territory); const st = statusAt(t, year); return { title: `${t.name} — ${st.status}${st.controller ? ` (${st.controller})` : ''}` }; }
+    const id = actorOfNe(hover.neId); const ha = history?.actors?.[id]; const wa = world.actors[id];
+    const name = wa?.name ?? ha?.name ?? geom.countries.find(f => f.id === hover.neId)?.properties.name ?? id;
+    const rg = regimeAt(history, forecast, id, year); const pop = popAt(id);
+    const pacts = (pactsOf.get(id) ?? []).map(p => ({ partners: p.members.filter(m => m !== id), greats: p.members.filter(m => m !== id && isGreat(m)) }));
     const items = yearItems.filter(it => it.a?.includes(id) && !it.ongoing).slice(0, 4);
     const conflicts = [atWar(id) ? 'at war' : null, intrastateOf(id) >= 2 ? 'civil war' : intrastateOf(id) > 0 ? 'internal armed conflict' : null].filter(Boolean);
-    const hosted = presenceAt(presence, year).filter(r => r.host === id).map(r => `${r.actor} ${r.kind}${r.level >= 3 ? ' (major)' : ''}`);
-    const lo = ha?.last_observed; const staleNote = lo && Math.round(year) > history.meta.y1 ? Object.entries(lo).filter(([k, y]) => ['cinc', 'regime', 'gdp_pc', 'population'].includes(k) && y != null && y < history.meta.y1 - 1).map(([k, y]) => `${k} as of ${y}`).join(' · ') : '';
-    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, hosted, staleNote, live: ha ? (yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? !!ha.live[yi] : true) : !!wa };
+    const hosted = presenceNow.filter(r => r.host === id).map(r => `${r.actor} ${r.kind}${r.level >= 3 ? ' (major)' : ''}`);
+    const lo = ha?.last_observed; const staleNote = lo && Math.round(year) > (history?.meta.y1 ?? 0) ? Object.entries(lo).filter(([k, y]) => ['cinc', 'regime', 'gdp_pc', 'population'].includes(k) && y != null && y < history.meta.y1 - 1).map(([k, y]) => `${k} as of ${y}`).join(' · ') : '';
+    let hz = null; if (isForecastYear && forecast.actors[id]) { const tp = forecast.meta.templates.filter(t => t.unit === 'actor-year').map(t => [t.label ?? t.id, forecastAt(forecast, { template: t.id }, id, year, horizon).value]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]).slice(0, 3); hz = tp.map(([l, v]) => `${(v * 100).toFixed(0)}% ${l}`).join(' · '); }
+    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, hosted, staleNote, hz, live: ha ? (inHist ? !!ha.live[yi] : true) : !!wa };
   });
-  const fmtPop = (n) => (n == null ? '—' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' bn' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' k' : String(Math.round(n)));
-  const popR = (id) => { const p = popAt(id); return Math.min(26, 2 + Math.sqrt(Math.max(0, p) / 1e6) * 1.4); };
-  export function resetZoom() { if (svgEl) d3.select(svgEl).transition().duration(300).call(d3.zoom().transform, d3.zoomIdentity); transform = d3.zoomIdentity; }
+  const fmtPop = (n) => (n == null || !n ? '—' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' bn' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' k' : String(Math.round(n)));
 
-  // ---- legend: only what is on the map right now
-  const presentStatuses = $derived.by(() => {
-    const t = new Set(), c = new Set();
-    if (layers.territories) for (const x of world.territories) { const st = statusAt(x, year); if (st.exists && st.status !== 'settled') t.add(st.status); }
-    if (layers.corridors) for (const x of world.corridors) { const st = statusAt(x, year); if (st.exists && st.status !== 'abandoned') c.add(st.status); }
-    return { t: [...t], c: [...c] };
-  });
+  // ---- legend
+  const presentStatuses = $derived.by(() => { const t = new Set(), c = new Set(); for (const x of territoriesScene) { const st = statusAt(world.territories.find(w => w.id === x.id), year); t.add(st.status); } for (const x of corridorsScene) { const st = statusAt(world.corridors.find(w => w.id === x.id), year); c.add(st.status); } return { t: [...t], c: [...c] }; });
+  const presenceCounts = $derived.by(() => { if (!layers.presence) return []; const m = {}; for (const r of presenceNow) m[r.actor] = (m[r.actor] ?? 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1]); });
   const catLabel = (c, i) => variable?.display?.categoricalLabels?.[i] ?? c;
-  const terrState = (t) => statusAt(t, year);
-  const corrState = (c) => statusAt(c, year);
-  const pointTerritories = $derived(world.territories.filter(t => t.geometry?.point && !t.geometry.ne_ids && !t.geometry.sketch));
-  const scale = $derived(colorScale(variable, Object.values(values).map(v => v.value)));
-  const fillFor = (id) => {
-    const v = values[id]; if (!v) return '#1c2129';
-    const c = scale.color(v.value);
-    return c ?? '#242a34';
-  };
-
-  const corridorPath = (c) => c.geometry.line ? path({ type: 'LineString', coordinates: c.geometry.line }) : null;
-  const pointXY = (c) => projection(c.geometry.point);
-
-  $effect(() => {
-    if (!svgEl) return;
-    const zoom = d3.zoom().scaleExtent([1, 12]).on('zoom', (e) => { transform = e.transform; });
-    d3.select(svgEl).call(zoom);
-    return () => d3.select(svgEl).on('.zoom', null);
-  });
-
-  const isSel = (kind, id) => selected?.kind === kind && selected?.id === id;
 </script>
 
-<div class="map" bind:this={mapEl} bind:clientWidth={width} bind:clientHeight={height}>
-  <canvas bind:this={canvasEl} class="influence" class:on={!!field}></canvas>
-  <svg bind:this={svgEl} {width} {height}>
-    <defs>
-      {#each Object.entries(STATUS_COLORS) as [s, c]}
-        <pattern id="hatch-{s}" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
-          <rect width="5" height="5" fill={c} fill-opacity="0.18" />
-          <line x1="0" y1="0" x2="0" y2="5" stroke={c} stroke-width="1.4" stroke-opacity="0.9" />
-        </pattern>
-      {/each}
-    </defs>
-    <rect {width} {height} fill="#0b0e13" fill-opacity={field ? 0 : 1} />
-    <g bind:this={gEl} transform={transform.toString()}>
-      <path d={path({ type: 'Sphere' })} fill="#0e131b" fill-opacity={field ? 0 : 1} stroke="#2a303a" stroke-width={0.6 / transform.k} />
-      <path d={path(d3.geoGraticule10())} fill="none" stroke="#1a2029" stroke-width={0.4 / transform.k} />
+<div class="map" bind:this={mapEl} bind:clientWidth={width} bind:clientHeight={height} role="application"
+  onmousedown={onDown} onmousemove={onMove} onmouseup={onUp} onmouseleave={() => { hover = null; drag = null; }} onwheel={onWheel}>
+  <canvas bind:this={canvasEl} style="width:{width}px;height:{height}px"></canvas>
 
-      <!-- countries -->
-      {#each countries as f (f.id)}
-        <path
-          d={path(f)}
-          fill={fillFor(f.id)}
-          fill-opacity={field ? 0.55 : 1}
-          stroke={isSel('actor', f.id) ? '#fff' : (conflictStroke(f.id)?.c ?? 'none')}
-          stroke-width={(isSel('actor', f.id) ? 1.5 : (conflictStroke(f.id)?.w ?? 0)) / transform.k}
-          stroke-dasharray={isSel('actor', f.id) ? null : conflictStroke(f.id)?.d}
-          class:actor={selectable(f.id)}
-          onclick={() => selectable(f.id) && onSelect({ kind: 'actor', id: f.id })}
-          onmousemove={(e) => { if (selectable(f.id)) { const r = mapEl.getBoundingClientRect(); hover = { id: f.id, x: e.clientX - r.left, y: e.clientY - r.top }; } }}
-          onmouseleave={() => { hover = null; }}
-          role="button" tabindex="-1"
-        ><title>{f.properties.name}</title></path>
-      {/each}
-      <path d={path(borders)} fill="none" stroke="#0b0e13" stroke-width={0.5 / transform.k} pointer-events="none" />
+  <div class="ctl">
+    <button onclick={resetZoom} title="reset view">⤢</button>
+    {#if mode === '3d'}<button class:on={spinning} onclick={() => spinning = !spinning} title="auto-rotate">↻</button>{/if}
+  </div>
 
-      <!-- territories: NE polygons -->
-      {#if layers.territories}
-        {#each disputed as f (f.id)}
-          {@const t = terrByNe.get(f.id)}
-          {@const st = t ? terrState(t) : null}
-          {#if t && st.exists}
-            <path d={path(f)} fill="url(#hatch-{st.status})" stroke={STATUS_COLORS[st.status] ?? '#8b94a3'} stroke-width={(isSel('territory', t.id) ? 1.8 : 0.7) / transform.k}
-              onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></path>
-          {/if}
-        {/each}
-        {#each sketches as { t, feature } (t.id)}
-          {@const st = terrState(t)}
-          {#if st.exists}
-            <path d={path(feature)} fill="url(#hatch-{st.status})" stroke={STATUS_COLORS[st.status] ?? '#8b94a3'} stroke-dasharray="3 2" stroke-width={(isSel('territory', t.id) ? 1.8 : 0.8) / transform.k}
-              onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name} (sketch) — {st.status}</title></path>
-          {/if}
-        {/each}
-        {#each pointTerritories as t (t.id)}
-          {@const st = terrState(t)}
-          {#if st.exists && st.status !== 'settled'}
-            {@const [x, y] = projection(t.geometry.point)}
-            <rect x={x - 4 / transform.k} y={y - 4 / transform.k} width={8 / transform.k} height={8 / transform.k} transform="rotate(45 {x} {y})" fill={STATUS_COLORS[st.status] ?? '#8b94a3'} fill-opacity="0.6" stroke={STATUS_COLORS[st.status] ?? '#8b94a3'} stroke-width={1 / transform.k}
-              onclick={() => onSelect({ kind: 'territory', id: t.id })} role="button" tabindex="-1"><title>{t.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></rect>
-          {/if}
-        {/each}
-      {/if}
-
-      <!-- corridors and chokepoints -->
-      {#if layers.corridors}
-        {#each world.corridors as c (c.id)}
-          {@const st = corrState(c)}
-          {#if st.exists && st.status !== 'abandoned'}
-            {@const col = STATUS_COLORS[st.status] ?? '#8b94a3'}
-            {#if c.geometry.line}
-              <path d={corridorPath(c)} fill="none" stroke={col} stroke-linecap="round"
-                stroke-width={(isSel('corridor', c.id) ? 3 : c.mode === 'cable' ? 0.9 : 1.6) / transform.k}
-                stroke-dasharray={st.status === 'planned' ? '2 4' : st.status === 'building' ? '6 3' : c.mode === 'cable' ? '1 3' : null}
-                onclick={() => onSelect({ kind: 'corridor', id: c.id })} role="button" tabindex="-1"><title>{c.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></path>
-            {:else if c.geometry.point}
-              {@const [x, y] = pointXY(c)}
-              <circle cx={x} cy={y} r={(isSel('corridor', c.id) ? 7 : 5) / transform.k} fill={col} fill-opacity="0.35" stroke={col} stroke-width={1.2 / transform.k}
-                onclick={() => onSelect({ kind: 'corridor', id: c.id })} role="button" tabindex="-1"><title>{c.name} — {st.status}{st.controller ? ` (${st.controller})` : ''}</title></circle>
-            {/if}
-          {/if}
-        {/each}
-      {/if}
-      <!-- alliances: defence pacts as great-circle arcs -->
-      {#if layers.alliances}
-        {#each allianceArcs as e (e.a + e.b)}
-          {@const hot = selected?.kind === 'actor' && (e.a === selected.id || e.b === selected.id)}
-          <path d={e.d} fill="none" stroke={e.multilateral ? '#8ab4e8' : '#6cb4ff'} stroke-opacity={hot ? 0.95 : e.multilateral ? 0.22 : 0.45} stroke-width={(hot ? 1.6 : e.multilateral ? 0.6 : 0.9) / transform.k} stroke-dasharray={e.multilateral ? '3 2' : null} pointer-events="none" />
-        {/each}
-      {/if}
-
-      <!-- conflicts: belligerent arcs -->
-      {#if layers.conflicts}
-        {#each warArcs as e (e.a + e.b)}
-          <path d={e.d} fill="none" stroke={e.war ? '#ef6a5a' : '#e8a04f'} stroke-opacity={e.ongoing ? 0.45 : 0.85} stroke-width={(e.war ? 1.4 : 0.8) / transform.k} stroke-dasharray={e.ongoing ? '4 3' : null} pointer-events="none"><title>{e.t}</title></path>
-        {/each}
-      {/if}
-
-      <!-- military presence: bases (squares), garrisons (diamonds), fleets (dashed circles), advisors (small dots) -->
-      {#if layers.presence}
-        {#each presenceNow as r (r.id)}
-          {@const [x, y] = projection(r.geometry)}
-          {@const col = POWER_COLORS[r.actor] ?? '#8b94a3'}
-          {@const sz = (r.level === 3 ? 7 : r.level === 2 ? 5 : 3.5) / transform.k}
-          {#if r.kind === 'fleet'}
-            <circle cx={x} cy={y} r={(r.level === 3 ? 26 : r.level === 2 ? 18 : 12) / Math.sqrt(transform.k)} fill={col} fill-opacity="0.08" stroke={col} stroke-opacity={r.operator ? 0.9 : 0.6} stroke-dasharray="4 3" stroke-width={(r.operator ? 1.4 : 0.9) / transform.k}><title>{r.actor} fleet: {r.name} · since {r.from}{r.operator ? ' · operator entry, unverified' : ''}</title></circle>
-            <text x={x} y={y + 3 / transform.k} text-anchor="middle" font-size={9 / transform.k} fill={col} pointer-events="none">⚓</text>
-          {:else if r.kind === 'garrison'}
-            <rect x={x - sz} y={y - sz} width={sz * 2} height={sz * 2} transform="rotate(45 {x} {y})" fill={col} fill-opacity="0.85" stroke="#0b0e13" stroke-width={0.6 / transform.k}><title>{r.actor} garrison: {r.name} · since {r.from}{r.operator ? ' · operator entry, unverified' : ''}</title></rect>
-          {:else if r.kind === 'advisors'}
-            <circle cx={x} cy={y} r={sz * 0.7} fill={col} fill-opacity="0.9" stroke="#0b0e13" stroke-width={0.5 / transform.k}><title>{r.actor} advisors: {r.name} · since {r.from}</title></circle>
-          {:else}
-            <rect x={x - sz} y={y - sz} width={sz * 2} height={sz * 2} fill={col} fill-opacity="0.85" stroke="#0b0e13" stroke-width={0.6 / transform.k}><title>{r.actor} base: {r.name} · since {r.from}{r.operator ? ' · operator entry, unverified' : ''}</title></rect>
-          {/if}
-        {/each}
-      {/if}
-
-      <!-- population bubbles -->
-      {#if layers.labels}
-        {#each featured as id (id)}
-          {@const ll = lonlat(id)}
-          {#if ll}
-            {@const [x, y] = projection(ll)}
-            <circle cx={x} cy={y} r={popR(id) / Math.sqrt(transform.k)} fill="#6cb4ff" fill-opacity="0.08" stroke="#6cb4ff" stroke-opacity="0.25" stroke-width={0.6 / transform.k} pointer-events="none" />
-          {/if}
-        {/each}
-      {/if}
-
-      <!-- qualities glyphs -->
-      {#if layers.glyphs}
-        {#each featured as id (id)}
-          {@const ll = lonlat(id)}
-          {#if ll && ranks[id]}
-            {@const [x, y] = projection(ll)}
-            {@const r = (transform.k >= 3 ? 7 : 8) / transform.k}
-            <g transform="translate({x},{y})" pointer-events="none">
-              <circle r={r} fill="#0b0e13" fill-opacity="0.35" stroke={atWar(id) ? '#ef6a5a' : '#3a4250'} stroke-width={(atWar(id) ? 1.4 : 0.5) / transform.k} />
-              <path d={glyphPath(id, r)} fill="#ffd166" fill-opacity="0.55" stroke="#ffd166" stroke-width={0.7 / transform.k} />
-            </g>
-          {/if}
-        {/each}
-      {/if}
-
-      <!-- labels: flag + regime glyph -->
-      {#if layers.labels}
-        {#each featured as id (id)}
-          {@const ll = lonlat(id)}
-          {#if ll}
-            {@const [x, y] = projection(ll)}
-            {@const rg = regimeOf(id)}
-            {@const fl = flagOf(id)}
-            {@const dy = layers.glyphs ? (transform.k >= 3 ? 7 : 8) / transform.k + 9 / transform.k : 0}
-            <g transform="translate({x},{y + dy})" pointer-events="none" font-size={11 / transform.k}>
-              {#if fl}<text x={-2 / transform.k} y={4 / transform.k} text-anchor="end">{fl}</text>{/if}
-              {#if rg != null}<text x={2 / transform.k} y={4 / transform.k} fill={REGIME_COL4[rg]} font-weight="700" style="paint-order:stroke" stroke="#0b0e13" stroke-width={2 / transform.k}>{REGIME_GLYPH[rg]}</text>{/if}
-            </g>
-          {/if}
-        {/each}
-      {/if}
-    </g>
-  </svg>
-
-  <button class="reset" onclick={resetZoom} title="reset zoom">⤢</button>
   {#if hoverInfo}
     <div class="card" style="left:{Math.min(hover.x + 14, width - 300)}px; top:{Math.min(hover.y + 14, height - 200)}px">
-      <div class="ch">{hoverInfo.flag ?? ''} <b>{hoverInfo.name}</b> <span class="mono muted">{hoverInfo.id}</span>{#if !hoverInfo.live}<span class="muted"> · not a state in {Math.round(year)}</span>{/if}</div>
-      <div class="cr">{#if hoverInfo.rg != null}<span style="color:{REGIME_COL4[hoverInfo.rg]}">{REGIME_GLYPH[hoverInfo.rg]} {REGIME_LABELS[hoverInfo.rg]}</span>{/if} · pop {fmtPop(hoverInfo.pop)}</div>
-      {#if hoverInfo.conflicts.length}<div class="cr" style="color:#ef6a5a">{hoverInfo.conflicts.join(' · ')}</div>{/if}
-      {#if hoverInfo.pacts.length}
-        <div class="cr muted">pacts: {#each hoverInfo.pacts.slice(0, 4) as p, i}{i ? '; ' : ''}{#if p.greats.length}<span style="color:#6cb4ff">with {p.greats.join(', ')}</span>{#if p.partners.length > p.greats.length} +{p.partners.length - p.greats.length}{/if}{:else}{p.partners.length <= 2 ? p.partners.join(', ') : p.partners.length + ' partners'}{/if}{/each}{hoverInfo.pacts.length > 4 ? ` (+${hoverInfo.pacts.length - 4})` : ''}</div>
-      {:else if allianceView.pacts}<div class="cr muted">no defence pact{allianceView.carried ? ' (as of ' + allianceView.from + ')' : ''}</div>{/if}
-      {#if hoverInfo.hosted.length}<div class="cr" style="color:#ffd166">foreign forces: {hoverInfo.hosted.join(' · ')}</div>{/if}
-      {#if hoverInfo.staleNote}<div class="cr muted">stale: {hoverInfo.staleNote}</div>{/if}
-      {#if hoverInfo.items.length}<div class="cr ev">{Math.round(year)}: {hoverInfo.items.map(it => it.t.replace(/^[^:]+: /, '')).join(' · ')}</div>{/if}
+      {#if hoverInfo.title}<div class="ch">{hoverInfo.title}</div>{:else}
+        <div class="ch">{hoverInfo.flag ?? ''} <b>{hoverInfo.name}</b> <span class="mono muted">{hoverInfo.id}</span>{#if !hoverInfo.live}<span class="muted"> · not a state in {Math.round(year)}</span>{/if}</div>
+        <div class="cr">{#if hoverInfo.rg != null}<span style="color:{REGIME_COL4[hoverInfo.rg]}">{REGIME_GLYPH[hoverInfo.rg]} {REGIME_LABELS[hoverInfo.rg]}</span>{/if} · pop {fmtPop(hoverInfo.pop)}</div>
+        {#if hoverInfo.conflicts.length}<div class="cr" style="color:#ef6a5a">{hoverInfo.conflicts.join(' · ')}</div>{/if}
+        {#if hoverInfo.pacts.length}<div class="cr muted">pacts: {#each hoverInfo.pacts.slice(0, 4) as p, i}{i ? '; ' : ''}{#if p.greats.length}<span style="color:#6cb4ff">with {p.greats.join(', ')}</span>{#if p.partners.length > p.greats.length} +{p.partners.length - p.greats.length}{/if}{:else}{p.partners.length <= 2 ? p.partners.join(', ') : p.partners.length + ' partners'}{/if}{/each}</div>{/if}
+        {#if hoverInfo.hosted.length}<div class="cr" style="color:#ffd166">foreign forces: {hoverInfo.hosted.join(' · ')}</div>{/if}
+        {#if hoverInfo.hz}<div class="cr" style="color:#ff7a45">next {horizon} y: {hoverInfo.hz}</div>{/if}
+        {#if hoverInfo.staleNote}<div class="cr muted">stale: {hoverInfo.staleNote}</div>{/if}
+        {#if hoverInfo.items.length}<div class="cr ev">{Math.round(year)}: {hoverInfo.items.map(it => it.t.replace(/^[^:]+: /, '')).join(' · ')}</div>{/if}
+      {/if}
     </div>
   {/if}
-  <!-- legend -->
+
   <div class="legend">
     {#if variable}
       <div class="lt">{variable.label}{variable.unit ? ` · ${variable.unit}` : ''}</div>
-      {#if scale.kind === 'categorical'}
-        {#each scale.domain as c, i}<span class="sw"><i style="background:{scale.swatch(c)}"></i>{catLabel(c, i)}</span>{/each}
+      {#if scale.kind === 'categorical'}{#each scale.domain as c, i}<span class="sw"><i style="background:{scale.swatch(c)}"></i>{catLabel(c, i)}</span>{/each}
       {:else if scale.kind === 'numeric'}
         <div class="bar" style="background: linear-gradient(90deg, {d3.range(0, 1.01, 0.1).map(t => scale.scale(scale.log ? Math.exp(Math.log(scale.domain[0]) + t * (Math.log(scale.domain[1]) - Math.log(scale.domain[0]))) : scale.domain[0] + t * (scale.domain[1] - scale.domain[0]))).join(',')})"></div>
         <div class="ticks"><span>{d3.format('.3~s')(scale.domain[0])}</span><span>{d3.format('.3~s')(scale.domain[1])}</span></div>
       {/if}
-      <div class="muted small">{variable.kind === 'forecast' ? (year >= (forecast?.meta.from ?? 2026) ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs · generic templates only` : 'before forecast start: 2025 state') : variable.kind === 'history' ? (year > (history?.meta.y1 ?? 2025) ? 'past the panel: nothing shown' : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''}`) : year > 2026 ? 'projection / extrapolation' : 'historical'} · grey = no data</div>
+      <div class="muted small">{variable.kind === 'forecast' ? (isForecastYear ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs` : 'before the forecast start: last observed state') : variable.kind === 'history' ? `historical panel · ${history?.meta.sources?.[variable.var] ?? ''}` : 'modern snapshot'}</div>
     {/if}
-    {#if presentStatuses.t.length}
-      <div class="lt" style="margin-top:6px">Territories <span class="muted">hatched · ◇ point</span></div>
-      {#each presentStatuses.t as s}<span class="sw"><i style="background:{STATUS_COLORS[s] ?? '#8b94a3'}"></i>{s.replace('_', ' ')}</span>{/each}
-    {/if}
-    {#if presentStatuses.c.length}
-      <div class="lt" style="margin-top:6px">Corridors <span class="muted">line · ○ chokepoint · ┄ cable</span></div>
-      {#each presentStatuses.c as s}<span class="sw"><i style="background:{STATUS_COLORS[s] ?? '#8b94a3'}"></i>{s}</span>{/each}
-    {/if}
-    {#if layers.conflicts}
-      <div class="lt" style="margin-top:6px">Conflicts <span class="muted">red outline at war · orange dashed internal · arcs join principal belligerents (dashed = ongoing)</span></div>
-    {/if}
-    {#if fieldSpec}
-      <div class="lt" style="margin-top:6px">{fieldSpec.label} <span class="muted">{fieldSpec.note}</span></div>
-      {#if fieldSpec.paint === 'dominant'}{#each field?.groups ?? [] as g}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx, g)}"></i>{g}</span>{/each}{:else}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx)}"></i>intensity</span>{/if}
-    {/if}
-    {#if layers.presence}
-      <div class="lt" style="margin-top:6px">Military presence <span class="muted">■ base · ◆ garrison · ⚓ fleet area · • advisors · size = level</span></div>
-      {#each presenceCounts as [p, n]}<span class="sw"><i style="background:{POWER_COLORS[p] ?? '#8b94a3'}"></i>{p} {n}</span>{/each}
-      {#if !presenceCounts.length}<span class="muted">none recorded this year</span>{/if}
-    {/if}
-    {#if layers.alliances}
-      <div class="lt" style="margin-top:6px">Alliances{layers.alliances === 'major' ? ' (great-power pacts)' : ''} <span class="muted">{allianceView.pacts} defence pacts (CoW) · solid bilateral · dashed multilateral, hub = largest member{allianceView.carried ? ` · carried forward from ${allianceView.from}` : ''}{allianceView.none ? ' · none in source' : ''}</span></div>
-    {/if}
-    {#if layers.labels}
-      <div class="lt" style="margin-top:6px">Regime <span class="muted">· bubble = population</span></div>
-      {#each REGIME_LABELS as l, i}<span class="sw" style="color:{REGIME_COL4[i]}"><b>{REGIME_GLYPH[i]}</b> <span style="color:var(--fg)">{l}</span></span>{/each}
-    {/if}
-    {#if layers.glyphs}
-      <div class="lt" style="margin-top:6px">Qualities <span class="muted">percentile among states that year, clockwise from top</span></div>
-      {#each AXES as [v, l], i}<span class="sw"><span class="mono muted">{i + 1}</span> {l}</span>{/each}<span class="sw"><i style="background:#ef6a5a"></i>at war</span>
-    {/if}
+    {#if fieldSpec}<div class="lt" style="margin-top:6px">{fieldSpec.label} <span class="muted">{fieldSpec.note}{layers.field === 'hazard' ? ` · blur ${fieldBlur.toFixed(0)} px` : ''}</span></div>
+      {#if fieldSpec.paint === 'dominant'}{#each field?.groups ?? [] as g}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx, g)}"></i>{g}</span>{/each}{:else}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx)}"></i>intensity</span>{/if}{/if}
+    {#if presentStatuses.t.length}<div class="lt" style="margin-top:6px">Territories <span class="muted">hatched · ◇ point</span></div>{#each presentStatuses.t as s}<span class="sw"><i style="background:{STATUS_COLORS[s] ?? '#8b94a3'}"></i>{s.replace('_', ' ')}</span>{/each}{/if}
+    {#if presentStatuses.c.length}<div class="lt" style="margin-top:6px">Corridors <span class="muted">line · ○ chokepoint · ┄ cable</span></div>{#each presentStatuses.c as s}<span class="sw"><i style="background:{STATUS_COLORS[s] ?? '#8b94a3'}"></i>{s}</span>{/each}{/if}
+    {#if layers.conflicts}<div class="lt" style="margin-top:6px">Conflicts <span class="muted">red outline at war · orange dashed internal · arcs join principal belligerents</span></div>{/if}
+    {#if presenceCounts.length}<div class="lt" style="margin-top:6px">Military presence <span class="muted">■ base · ◆ garrison · ⚓ fleet · • advisors{zoomedIn ? '' : ' · minor stations at zoom'}</span></div>{#each presenceCounts as [p, n]}<span class="sw"><i style="background:{POWER_COLORS[p] ?? '#8b94a3'}"></i>{p} {n}</span>{/each}{/if}
+    {#if layers.alliances}<div class="lt" style="margin-top:6px">Alliances{layers.alliances === 'major' ? ' (great-power pacts)' : ''} <span class="muted">{allianceView.pacts} defence pacts (CoW){allianceView.carried ? ` · carried forward from ${allianceView.from}` : ''}</span></div>{/if}
+    {#if layers.labels}<div class="lt" style="margin-top:6px">Regime</div>{#each REGIME_LABELS as l, i}<span class="sw" style="color:{REGIME_COL4[i]}"><b>{REGIME_GLYPH[i]}</b> <span style="color:var(--fg)">{l}</span></span>{/each}{/if}
+    {#if layers.glyphs}<div class="lt" style="margin-top:6px">Qualities <span class="muted">percentile that year, clockwise from top: regime · GDP/cap · capability · info · urban</span></div>{/if}
   </div>
 </div>
 
 <style>
-  .map { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0b0e13; }
-  canvas.influence { position: absolute; inset: 0; pointer-events: none; filter: blur(7px); opacity: 0; transition: opacity .2s; }
-  canvas.influence.on { opacity: 0.9; }
-  svg { position: relative; }
-  svg { display: block; cursor: grab; }
-  path.actor { cursor: pointer; }
-  svg path, svg circle { outline: none; }
-  path[role=button], circle[role=button] { cursor: pointer; }
-  path.actor:hover { filter: brightness(1.25); }
-  .reset { position: absolute; right: 10px; top: 10px; }
+  .map { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0b0e13; cursor: grab; user-select: none; }
+  canvas { display: block; }
+  .ctl { position: absolute; right: 10px; top: 10px; display: flex; gap: 4px; }
   .card { position: absolute; pointer-events: none; background: rgba(15,17,21,0.94); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; max-width: 300px; font-size: 11.5px; z-index: 5; }
-  .card .ch { font-size: 13px; margin-bottom: 2px; }
-  .card .cr { margin-top: 2px; }
-  .card .ev { color: var(--fg); border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
-  .legend { position: absolute; left: 10px; bottom: 10px; background: rgba(15,17,21,0.85); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; max-width: 320px; font-size: 11px; }
-  .lt { font-weight: 600; margin-bottom: 4px; }
-  .lt .muted { font-weight: 400; }
-  .bar { height: 8px; border-radius: 2px; }
-  .ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--fg2); }
-  .sw { display: inline-flex; align-items: center; gap: 4px; margin: 1px 8px 1px 0; }
-  .sw i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .card .ch { font-size: 13px; margin-bottom: 2px; } .card .cr { margin-top: 2px; } .card .ev { color: var(--fg); border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+  .legend { position: absolute; left: 10px; bottom: 10px; background: rgba(15,17,21,0.85); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; max-width: 340px; font-size: 11px; max-height: 60%; overflow: auto; }
+  .lt { font-weight: 600; margin-bottom: 4px; } .lt .muted { font-weight: 400; }
+  .bar { height: 8px; border-radius: 2px; } .ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--fg2); }
+  .sw { display: inline-flex; align-items: center; gap: 4px; margin: 1px 8px 1px 0; } .sw i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
   .small { font-size: 10px; margin-top: 3px; }
 </style>

@@ -11,7 +11,7 @@
   let varId = $state('h_regime');
   // auto-switch the regime view across the history/forecast boundary
   const fcFrom = $derived(ensemble?.meta.from ?? 2026);
-  $effect(() => { if (varId === 'h_regime' && year >= fcFrom) varId = 'fc_regime_mean'; else if (varId === 'fc_regime_mean' && year < fcFrom) varId = 'h_regime'; });
+  $effect(() => { if ((view === 'politics' || view === 'forecast') && varId === 'h_regime' && year >= fcFrom) varId = 'fc_regime_mean'; else if (view === 'politics' && varId === 'fc_regime_mean' && year < fcFrom) varId = 'h_regime'; });
   let year = $state(2035);
   let playing = $state(false);
   const Y0 = 1870, Y1 = 2066;
@@ -21,10 +21,21 @@
     const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
     return () => clearInterval(t);
   });
-  let layers = $state({ territories: true, corridors: true, alliances: 'major', conflicts: true, presence: true, field: false, labels: true, glyphs: false });
+  let layers = $state({ territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false });
+  let mode = $state('2d');
+  let view = $state('politics');
+  let advanced = $state(false);
+  const VIEWS = {
+    politics: { label: 'Politics', layers: { territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false }, variable: (y) => (y >= 2026 ? 'fc_regime_mean' : 'h_regime') },
+    power:    { label: 'Power',    layers: { territories: false, corridors: false, alliances: 'major', conflicts: false, presence: true, field: 'influence', labels: false, glyphs: false }, variable: () => 'h_cinc' },
+    conflict: { label: 'Conflict', layers: { territories: true, corridors: true, alliances: false, conflicts: true, presence: false, field: 'conflict', labels: false, glyphs: false }, variable: () => 'h_at_war' },
+    routes:   { label: 'Routes',   layers: { territories: false, corridors: true, alliances: false, conflicts: false, presence: false, field: 'routes', labels: false, glyphs: false }, variable: () => 'h_energy_twh' },
+    forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'fc_regime_mean', year: 2036 },
+  };
+  function applyView(v) { view = v; const V = VIEWS[v]; if (V.year && year < 2026) year = V.year; for (const k of Object.keys(V.layers)) layers[k] = V.layers[k]; const want = V.variable(year); if (mapVars.some(x => x.id === want)) varId = want; }
   let selected = $state(null);
 
-  const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; if (h.horizon) horizon = h.horizon; };
+  const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; if (h.horizon) horizon = h.horizon; if (h.view && VIEWS[h.view]) view = h.view; if (h.mode) mode = h.mode; };
   loadWorld().then(d => { data = d; applyHash(); }).catch(e => { error = String(e); });
   let tab = $state('news');
   const HL_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', coup: '#d95c4f', alliance: '#6cb4ff', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3' };
@@ -35,7 +46,7 @@
     const items = (data.news?.years?.[y] ?? []).filter(e => !e.ongoing && ['war', 'nuclear', 'territory', 'corridor', 'coup', 'alliance'].includes(e.k));
     return items.slice(0, 3).map(e => ({ t: e.t.length > 90 ? e.t.slice(0, 88) + '…' : e.t, col: HL_COL[e.k] ?? '#8b94a3' }));
   });
-  $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab, asOf, horizon }); });
+  $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode }); });
 
   const mapVars = $derived(data ? [...historyVariables(data.history), ...forecastVariables(ensemble ?? data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
   const groups = $derived(data ? [['history', 'History (panel 1870–2025)'], ['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
@@ -68,14 +79,11 @@
           {/each}
         </select>
       </label>
-      <span class="muted tiny">layers</span>
-      {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
-        <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
-      {/each}
-      <label class="asof" title="Continuous geographic fields, painted like weather">field
-        <select value={layers.field || ''} onchange={(e) => layers.field = e.target.value || false}><option value="">none</option><option value="influence">spheres of influence</option><option value="conflict">belligerents</option></select>
-      </label>
-      <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>
+      <span class="muted tiny">view</span>
+      {#each Object.entries(VIEWS) as [k, V]}<button class:on={view === k} onclick={() => applyView(k)}>{V.label}</button>{/each}
+      <span class="muted tiny" style="margin-left:6px">map</span>
+      <button class:on={mode === '2d'} onclick={() => mode = '2d'}>2D</button><button class:on={mode === '3d'} onclick={() => mode = '3d'}>3D</button>
+      <button class:on={advanced} onclick={() => advanced = !advanced} title="individual layers">⋯</button>
       <label>actor
         <select onchange={(e) => { if (e.target.value) { selected = { kind: 'actor', id: e.target.value }; tab = 'detail'; } }} value={selected?.kind === 'actor' ? selected.id : ''}>
           <option value="">—</option>
@@ -84,6 +92,18 @@
       </label>
       <span class="muted tiny right">built {data.world.meta.built.slice(0, 10)} · {Object.keys(data.world.actors).length} actors · {data.world.registry.variables.length} variables</span>
     </header>
+    {#if advanced}
+      <div class="drawer">
+        <span class="muted tiny">layers</span>
+        {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities']] as [k, label]}
+          <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
+        {/each}
+        <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>
+        <label class="asof" title="Continuous geographic fields, painted like weather">field
+          <select value={layers.field || ''} onchange={(e) => layers.field = e.target.value || false}><option value="">none</option><option value="influence">spheres of influence</option><option value="hazard">forecast hazard</option><option value="conflict">belligerents</option><option value="routes">routes</option></select>
+        </label>
+      </div>
+    {/if}
     <div class="timeline">
       <button class="play" onclick={() => playing = !playing} title="play / pause (space)">{playing ? '❚❚' : '▶'}</button>
       <span class="mono yr">{year}</span>
@@ -110,7 +130,7 @@
       {#if !headlines.length}<span class="muted tiny">no recorded headline events for {Math.round(year)}</span>{/if}
     </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {horizon} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
+      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {horizon} {mode} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
       <Panel world={data.world} forecast={ensemble ?? data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
     </main>
   </div>
@@ -121,6 +141,7 @@
   header { display: flex; align-items: center; gap: 14px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--bg2); flex-wrap: wrap; }
   h1 { font-size: 15px; margin-right: 6px; }
   label { display: inline-flex; align-items: center; gap: 6px; color: var(--fg2); font-size: 12px; }
+  .drawer { display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: var(--bg3); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
   .headlines { display: flex; gap: 18px; padding: 3px 12px 5px; background: var(--bg2); border-bottom: 1px solid var(--line); font-size: 11.5px; overflow: hidden; white-space: nowrap; }
   .hl { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .hl i { width: 7px; height: 7px; border-radius: 50%; flex: none; }

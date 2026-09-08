@@ -78,6 +78,18 @@ export const FIELDS = {
     color: (ctx, group) => ctx.colors[group] ?? '#8b94a3',
     threshold: 0.35,
   },
+  hazard: {
+    label: 'Forecast hazard',
+    note: 'P(any modelled event within the horizon | not yet) from the ensemble, painted as the excess over the median actor; dyad hazards sit between the pair · blur grows with the horizon',
+    paint: 'heat',
+    groups: () => ['hazard'],
+    sources: (ctx) => [
+      ...ctx.actorHazards.map(h => ({ group: 'hazard', polygonKey: h.key, lonlat: h.lonlat, w: h.w, lambda: 400 })),
+      ...ctx.dyadHazards.map(h => ({ group: 'hazard', lonlat: h.mid, w: h.w, lambda: h.lambda })),
+    ].filter(s => s.lonlat || s.polygonKey),
+    color: () => '#ff7a45',
+    threshold: 0.35,
+  },
   conflict: {
     label: 'Belligerents',
     note: 'who is at war, not where the fighting is: interstate war (w 1.0, λ 900 km), disputes (0.4, 600), internal armed conflict (0.6 / 1.0 by intensity, 500). Battle locations need UCDP GED (1989→)',
@@ -93,6 +105,16 @@ export const FIELDS = {
   },
 };
 
+FIELDS.routes = {
+  label: 'Routes',
+  note: 'estimate: corridors and chokepoints in service, weighted by how many states they are load-bearing for; contested/closed routes in red',
+  paint: 'dominant',
+  groups: () => ['open', 'contested'],
+  sources: (ctx) => ctx.routes.map(r => ({ group: r.contested ? 'contested' : 'open', lonlat: r.lonlat, w: r.w, lambda: r.lambda })),
+  color: (ctx, g) => (g === 'contested' ? '#ef6a5a' : '#4fc27a'),
+  threshold: 0.3,
+};
+
 /** Generic evaluation: intensity per group per cell from a source list. */
 export function evaluateField(grid, spec, ctx) {
   const groups = spec.groups(ctx); const G = groups.length; const gi = Object.fromEntries(groups.map((g, i) => [g, i]));
@@ -101,7 +123,7 @@ export function evaluateField(grid, spec, ctx) {
   for (const s of srcs) {
     const g = gi[s.group]; if (g == null) continue;
     if (s.polygonKey) for (let i = 0; i < n; i++) if (grid.owner[i] === s.polygonKey) I[i * G + g] += s.w;
-    if (s.lonlat) for (let i = 0; i < n; i++) { const d = km(grid.cells[i], s.lonlat); if (d < s.lambda * 5) I[i * G + g] += s.w * K(d, s.lambda); }
+    if (s.lonlat) { const reach = s.lambda * 5, dlat = reach / 111 + grid.step; const [slon, slat] = s.lonlat; for (let i = 0; i < n; i++) { const c = grid.cells[i]; if (Math.abs(c[1] - slat) > dlat) continue; let dl = Math.abs(c[0] - slon); if (dl > 180) dl = 360 - dl; if (dl * 111 * Math.cos(slat * Math.PI / 180) > reach + 111 * grid.step) continue; const d = km(c, s.lonlat); if (d < reach) I[i * G + g] += s.w * K(d, s.lambda); } }
   }
   const dominant = new Int16Array(n).fill(-1), alpha = new Float32Array(n);
   for (let i = 0; i < n; i++) {
