@@ -169,7 +169,8 @@
     const items = yearItems.filter(it => it.a?.includes(id) && !it.ongoing).slice(0, 4);
     const conflicts = [atWar(id) ? 'at war' : null, intrastateOf(id) >= 2 ? 'civil war' : intrastateOf(id) > 0 ? 'internal armed conflict' : null].filter(Boolean);
     const hosted = presenceAt(presence, year).filter(r => r.host === id).map(r => `${r.actor} ${r.kind}${r.level >= 3 ? ' (major)' : ''}`);
-    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, hosted, live: ha ? (yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? !!ha.live[yi] : true) : !!wa };
+    const lo = ha?.last_observed; const staleNote = lo && Math.round(year) > history.meta.y1 ? Object.entries(lo).filter(([k, y]) => ['cinc', 'regime', 'gdp_pc', 'population'].includes(k) && y != null && y < history.meta.y1 - 1).map(([k, y]) => `${k} as of ${y}`).join(' · ') : '';
+    return { id, name, flag: flagEmoji(ha?.iso2), rg, pop, pacts, items, conflicts, hosted, staleNote, live: ha ? (yi >= 0 && yi <= history.meta.y1 - history.meta.y0 ? !!ha.live[yi] : true) : !!wa };
   });
   const fmtPop = (n) => (n == null ? '—' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' bn' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' k' : String(Math.round(n)));
   const popR = (id) => { const p = popAt(id); return Math.min(26, 2 + Math.sqrt(Math.max(0, p) / 1e6) * 1.4); };
@@ -375,6 +376,7 @@
         <div class="cr muted">pacts: {#each hoverInfo.pacts.slice(0, 4) as p, i}{i ? '; ' : ''}{#if p.greats.length}<span style="color:#6cb4ff">with {p.greats.join(', ')}</span>{#if p.partners.length > p.greats.length} +{p.partners.length - p.greats.length}{/if}{:else}{p.partners.length <= 2 ? p.partners.join(', ') : p.partners.length + ' partners'}{/if}{/each}{hoverInfo.pacts.length > 4 ? ` (+${hoverInfo.pacts.length - 4})` : ''}</div>
       {:else if allianceView.pacts}<div class="cr muted">no defence pact{allianceView.carried ? ' (as of ' + allianceView.from + ')' : ''}</div>{/if}
       {#if hoverInfo.hosted.length}<div class="cr" style="color:#ffd166">foreign forces: {hoverInfo.hosted.join(' · ')}</div>{/if}
+      {#if hoverInfo.staleNote}<div class="cr muted">stale: {hoverInfo.staleNote}</div>{/if}
       {#if hoverInfo.items.length}<div class="cr ev">{Math.round(year)}: {hoverInfo.items.map(it => it.t.replace(/^[^:]+: /, '')).join(' · ')}</div>{/if}
     </div>
   {/if}

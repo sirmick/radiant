@@ -94,7 +94,7 @@
           {#if !histActor.live[hIdx]}<div class="tiny muted">not a system member in {year}</div>{/if}
           <table><tbody>
             {#each Object.entries(history.vars) as [v, spec]}{@const x = hVal(v)}{@const sp = hSpark(v)}{#if x != null || sp}
-              <tr onclick={() => onPickVariable(`h_${v}`)} class="clickable"><td class="lbl">{spec.label}<div class="tiny muted">{spec.unit}</div></td><td class="val mono">{x == null ? '—' : v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</td><td class="spark">{#if sp}<svg width={sp.w} height={sp.h}><line x1={sp.x} x2={sp.x} y1="0" y2={sp.h} stroke="#6cb4ff" stroke-opacity="0.5" /><path d={sp.d} fill="none" stroke="#d7dce3" stroke-width="1" /></svg>{/if}</td></tr>
+              <tr onclick={() => onPickVariable(`h_${v}`)} class="clickable"><td class="lbl">{spec.label}<div class="tiny muted">{spec.unit}{histActor.last_observed?.[v] != null && histActor.last_observed[v] < history.meta.y1 - 1 ? ` · last observed ${histActor.last_observed[v]}` : ''}</div></td><td class="val mono">{x == null ? '—' : v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</td><td class="spark">{#if sp}<svg width={sp.w} height={sp.h}><line x1={sp.x} x2={sp.x} y1="0" y2={sp.h} stroke="#6cb4ff" stroke-opacity="0.5" /><path d={sp.d} fill="none" stroke="#d7dce3" stroke-width="1" /></svg>{/if}</td></tr>
             {/if}{/each}
           </tbody></table>
         {/if}
@@ -132,7 +132,7 @@
                 {@const at = valueAt(rec, year)}
                 {@const sp = sparkPath(rec)}
                 <tr onclick={() => v.display?.map && onPickVariable(v.id)} class:clickable={v.display?.map}>
-                  <td class="lbl">{v.label}<div class="muted tiny">{rec.source}{at.year && at.year !== Math.floor(year) ? ` · ${at.year}` : ''}{at.extrapolated ? ' · held' : at.projected ? ' · proj' : ''}</div></td>
+                  <td class="lbl">{v.label}<div class="muted tiny">{rec.source}{at.year && at.year !== Math.floor(year) ? ` · ${at.year}` : ''}{at.extrapolated ? ' · held' : at.projected ? ' · proj' : ''}{rec.stale != null && rec.stale > 1 ? ` · stale ${rec.stale}y` : ''}</div></td>
                   <td class="val mono" class:muted={at.extrapolated}>{fmt(v, at.value)}</td>
                   <td class="spark">{#if sp}<svg width={sp.w} height={sp.h}><line x1={sp.x0} x2={sp.x0} y1="0" y2={sp.h} stroke="#2a303a" /><path d={sp.hist} fill="none" stroke="#6cb4ff" stroke-width="1.2" />{#if sp.proj}<path d={sp.proj} fill="none" stroke="#6cb4ff" stroke-width="1.2" stroke-dasharray="2 2" />{/if}</svg>{/if}</td>
                 </tr>
