@@ -3,7 +3,7 @@
 // With --as-of before the panel's last year the coefficients are refit on labels <= as-of (scripts/lib/fit.mjs), so a past
 // forecast knows nothing after its own date. Every run also updates public/forecasts.json, the index the UI reads.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { readCsv, Y, loadActors, makeCodeMap } from './lib/hist.mjs';
+import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
 import { createWorld, runEnsemble } from '../src/engine/core.js';
 import { createFitter, loadFitInputs } from './lib/fit.mjs';
 import { existsSync } from 'node:fs';
@@ -19,9 +19,11 @@ const contiguity = JSON.parse(readFileSync('data/contiguity.json', 'utf8')).pair
 const presence = Y('data/presence.yaml');   // operator/presence: the dyadic patron term needs the layer here too
 const actors = loadActors(); const code = makeCodeMap(actors);
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-// alliances: carry the last observed (2000) pacts forward as `*` (year-agnostic) entries
-const pacts = new Set();
-{ const last = new Map(); for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (!a || !b) continue; const k = pairKey(a, b); pacts.add(`${k}|${y}`); if (y >= 2000) last.set(k, y); } for (const k of last.keys()) pacts.add(`${k}|*`); }
+// alliances: the dated graph (scripts/lib/hist.mjs:loadPacts — CoW 3.03 to 2000, ATOP 5.1 to 2018, dated accessions
+// past it, then carried), plus a year-agnostic `*` entry per edge live in its last year so a forecast past the
+// graph's end still sees the pact.
+const { pacts, meta: pactMeta } = loadPacts(code);
+{ const last = new Map(); for (const k of pacts) { const i = k.lastIndexOf('|'); const y = +k.slice(i + 1), e = k.slice(0, i); if (y >= pactMeta.atop_last) last.set(e, y); } for (const k of last.keys()) pacts.add(`${k}|*`); }
 
 const asOf = AS_OF ?? panel.meta.y1;   // default: the last panel year (2025)
 let fitSource = 'data/fits.json (full sample)';

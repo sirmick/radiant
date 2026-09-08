@@ -1,7 +1,12 @@
 # Corridors and chokepoints — the load-bearing infrastructure that turns transit into alliance.
-# kind: chokepoint | corridor.  mode: sea | rail | pipeline | hvdc | cable | multimodal.
+# kind: chokepoint | corridor.  mode: sea | road | rail | pipeline | hvdc | cable | multimodal.
 # status: open | contested | closed | planned | building | built | abandoned.
 # history: dated status list — [{ year, status, controller?, capacity?, completion?, source }] — the as-of record.
+# exists_from / exists_until (+ _source): the record's own life. A record contributes no year outside it — corridors
+#   are the only dated layer that used to have no ending, so a corridor whose thing is gone went on supplying
+#   non-event years forever (era-1991-2026-r2/corridors-6, docs/schema.md).
+# speculative: true — a record with NO dated instrument behind it, kept as a scenario object. Its only history row is
+#   the 2026 snapshot, so it is not a unit at any as-of the model scores; the flag says that is deliberate.
 #   `status`/`controller`/`completion` at the top of a record are the 2026 snapshot; `history` is what a backtest reads.
 # controller: the state that actually holds it (Suez 1882-1956 is the case the field exists for). sponsor: who is building it.
 # load_bearing_for: 0-1 per dependent state (estimate). For planned/building corridors this is the value once built;
@@ -26,6 +31,9 @@
     - { year: 1971.92, status: open, controller: OMN, source: "the British Gulf ends: the exclusive agreements are terminated and the last forces leave by 1 Dec 1971 (Bahrain independent 15 Aug, Qatar 3 Sep, the UAE 2 Dec 1971). The controller passes to the littoral state whose territorial waters the traffic separation scheme runs through — the record carried GBR forward to 1984 and so put every British war of the era on the strait's adjacent_war covariate (era-1945-1991-r2/corridors-3)" }
     - { year: 1984.0, status: contested, source: "Iran-Iraq tanker war" }
     - { year: 1988.6, status: open, source: "ceasefire Aug 1988" }
+    - { year: 2019.36, status: contested, source: "Gulf of Oman tanker attacks 12 May and 13 Jun 2019; the Stena Impero is seized 19 Jul 2019 and war-risk premiums multiply" }
+    - { year: 2019.74, status: open, controller: OMN, source: "the Stena Impero is released 27 Sep 2019 and the insurance market normalises" }
+    - { year: 2024.28, status: contested, source: "the MSC Aries is seized at the strait 13 Apr 2024 during the Iran-Israel exchange" }
     - { year: 2026.2, status: closed, source: "2026 tanker war (data/history/events.yaml)" }
 
 - id: bab_al_mandab
@@ -78,6 +86,9 @@
     - { year: 1967.4, status: closed, controller: EGY, source: "Six-Day War; closed 8 years" }
     - { year: 1975.4, status: open, controller: EGY, source: "reopened 5 Jun 1975" }
     - { year: 2023.9, status: contested, controller: EGY, source: "Houthi campaign halves traffic" }
+    - { year: 2015.58, status: open, controller: EGY, capacity: 1.0, capacity_source: estimate, source: "the New Suez Canal second lane opens 6 Aug 2015: two-way transit over 35 km and convoy waiting time roughly halved" }
+    - { year: 2021.23, status: closed, controller: EGY, source: "Ever Given grounds across the canal 23 Mar 2021; the canal is blocked for six days with about 370 ships queued" }
+    - { year: 2021.24, status: open, controller: EGY, source: "refloated 29 Mar 2021 and traffic resumes. A reversal inside the year is still a transition in it, which is corridorTransitionYears own convention (era-1991-2026-r2/corridors-3)" }
 
 - id: malacca
   name: Strait of Malacca
@@ -98,6 +109,8 @@
     - { year: 1963.70, status: contested, source: "Konfrontasi: Indonesia opposes the formation of Malaysia 16 Sep 1963 and raids across the strait and into Borneo" }
     - { year: 1966.61, status: open, controller: MYS, source: "Bangkok Accord 11 Aug 1966 ends Konfrontasi" }
     - { year: 1971.83, status: open, source: "the British garrison east of Suez goes; the Five Power Defence Arrangements come into force 1 Nov 1971 — a guarantee by treaty replaces a guarantee by presence" }
+    - { year: 2004.55, status: contested, source: "piracy peak in the strait: MALSINDO trilateral coordinated patrols begin 20 Jul 2004 and Lloyd's Joint War Committee lists the strait a war-risk area 20 Jun 2005" }
+    - { year: 2006.60, status: open, controller: MYS, source: "the Joint War Committee removes the war-risk listing 7 Aug 2006; reported attacks fall from 38 (2004) to 11 (2006)" }
 
 - id: bosphorus
   name: Turkish Straits
@@ -126,6 +139,8 @@
     - { year: 1936.50, status: open, controller: TUR, source: "Montreux Convention 20 Jul 1936" }
     - { year: 1939.67, status: closed, controller: TUR, source: "Montreux Art. 19: the Straits are closed to belligerent warships — the closure that makes the Persian Corridor necessary" }
     - { year: 1945.75, status: open, controller: TUR, source: "the war ends and the Montreux peacetime regime resumes; the record's own history used to stop at the 1939 closure and never reopen, which is the case scripts/backtest.mjs's COVERAGE comment cites (era-1870-1914-r2/engine-5)" }
+    - { year: 2022.16, status: contested, controller: TUR, source: "Turkey invokes Montreux Art. 19 on 28 Feb 2022 and closes the Straits to belligerent warships of both sides; Ukraine's Black Sea ports are blockaded and its grain exports stop. The record declares UKR 0.8 load-bearing and had no row for the year that dependence was cut (era-1991-2026-r2/corridors-3)" }
+    - { year: 2023.54, status: open, controller: TUR, source: "Russia terminates the Black Sea Grain Initiative 17 Jul 2023; the Straits revert to the peacetime regime for a corridor that no longer runs" }
 
 - id: taiwan_strait
   name: Taiwan Strait / Luzon Strait
@@ -151,6 +166,10 @@
     - { year: 1958.76, status: open, controller: TWN, source: "de facto ceasefire 6 Oct 1958 (alternate-day shelling); traffic normal" }
     - { year: 1996.2, status: contested, source: "third Taiwan Strait crisis, missile tests" }
     - { year: 1996.4, status: open, source: "crisis ends" }
+    - { year: 2022.59, status: contested, source: "PLA exercises 4-7 Aug 2022 after the Pelosi visit: six live-fire closure zones straddling the strait shipping lanes, the first closure of the lanes themselves since 1996" }
+    - { year: 2022.61, status: open, controller: TWN, source: "the announced drills end 10 Aug 2022 and commercial traffic resumes" }
+    - { year: 2024.39, status: contested, source: "Joint Sword-2024A, 23-24 May 2024, after the Lai inauguration" }
+    - { year: 2024.79, status: contested, source: "Joint Sword-2024B, 14 Oct 2024" }
 
 - id: tiran
   name: Straits of Tiran / Gulf of Aqaba
@@ -172,6 +191,7 @@
     - { year: 1967.43, status: open, controller: ISR, source: "Sharm el-Sheikh taken 7 Jun 1967; the strait is held by force for eleven years" }
     - { year: 1979.23, status: open, controller: ISR, source: "Egypt-Israel treaty 26 Mar 1979, Art. V: the strait and the Gulf of Aqaba are international waterways open to all, free passage guaranteed by treaty" }
     - { year: 1982.31, status: open, controller: EGY, source: "Sinai withdrawal complete 25 Apr 1982 with the Multinational Force and Observers at Sharm el-Sheikh: the guarantee holds without the guarantor holding the ground" }
+    - { year: 2017.45, status: open, controller: SAU, source: "the Egypt-Saudi maritime demarcation agreement of 8 Apr 2016 is ratified by the Egyptian parliament 14 Jun 2017 and cleared by the Supreme Constitutional Court 3 Mar 2018: Tiran and Sanafir pass to Saudi Arabia, which accedes to the free-passage obligations of the 1979 treaty. The islands that command the strait change hands for the first time since 1950 and the record had no row for it (era-1991-2026-r2/corridors-3)" }
 
 - id: florida_straits
   name: Florida Straits / Windward Passage
@@ -198,6 +218,8 @@
   controller: DEU
   geometry: { point: [13.4, 52.5] }
   transits: [DEU, DDR]
+  exists_until: 1994
+  exists_until_source: "the Berlin access regime ends: the Two Plus Four Treaty enters into force 15 Mar 1991 and the last Russian troops leave Berlin 31 Aug 1994, after which there is no corridor to control (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { DEU: 0.35, USA: 0.3, GBR: 0.3, FRA: 0.3 }
   load_bearing_source: estimate
   load_bearing_from: 1945
@@ -224,6 +246,9 @@
   hazard: corridor_build
   notes: "Rasht–Astara is the missing link. Bypasses Suez for India–Russia; the Russia terminus is why it's the corridor the allied bloc likes least."
   history:
+    - { year: 2000.70, status: planned, source: "Russia, Iran and India sign the INSTC agreement in St Petersburg 12 Sep 2000 (era-1991-2026-r2/corridors-5: the record had only a 2026 snapshot row and so was invisible to every as-of)" }
+    - { year: 2002.40, status: building, source: "the agreement enters into force 16 May 2002 and the Caspian ferry and Iranian rail legs enter service piecemeal" }
+    - { year: 2022.55, status: building, source: "Russia reroutes trade south after Feb 2022; the first Russia-India container via Iran arrives Jul 2022 and the Rasht-Astara agreement follows in May 2023" }
     - { year: 2026.68, status: building, completion: 0.6, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: middle_corridor
@@ -253,6 +278,8 @@
   hazard: corridor_build
   notes: "The 'Iran paid to be boring' corridor. Its load_bearing_for CHN is the number that makes Beijing care whether Iran gets bombed."
   history:
+    - { year: 2015.99, status: building, source: "the first China-Iran container train, Yiwu to Tehran, arrives 15 Feb 2016 over the Kazakh-Turkmen-Iranian line completed Dec 2014" }
+    - { year: 2021.99, status: building, source: "the first Istanbul-Xi'an container train completes the through route via the Marmaray tunnel, Dec 2020 - Jan 2021" }
     - { year: 2026.68, status: building, completion: 0.5, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: iran_iraq_syria_med
@@ -263,6 +290,8 @@
   completion: 0.0
   geometry: { line: [[51.4, 35.7], [47.1, 34.3], [44.4, 33.3], [40.1, 35.3], [36.7, 34.7], [35.8, 35.5]] }
   transits: [IRN, IRQ, SYR]
+  speculative: true
+  speculative_source: "no dated instrument exists: there is no signed agreement, no construction start and no financing for the through route, only the Iraqi and Syrian domestic sections, so the record's only history row is the 2026 snapshot and it is not a unit at any as-of the model scores (era-1991-2026-r2/corridors-5). It is kept as a scenario object; give it a dated row and drop this flag the day an instrument exists."
   load_bearing_for: { IRN: 0.5, IRQ: 0.4, SYR: 0.6 }
   hazard: corridor_build
   notes: "The land bridge Israel exists to prevent. Requires Syrian stability and an Iran nobody's bombing; both are hazards."
@@ -281,6 +310,8 @@
   hazard: corridor_build
   notes: "Bypasses Israel completely; Ankara is building it. The competitor to IMEC."
   history:
+    - { year: 2023.31, status: planned, source: "Iraq announces the Grand Faw Port road-and-rail scheme Apr 2023" }
+    - { year: 2024.29, status: planned, source: "Iraq, Turkey, Qatar and the UAE sign the quadripartite memorandum 22 Apr 2024" }
     - { year: 2026.68, status: building, completion: 0.25, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: imec
@@ -296,6 +327,8 @@
   requires: [saudi_normalization]
   notes: "Israel's only path to being on the map rather than around it. Gated on Saudi normalisation."
   history:
+    - { year: 2023.69, status: planned, source: "the IMEC memorandum of understanding is signed at the G20 in New Delhi 9 Sep 2023" }
+    - { year: 2023.78, status: planned, source: "the Oct 2023 Gaza war suspends the Saudi-Israel normalisation the corridor middle leg depends on" }
     - { year: 2026.68, status: planned, completion: 0.1, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: gulf_landbridge
@@ -310,6 +343,8 @@
   hazard: corridor_build
   notes: "Exports west without Hormuz. With Yanbu, this is why Hormuz denial hurts Iran and Qatar more than Saudi."
   history:
+    - { year: 2009.00, status: planned, source: "the GCC Railway agreement of 2009 and the Saudi Landbridge tender" }
+    - { year: 2021.00, status: building, source: "the Etihad Rail UAE network enters service in stages from 2021" }
     - { year: 2026.68, status: building, completion: 0.5, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: zangezur
@@ -325,6 +360,9 @@
   territory: zangezur_syunik
   notes: "Links Turkey to the Caspian without Iran or Georgia. Iran's strategic nightmare; a bridge that 'collapses' is the covert option."
   history:
+    - { year: 2020.86, status: planned, source: "trilateral statement 10 Nov 2020, Art. 9: unimpeded transport links between Azerbaijan and Nakhchivan, guaranteed by Russian border guards" }
+    - { year: 2023.72, status: planned, source: "the Sep 2023 Karabakh offensive removes the Armenian counterparty the 2020 formula assumed" }
+    - { year: 2025.60, status: building, source: "the Aug 2025 Washington framework renames the route TRIPP and moves the guarantee off Russia" }
     - { year: 2026.68, status: building, completion: 0.2, source: "data/corridors.yaml snapshot 2026-09-06" }
 
 - id: gulf_europe_hvdc
@@ -335,6 +373,8 @@
   completion: 0.05
   geometry: { line: [[46.7, 24.7], [40.5, 30.0], [35.9, 31.9], [32.5, 30.5], [23.6, 37.9]] }
   transits: [SAU, JOR, EGY, GRC]
+  speculative: true
+  speculative_source: "no dated instrument exists: the Saudi-Jordan and Saudi-Egypt interconnectors are real and dated, the Gulf-to-Europe HVDC through route is not, so the record's only history row is the 2026 snapshot and it is not a unit at any as-of the model scores (era-1991-2026-r2/corridors-5). It is kept as a scenario object; give it a dated row and drop this flag the day an instrument exists."
   load_bearing_for: { SAU: 0.4, JOR: 0.5, EGY: 0.4, GRC: 0.3 }
   hazard: corridor_build
   notes: "The Gulf's next product is electrons. Same territorial-integrity incentive as rail, same transit states."
@@ -349,6 +389,8 @@
   completion: 0.1
   geometry: { line: [[-71.2, 46.8], [-79.4, 43.7], [-87.6, 41.9], [-96.8, 32.8], [-100.3, 25.7], [-99.1, 19.4]] }
   transits: [CAN, USA, MEX]
+  speculative: true
+  speculative_source: "no dated instrument exists: this is a scenario object gated on us_reliability_reversal_up, not a project with a start date, so the record's only history row is the 2026 snapshot and it is not a unit at any as-of the model scores (era-1991-2026-r2/corridors-5). It is kept as a scenario object; give it a dated row and drop this flag the day an instrument exists."
   load_bearing_for: { CAN: 0.5, USA: 0.3, MEX: 0.5 }
   hazard: corridor_build
   requires: [us_reliability_reversal_up]
@@ -384,6 +426,9 @@
     - { year: 1989.97, status: closed, controller: USA, source: "the canal is closed to traffic 20 Dec 1989 during the US invasion — the only wartime closure in its history" }
     - { year: 1990.0, status: open, controller: PAN, source: "reopened 21 Dec 1989 / Jan 1990" }
     - { year: 1999.99, status: open, controller: PAN, source: "Torrijos–Carter handover 31 Dec 1999" }
+    - { year: 2016.48, status: open, controller: PAN, capacity: 1.0, capacity_source: estimate, source: "the expanded neo-Panamax locks open 26 Jun 2016, roughly tripling the transitable tonnage" }
+    - { year: 2023.83, status: contested, controller: PAN, capacity: 0.6, capacity_source: estimate, source: "Gatun Lake drought: daily transits cut from 36 to 24 on 30 Jul 2023, to 22 in Nov 2023, with 18 scheduled for Feb 2024 - the layer second impairment with no war attached" }
+    - { year: 2024.58, status: open, controller: PAN, source: "restrictions lifted from Aug 2024 as the lake refills; 36 slots restored through 2025" }
   notes: "The 1881–1889 French attempt is the model's only abandoned corridor: a corridor can fail without anyone fighting over it."
 
 - id: kiel
@@ -451,6 +496,8 @@
     - { year: 1916.00, status: built, controller: RUS, capacity: 0.7, source: "Amur line complete 1916, all-Russian route, double-tracked" }
     - { year: 1918.40, status: contested, controller: RUS, capacity: 0.2, capacity_source: estimate, source: "Czechoslovak Legion seizes the line May 1918; the civil war is fought along it" }
     - { year: 1920.80, status: built, controller: RUS, capacity: 0.5, capacity_source: estimate, source: "Red Army retakes the line Oct 1920; capacity recovers slowly" }
+    - { year: 2002.99, status: built, controller: RUS, source: "full electrification of the line is completed Dec 2002 (era-1991-2026-r2/corridors-6: the record last row was 1920 and the line has run throughout)" }
+    - { year: 2022.15, status: contested, controller: RUS, source: "sanctions from 24 Feb 2022 remove most European traffic from the land bridge; container volumes on the China-Europe rail route fall sharply" }
   notes: "capacity is the through-traffic share the line can actually carry (estimate); the 1904 single track is the war variable."
 
 - id: chinese_eastern_railway
@@ -462,6 +509,8 @@
   sponsor: RUS
   geometry: { line: [[113.5, 52.0], [117.4, 49.6], [124.4, 45.4], [126.6, 45.8], [130.3, 45.8], [131.9, 43.1]] }
   transits: [RUS, CHN]
+  exists_until: 1952
+  exists_until_source: "Soviet rights in the line are transferred to China 31 Dec 1952 and it is absorbed into Chinese state railways: it stops being a separately controlled corridor (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { RUS: 0.7, CHN: 0.3 }
   load_bearing_source: estimate
   history:
@@ -485,6 +534,8 @@
   sponsor: JPN
   geometry: { line: [[126.6, 45.8], [125.3, 43.9], [123.4, 41.8], [121.6, 38.9]] }
   transits: [RUS, CHN, JPN]
+  exists_until: 1952
+  exists_until_source: "the same 1952 handover absorbs the line into Chinese state railways (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { JPN: 0.6, RUS: 0.4, CHN: 0.3 }
   load_bearing_source: estimate
   history:
@@ -508,6 +559,8 @@
   sponsor: DEU
   geometry: { line: [[13.4, 52.5], [16.4, 48.2], [21.0, 44.8], [28.98, 41.0], [32.5, 37.9], [37.2, 36.9], [40.0, 35.0], [44.4, 33.3], [47.8, 30.5]] }
   transits: [DEU, AUT_HUN, OTTOMAN]
+  exists_until: 1940
+  exists_until_source: "the Berlin-Baghdad project as a single controlled corridor ends with the war; its sections pass to the successor states' own railways (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { DEU: 0.4, OTTOMAN: 0.6, AUT_HUN: 0.3 }
   load_bearing_source: estimate
   history:
@@ -527,6 +580,8 @@
   status: closed
   geometry: { line: [[36.3, 33.5], [35.9, 31.9], [36.6, 29.5], [37.3, 27.4], [39.6, 24.5]] }
   transits: [OTTOMAN]
+  exists_until: 1920
+  exists_until_source: "the Medina section is cut in the Arab Revolt (1916-18) and never reopens; the line south of Ma'an has carried no through traffic since 1920 (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { OTTOMAN: 0.5 }
   load_bearing_source: estimate
   history:
@@ -545,6 +600,8 @@
   status: abandoned
   geometry: { line: [[18.4, -33.9], [28.0, -26.2], [28.6, -20.2], [28.3, -15.4], [31.0, -8.9], [29.4, -1.9], [32.6, 0.3], [32.5, 15.6], [31.2, 30.0]] }
   transits: [GBR]
+  exists_until: 1926
+  exists_until_source: "the through route is abandoned as a project: the Nile-Congo gap is never bridged and the record's last construction row is 1926 (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { GBR: 0.3 }
   load_bearing_source: estimate
   history:
@@ -591,6 +648,8 @@
   controller: RUS
   geometry: { line: [[53.0, 40.0], [58.4, 37.9], [62.2, 39.1], [64.6, 39.8], [66.9, 39.7], [69.2, 41.3]] }
   transits: [RUS]
+  exists_until: 1924
+  exists_until_source: "absorbed into the Central Asian Railway of the USSR at the 1924 national delimitation; it stops being a separately controlled corridor (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { RUS: 0.5 }
   load_bearing_source: estimate
   history:
@@ -653,6 +712,9 @@
     - { year: 1869.79, status: planned, source: "Gotthard Convention signed 15 Oct 1869 by Switzerland, Italy and the North German Confederation" }
     - { year: 1872.70, status: building, source: "works begin 13 Sep 1872" }
     - { year: 1882.40, status: built, source: "opened 1 Jun 1882" }
+    - { year: 2016.42, status: built, source: "the Gotthard Base Tunnel opens 1 Jun 2016, 57 km: the record own corridor rebuilt at sea level (era-1991-2026-r2/corridors-6)" }
+    - { year: 2023.61, status: contested, source: "a freight derailment 10 Aug 2023 closes one tube of the base tunnel; full service is not restored until Sep 2024" }
+    - { year: 2024.67, status: built, source: "both tubes back in service 2 Sep 2024" }
   notes: "Alpine transit as neutrality's product: Swiss neutrality is load-bearing for its neighbours because of the tunnels."
 
 - id: simplon_tunnel
@@ -677,6 +739,8 @@
   controller: GBR
   geometry: { line: [[-0.1, 51.5], [-5.4, 36.1], [14.5, 35.9], [29.9, 31.2], [45.0, 12.8], [72.8, 19.0], [103.8, 1.3], [114.2, 22.3]] }
   transits: [GBR, OTTOMAN, IND]
+  exists_until: 1970
+  exists_until_source: "the Eastern Telegraph submarine network is superseded by coaxial cable and satellite and the last of its 19th-century sections is withdrawn by 1970 (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { GBR: 0.9, IND: 0.8, AUS: 0.9, JPN: 0.4 }
   load_bearing_source: estimate
   history:
@@ -695,6 +759,8 @@
   controller: GBR
   geometry: { line: [[-123.1, 49.3], [-159.4, 3.9], [178.4, -18.1], [167.9, -29.0], [151.2, -33.9]] }
   transits: [CAN, GBR, AUS, NZL]
+  exists_until: 1963
+  exists_until_source: "the 1902 Pacific Cable is retired when COMPAC replaces it in 1963 (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { GBR: 0.5, CAN: 0.4, AUS: 0.6, NZL: 0.6 }
   load_bearing_source: estimate
   history:
@@ -711,6 +777,8 @@
   controller: DEU
   geometry: { line: [[7.2, 53.4], [-2.0, 49.5], [-25.7, 37.7], [-74.0, 40.7]] }
   transits: [DEU, USA]
+  exists_until: 1922
+  exists_until_source: "the German transatlantic cables are ceded under the Treaty of Versailles and the last of them is worked by other owners from 1922; the German system no longer exists (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { DEU: 0.8 }
   load_bearing_source: estimate
   history:
@@ -730,6 +798,8 @@
   controller: USA
   geometry: { line: [[-80.4, 22.1], [-82.4, 23.1], [120.98, 14.6]] }
   transits: [ESP, USA, PHL]
+  exists_until: 1899
+  exists_until_source: "the Spanish colonial cable system ends with the loss of Cuba, Puerto Rico and the Philippines in 1898-99 (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { ESP: 0.7 }
   load_bearing_source: estimate
   history:
@@ -745,6 +815,8 @@
   status: closed
   geometry: { line: [[44.4, 35.5], [40.0, 34.0], [36.3, 32.6], [35.0, 32.8]] }
   transits: [IRQ, SYR, LBN, JOR, ISR]
+  exists_until: 1948
+  exists_until_source: "the H-branch is cut at the Israeli border in 1948 and never reopens; the line is not a corridor after that year (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { IRQ: 0.5, GBR: 0.4, JOR: 0.3 }
   load_bearing_source: estimate
   history:
@@ -762,6 +834,8 @@
   status: closed
   geometry: { line: [[48.5, 27.5], [44.0, 30.0], [38.0, 32.0], [35.6, 33.3]] }
   transits: [SAU, JOR, SYR, LBN]
+  exists_until: 1990
+  exists_until_source: "the Saudi-Jordan section ceases pumping in 1990 and the line is not a corridor after it (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { SAU: 0.5, LBN: 0.4, JOR: 0.4, SYR: 0.3 }
   load_bearing_source: estimate
   history:
@@ -784,6 +858,11 @@
     - { year: 1962.88, status: building, controller: RUS, source: "COCOM large-diameter pipe embargo 18 Nov 1962 and the West German export ban of Mar 1963, aimed at the line's 40-inch pipe: the first Western attempt to stop a Soviet energy corridor by export control" }
     - { year: 1964.00, status: built, controller: RUS, source: "opened 1964 — the corridor that made the Warsaw Pact an energy system" }
     - { year: 1974.00, status: built, controller: RUS, source: "Druzhba-2 doubles the line" }
+    - { year: 2019.31, status: contested, controller: RUS, source: "organic-chloride contamination halts flows to Belarus, Poland and Germany 24 Apr 2019; full service is not restored until Jul 2019 (era-1991-2026-r2/corridors-4)" }
+    - { year: 2019.55, status: built, controller: RUS, source: "flows restored Jul 2019" }
+    - { year: 2022.42, status: contested, controller: RUS, source: "the EU sixth sanctions package of 3 Jun 2022 bans seaborne Russian crude but exempts pipeline crude - the corridor survives as the exemption, and its landlocked customers are the reason" }
+    - { year: 2024.55, status: contested, controller: RUS, source: "Ukrainian sanctions on Lukoil cut Hungarian and Slovak supply through the southern branch, Jul 2024" }
+    - { year: 2025.62, status: closed, controller: RUS, source: "Ukrainian strikes on the Unecha pumping station halt flows to Hungary and Slovakia, Aug 2025" }
 
 - id: btc_pipeline
   name: Baku–Tbilisi–Ceyhan pipeline
@@ -808,7 +887,10 @@
   load_bearing_source: estimate
   history:
     - { year: 2011.90, status: built, source: "Nord Stream 1 opens Nov 2011" }
-    - { year: 2022.70, status: closed, source: "sabotage 26 Sep 2022" }
+    - { year: 2021.69, status: built, source: "Nord Stream 2 line B is welded 10 Sep 2021 and the system is physically complete" }
+    - { year: 2022.15, status: contested, source: "Germany suspends NS2 certification 22 Feb 2022, two days before the invasion - a corridor stopped by a decision rather than a charge, and the reason this record carries two closure mechanisms rather than one (era-1991-2026-r2/corridors-4)" }
+    - { year: 2022.45, status: contested, source: "Gazprom cuts NS1 to 40% of capacity 15 Jun 2022 and to 20% on 27 Jul, then halts it entirely 31 Aug 2022" }
+    - { year: 2022.70, status: closed, source: "three of the four lines are ruptured by explosions 26 Sep 2022; NS2 line B survives intact, which is why the closed status is a claim about use and not about the pipe" }
 
 - id: power_of_siberia
   name: Power of Siberia
@@ -864,6 +946,8 @@
   controller: CHN
   geometry: { line: [[97.8, 22.9], [98.5, 24.4], [99.2, 25.1], [100.2, 25.6], [102.7, 25.0]] }
   transits: [CHN, MMR]
+  exists_until: 1945
+  exists_until_source: "the wartime supply route into China ends with the reopening of the Chinese ports in 1945; the modern road is not the corridor this record is about (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { CHN: 0.7 }
   load_bearing_source: estimate
   notes: "China's last land supply route after the coast fell. The Jul-Oct 1940 closure is a corridor shut by diplomatic pressure with no war on any transit state — the second falsifier for chokepoint_status, whose covariates are all conflict terms."
@@ -882,6 +966,8 @@
   controller: GBR
   geometry: { point: [11.5, 36.5] }
   transits: [ESP, ITA, EGY, GBR]
+  exists_until: 1945
+  exists_until_source: "the wartime through-Mediterranean convoy route as a controlled corridor ends with the war; the sea lane afterwards is the Suez and Gibraltar records (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { GBR: 0.6, ITA: 0.5, FRA: 0.4, IND: 0.4 }
   load_bearing_source: estimate
   notes: "Without this record the Suez entry asserts an open canal for 1940-43, the years nobody could reach it: Allied traffic went round the Cape, adding roughly 40 days per voyage."
@@ -1028,6 +1114,8 @@
   controller: BRA
   geometry: { line: [[-64.8, -9.4], [-65.3, -10.8], [-65.35, -11.0]] }
   transits: [BRA, BOL]
+  exists_until: 1972
+  exists_until_source: "the last operating stub of the railway closes in 1972 (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { BOL: 0.6, BRA: 0.3 }
   load_bearing_source: estimate
   history:
@@ -1044,6 +1132,8 @@
   controller: GBR
   geometry: { line: [[68.35, 27.7], [67.0, 29.5], [66.6, 30.2], [66.45, 30.92]] }
   transits: [GBR, AFG]
+  exists_until: 1947
+  exists_until_source: "absorbed into Pakistan Railways at partition, 14 Aug 1947 (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { GBR: 0.4 }
   load_bearing_source: estimate
   history:
@@ -1061,6 +1151,8 @@
   controller: RUS
   geometry: { line: [[55.1, 51.8], [59.6, 47.0], [65.2, 43.7], [69.3, 41.3]] }
   transits: [RUS]
+  exists_until: 1924
+  exists_until_source: "absorbed into the Soviet railway network at the 1924 national delimitation (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { RUS: 0.5 }
   load_bearing_source: estimate
   history:
@@ -1095,6 +1187,8 @@
   controller: CHN
   geometry: { line: [[116.4, 39.9], [117.2, 39.1], [119.8, 40.0], [121.6, 40.8], [123.4, 41.8]] }
   transits: [CHN]
+  exists_until: 1949
+  exists_until_source: "the line is absorbed into Chinese state railways with the People's Republic and stops being a separately controlled corridor (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { CHN: 0.5, GBR: 0.3 }
   load_bearing_source: estimate
   history:
@@ -1134,6 +1228,8 @@
   controller: ROU
   geometry: { line: [[26.02, 44.94], [25.97, 43.90], [22.67, 44.62], [19.06, 47.50], [16.37, 48.21], [13.74, 48.57]] }
   transits: [ROU, BGR, SRB, HUN, AUT, DEU]
+  exists_until: 1944
+  exists_until_source: "the Ploiesti fields are bombed out and taken in Aug 1944 and the Danube oil route to Germany ends with the war (era-1991-2026-r2/corridors-6)"
   load_bearing_for: { DEU: 0.6, ROU: 0.5, ITA: 0.3 }
   load_bearing_source: "estimate: Romanian crude was roughly a third of German oil supply 1941-43 and the only significant non-synthetic source"
   history:
@@ -1258,6 +1354,13 @@
   history:
     - { year: 1967.0, status: built, controller: RUS, source: "the line reaches Uzhgorod and the Czechoslovak border 1967" }
     - { year: 1968.68, status: built, controller: RUS, source: "first Soviet gas delivered to Austria 1 Sep 1968: the first Western European state on a Soviet pipeline, five days after the invasion of Czechoslovakia" }
+    - { year: 2006.01, status: contested, controller: RUS, source: "Gazprom cuts supply to Ukraine 1 Jan 2006 over the transit price; downstream European deliveries fall for three days - the first time the corridor was used as an instrument against its own customers (era-1991-2026-r2/corridors-4)" }
+    - { year: 2006.03, status: built, controller: RUS, source: "settled 4 Jan 2006 and transit resumes" }
+    - { year: 2009.02, status: closed, controller: RUS, source: "total halt of transit 7-20 Jan 2009: eighteen European states lose Russian gas mid-winter - the modern record clearest corridor closure" }
+    - { year: 2009.05, status: built, controller: RUS, source: "transit resumes 20 Jan 2009 under the ten-year contract signed 19 Jan" }
+    - { year: 2014.46, status: contested, controller: RUS, source: "supply to Ukraine itself is halted 16 Jun 2014; transit to Europe continues" }
+    - { year: 2022.36, status: contested, controller: RUS, source: "the Sokhranivka entry point is closed 11 May 2022, about a third of the transit capacity" }
+    - { year: 2025.00, status: closed, controller: RUS, source: "the five-year transit contract expires 1 Jan 2025 and is not renewed: Russian pipeline gas to Europe via Ukraine ends after 34 years" }
 
 - id: soyuz_pipeline
   name: Soyuz gas pipeline (Orenburg–Uzhgorod)
@@ -1273,6 +1376,13 @@
   history:
     - { year: 1975.0, status: building, controller: RUS, source: "CMEA agreement of 1974: the member states build the line and are repaid in gas — the Warsaw Pact's largest joint project" }
     - { year: 1980.0, status: built, controller: RUS, source: "in service 1980" }
+    - { year: 2006.01, status: contested, controller: RUS, source: "Gazprom cuts supply to Ukraine 1 Jan 2006 over the transit price; downstream European deliveries fall for three days - the first time the corridor was used as an instrument against its own customers (era-1991-2026-r2/corridors-4)" }
+    - { year: 2006.03, status: built, controller: RUS, source: "settled 4 Jan 2006 and transit resumes" }
+    - { year: 2009.02, status: closed, controller: RUS, source: "total halt of transit 7-20 Jan 2009: eighteen European states lose Russian gas mid-winter - the modern record clearest corridor closure" }
+    - { year: 2009.05, status: built, controller: RUS, source: "transit resumes 20 Jan 2009 under the ten-year contract signed 19 Jan" }
+    - { year: 2014.46, status: contested, controller: RUS, source: "supply to Ukraine itself is halted 16 Jun 2014; transit to Europe continues" }
+    - { year: 2022.36, status: contested, controller: RUS, source: "the Sokhranivka entry point is closed 11 May 2022, about a third of the transit capacity" }
+    - { year: 2025.00, status: closed, controller: RUS, source: "the five-year transit contract expires 1 Jan 2025 and is not renewed: Russian pipeline gas to Europe via Ukraine ends after 34 years" }
 
 - id: urengoy_uzhgorod
   name: Urengoy–Pomary–Uzhgorod (the trans-Siberian export line)
@@ -1292,6 +1402,13 @@
     - { year: 1982.46, status: contested, controller: RUS, source: "the sanctions are extended to foreign subsidiaries and licensees 18 Jun 1982; France, Italy, Britain and West Germany order their firms to deliver anyway — the corridor build that splits a defence alliance" }
     - { year: 1982.87, status: building, controller: RUS, source: "the sanctions are lifted 13 Nov 1982; construction continues" }
     - { year: 1984.02, status: built, controller: RUS, source: "deliveries to Western Europe begin Jan 1984" }
+    - { year: 2006.01, status: contested, controller: RUS, source: "Gazprom cuts supply to Ukraine 1 Jan 2006 over the transit price; downstream European deliveries fall for three days - the first time the corridor was used as an instrument against its own customers (era-1991-2026-r2/corridors-4)" }
+    - { year: 2006.03, status: built, controller: RUS, source: "settled 4 Jan 2006 and transit resumes" }
+    - { year: 2009.02, status: closed, controller: RUS, source: "total halt of transit 7-20 Jan 2009: eighteen European states lose Russian gas mid-winter - the modern record clearest corridor closure" }
+    - { year: 2009.05, status: built, controller: RUS, source: "transit resumes 20 Jan 2009 under the ten-year contract signed 19 Jan" }
+    - { year: 2014.46, status: contested, controller: RUS, source: "supply to Ukraine itself is halted 16 Jun 2014; transit to Europe continues" }
+    - { year: 2022.36, status: contested, controller: RUS, source: "the Sokhranivka entry point is closed 11 May 2022, about a third of the transit capacity" }
+    - { year: 2025.00, status: closed, controller: RUS, source: "the five-year transit contract expires 1 Jan 2025 and is not renewed: Russian pipeline gas to Europe via Ukraine ends after 34 years" }
   notes: "The clearest instance in the dataset of a corridor build splitting an alliance, and therefore the case the corridor dampener exists to be tested against."
 
 - id: bam_railway
@@ -1311,3 +1428,192 @@
     - { year: 1984.74, status: built, controller: RUS, source: "the golden spike 29 Sep 1984" }
     - { year: 1989.0, status: built, controller: RUS, source: "permanent through service from 1989" }
   notes: "The layer's one instance of a corridor built as a hedge against a border the builder had just fought over — the reason it is here rather than a general infrastructure record."
+
+# ---------------------------------------------------------------- the 1991-2026 layer (era-1991-2026-r2/corridors-3, 4, 7)
+# The era's own chokepoints, transit corridors and subsea links. Before this turn the layer's last dated modern rows
+# were bab_al_mandab 2023, suez 2023, taiwan_strait 1996, nord_stream 2022, benguela 2014 and beira 1992 — three
+# transitions on chokepoints and three on corridors across 1992-2025, against 95 and 73 in the coded windows.
+
+- id: kerch_strait
+  name: Kerch Strait
+  kind: chokepoint
+  mode: sea
+  status: closed
+  controller: RUS
+  geometry: { point: [36.6, 45.3] }
+  transits: [RUS, UKR]
+  load_bearing_for: { UKR: 0.5 }
+  load_bearing_source: estimate
+  load_bearing_from: 1992
+  history:
+    - { year: 1992.0, status: open, controller: UKR, source: "the strait and the Sea of Azov approaches pass to Ukraine with Crimea at the Soviet dissolution; the 2003 Russo-Ukrainian treaty later makes the Azov an internal sea of the two states" }
+    - { year: 2003.75, status: contested, controller: UKR, source: "Tuzla Island crisis, Sep-Dec 2003: Russia builds a causeway toward the Ukrainian-held island in the strait and the two states mobilise border forces" }
+    - { year: 2014.20, status: contested, controller: RUS, source: "Crimea is seized Feb-Mar 2014 and Russia holds both shores of the strait" }
+    - { year: 2018.37, status: contested, controller: RUS, source: "the Crimean Bridge road span opens 15 May 2018; its 33 m air draft shuts Panamax traffic out of Mariupol and Berdiansk" }
+    - { year: 2018.90, status: closed, controller: RUS, source: "Kerch Strait incident 25 Nov 2018: three Ukrainian naval vessels are rammed and seized and the strait is blocked with a tanker under the bridge" }
+    - { year: 2018.92, status: contested, controller: RUS, source: "the strait reopens after two days; Ukrainian Azov traffic does not recover" }
+    - { year: 2022.15, status: closed, controller: RUS, source: "the Sea of Azov is closed to commercial traffic from 24 Feb 2022" }
+  notes: "The era's clearest case of a chokepoint acquired by conquest and then used: seizure (2014), a physical restriction built into it (2018), a naval closure (2018) and a war closure (2022) on one record."
+
+- id: black_sea_grain_corridor
+  name: Black Sea grain corridor
+  kind: corridor
+  mode: sea
+  status: contested
+  geometry: { line: [[30.7, 46.5], [31.5, 45.0], [30.0, 43.0], [29.1, 41.2]] }
+  transits: [UKR, TUR]
+  load_bearing_for: { EGY: 0.5, LBN: 0.6, TUR: 0.3, TUN: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 2022
+  history:
+    - { year: 2022.15, status: closed, source: "Russian naval blockade of Odesa and the Ukrainian Black Sea ports from 24 Feb 2022; roughly 20 Mt of grain is stranded" }
+    - { year: 2022.55, status: built, source: "the Black Sea Grain Initiative is signed in Istanbul 22 Jul 2022 and the first outbound sailing leaves Odesa 1 Aug 2022" }
+    - { year: 2023.54, status: closed, source: "Russia withdraws from the initiative 17 Jul 2023 and strikes the port infrastructure" }
+    - { year: 2023.60, status: contested, source: "Ukraine opens a unilateral humanitarian corridor from 8 Aug 2023, hugging the Romanian and Bulgarian territorial sea" }
+  notes: "A corridor that is created, guaranteed by a third party, withdrawn from and then re-created unilaterally inside four years — the shortest complete corridor life in the layer."
+
+- id: lachin_corridor
+  name: Lachin corridor
+  kind: corridor
+  mode: road
+  status: closed
+  controller: AZE
+  geometry: { line: [[46.5, 39.9], [46.55, 39.63], [46.75, 39.8]] }
+  transits: [AZE, ARM]
+  load_bearing_for: { ARM: 0.2 }
+  load_bearing_source: estimate
+  load_bearing_from: 1994
+  history:
+    - { year: 1992.38, status: contested, source: "the corridor is taken by Armenian forces 18 May 1992, opening the land link between Armenia and Nagorno-Karabakh" }
+    - { year: 1994.36, status: open, controller: ARM, source: "Bishkek ceasefire 12 May 1994 freezes the corridor in Armenian hands for 26 years" }
+    - { year: 2020.86, status: open, controller: RUS, source: "trilateral statement 10 Nov 2020: a 5 km corridor guaranteed by Russian peacekeepers, the surrounding districts returned to Azerbaijan" }
+    - { year: 2022.95, status: closed, controller: AZE, source: "blockade from 12 Dec 2022; the guarantor is present and does not open it" }
+    - { year: 2023.72, status: closed, controller: AZE, source: "the 19-20 Sep 2023 offensive ends the entity the corridor served; its dependent population leaves 24-30 Sep 2023" }
+  notes: "Linked to data/territories.yaml nagorno_karabakh. The case guarantor_withdrawal is fitted on with the guarantor still in place: the Russian peacekeepers were on the road for the whole 2022-23 blockade."
+
+- id: yamal_europe
+  name: Yamal-Europe pipeline
+  kind: corridor
+  mode: pipeline
+  status: closed
+  controller: RUS
+  geometry: { line: [[66.5, 66.5], [50.0, 58.0], [30.5, 53.9], [23.5, 52.2], [17.0, 52.4], [14.1, 52.3]] }
+  transits: [RUS, BLR, POL, DEU]
+  load_bearing_for: { POL: 0.5, DEU: 0.2, BLR: 0.4 }
+  load_bearing_source: estimate
+  load_bearing_from: 1999
+  history:
+    - { year: 1999.75, status: built, controller: RUS, source: "the Polish section enters service Sep 1999 - the first line built expressly to bypass Ukrainian transit" }
+    - { year: 2004.12, status: contested, controller: RUS, source: "Belarus transit dispute Feb 2004; supply to Poland and Germany is cut for a day" }
+    - { year: 2010.48, status: contested, controller: RUS, source: "Belarus transit dispute Jun 2010: Gazprom cuts supply to Belarus and Belarus cuts transit" }
+    - { year: 2022.36, status: closed, controller: RUS, source: "Russian counter-sanctions on EuRoPol Gaz 11 May 2022 end westward flows through the Polish section" }
+
+- id: blue_stream
+  name: Blue Stream
+  kind: corridor
+  mode: pipeline
+  status: built
+  controller: RUS
+  geometry: { line: [[39.0, 44.9], [36.5, 42.5], [34.9, 41.2], [32.9, 40.0]] }
+  transits: [RUS, TUR]
+  load_bearing_for: { TUR: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 2003
+  history:
+    - { year: 2003.10, status: built, controller: RUS, source: "first gas delivered Feb 2003 - the first Black Sea line that bypasses Ukraine, and the template for TurkStream" }
+
+- id: turkstream
+  name: TurkStream
+  kind: corridor
+  mode: pipeline
+  status: built
+  controller: RUS
+  geometry: { line: [[37.6, 44.8], [33.0, 42.5], [28.0, 41.5], [26.3, 41.6], [25.0, 43.4], [20.5, 44.8], [18.9, 46.1]] }
+  transits: [RUS, TUR, BGR, SRB, HUN]
+  load_bearing_for: { TUR: 0.3, BGR: 0.6, SRB: 0.7, HUN: 0.5 }
+  load_bearing_source: estimate
+  load_bearing_from: 2020
+  history:
+    - { year: 2020.00, status: built, controller: RUS, source: "commercial deliveries begin 1 Jan 2020" }
+    - { year: 2025.00, status: built, controller: RUS, source: "after the Ukrainian transit contract expires 1 Jan 2025 this is the only route by which Russian pipeline gas still reaches the EU" }
+
+# ---------------------------------------------------------------- subsea links, 2019-2026 (era-1991-2026-r2/corridors-7)
+# Every `mode: cable` record in the layer was pre-1945 and dead. This is the class the era's grey-zone interdiction
+# actually happens on, and the one where the transit state, the guarantor and the interdictor are separable.
+
+- id: balticconnector
+  name: Balticconnector
+  kind: corridor
+  mode: pipeline
+  status: built
+  geometry: { line: [[23.5, 59.9], [24.5, 59.5], [25.0, 60.3]] }
+  transits: [FIN, EST]
+  load_bearing_for: { FIN: 0.4, EST: 0.5 }
+  load_bearing_source: estimate
+  load_bearing_from: 2020
+  history:
+    - { year: 2019.99, status: built, source: "in service 1 Jan 2020, joining the Finnish and Baltic gas markets" }
+    - { year: 2023.77, status: closed, source: "the gas pipe and two telecom cables are damaged 8 Oct 2023; the anchor of the Newnew Polar Bear is recovered from the seabed beside the pipe" }
+    - { year: 2024.30, status: built, source: "repaired and back in service 22 Apr 2024" }
+
+- id: estlink
+  name: EstLink 1/2 HVDC
+  kind: corridor
+  mode: hvdc
+  status: built
+  geometry: { line: [[24.8, 59.4], [25.2, 59.8], [25.6, 60.3]] }
+  transits: [FIN, EST]
+  load_bearing_for: { EST: 0.5, LVA: 0.3, LTU: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 2014
+  history:
+    - { year: 2006.99, status: built, source: "EstLink 1 in service Jan 2007, the first Baltic-Nordic power link" }
+    - { year: 2014.10, status: built, source: "EstLink 2 in service Feb 2014, taking the link to 1,000 MW" }
+    - { year: 2024.98, status: closed, source: "EstLink 2 and four telecom cables are cut 25 Dec 2024; Finland boards and seizes the tanker Eagle S" }
+    - { year: 2025.55, status: built, source: "EstLink 2 repaired and returned to service Jul 2025" }
+
+- id: c_lion1
+  name: C-Lion1 subsea cable
+  kind: corridor
+  mode: cable
+  status: built
+  geometry: { line: [[25.0, 60.1], [20.0, 57.5], [13.4, 54.3]] }
+  transits: [FIN, DEU]
+  load_bearing_for: { FIN: 0.5, EST: 0.2 }
+  load_bearing_source: estimate
+  load_bearing_from: 2016
+  history:
+    - { year: 2016.10, status: built, source: "in service Feb 2016 - Finland's only direct data link to central Europe" }
+    - { year: 2024.88, status: contested, source: "C-Lion1 and the BCS East-West Interlink are cut 17-18 Nov 2024; the Yi Peng 3 is shadowed by NATO navies into the Kattegat" }
+    - { year: 2024.91, status: built, source: "repaired 28 Nov 2024" }
+
+- id: red_sea_cables
+  name: Red Sea subsea cable bundle (Seacom / AAE-1 / EIG)
+  kind: corridor
+  mode: cable
+  status: built
+  geometry: { line: [[43.3, 12.6], [39.0, 18.0], [35.5, 27.0], [32.6, 29.9]] }
+  transits: [YEM, DJI, SAU, EGY]
+  load_bearing_for: { IND: 0.3, KEN: 0.4, TZA: 0.4, ZAF: 0.3, EGY: 0.3 }
+  load_bearing_source: estimate
+  load_bearing_from: 2010
+  history:
+    - { year: 2009.60, status: built, source: "Seacom enters service Jul 2009; AAE-1 and EIG follow, and about a quarter of Asia-Europe data traffic runs through the same 30 km of seabed as the tanker lane" }
+    - { year: 2024.15, status: contested, source: "three cables are cut 24 Feb 2024, attributed to the dragged anchor of the sinking Rubymar; traffic is rerouted for months" }
+    - { year: 2024.70, status: built, source: "repairs completed Sep 2024 after permitting delays in a war zone" }
+  notes: "The same 30 km as bab_al_mandab, which is why the two records share a transit set: the chokepoint layer and the cable layer are the same geography measured twice."
+
+- id: taiwan_matsu_cables
+  name: Taiwan subsea cables (Matsu, Trans-Pacific Express)
+  kind: corridor
+  mode: cable
+  status: contested
+  geometry: { line: [[119.9, 26.2], [120.5, 25.5], [121.7, 25.2]] }
+  transits: [TWN, CHN]
+  load_bearing_for: { TWN: 0.6 }
+  load_bearing_source: estimate
+  load_bearing_from: 2000
+  history:
+    - { year: 2000.00, status: built, source: "the two Matsu cables and the island's international links are in service through the 2000s" }
+    - { year: 2023.09, status: contested, source: "both Matsu cables are cut 2 and 8 Feb 2023 by Chinese vessels; 14,000 residents are on microwave backup for 50 days" }
+    - { year: 2025.01, status: contested, source: "the Shunxing 39 severs the Trans-Pacific Express cable off Keelung 3 Jan 2025" }

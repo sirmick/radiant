@@ -146,10 +146,19 @@ export function eraFlags({ polarity, hegemonRegime, demShare }) {
  * a missing ODA/GNI is a missing observation (null) *where the source covers the year at all*; before the source
  * starts (World Bank ODA/GNI begins 1960) it is again a structural zero — the derived promotion era can open in a
  * year no aid series reaches, and nulling those rows would drop them from every template that reads the term.
+ *
+ * era-1991-2026-r2/statistics-4 and data-6: World Bank DT.ODA.ODAT.GN.ZS is a RECIPIENT series. It has no row for a
+ * donor, and none for a graduated high-income state after it graduates, so a null there means "receives no
+ * measurable aid this year" and not "unobserved" — and reading it as unobserved deleted 1,259 live actor-years
+ * across 66 actors (every OECD democracy, the Gulf, Japan, Korea, Singapore, Taiwan) from every template that
+ * carries the term, in the only twenty years (1995-2014) that identify it. A missing row inside the source's own
+ * coverage is therefore a structural zero, the same value the function already returns outside the era. The panel
+ * column `aid_recipient` keeps "never in the series at all" separable from "in it in some years" so the two cases
+ * can still be told apart in a fit; the `covered` flag still distinguishes years before the series starts.
  */
 export function conditionality(promotionEra, aidGni, covered = true) {
   if (!promotionEra) return 0;
-  if (aidGni == null) return covered ? null : 0;
+  if (aidGni == null) return 0;
   return Math.min(aidGni, POLARITY.aid_cap) / 10;
 }
 

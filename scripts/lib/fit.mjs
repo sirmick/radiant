@@ -8,9 +8,9 @@
 //
 // Nothing here knows about country names; it reads data/panel.json, data/events.json and data/templates.yaml only.
 import { readFileSync } from 'node:fs';
-import { readCsv, Y, loadActors, makeCodeMap } from './hist.mjs';
+import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './hist.mjs';
 import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked,
-  CORRIDOR_UNIT, corridorFirstYear, corridorStateAt, corridorTransitionYears, corridorFeatures, corridorIndex, corridorStake, outsideDefault } from '../../src/engine/core.js';
+  CORRIDOR_UNIT, DYADIC_DISPUTE, corridorFirstYear, corridorLastYear, corridorStateAt, corridorTransitionYears, corridorFeatures, corridorIndex, corridorStake, outsideDefault } from '../../src/engine/core.js';
 import { PRESENCE, presenceIndex, patronMap, patronFeatures, guarantorLevel, guarantorFall, hostLevel } from '../../src/engine/presence.js';
 import { IMPAIRED, RESOLVED, SPELL_UNITS, warSpells, territoryFirstYear, territoryStateAt, endYears, spellAge,
   warEndFeatures, contestFeatures, reopenFeatures } from '../../src/engine/termination.js';
@@ -31,8 +31,7 @@ export function loadFitInputs() {
   const presence = Y('data/presence.yaml');
   const actors = loadActors(); const code = makeCodeMap(actors);
   const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
-  const pacts = new Set();
-  for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
+  const { pacts } = loadPacts(code);   // era-1991-2026-r2/data-7: CoW 3.03 + ATOP 5.1 + the dated accessions past it
   return { panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence };
 }
 
@@ -74,7 +73,9 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
   // every militarized dispute year per pair, sorted — the rivalry trace reads the last one strictly before the row's
   // year, so it is a lagged covariate however far back it reaches and cannot see the row's own label.
   const disputeYears = new Map();
-  for (const e of events) if ((e.kind === 'mid_force' || e.kind === 'mid_war') && e.a && e.b) { const k = pairKey(e.a, e.b); (disputeYears.get(k) ?? disputeYears.set(k, []).get(k)).push(Math.floor(e.year)); }
+  // the same union src/engine/core.js:createWorld seeds `dyadRecent` from (era-1991-2026-r2/engine-4): the MID
+  // kinds plus UCDP's interstate onsets, so the trace means one thing in the fit and one thing in the simulation.
+  for (const e of events) if (DYADIC_DISPUTE.has(e.kind) && e.a && e.b) { const k = pairKey(e.a, e.b); (disputeYears.get(k) ?? disputeYears.set(k, []).get(k)).push(Math.floor(e.year)); }
   for (const ys of disputeYears.values()) ys.sort((a, b) => a - b);
   const lastDisputeBefore = (k, y) => { const ys = disputeYears.get(k); if (!ys) return null; let lo = 0, hi = ys.length; while (lo < hi) { const m = (lo + hi) >> 1; if (ys[m] < y) lo = m + 1; else hi = m; } return lo ? ys[lo - 1] : null; };
 
@@ -152,7 +153,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
   const entriesCache = new Map();
   const corridorEntriesAt = (y) => {
     if (entriesCache.has(y)) return entriesCache.get(y);
-    const out = corridors.filter(rec => { const f = corridorFirstYear(rec, Y0); return f != null && y >= f; }).map(rec => ({ rec, state: corridorStateAt(rec, y) }));
+    const out = corridors.filter(rec => { const f = corridorFirstYear(rec, Y0); return f != null && y >= f && y <= corridorLastYear(rec, Infinity); }).map(rec => ({ rec, state: corridorStateAt(rec, y) }));
     entriesCache.set(y, out); return out;
   };
   const idxCache = new Map();
@@ -163,8 +164,9 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
     for (const rec of corridors) {
       if (CORRIDOR_UNIT[rec.kind] !== t.unit) continue;
       const first = corridorFirstYear(rec, w0); if (first == null) continue;
-      const trans = corridorTransitionYears(rec, first, yEnd);
-      for (let y = first; y <= yEnd; y++) {
+      const last = corridorLastYear(rec, yEnd);   // era-1991-2026-r2/corridors-6: a retired record contributes no rows past its end
+      const trans = corridorTransitionYears(rec, first, last);
+      for (let y = first; y <= last; y++) {
         // the state the year opens in (the year's own transition is the label, so it cannot be a covariate)
         const state = corridorStateAt(rec, y - 1) ?? corridorStateAt(rec, y);
         const f = corridorFeatures(rec, state, panelLook(y));
@@ -238,7 +240,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
       // year is itself dropped unless the spell is observed to end in it, since whether it ended is unknown.
       const h = [...(rec.history ?? [])].sort((a, b) => a.year - b.year);
       const covered = rec.covered_through != null ? Math.floor(rec.covered_through) : Math.floor(h[h.length - 1].year);
-      const yStop = Math.min(yEnd, covered);
+      const yStop = Math.min(yEnd, covered, corridorLastYear(rec, Infinity));   // era-1991-2026-r2/corridors-6
       const open = (y) => (y <= first ? corridorStateAt(rec, y) : corridorStateAt(rec, y - 1));
       const close = (y) => corridorStateAt(rec, y);
       const ends = endYears({ open: (y) => open(y)?.status ?? null, close: (y) => close(y)?.status ?? null, inSpell: (s) => IMPAIRED.has(s), from: first, to: yStop });
@@ -415,7 +417,22 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
         const pH = predict(dV(testV), bV), yH = testV.map(r => r.y);
         const bAll = fitLogistic(dV(rowsV), rowsV.map(r => r.y), [0, ...colsV.map(c => c.prior)]);
         const predH = pH.reduce((a, b) => a + b, 0), obsH = yH.reduce((a, b) => a + b, 0);
-        ablationOut.push({ variant: name, split: splitA, n: rowsV.length, events: rowsV.filter(r => r.y).length, auc_holdout: auc(pH, yH), brier_holdout: brier(pH, yH), exp_obs_holdout: predH / Math.max(1, obsH), coefs: Object.fromEntries(extra.map(c => { const nm = colsV.find(x => x.name.includes(c.var))?.name; const j = colsV.findIndex(x => x.name === nm); return [nm, bAll[j + 1]]; })) });
+        // era-1991-2026-r2/statistics-1. Two things this block used to get wrong, both of which put a number into a
+        // promotion record that the holdout never produced:
+        // (a) the reported coefficient came from `bAll` — the fit on ALL rows, the holdout included — while the
+        //     AUC/Brier/exp-obs beside it came from `bV`, the train-only fit. Every "coef +0.57" copied into a
+        //     `lifecycle.reason` was therefore an in-sample number printed beside out-of-sample scores. Both are
+        //     reported now, and `coefs` is the train-only one: the coefficient that produced the scores.
+        // (b) `degenerate` was computed over the FULL sample, so a candidate that is CONSTANT IN TRAINING passed
+        //     silently — the MAP prior was applied to the test rows and moved the holdout score, and the "gain" was
+        //     the hand-typed prior rather than anything the data estimated. Measured on irregular_exit at split
+        //     1986: anticoup_norm (1 only from 1999) scored 0.743/0.0098/1.22 against base 0.749/0.0099/1.43, and
+        //     with its prior set to 0 it scored identically to base to four decimals. A variant with a term that
+        //     cannot be identified in its own training half is reported as unidentified and carries no score.
+        const deadV = colsV.filter(c => extra.some(e => c.name.includes(e.var))).filter(c => { const xs = trainV.map(r => c.get(r)); return xs.every(x => x === xs[0]); }).map(c => c.name);
+        const coefOf = (b) => Object.fromEntries(extra.map(c => { const nm = colsV.find(x => x.name.includes(c.var))?.name; const j = colsV.findIndex(x => x.name === nm); return [nm, b[j + 1]]; }));
+        if (deadV.length) { ablationOut.push({ variant: name, split: splitA, n: rowsV.length, events: rowsV.filter(r => r.y).length, degenerate_in_train: deadV, note: `unidentified at this split: ${deadV.join(', ')} ${deadV.length > 1 ? 'are' : 'is'} constant over the training rows (< ${splitA}), so the coefficient cannot leave its prior and any movement in the holdout score is the prior applied to the test rows` }); continue; }
+        ablationOut.push({ variant: name, split: splitA, n: rowsV.length, events: rowsV.filter(r => r.y).length, auc_holdout: auc(pH, yH), brier_holdout: brier(pH, yH), exp_obs_holdout: predH / Math.max(1, obsH), coefs: coefOf(bV), coefs_insample: coefOf(bAll) });
       }
     }
     const years = rows.map(r => labelYear(t, r));

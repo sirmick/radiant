@@ -10,8 +10,23 @@
 import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 
-/** First year of the modern layer. Before it the panel's historical sources (CoW, Maddison, OWID, V-Dem) own the row. */
-export const MODERN_FROM = 2000;
+/**
+ * First year of the modern layer. Before it the panel's historical sources (CoW, Maddison, OWID, V-Dem) own the row.
+ *
+ * era-1991-2026-r2/statistics-6: this was 2000, and it was doing two different things depending on the fetcher.
+ * `wb()` ignored the window entirely and returned its whole file, so the fourteen World Bank columns held data back
+ * to 1960-1996 under a source line that said "modern fold 2000-2025" — the line contradicted its own column. The
+ * WPP and OWID fetchers DID apply it, and truncated real coverage: wpp_medium and wpp_age5_medium both run
+ * 1950-2100 and were being written as 195 actors x 2000-2025 alone, so median_age, fertility, working_age_share,
+ * old_age_share and net_migration could not be fitted on any template whose window opens before 2000 — only 40% of
+ * intrastate_onset's at-risk actor-years are at 2000 or later, and coup_attempt's window opens in 1950. The
+ * youth-bulge and age-structure terms both templates' own `sources:` imply (Goldstone et al. 2010 PITF; Urdal 2006)
+ * were sitting in the raw file back to 1950 and unreachable.
+ *
+ * It is now 1950 and every fetcher applies it, so each column carries its source's own full range and the source
+ * line states the OBSERVED first and last year rather than this constant.
+ */
+export const MODERN_FROM = 1950;
 
 // ---------------------------------------------------------------- CSV (quoted commas: WPP location names carry them)
 const splitCsv = (line) => {
@@ -55,8 +70,12 @@ const IEA_ISO = {
 const inWin = (y, { from, to }) => y >= from && y <= to;
 
 const fetchers = {
-  wb(field) {
-    return JSON.parse(readFileSync(`data/raw/wb/${field}.json`, 'utf8')).data;
+  wb(field, win) {
+    const raw = JSON.parse(readFileSync(`data/raw/wb/${field}.json`, 'utf8')).data;
+    if (!win) return raw;
+    const out = {};
+    for (const [iso, years] of Object.entries(raw)) { const o = {}; for (const [y, v] of Object.entries(years)) if (inWin(+y, win)) o[y] = v; if (Object.keys(o).length) out[iso] = o; }
+    return out;
   },
   wpp(field, win) {
     const key = `wpp:${win.from}:${win.to}`;
@@ -148,7 +167,11 @@ export const ORDINAL = {
 export const ORDINAL_NOTE = {
   cap: 'levels N=0 (none) I=1 (import-dependent) S=2 (sovereign)',
   nuclear_status: 'none=0 latent=1 threshold=2 weapon=3',
-  regime_type: 'V-Dem Regimes of the World scale, as the panel\'s `regime`: closed_autocracy=0 electoral_autocracy=1 electoral_democracy=2 liberal_democracy=3',
+  // era-1991-2026-r2/data-8 (c): the SCALE is V-Dem RoW; the MEASUREMENT is not the panel's. This is a hand
+  // transcription in data/actors.yaml and it disagrees with the panel's `regime` for about a quarter of the actors
+  // it covers (build-panel prints the list every build). "as the panel's `regime`" was a claim the numbers do not
+  // support and it is withdrawn here.
+  regime_type: 'V-Dem Regimes of the World scale (closed_autocracy=0 electoral_autocracy=1 electoral_democracy=2 liberal_democracy=3), hand-transcribed in data/actors.yaml — a separate estimate on that scale, NOT the panel\'s `regime` series, which it disagrees with for about a quarter of the actors it covers',
 };
 const ordinalFor = (id) => (id.startsWith('cap_') ? ORDINAL.cap : ORDINAL[id]);
 

@@ -4,9 +4,13 @@
 // fetch step decodes the format here. Format reference: R Internals §1.8 (serialization formats).
 //
 // Supported: NILVALUE, SYMSXP, LISTSXP (pairlists, for attributes), CHARSXP, STRSXP, INTSXP/LGLSXP, REALSXP, VECSXP,
-// REFSXP (symbol back-references) and attribute blocks. Anything else throws — a silent wrong parse would put
-// unlabelled numbers on the panel.
+// EXTPTRSXP (readr's `problems` attribute), REFSXP (symbol back-references) and attribute blocks. Anything else
+// throws — a silent wrong parse would put unlabelled numbers on the panel.
+// Compression: R writes `.rda` gzipped by default and xz-compressed when the package author asked for it. gzip is
+// decoded here; xz and bzip2 are handed to the system `xz -dc` / `bzip2 -dc` (node has neither), with a named error
+// if the tool is not installed.
 import { gunzipSync } from 'node:zlib';
+import { spawnSync } from 'node:child_process';
 
 const NA_INT = -2147483648;
 
@@ -40,6 +44,11 @@ class Reader {
         return out;
       }
       case 9: { const n = this.int(); return n === -1 ? null : this.bytes(n).toString('utf8'); }   // CHARSXP
+      // EXTPTRSXP — an external pointer. readr stamps one on every `spec_tbl_df` as the `problems` attribute, so
+      // every tibble written by readr (peacesciencer's GML MID tables among them) carries one in its attribute
+      // block. It has no value this reader can use; it is read for its two payload items and for its slot in the
+      // reference table (R's ReadItem registers it before reading them, and later REFSXPs index past it).
+      case 22: { const o = { extptr: true }; this.refs.push(o); this.item(); this.item(); if (hasAttr) this.item(); return o; }
       default: {
         let v;
         if (type === 16) { const n = this.int(); v = new Array(n); for (let k = 0; k < n; k++) v[k] = this.item(); }          // STRSXP
@@ -57,6 +66,12 @@ class Reader {
 /** `.rda` (possibly gzipped) -> { name: { columns: [...], rows: n, get(col) } } for every data.frame in the file. */
 export function readRda(buf) {
   if (buf[0] === 0x1f && buf[1] === 0x8b) buf = gunzipSync(buf);
+  for (const [name, magic, cmd] of [['xz', '\xfd7zXZ\0', 'xz'], ['bzip2', 'BZh', 'bzip2']]) {
+    if (buf.subarray(0, magic.length).toString('latin1') !== magic) continue;
+    const r = spawnSync(cmd, ['-dc'], { input: buf, maxBuffer: 1 << 30 });
+    if (r.error || r.status !== 0) throw new Error(`rdata: this .rda is ${name}-compressed and \`${cmd} -dc\` failed (${r.error?.message ?? r.stderr?.toString().trim() ?? `status ${r.status}`}); install ${name}`);
+    buf = r.stdout;
+  }
   const magic = buf.subarray(0, 5).toString('latin1');
   if (magic !== 'RDX2\n' && magic !== 'RDX3\n') throw new Error(`rdata: not an RData file (magic ${JSON.stringify(magic)})`);
   const r = new Reader(buf); r.i = 5;

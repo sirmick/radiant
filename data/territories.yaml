@@ -1167,3 +1167,218 @@
     - { year: 1973.60, controller: LBY, status: annexed, source: "Libyan occupation and administration of the strip from 1973, on the unratified Laval-Mussolini treaty of 1935" }
     - { year: 1987.0, controller: TCD, status: contested_active, source: "the Toyota War: Chad retakes the strip Mar-Sep 1987" }
     - { year: 1994.35, controller: TCD, status: settled, source: "the ICJ judgment of 3 Feb 1994 and the Libyan withdrawal completed 31 May 1994" }
+
+# ---------------------------------------------------------------- 1995-2025 settlements and contests
+# era-1991-2026-r2/corridors-2 and data-5: the layer coded no settlement after 1999 and data/events.json carried no
+# territory_settle event at all, while COVERAGE.territory_settle runs to 2025 — so the backtest scored that silence as
+# ground truth and charged the model 8.4 predicted settlements against 0 observed at as-of 2000 and 5.6 against 0 at
+# as-of 2010. These are the era's dated instruments, and the still-unsettled contests that belong in the denominator
+# with them. Where an award was made and not implemented the record says `frozen`, not `settled`.
+
+- id: cordillera_del_condor
+  name: Peru-Ecuador Cordillera del Condor
+  controller: PER
+  claimants: [ECU]
+  status: settled
+  stakes: { PER: 0.6, ECU: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [-78.4, -3.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1942.10, controller: PER, status: disputed, source: "the Rio Protocol of 29 Jan 1942 leaves 78 km of the Cordillera del Condor undemarcated; Ecuador declares it null in 1960" }
+    - { year: 1981.05, controller: PER, status: contested_active, source: "the Paquisha incident, Jan-Feb 1981" }
+    - { year: 1995.06, controller: PER, status: contested_active, source: "the Cenepa war, 26 Jan - 28 Feb 1995: the era's only interstate war fought over an undemarcated boundary in the Americas" }
+    - { year: 1998.82, controller: PER, status: frozen, source: "the Brasilia Presidential Act 26 Oct 1998 accepts the guarantors' binding technical opinion" }
+    - { year: 1999.36, controller: PER, status: settled, source: "demarcation completed and the boundary formally closed 13 May 1999" }
+
+- id: macau
+  name: Macau
+  controller: CHN
+  claimants: []
+  status: settled
+  stakes: { CHN: 0.7, PRT: 0.4 }
+  stakes_source: estimate
+  geometry: { point: [113.55, 22.17], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1887.95, controller: PRT, status: disputed, source: "the Sino-Portuguese Treaty of Peking, 1 Dec 1887: perpetual occupation and government by Portugal, sovereignty disputed thereafter" }
+    - { year: 1972.22, controller: PRT, status: disputed, source: "removed from the UN list of colonial territories 8 Mar 1972 with Hong Kong" }
+    - { year: 1987.29, controller: PRT, status: frozen, source: "the Sino-Portuguese Joint Declaration 13 Apr 1987 fixes the handover date" }
+    - { year: 1999.97, controller: CHN, status: settled, source: "handover 20 Dec 1999 — the twin of the hong_kong record, which the layer had and this one it did not" }
+
+- id: timor_leste
+  name: Timor-Leste
+  controller: TLS
+  claimants: []
+  status: settled
+  stakes: { IDN: 0.5, PRT: 0.2 }
+  stakes_source: estimate
+  geometry: { point: [125.6, -8.8], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1975.96, controller: IDN, status: occupied, source: "Indonesian invasion 7 Dec 1975; annexed as the 27th province 17 Jul 1976, an annexation no state but Australia recognised" }
+    - { year: 1999.66, controller: IDN, status: contested_active, source: "the UN-supervised referendum of 30 Aug 1999 votes 78.5% for independence and is followed by the militia campaign and INTERFET" }
+    - { year: 1999.79, controller: UN, status: frozen, source: "UNSCR 1272 of 25 Oct 1999 establishes UNTAET" }
+    - { year: 2002.38, controller: TLS, status: settled, source: "independence restored 20 May 2002" }
+
+- id: bakassi
+  name: Bakassi peninsula
+  controller: CMR
+  claimants: []
+  status: settled
+  stakes: { NGA: 0.6, CMR: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [8.6, 4.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1993.99, controller: NGA, status: contested_active, source: "Nigerian occupation of the peninsula from Dec 1993; clashes with Cameroonian forces through 1996" }
+    - { year: 1994.23, controller: NGA, status: contested_active, source: "Cameroon files at the ICJ 29 Mar 1994" }
+    - { year: 2002.78, controller: NGA, status: frozen, source: "the ICJ awards the peninsula to Cameroon 10 Oct 2002; Nigeria does not withdraw" }
+    - { year: 2006.45, controller: NGA, status: frozen, source: "the Greentree Agreement 12 Jun 2006 sets the withdrawal schedule" }
+    - { year: 2008.62, controller: CMR, status: settled, source: "Nigerian withdrawal completed 14 Aug 2008 — six years between the award and the transfer, which is why the two are separate rows" }
+
+- id: badme
+  name: Badme and the Eritrea-Ethiopia boundary
+  controller: ERI
+  claimants: []
+  status: settled
+  stakes: { ETH: 0.7, ERI: 0.8 }
+  stakes_source: estimate
+  geometry: { point: [37.9, 14.7], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1998.35, controller: ETH, status: contested_active, source: "the Eritrea-Ethiopia war opens over Badme 6 May 1998; roughly 100,000 dead by Jun 2000" }
+    - { year: 2000.46, controller: ETH, status: contested_active, source: "the Agreement on Cessation of Hostilities 18 Jun 2000" }
+    - { year: 2000.95, controller: ETH, status: frozen, source: "the Algiers Agreement 12 Dec 2000 submits the boundary to binding arbitration" }
+    - { year: 2002.28, controller: ETH, status: frozen, source: "the EEBC delimitation award of 13 Apr 2002 places Badme in Eritrea; Ethiopia holds the ground for sixteen years — the layer's clearest case of an award that is not an ending" }
+    - { year: 2018.43, controller: ETH, status: frozen, source: "Ethiopia accepts the award unconditionally 5 Jun 2018" }
+    - { year: 2018.52, controller: ERI, status: settled, source: "the Joint Declaration of Peace and Friendship 9 Jul 2018 and the transfer of the awarded ground" }
+
+- id: san_andres_maritime
+  name: San Andres maritime boundary (Nicaragua-Colombia)
+  controller: COL
+  claimants: []
+  status: settled
+  stakes: { COL: 0.6, NIC: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [-81.7, 12.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 2001.94, controller: COL, status: disputed, source: "Nicaragua files at the ICJ 6 Dec 2001, contesting both the islands and the 82nd-meridian maritime line" }
+    - { year: 2007.96, controller: COL, status: frozen, source: "the ICJ upholds Colombian sovereignty over the islands 13 Dec 2007 and reserves the maritime boundary" }
+    - { year: 2012.88, controller: COL, status: settled, source: "the ICJ judgment of 19 Nov 2012 fixes the maritime boundary: the islands stay Colombian and about 75,000 km2 of sea passes to Nicaragua" }
+
+- id: preah_vihear
+  name: Preah Vihear temple and its promontory
+  controller: KHM
+  claimants: []
+  status: settled
+  stakes: { KHM: 0.8, THA: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [104.68, 14.39], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1962.42, controller: KHM, status: frozen, source: "the ICJ awards the temple to Cambodia 15 Jun 1962; the surrounding promontory is left undecided" }
+    - { year: 2008.53, controller: KHM, status: contested_active, source: "the UNESCO listing of 7 Jul 2008 reopens the promontory; troop build-ups and exchanges of fire 2008-2011 with over 30 dead" }
+    - { year: 2013.86, controller: KHM, status: settled, source: "the ICJ interpretation judgment of 11 Nov 2013 awards the whole promontory to Cambodia and both states accept it" }
+
+- id: peru_chile_maritime
+  name: Peru-Chile maritime boundary
+  controller: CHL
+  claimants: []
+  status: settled
+  stakes: { CHL: 0.5, PER: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [-70.7, -18.4], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 2008.05, controller: CHL, status: disputed, source: "Peru files at the ICJ 16 Jan 2008 over roughly 38,000 km2 of sea" }
+    - { year: 2014.07, controller: CHL, status: settled, source: "the ICJ judgment of 27 Jan 2014; both states implement it within the year" }
+
+- id: india_bangladesh_enclaves
+  name: India-Bangladesh enclaves and the land boundary
+  controller: BGD
+  claimants: []
+  status: settled
+  stakes: { IND: 0.4, BGD: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [89.1, 26.1], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1974.38, controller: IND, status: frozen, source: "the Land Boundary Agreement of 16 May 1974 is signed and ratified by Bangladesh; India does not ratify it for 41 years, leaving 162 enclaves and about 51,000 people stateless" }
+    - { year: 2015.43, controller: BGD, status: frozen, source: "the instruments of ratification are exchanged 6 Jun 2015" }
+    - { year: 2015.58, controller: BGD, status: settled, source: "the enclaves are exchanged at midnight on 31 Jul 2015" }
+
+- id: piran_bay
+  name: Piran Bay (Croatia-Slovenia)
+  controller: HRV
+  claimants: [SVN]
+  status: frozen
+  stakes: { HRV: 0.4, SVN: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [13.6, 45.5], geometry_source: "point estimate (historical territory)" }
+  notes: "In the layer as an UNSETTLED contest with an award behind it: the arbitral tribunal ruled on 29 Jun 2017 and Croatia has not implemented it, so the record's status is frozen and not settled. The distinction is the point of era-1991-2026-r2/corridors-2 — an award is not an ending."
+  history:
+    - { year: 1991.50, controller: HRV, status: disputed, source: "the maritime boundary in the bay is left undefined at the dissolution of Yugoslavia, 25 Jun 1991" }
+    - { year: 2009.86, controller: HRV, status: frozen, source: "the arbitration agreement of 4 Nov 2009 unblocks Croatian EU accession" }
+    - { year: 2015.58, controller: HRV, status: frozen, source: "Croatia withdraws from the arbitration 30 Jul 2015 after the ex parte contacts scandal; the tribunal continues" }
+    - { year: 2017.49, controller: HRV, status: frozen, source: "the award of 29 Jun 2017 gives Slovenia a junction to the high seas; Croatia refuses to implement it and the boundary is unchanged" }
+
+- id: kosovo_status
+  name: Kosovo (status)
+  controller: KOSOVO
+  claimants: [SRB]
+  status: disputed
+  stakes: { SRB: 0.7, KOSOVO: 0.95 }
+  stakes_source: estimate
+  geometry: { point: [20.9, 42.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1999.44, controller: UN, status: frozen, source: "UNSCR 1244 of 10 Jun 1999 places the province under UN administration with Yugoslav sovereignty formally reserved" }
+    - { year: 2008.13, controller: KOSOVO, status: disputed, source: "unilateral declaration of independence 17 Feb 2008; recognition is partial and Serbia does not recognise it" }
+    - { year: 2013.30, controller: KOSOVO, status: disputed, source: "the Brussels Agreement of 19 Apr 2013 normalises institutions without settling status" }
+
+- id: abyei
+  name: Abyei
+  controller: SSD
+  claimants: [SDN]
+  status: disputed
+  stakes: { SDN: 0.6, SSD: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [28.4, 9.6], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 2005.02, controller: SDN, status: disputed, source: "the Comprehensive Peace Agreement of 9 Jan 2005 gives Abyei a separate referendum that is never held" }
+    - { year: 2009.55, controller: SDN, status: frozen, source: "the PCA award of 22 Jul 2009 redraws the boundaries of the area" }
+    - { year: 2011.40, controller: SDN, status: contested_active, source: "Sudanese forces seize Abyei town 21 May 2011; UNISFA deploys 27 Jun 2011" }
+    - { year: 2011.52, controller: UN, status: disputed, source: "South Sudan becomes independent 9 Jul 2011 with Abyei unresolved and administered by UNISFA" }
+
+- id: aksai_chin_lac
+  name: Aksai Chin and the Line of Actual Control
+  controller: CHN
+  claimants: [IND]
+  status: disputed
+  stakes: { CHN: 0.7, IND: 0.7 }
+  stakes_source: estimate
+  geometry: { point: [79.0, 35.0], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1962.79, controller: CHN, status: occupied, source: "the Sino-Indian war of Oct-Nov 1962 leaves China holding Aksai Chin" }
+    - { year: 1993.66, controller: CHN, status: frozen, source: "the Agreement on the Maintenance of Peace and Tranquillity along the LAC, 7 Sep 1993" }
+    - { year: 1996.87, controller: CHN, status: frozen, source: "the Confidence-Building Measures agreement of 29 Nov 1996" }
+    - { year: 2017.46, controller: CHN, status: contested_active, source: "the Doklam standoff, 16 Jun - 28 Aug 2017" }
+    - { year: 2020.45, controller: CHN, status: contested_active, source: "the Galwan clash of 15 Jun 2020, the first fatal exchange on the LAC since 1975" }
+    - { year: 2024.80, controller: CHN, status: frozen, source: "the patrolling and disengagement understanding of 21 Oct 2024" }
+
+- id: kuril_islands
+  name: Southern Kuril Islands / Northern Territories
+  controller: RUS
+  claimants: [JPN]
+  status: disputed
+  stakes: { RUS: 0.7, JPN: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [146.0, 44.5], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1945.67, controller: RUS, status: occupied, source: "Soviet seizure of the southern Kurils, 28 Aug - 5 Sep 1945; Japan renounces the Kurils at San Francisco in 1951 without naming these four" }
+    - { year: 1956.79, controller: RUS, status: disputed, source: "the Soviet-Japanese Joint Declaration of 19 Oct 1956 restores relations and offers two of the four on a peace treaty that is never signed" }
+    - { year: 2022.22, controller: RUS, status: frozen, source: "Russia suspends the peace-treaty talks 21 Mar 2022 over Japanese sanctions; the contest is dormant rather than settled" }
+
+- id: halaib_triangle
+  name: Hala'ib triangle
+  controller: EGY
+  claimants: [SDN]
+  status: disputed
+  stakes: { EGY: 0.5, SDN: 0.5 }
+  stakes_source: estimate
+  geometry: { point: [35.5, 22.2], geometry_source: "point estimate (historical territory)" }
+  history:
+    - { year: 1958.15, controller: SDN, status: disputed, source: "the first Egyptian-Sudanese crisis over the triangle, Feb 1958, on the eve of the Sudanese elections" }
+    - { year: 1995.50, controller: EGY, status: occupied, source: "Egypt takes full administrative control after the Addis Ababa assassination attempt on Mubarak, Jun 1995, and has held it since; Sudan protests to the Security Council annually" }

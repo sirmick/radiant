@@ -954,3 +954,113 @@ switches. Every hand row added to `data/corridors.yaml` and `data/territories.ya
 `load_bearing_for` and `stakes` map carries `load_bearing_source: estimate` / `stakes_source: estimate`. Both
 promotions on `irregular_exit` carry a `lifecycle:` record with the ablation numbers, and both rejections a
 `rejected:` entry with theirs.*
+
+## Turn era-1991-2026-r2 — 2026-09-07
+
+Backtest as-of range for the turn: 1990 and 2000 (step 10). The 2010 row is reported throughout because the horizon
+opening at 2011 is where three of this turn's coverage moves stop.
+
+### Applied
+
+| finding | change | files | effect |
+|---|---|---|---|
+| **data/1** — the dyadic ground truth stops in 2001 | `scripts/fetch-mid.mjs` pulls GML MID 2.2.1 (`gml_dirdisp.rda` via peacesciencer) into `data/raw/hist/gml_dirdisp_2.2.1.csv`; `scripts/lib/rdata.mjs` gained an EXTPTRSXP case (readr stamps one on every tibble) and xz/bzip2 decompression; the pairs are spliced onto midb 3.02 from 2002 in `build-events.mjs` and the participant-years in `build-panel.mjs`; `COVERAGE.mid_force/mid_war/war_end` and the three template windows move [1816, 2001] → [1816, 2010] | `scripts/fetch-mid.mjs`, `scripts/lib/rdata.mjs`, `scripts/build-events.mjs`, `scripts/build-panel.mjs`, `scripts/backtest.mjs`, `data/templates.yaml` | as-of 1990 `mid_force` `scored_years` **11 → 20** (exp 76.5/obs 98 → 122.8/112, AUC 0.765 → 0.778); as-of 2000 **1 → 10** (exp 10.8/obs 16 → 79.8/45, AUC 0.804 → 0.909); `mid_war` the same. 56 spliced pairs, 6.2 onsets/yr over 2002-2010. Join validated on the overlap: GML 14.0 pair-onsets/yr over 1992-2001 against midb's 14.5 |
+| **data/2** — `at_war` is a hand list, empty for most of 1992-2024 | unioned with UCDP/PRIO type-2 (interstate) actor-years 1946-2024 inside the loop that already parsed them; `at_war_ucdp` records which source a 1 came from | `scripts/build-panel.mjs` | at_war 1992-2024 actor-years **14 → 93** (207 added overall). The only zero years left (1993, 2004-07, 2009-10) are years UCDP itself records no interstate conflict |
+| **data/3** — the capability composite drops 11 live states in 2024 | an actor live past NMC's end that the composite cannot reach is CARRIED at its last CINC with `cinc_carried` = years since, instead of vanishing; each extension year is normalised to the mass CINC carried over *the actors present in that year* | `scripts/lib/capability.mjs`, `scripts/build-panel.mjs` | live actors with a non-null `cinc` in 2024 **184 → 195**; PRK 2024 equals its 2022 value exactly; the column sum is 1.0071 in 2022, 2023 and 2024 alike (was 1.0071 → 1.0009); polarity poles and `hegemon_share` unchanged to three decimals |
+| **statistics/1** — every promotion record quotes a leaky coefficient | the ablation reports `coefs` from the TRAIN-ONLY fit (and `coefs_insample` separately), and refuses to score a variant whose added term is constant over the training half, emitting `degenerate_in_train` + `unidentified at this split` | `scripts/lib/fit.mjs`, `data/templates.yaml` | `anticoup_norm` on `irregular_exit` and `coup_attempt` and `cold_war` on `coup_attempt` now report as unidentified instead of a fabricated gain. The `irregular_exit` anticoup_norm evidence block is RETRACTED with the proof (prior −0.5 vs 0 gave 0.743/0.0098/1.22 vs 0.749/0.0099/1.43, identical to base) |
+| **statistics/4 + data/6** — `aid_conditionality` codes "not a recipient" as missing | a missing ODA/GNI row inside the era is a structural zero; `aid_recipient` keeps "never in the series" separable | `src/engine/polarity.js`, `scripts/build-panel.mjs`, `src/engine/core.js` | nulls over live actor-years 1995-2014 **1,259 → 0**. `democratic_deepening` n 2,275 → 2,399 and events 36 → 43; `autocratic_closure` n 7,206 → 7,396, holdout AUC 0.543 → 0.556; `democratize_step` n 9,731 → 9,918 |
+| **engine/1** — `expected_count` summed over the full horizon | `runEnsemble` exports `expectedWithin(key, years)` off the `yearHist` it already accumulates; the backtest truncates the count the same way it already truncated the indicator | `src/engine/core.js`, `scripts/backtest.mjs` | as-of 2010 `leader_exit` `count_ratio` **1.811 → 1.29** (scored_years 11 of a 15-year horizon), `irregular_exit` 0.63 → 0.50, `coup_attempt` 0.48 → 0.36. Every row with `scored_years == horizon` is unaffected |
+| **engine/4** — the rivalry memory is dead after 2001 | `createWorld` and `scripts/lib/fit.mjs` seed the dyad trace from `DYADIC_DISPUTE` = mid_force ∪ mid_war ∪ `interstate_onset` (one exported set, so the fit and the simulation agree); the panel's `mid_force`/`mid_war` are nulled outside their source window instead of written as measured 0s | `src/engine/core.js`, `scripts/lib/fit.mjs`, `scripts/build-panel.mjs` | at as-of 2025 RUS\|UKR reads 2022 / rivalry 0.61, IRN\|ISR 2018 / 0.32, CHN\|IND 2020 / 0.44, and pairs above 0.2 go **0 → 8** (the finding hoped for ≥15; 8 is what UCDP's interstate onsets support and is reported as measured) |
+| **engine/3** — the World Bank splice injects a fake +0.43 log growth into 2023 | past an actor's own last Maddison year `gdp_pc` is CHAINED on the World Bank series' year-on-year growth (no level join, no seam); interior and whole-life gaps keep the ratio splice but on the last `SPLICE_YEARS` overlap years, which is what `capability.mjs` already did; a build guard fails if the median live-actor \|gdp_growth\| in any year exceeds 0.15 | `scripts/build-panel.mjs` | median live-actor `gdp_growth` in 2023 **0.426 → 0.057**; the share of actors over ±0.10 falls from 0.75 to 0.09; USA 2023 gdp_pc 91,286 → 61,920 |
+| **engine/5** — capability MASS projected by PER-CAPITA growth | `stepPolarity` projects by `exp(gdp_growth + popGrowth)`, the population half being the `popGrowth` `buildActorState` already computes and the drift loop already applies fourteen lines later; `POP_GROWTH_MEAN` = 0.0174 is the panel's own 1900-2000 live-actor mean (n=9,977) | `src/engine/core.js` | the projector no longer omits a factor of 4.2 in projected mass between COD and JPN over 40 years |
+| **engine/7 + data/8 (a)** — the derived era block is null for all of 2025 | the polarity block carries the last measured capability distribution forward (restricted to the actors alive that year, renormalised) with `capability_carried` recording the staleness; `dem_share_n` and `dem_share_live` are written every year; the simulated dem-share delta is scaled by the ratio of the simulated to the panel denominator | `scripts/build-panel.mjs`, `src/engine/core.js` | every era column is non-null for all 195 live actors at 2025 (was null for all of them); `panel.meta.polarity` gains a 2025 row (bipolar USA/CHN, dem_share 0.497 over 173 of 195) |
+| **data/7 + engine/6** — the alliance graph is frozen at 2000 | `scripts/fetch-atop.mjs` pulls ATOP 5.1 (1815-2018); `scripts/lib/hist.mjs:loadPacts` is now the ONE construction read by the panel, the fitter, the backtest and run-forward — CoW 3.03 ≤ 2000, ATOP 5.1 2001-2018, the 2018 edge set carried past it, plus three dated `kind: pact` accession rows in `data/history/events.yaml` for MKD 2020, FIN 2023 and SWE 2024 | `scripts/fetch-atop.mjs`, `scripts/lib/hist.mjs`, `scripts/build-panel.mjs`, `scripts/lib/fit.mjs`, `scripts/backtest.mjs`, `scripts/run-forward.mjs`, `data/history/events.yaml` | `world.allied` **1,010 edges at every as-of → 1,010 (2000) / 1,681 (2010) / 1,752 (2025)**. `pact_usa` turns on for ROU BGR SVK SVN EST LVA LTU in 2003, ALB HRV 2008, MNE 2016, MKD 2020, FIN 2023, SWE 2024 — ATOP dates from signature, so the seven are 2003 where the finding expected 2004, and that is ATOP's convention rather than an error. **`defence_pacts` halved**: both sources ship DIRECTED dyad-years and the old loop counted every partner twice; it feeds no template and its source line now says so |
+| **data/8 (d)** — `oil_production` duplicates `oil_prod` | the fold's clash guard is value-based as well as name-based (median \|log ratio\| < 1e-6 over the overlap AND the new column adds < 1% of its own cells); near-duplicates within 1e-4 are reported, not refused; `oil_production` is retired in `data/variables.yaml` with the measurement | `scripts/build-panel.mjs`, `data/variables.yaml` | one fewer series column. `population_wpp` correctly PASSES (it matches `population` over 2000-2023 and then supplies 2024-25, which `population` does not have); `oil_demand ~ oil_twh` at 9.9e-6 is reported as the outstanding reconciliation it is |
+| **data/8 (b, c, e) + statistics/6 (a, d)** — the modern fold's window, the snapshot's year and the RoW claim | `wb()` gained the `inWin` treatment every other fetcher had and `MODERN_FROM` moved 2000 → 1950, so each column carries its source's own range and its source line states the OBSERVED first/last year; the snapshot's one-year lookahead over the panel's last measured year is declared in every snapshot column's source line; `ORDINAL_NOTE.regime_type` withdraws the "as the panel's `regime`" claim and the build prints the disagreement every run; a build guard refuses any template covariate over a single-year column | `scripts/lib/modern.mjs`, `scripts/build-panel.mjs` | `median_age` / `working_age_share` / `fertility` / `old_age_share` / `net_migration` / `population_wpp` **5,070 → 14,820 actor-years each, introduced 1950**; `oil_demand`/`gas_demand`/`coal_demand` 1,950 → 4,405; `regime_type` disagrees with `regime` for 11 of 44 actors and now says so |
+| **statistics/6 (b, c)** — an age-structure term, and the infant_mortality measurement | `median_age` added as a candidate on `intrastate_onset` and `coup_attempt`, measured and NOT promoted; the `infant_mortality` candidate finally carries its numbers | `data/templates.yaml` | intrastate_onset base 0.816/0.0418/0.73 vs median_age 0.807/0.0420/0.67 (fitted −0.62, right sign, no discrimination, costs 228 rows); coup_attempt base 0.798/0.0205/1.19 vs 0.801/0.0205/1.21 (fitted −0.19 on the same sample). infant_mortality 0.810/0.0425/0.55 against base, a loss on all three |
+| **statistics/7** — the composite's acceptance test cannot see rank | `validate()` reports the worst-year Spearman and the largest displacement of a CINC top-20 actor, both written into `sources.cinc_spliced`; an actor whose \|log splice factor\| exceeds ln 2 is not extended from the composite but carried at its last CINC | `scripts/lib/capability.mjs`, `scripts/build-panel.mjs` | the record now reads r=0.9637, log r=0.9814, **worst-year Spearman 0.9746 (2000), top-20 rank displacement 43 places (PRK, 2022)**; 28 actors refused for an extreme factor (PRK, ERI, IRL, ISL, MLT, PAN, CRI and the microstates) and carried instead |
+| **corridors/3, 4, 5, 6, 7** — the era's corridor layer | 1992-2025 history on bosphorus, suez, hormuz, panama, malacca, taiwan_strait, tiran, gotthard_tunnel, trans_siberian, the three Ukrainian gas lines, druzhba and nord_stream (whose two distinct closure mechanisms are now separate rows); eleven new records — kerch_strait, black_sea_grain_corridor, lachin_corridor, yamal_europe, blue_stream, turkstream, balticconnector, estlink, c_lion1, red_sea_cables, taiwan_matsu_cables; dated instruments for instc, china_iran_turkey, development_road, imec, gulf_landbridge and zangezur in place of a 2026 snapshot row; `exists_until` + `exists_until_source` as a new record field, honoured by `corridorLastYear` in the engine, the fitter and the backtest, set on 20 records whose thing has ended; `speculative: true` on the three with no dated instrument | `data/corridors.yaml`, `src/engine/core.js`, `scripts/lib/fit.mjs`, `scripts/backtest.mjs`, `docs/schema.md` | corridor records 73 → 84. `corridor_status` fitted n 1,684 → 3,721 and events 71 → 139; `chokepoint_status` sample tightened 1,905 → 1,859 rows at the same 95 events. Chokepoint events in `data/events.json` 140 → 162, corridor 193 → 269 |
+| **corridors/1** — the era is corridor-blind | measured on the label rate the fitter sees, before moving anything: **corridor 3.52% over 1,107 modern record-years against 4.77% over the 1,529 coded ones = 0.74**, inside the [0.67, 1.5] band, so `COVERAGE.corridor` and the template window move [1869, 1945] → [1869, 2025] | `scripts/backtest.mjs`, `data/templates.yaml` | `corridor_status` goes from `n: 0` at as-of 1990, 2000 and 2010 to **n=25 AUC 0.696 / n=28 AUC 0.781 / n=33 AUC 0.742** |
+| **corridors/2 + data/5** — no coded settlement after 1999 | fifteen records added to `data/territories.yaml` with dated `history`: the nine settlements the era actually produced (Cordillera del Cóndor 1999, Macau 1999, Timor-Leste 2002, Bakassi 2008, Badme 2018, San Andrés 2012, Preah Vihear 2013, Peru-Chile maritime 2014, the India-Bangladesh enclaves 2015) and six contests that stayed open and belong in the denominator (Piran Bay — `frozen`, not settled, because the 2017 award is unimplemented — Kosovo, Abyei, Aksai Chin / the LAC, the Kurils, the Hala'ib triangle) | `data/territories.yaml` | settlements coded in 2001-2025 **0 → 7**. `contest_settle` at as-of 2000 goes from exp 8.4 / obs **0** / AUC null to exp 10.8 / obs **5** / **AUC 0.795**, and at as-of 2010 from 5.6 / 0 / null to 7.9 / **5** / **0.745** |
+| **corridors/8 (a)** — two disagreeing estimates of one quantity | the `chokepoint_*` panel columns are written from `data/corridors.yaml` `load_bearing_for`; the `chokepoint_exposure` registry variable is retired with the four disagreements measured | `scripts/build-panel.mjs`, `data/variables.yaml` | one estimate instead of two. Still valued at the snapshot year alone, because 61 of the 84 records with a `load_bearing_for` carry no `load_bearing_from` — deferred below |
+| **statistics/8 (a, b)** — `liberal_erosion` is never scored | `scores/backtest-1990-2015-h10-all.json` added, and the template marked `lifecycle.phase: unvalidated` with the result | `data/templates.yaml`, `scores/` | as-of 2015 gives the template its **first out-of-sample row ever**: n=41, 26 at risk, **predicted 0.5 against 17 observed**, count_ratio 0.03, AUC 0.45 (auc_at_risk 0.61), flagged underpowered. as-of 1990-2010 still report `no fit at as-of` |
+
+### Skipped, with the reason
+
+- **statistics/2 — the durable regime-label filter.** Built and measured, then NOT adopted, and the numbers are in a
+  `rejected:` block on `democratize_step`. The defect is real: 321 of 1,130 `regime_change` events (28%) reverse
+  within three years, so `scripts/build-events.mjs` now stamps `durable` and `flap` on every event and
+  `data/events.json` carries both. What failed was FILTERING on it. Two full rolling-origin runs, identical except
+  for `event_filter: { durable: 3 }` on the four regime templates (pooled skill / AUC / exp-obs):
+  `democratize_step` −0.226 / 0.544 / 0.69 with the filter against −0.194 / 0.545 / 0.80 without;
+  `democratic_deepening` −1.270 / 0.768 / 4.48 against −0.739 / 0.693 / 2.94; `autocratic_closure` −0.115 / 0.575 /
+  0.72 against −0.125 / 0.604 / 0.77. Worse on the loop's own statistic for two of three and a wash on the third.
+  k=2 is no better on the fit holdout. The flags stay so the next turn can model the flap instead of deleting it.
+- **corridors/1, the chokepoint half.** Measured after coding the era and retiring the dead records: 3.27% over 581
+  modern chokepoint-years against 5.11% over the 1,859 coded ones, a ratio of **0.64** against the 0.67 floor. The
+  entries closed a third of the gap (0.56 → 0.64) and did not close it, so `COVERAGE.chokepoint` stays at 1991 and
+  as-of 1995/2000/2005 keep their `n: 0`. Nine of the eighteen records have no 1992-2025 transition and they are
+  genuinely quiet straits (Gibraltar, the Danish Straits, Kiel, Dover, Magellan, Sunda, Corinth, the Florida
+  Straits), not missing history — so what closes the rest is a modern chokepoint the layer does not have.
+- **corridors/1, `record_reopen`.** Its own rate is 6.87% over 131 modern impaired record-years against 27.52%
+  coded, a ratio of 0.25, and the cause is real rather than uncoded: Benguela 1975-2014, Kerch and Yamal closed
+  since 2022 and the Ukrainian transit lines since 2025 are long modern closures that have not ended. Window
+  unchanged.
+
+### Escalated
+
+| id | title |
+|---|---|
+| era-1991-2026-r2 / data-4 | a regime source for the 22 live states V-Dem does not cover (Bjørnskov–Rode or Boix–Miller–Rosato) — the numerator of `dem_share` and the 2024 anticoup switch-off |
+| era-1991-2026-r2 / statistics-3 | a UCDP-derived dyadic conflict kind for 2011-2024 (a new event kind, so a new template kind) |
+| era-1991-2026-r2 / engine-2 | the era terms need a forward distribution: `promotion_era` can switch off in a simulation and never on |
+| era-1991-2026-r2 / data-8 (b) | the panel's year axis should reach the modern snapshot's own year |
+| era-1991-2026-r2 / statistics-7 (3) | restore CINC's military-personnel component (World Bank MS.MIL.TOTL.P1) |
+
+### Deferred
+
+| finding | what it needs | note |
+|---|---|---|
+| corridors/8 (b) | a dated `load_bearing_from` on 61 records | The known lookahead on `corridor_stake` is unmoved: `corridorStake` still reads 2026 dependence weights at as-of 1990. Dating 61 records is 61 hand estimates about when a dependence claim became true, and the finding's own re-measurement of the dampener is only meaningful once they exist. `chokepoint_*` now comes from the corridor layer so there is at least one estimate rather than two. |
+| statistics/5 (numerator) | see escalation data-4 | The denominator half landed: `dem_share_n` and `dem_share_live` are in `panel.meta.polarity` every year and `sources.dem_share` states which denominator it is. Hysteresis on the 0.5 threshold was NOT added — with the series topping out at 0.538 a 0.55/0.45 band would switch `anticoup_norm` off for the whole record, which is worse than the flicker. |
+| engine/8 | the corridor half landed; the territory half landed | What remains is `chokepoint_status` and `record_reopen` still reporting `n: 0` after 1991, which is the measured decision above rather than an omission. |
+
+### Before / after (rolling-origin 1870-2010, step 10, +20y, 100 runs, universe all)
+
+| template | n | exp/obs | Brier skill | AUC |
+|---|---|---|---|---|
+| leader_exit | 1103 → 1103 | 0.99 → 0.99 | −0.340 → −0.343 | 0.742 → 0.732 |
+| irregular_exit | 945 → 945 | 1.24 → 1.24 | 0.058 → 0.051 | 0.756 → 0.752 |
+| coup_attempt | 1103 → 1103 | 0.90 → 0.89 | 0.225 → **0.238** | 0.795 → **0.801** |
+| democratize_step | 1243 → 1243 | 0.80 → 0.80 | −0.194 → −0.194 | 0.550 → 0.545 |
+| democratic_deepening | 95 → 95 | 2.70 → 2.94 | −0.599 → −0.739 | 0.651 → **0.693** |
+| autocratic_closure | 804 → 804 | 0.77 → 0.77 | −0.129 → −0.125 | 0.605 → 0.604 |
+| intrastate_onset | 1103 → 1103 | 0.99 → 0.97 | 0.215 → **0.219** | 0.787 → 0.787 |
+| intrastate_end | 1103 → 1103 | 1.04 → 1.02 | 0.110 → **0.118** | 0.737 → **0.739** |
+| mid_force | 113394 → 113394 | 0.72 → **0.81** | 0.124 → 0.114 | 0.811 → 0.812 |
+| mid_war | 113394 → 113394 | 0.69 → 0.70 | 0.034 → 0.029 | 0.782 → 0.780 |
+| contest_settle | 633 → 693 | 1.16 → **1.09** | 0.082 → **0.088** | 0.805 → 0.787 |
+| chokepoint_status | 181 → 176 | 1.17 → **1.11** | 0.102 → **0.185** | 0.699 → **0.736** |
+| corridor_status | 151 → **317** | 1.13 → 1.44 | 0.128 → 0.021 | 0.654 → 0.652 |
+| record_reopen | 145 → 132 | 1.31 → 1.30 | 0.055 → 0.020 | 0.658 → 0.623 |
+
+**What the pooled table does not show, and the turn is about.** The two rows this turn scores gained ground truth
+rather than skill. At as-of 1990 `mid_force` goes from 11 scored years of its 20 to all 20 and `corridor_status` from
+`n: 0` to n=25; at as-of 2000 `mid_force` goes from **one** scored year to ten with AUC 0.804 → 0.909, `contest_settle`
+from "predicted 8.4, observed 0, AUC null" to "predicted 10.8, observed 5, AUC 0.795", and `corridor_status` from
+`n: 0` to n=28 with AUC 0.781. Two templates lose pooled skill for exactly that reason: `corridor_status` (0.128 →
+0.021) is now scored over 166 modern record-years it was never asked about, and `record_reopen` (0.055 → 0.020) has a
+tightened pre-1946 sample because six of the twenty retirements are dated before 1946 — a record that ended in 1924
+correctly stops contributing in 1924, which the era-1945-1991 escalation's guard did not anticipate. Both are
+coverage bought at a price, and both prices are here rather than in a footnote.
+
+*Published slices (`public/*.json`) are deliberately not rebuilt: they are regenerated as one set at a re-baseline.*
+
+*Rule check: no country ids were added to `data/templates.yaml` or `src/engine/`. `exists_until`, `speculative`,
+`cinc_carried`, `at_war_ucdp`, `aid_recipient`, `dem_share_n`, `durable`/`flap`, `DYADIC_DISPUTE`, `corridorLastYear`,
+`expectedWithin`, `POP_GROWTH_MEAN` and `MAX_LOG_FACTOR` are generic fields, columns and constants. Every history row
+added to `data/corridors.yaml` and `data/territories.yaml` carries a `source:`; every new `load_bearing_for` and
+`stakes` map carries `load_bearing_source: estimate` / `stakes_source: estimate`; every `exists_until` carries an
+`exists_until_source`. The one rejection this turn (`durable_label_filter`) carries a `rejected:` entry with both
+runs' numbers, and the one retraction (`anticoup_norm` on `irregular_exit`) says what the retracted numbers were and
+why they do not reproduce.*

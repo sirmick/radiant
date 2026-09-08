@@ -98,6 +98,8 @@ Chokepoints and land corridors — the load-bearing infrastructure that turns tr
   load_bearing_source: estimate            # every hand number carries a source or the literal `estimate`
   exists_from: 1857        # optional: the record existed before its first dated row, and the source says so
   exists_from_source: "..."
+  exists_until: 1948       # optional: the thing stopped existing in this year — the record is not a unit after it
+  exists_until_source: "..."
   covered_through: 1945    # optional: the refine loop has verified the record through this year past its last row
   covered_through_source: "..."
   history:                 # REQUIRED: the dated status record. status/controller/completion above are the 2026 snapshot.
@@ -122,6 +124,14 @@ backtest reported them as born and at risk. A record that genuinely predates its
 and a source. Symmetrically, a spell sample stops at the record's last dated year — the years after it are not observed
 non-endings but years nobody coded — unless the record declares `covered_through:` with a source saying the state holds
 through it; the final year is dropped unless the spell is observed to end in it.
+
+A record can also END. `exists_until:` + `exists_until_source:` retire it: it contributes no record-year, no impaired
+spell-year and no at-risk unit after that year, in the fitter, the engine and the backtest alike
+(`corridorLastYear` in `src/engine/core.js`). Without it a corridor whose thing is gone went on supplying non-event
+years forever — 952 of the 1,479 corridor-years in 1992–2025 came from 28 records whose last dated row is before
+1950, and 102 of the 133 impaired record-years in that window were three pipelines sitting closed since 1948, 1944
+and 1990 (era-1991-2026-r2/corridors-6). Retirement is for a record whose thing has ended, not for one that is merely
+quiet: a line that still carries traffic needs a modern history row instead.
 
 `load_bearing_for` is the corridor-dampener term in the dyadic conflict hazard: a dyad whose shared infrastructure is load-bearing for a third party gets its dispute hazard multiplied down, weighted by that third party's alliance edge to each side. "China won't let the rail through Iran be bombed" is this one number.
 

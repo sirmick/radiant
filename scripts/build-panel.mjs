@@ -7,7 +7,7 @@
 // Output: { meta: { y0, y1, sources, vars: { <col>: { source, introduced, last, actor_years, actors } } },
 //           years: [...], vars: [...], actors: { id: { var: [per-year value|null] } }, sources: {...} }
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive } from './lib/hist.mjs';
+import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive, loadPacts } from './lib/hist.mjs';
 import { MODERN_FROM, resolveFetch, describeSource, snapshotColumns, snapshotExtras } from './lib/modern.mjs';
 import { COMPONENTS, MISSING_COMPONENTS, SPLICE_YEARS, compositeShares, componentLevels, spliceComposite, validate } from './lib/capability.mjs';
 import { POLARITY, normalise, projectionShares, smoothShares, classify, eraFlags, conditionality, greatGame, fitLogistic, fitDiffusionRate } from '../src/engine/polarity.js';
@@ -101,14 +101,20 @@ sources.coal_prod = sources.oil_prod = 'OWID fossil production (Energy Institute
   sources.irregular_recency_months = 'REIGN 2021.8 `irregular`, exponentiated: months since the state\'s last irregular leader change (display only)';
 }
 
-// ---- alliances: defence-pact partner count per actor-year (sstype 1 = defense); superpower client ties (any pact type with USA / RUS)
-for (const r of readCsv(H + 'alliance_v303_dyadic.csv')) {
-  const y = +r.year; const a = code(r.ccode1, y), b = code(r.ccode2, y); if (!a || !b) continue;
-  if (r.sstype === '1') { add(a, 'defence_pacts', y, 1); add(b, 'defence_pacts', y, 1); }
+// ---- alliances: defence-pact partner count per actor-year; superpower client ties (a defence pact with USA / RUS)
+// era-1991-2026-r2/data-7: the graph is CoW 3.03 to 2000, ATOP 5.1 to 2018 and dated accession rows past it
+// (scripts/lib/hist.mjs:loadPacts — one construction, also read by the fitter, the backtest and run-forward). It
+// used to be CoW alone, and the carry rule below turned "no observation past 2000" into a measured 0 for every
+// state that had no alliance in 2000: the seven 2004 NATO entrants, the two of 2009, MNE, MKD, FIN and SWE were
+// coded as clients of nobody for 208 actor-years, inside exactly the horizons this era scores.
+const { pacts: PACTS, meta: pactMeta } = loadPacts(code);
+for (const k of PACTS) {
+  const i = k.lastIndexOf('|'); const y = +k.slice(i + 1); const [a, b] = k.slice(0, i).split('|');
+  add(a, 'defence_pacts', y, 1); add(b, 'defence_pacts', y, 1);
   for (const [x, other] of [[a, b], [b, a]]) { if (other === 'USA' && x !== 'USA') put(x, 'pact_usa', y, 1); if (other === 'RUS' && x !== 'RUS') put(x, 'pact_rus', y, 1); }
 }
-sources.defence_pacts = 'CoW Formal Alliances 3.03 dyadic (1816–2000)';
-sources.pact_usa = sources.pact_rus = 'CoW Formal Alliances 3.03: any alliance type with USA / USSR-Russia; carried forward 2001–2021';
+sources.defence_pacts = `count of DISTINCT defence-pact partners per actor-year. ${pactMeta.source}. Values from ${pactMeta.stale_from} are the ${pactMeta.atop_last} edge set carried forward plus the dated accessions, not a measurement of those years. NOTE the level halved on 2026-09-07 (era-1991-2026-r2/data-7): both CoW 3.03 and ATOP ship DIRECTED dyad-years, so the previous construction counted every partner twice and the column was 2x the partner count its own label claimed. It feeds no template`;
+sources.pact_usa = sources.pact_rus = `a defence pact with USA / USSR-Russia in the dated alliance graph: ${pactMeta.source}`;
 
 // ---- MIDs: per actor-year, use of force (hostlev>=4) and war (5)
 for (const r of readCsv(H + 'midb_3.02.csv')) {
@@ -116,7 +122,27 @@ for (const r of readCsv(H + 'midb_3.02.csv')) {
   if (+r.hostlev >= 4) add(id, 'mid_force', y, 1);
   if (+r.hostlev >= 5) add(id, 'mid_war', y, 1);
 }
-sources.mid_force = 'CoW MID 3.02 participant-level (1816–2001), hostility level ≥ 4';
+// era-1991-2026-r2/data-1: midb 3.02's disputes stop in 2001 and the FLAGS block below was writing a measured 0 for
+// every live actor-year from 2002 to 2025 under a source line that said the source ends in 2001. GML MID 2.2.1
+// (scripts/fetch-mid.mjs) carries the same hostlev variable to 2010, so 2002-2010 is read from it — a participant's
+// first year in a dispute, the same stamp midb's `styear` gives — and 2011-2026 is left null rather than zero.
+{
+  const first = new Map();   // `${dispnum}|${ccode}` -> { y, hl }
+  for (const r of readCsv(H + 'gml_dirdisp_2.2.1.csv')) {
+    const y = +r.year, k = `${r.dispnum}|${r.ccode1}`, hl = +r.hostlev1;
+    const p = first.get(k) ?? first.set(k, { y, hl, ccode: r.ccode1 }).get(k);
+    p.y = Math.min(p.y, y); p.hl = Math.max(p.hl, hl);
+  }
+  let n = 0;
+  for (const p of first.values()) {
+    if (p.y < 2002) continue;                       // already carried by midb 3.02 above
+    const id = code(p.ccode, p.y); if (!id) continue;
+    if (p.hl >= 4) { add(id, 'mid_force', p.y, 1); n++; }
+    if (p.hl >= 5) add(id, 'mid_war', p.y, 1);
+  }
+  console.log(`mid_force: ${n} participant-dispute entries spliced from GML MID 2.2.1 for 2002-2010`);
+}
+sources.mid_force = sources.mid_war = 'CoW MID 3.02 participant-level (1816–2001) spliced with GML MID 2.2.1 directed dyad-years (2002–2010, scripts/fetch-mid.mjs); hostility level ≥ 4 (mid_force) / ≥ 5 (mid_war). 2011–2026 has no MID source and is null, not 0';
 
 // ---- UCDP: intrastate conflict years (type 3/4), interstate (type 2), 1946–2024
 for (const r of readCsv(H + 'UcdpPrioConflict_v25_1.csv')) {
@@ -141,7 +167,33 @@ for (const e of handEvents) {
     for (let y = y0; y <= y1; y++) if (!act || isLive(act, y)) put(a, 'at_war', y, 1);
   }
 }
-sources.at_war = 'data/history/events.yaml — a HAND LIST of interstate wars with per-participant entry/exit dates where declared, not a dataset. Absence is not evidence of peace: the list is complete only where the refine loop has been, and a war it does not name enters the panel as a 0. Ingesting CoW Inter-State War v4.0 participant-level dates the way NMC 7.0 was ingested is the fix (docs/escalations.md)';
+// era-1991-2026-r2/data-2: the hand list alone is empty for most of 1992-2024 — 14 actor-years against 90 in the
+// panel's own `interstate_ucdp` column, and 0 for every live actor in 1992-1998, 2000-2002, 2004-2007 and 2009-2021,
+// which asserts that nobody on earth was in an interstate war through Bosnia, Nagorno-Karabakh, Eritrea-Ethiopia,
+// Kargil and Congo. `lag1(at_war)` is a covariate on eight actor-year templates and `at_war_any` on both dyad
+// templates, so that is a wrong covariate VALUE over exactly the horizons this era scores, not a coverage note.
+// The union is with UCDP/PRIO ACD type-2 (interstate) conflict-years, already parsed above for `interstate_ucdp`:
+// the hand list keeps its per-participant entry/exit dates where it has them, and UCDP supplies the actor-years it
+// does not name. UCDP's threshold (25 battle deaths) is lower than a CoW inter-state war's (1,000), so the union is
+// broader than the hand list intends to be; it is the honest floor until CoW Inter-State War v4.0 participant dates
+// are ingested (docs/escalations.md), and the source line says which of the two any 1 came from via at_war_ucdp.
+{
+  let n = 0;
+  for (const [id, vars] of Object.entries(panel)) {
+    const act = actors.get(id);
+    vars.at_war_ucdp ??= new Array(YEARS.length).fill(null);
+    YEARS.forEach((y, i) => {
+      if (act && !isLive(act, y)) return;
+      if (y < 1946 || y > 2024) return;
+      const u = (vars.interstate_ucdp?.[i] ?? 0) > 0 ? 1 : 0;
+      vars.at_war_ucdp[i] = u && (vars.at_war?.[i] ?? 0) < 1 ? 1 : 0;
+      if (u && (vars.at_war?.[i] ?? 0) < 1) { put(id, 'at_war', y, 1); n++; }
+    });
+  }
+  console.log(`at_war: ${n} actor-years added from UCDP interstate (type 2) that the hand war list does not name`);
+}
+sources.at_war = 'union of two sources: data/history/events.yaml, a HAND LIST of interstate wars with per-participant entry/exit dates where declared (complete only where the refine loop has been), and UCDP/PRIO ACD 25.1 type-2 (interstate) conflict-years 1946-2024 for every actor-year the hand list does not name (era-1991-2026-r2/data-2). Outside 1946-2024 the hand list is the only source and absence is still not evidence of peace; ingesting CoW Inter-State War v4.0 participant-level dates the way NMC 7.0 was ingested is what would close the pre-1946 half (docs/escalations.md)';
+sources.at_war_ucdp = 'derived: 1 where the at_war year came from UCDP/PRIO type-2 rather than the hand war list, 0 where the hand list carries it (or where neither does), null outside UCDP 1946-2024';
 
 // ---- World Bank WDI 1960+ (fetched by scripts/fetch-wb.mjs): information access, infant mortality, urbanisation
 {
@@ -164,12 +216,20 @@ sources.at_war = 'data/history/events.yaml — a HAND LIST of interstate wars wi
 }
 
 // ---- flag variables: null means "no event" inside the source's coverage window, so fill 0 for live years
-const FLAGS = { at_war: [1816, 2026], intrastate: [1946, 2024], interstate_ucdp: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], coup_attempt: [1950, 2021], coup_success: [1950, 2021], defence_pacts: [1816, 2000] };
+const FLAGS = { at_war: [1816, 2026], intrastate: [1946, 2024], interstate_ucdp: [1946, 2024], mid_force: [1816, 2010], mid_war: [1816, 2010], coup_attempt: [1950, 2021], coup_success: [1950, 2021], defence_pacts: [1816, 2026] };
+// era-1991-2026-r2/engine-4: and null OUTSIDE it. Several of these columns are accumulated with `add`, whose array
+// defaults to 0 rather than null, so every year past the source's last one read as a measured "no dispute" — the
+// panel asserted mid_force = 0 for every actor from 2002 to 2025 under a source line that said the source stops in
+// 2001, and win5(mid_force) carried that assertion into the dyadic hazards. The templates that read a flag outside
+// its window declare a `default_outside` for exactly this case, so the null is the value the fitter expects.
 for (const [id, vars] of Object.entries(panel)) {
   const a = actors.get(id); if (!a) continue;
   for (const [v, [c0, c1]] of Object.entries(FLAGS)) {
     vars[v] ??= new Array(YEARS.length).fill(null);
-    YEARS.forEach((y, i) => { if (vars[v][i] == null && y >= c0 && y <= c1 && isLive(a, y)) vars[v][i] = 0; });
+    YEARS.forEach((y, i) => {
+      if (y < c0 || y > c1) { vars[v][i] = null; return; }
+      if (vars[v][i] == null && isLive(a, y)) vars[v][i] = 0;
+    });
   }
 }
 
@@ -332,12 +392,57 @@ for (const [id, vars] of Object.entries(panel)) {
 // createWorld(2025) see them, and that is a stated approximation rather than a fabricated measurement.
 {
   const registry = Y('data/variables.yaml');
-  const SNAP = Y1;   // the modern snapshot is dated to the panel's last year
+  // The modern snapshot is dated to the panel's last year. data/actors.yaml's own header says it describes
+  // 2026-09-06 and it carries fields that are 2026 judgements (a `leader_since: 2026`), so placing it at Y1 is a
+  // declared ONE-YEAR LOOKAHEAD over the panel's last measured year, not a measurement of Y1 (era-1991-2026-r2/
+  // data-8 (b)). It is harmless only because no template may name a snapshot column — enforced by the single-year
+  // covariate guard at the end of this file — and because the columns are display and engine state, not covariates.
+  // Extending the panel's year axis to the snapshot's own year is the fix and it moves every horizon; it is
+  // recorded in docs/escalations.md rather than done here.
+  const SNAP = Y1, SNAP_SOURCE_YEAR = 2026;   // data/actors.yaml header: "Snapshot date: 2026-09-06"
   const clash = (col) => Object.values(panel).some(vars => vars[col]?.some(x => x != null));
   const wrote = [];
 
+  // era-1991-2026-r2/data-8 (d): the clash guard is value-based as well as name-based. A new column under a new NAME
+  // can still be an existing column's series — `oil_production` (owid:oil_production) was an exact duplicate of
+  // `oil_prod` (OWID fossil production, the same Energy Institute numbers), median ratio 1.0000002 over 2,013
+  // overlapping actor-years, sitting in the panel as a second entity. A name check cannot see that; comparing the
+  // values can. Two conditions, both required, because the fold's legitimate use of a second measurement is to
+  // REACH FURTHER than the historical column: the values must match over the overlap (median |log ratio| below
+  // 1e-5), AND the new column must add essentially nothing the old one does not already cover (`population_wpp`
+  // matches `population` exactly over 2000-2023 and then supplies 2024-25, which `population` does not have, so it
+  // is a genuine extension and passes). oil_production adds 6 of its 3,541 cells and fails.
+  // The threshold is 1e-6, the finding's own. Pairs that agree to within 1e-4 but not to 1e-6 are REPORTED rather
+  // than refused — `oil_demand` (OWID country file) against `oil_twh` (OWID by-source file) sits at 9.9e-6, which is
+  // two roundings of the same Energy Institute series and is the reconciliation docs/refine-log.md already lists as
+  // outstanding, not a duplicate this build can adjudicate.
+  const existingCols = [...new Set(Object.values(panel).flatMap(v => Object.keys(v)))];
+  const near = [];
+  const duplicateOf = (col) => {
+    let cells = 0; for (const vars of Object.values(panel)) { const a = vars[col]; if (!a) continue; for (let i = 0; i < YEARS.length; i++) if (a[i] != null) cells++; }
+    if (!cells) return null;
+    for (const other of existingCols) {
+      if (other === col) continue;
+      const rs = []; let addsCells = 0;
+      for (const vars of Object.values(panel)) {
+        const a = vars[col], b = vars[other]; if (!a) continue;
+        for (let i = 0; i < YEARS.length; i++) {
+          if (a[i] == null) continue;
+          if (b?.[i] == null) { addsCells++; continue; }
+          if (Math.abs(b[i]) > 0) rs.push(Math.abs(Math.log(Math.abs(a[i]) / Math.abs(b[i]))));
+        }
+      }
+      if (rs.length < 200) continue;
+      rs.sort((p_, q_) => p_ - q_);
+      const med = rs[Math.floor(rs.length / 2)];
+      if (med < 1e-4 && addsCells / cells < 0.01) near.push({ col, other, n: rs.length, med, adds: addsCells, cells });
+      if (med < 1e-6 && addsCells / cells < 0.01) return { other, n: rs.length, med, adds: addsCells, cells };
+    }
+    return null;
+  };
   for (const v of registry.variables) {
     if (v.scope !== 'actor' || !v.source?.fetch) continue;
+    if (v.retired) continue;                       // a retired variable keeps its record and stops being folded
     const col = v.panel ?? v.id;
     if (clash(col)) throw new Error(`modern fold: ${v.id} would write into the existing panel column '${col}' — the fold adds columns only. Declare 'panel: <new column>' on the variable in data/variables.yaml.`);
     let n = 0, y0 = Infinity, y1 = -Infinity;
@@ -347,7 +452,11 @@ for (const [id, vars] of Object.entries(panel)) {
         put(id, col, +y, val); n++; y0 = Math.min(y0, +y); y1 = Math.max(y1, +y);
       }
     }
-    sources[col] = `${v.label ?? v.id} — ${describeSource(v.source)}${v.unit ? ` (${v.unit})` : ''}; modern fold ${MODERN_FROM}-${Y1}, observed ${n ? `${y0}-${y1}` : 'nothing'}, not carried forward`;
+    const dup = duplicateOf(col);
+    if (dup) throw new Error(`modern fold: ${v.id} writes '${col}', whose values match the existing panel column '${dup.other}' (median |log ratio| ${dup.med.toExponential(1)} over ${dup.n} overlapping actor-years, and it adds only ${dup.adds} of its ${dup.cells} cells) — it is the same series under a second name. Retire one of them in data/variables.yaml with a 'retired:' date and reason.`);
+    // era-1991-2026-r2/statistics-6: the range in the source line is the column's OBSERVED range, not the fold's
+    // window constant — half of these columns used to declare "modern fold 2000-2025" over data starting in 1960.
+    sources[col] = `${v.label ?? v.id} — ${describeSource(v.source)}${v.unit ? ` (${v.unit})` : ''}; modern fold, observed ${n ? `${y0}-${y1}` : 'nothing'} (fold window ${MODERN_FROM}-${Y1}), not carried forward`;
     wrote.push(`${col}=${n}`);
   }
 
@@ -374,9 +483,42 @@ for (const [id, vars] of Object.entries(panel)) {
   for (const [col, rec] of snapCols) {
     if (!rec) continue;
     const src = rec.v.source ?? {};
-    sources[col] = rec.srcLine ? `${rec.srcLine}, modern snapshot valued at ${SNAP}` : `${rec.v.label ?? rec.v.id} — ${src.hand ? `data/actors.yaml ${src.field}` : 'hand estimate in data/variables.yaml'}, modern snapshot valued at ${SNAP}${rec.note ? `; ${rec.note}` : ''}`;
+    const dated = `modern snapshot valued at ${SNAP}${SNAP_SOURCE_YEAR > SNAP ? ` — data/actors.yaml describes ${SNAP_SOURCE_YEAR}, so this column is a declared ${SNAP_SOURCE_YEAR - SNAP}-year lookahead over the panel's last measured year and no template may read it (era-1991-2026-r2/data-8)` : ''}`;
+    sources[col] = rec.srcLine ? `${rec.srcLine}, ${dated}` : `${rec.v.label ?? rec.v.id} — ${src.hand ? `data/actors.yaml ${src.field}` : 'hand estimate in data/variables.yaml'}, ${dated}${rec.note ? `; ${rec.note}` : ''}`;
+  }
+  // era-1991-2026-r2/corridors-8: the chokepoint exposure columns come from data/corridors.yaml, not from a second
+  // hand map in data/actors.yaml. The two disagreed on four of the five records they shared and neither carried a
+  // source; the corridor layer's `load_bearing_for` has a `load_bearing_source` on every record and a dated history
+  // behind it, so it is the one that survives. Still valued at SNAP alone, because 61 of the 84 records with a
+  // load_bearing_for still carry no `load_bearing_from` — the year their weights become a claim rather than a
+  // back-projection — which is the open half of era-1870-1914-r2/corridors-6 and is recorded in docs/refine-log.md.
+  {
+    let n = 0;
+    for (const rec of Y('data/corridors.yaml')) {
+      if (rec.kind !== 'chokepoint' || !rec.load_bearing_for) continue;
+      const col = `chokepoint_${rec.id}`;
+      for (const [id, v] of Object.entries(rec.load_bearing_for)) { if (!panel[id]) continue; put(id, col, SNAP, +v); n++; }
+      sources[col] = `share of external trade transiting ${rec.name ?? rec.id} — data/corridors.yaml load_bearing_for (${rec.load_bearing_source ?? 'estimate'}), modern snapshot valued at ${SNAP}. Display only: the fold's single-year covariate guard refuses any template that names it, and the record's own weights are undated (no load_bearing_from) so they are the 2026 estimate placed at ${SNAP}`;
+    }
+    console.log(`chokepoint exposure: ${n} actor-years from data/corridors.yaml load_bearing_for at ${SNAP}`);
+  }
+
+  // era-1991-2026-r2/data-8 (c): `regime_type` declares the V-Dem RoW scale, "as the panel's `regime`". Report how
+  // often the two disagree, every build — an ordinal that departs from its declared scale for a quarter of the
+  // actors it covers is a separate hand estimate and has to say so rather than be discovered.
+  {
+    const dis = [];
+    for (const [id, vars] of Object.entries(panel)) {
+      const a = vars.regime_type?.[SNAP - Y0], b = vars.regime?.[SNAP - Y0];
+      if (a == null || b == null) continue;
+      if (a !== b) dis.push(`${id} ${a}/${b}`);
+    }
+    const nHave = Object.values(panel).filter(v => v.regime_type?.[SNAP - Y0] != null).length;
+    sources.regime_type = `${sources.regime_type ?? 'regime type'}. NOT the same measurement as the panel's \`regime\` despite sharing the V-Dem RoW scale: a hand transcription in data/actors.yaml against V-Dem RoW via OWID, disagreeing for ${dis.length} of the ${nHave} actors it covers at ${SNAP} (${dis.join(' ')}) — era-1991-2026-r2/data-8 (c). Read it as a separate hand estimate on the RoW scale, not as the panel's series`;
+    if (dis.length) console.log(`modern fold: regime_type disagrees with the panel's regime for ${dis.length}/${nHave} actors at ${SNAP} — ${dis.join(' ')}`);
   }
   console.log(`modern fold: ${wrote.length} series columns (${wrote.join(' ')}); ${[...snapCols].filter(([, r]) => r).length} snapshot columns at ${SNAP}${skipped.length ? `; skipped ${skipped.join(' ')} (already measured in the panel)` : ''}`);
+  if (near.length) console.log(`modern fold: ${near.length} near-duplicate column pair(s), reported not refused — ${near.map(d => `${d.col}~${d.other} (median |log ratio| ${d.med.toExponential(1)} over ${d.n} cells, adds ${d.adds}/${d.cells})`).join('; ')}`);
 }
 
 // ---- era-1945-1991-r2/data-5: splice the World Bank PPP series onto gdp_pc where Maddison has nothing.
@@ -391,31 +533,60 @@ for (const [id, vars] of Object.entries(panel)) {
 // the same quantity in different base years and different price concepts, so the level is matched on the actor's own
 // overlap (geometric mean of gdp_pc / gdp_pc_ppp) where it has one and on the pooled cross-actor ratio where it does
 // not, and only NULL years are written. Every filled year is flagged in gdp_pc_wb.
+// era-1991-2026-r2/engine-3: the splice used ONE geometric-mean ratio computed over the actor's whole overlap, and
+// gdp_pc_ppp is NY.GDP.PCAP.PP.CD — PPP in CURRENT international dollars — while Maddison is constant 2011
+// international dollars. The ratio therefore drifts with the PPP price level, and a whole-overlap average lands in
+// the middle of the period, so joining it onto Maddison's last year (2022) injected a level jump that the derived
+// gdp_growth read as real growth: USA 58,487 -> 91,286, CHN 19,238 -> 34,048, median live-actor gdp_growth 0.030 in
+// 2022, 0.426 in 2023, 0.046 in 2024, with 75% of actors over +0.20. Downstream that inflated the fitted sd of
+// gdp_growth by a third, put ~+4.3pp/yr on every actor's structural growth at any as-of >= 2023, and drove
+// stepPolarity's mass projection off a price index.
+// Two changes. (a) Where the gap is a FORWARD extension past the actor's own last Maddison year, chain: carry
+// Maddison's last level and move it by the World Bank series' own year-on-year growth rate. A growth rate in current
+// PPP dollars still carries the price drift, but it carries one year of it rather than a decade of it, and it is
+// the construction that cannot produce a level jump at the join. (b) Where the gap is interior or whole-life (an
+// actor Maddison never covers), the ratio splice stays, but the ratio is the geometric mean over the LAST
+// SPLICE_YEARS overlap years rather than over the whole overlap — which is what scripts/lib/capability.mjs already
+// does for the CINC splice; the two splices in this repo disagreed about their own method.
 {
-  const R = [];                                        // pooled log ratio, over every actor-year that has both
+  const R = [];                                        // pooled log ratio, over the recent overlap of every actor that has both
   const perActor = new Map();
+  const lastOverlap = new Map();
   for (const [id, vars] of Object.entries(panel)) {
     if (!vars.gdp_pc || !vars.gdp_pc_ppp) continue;
-    const rs = [];
-    for (let i = 0; i < YEARS.length; i++) { const m = vars.gdp_pc[i], w = vars.gdp_pc_ppp[i]; if (m > 0 && w > 0) { rs.push(Math.log(m / w)); R.push(Math.log(m / w)); } }
-    if (rs.length) perActor.set(id, { r: rs.reduce((a, b) => a + b, 0) / rs.length, n: rs.length });
+    const ov = [];
+    for (let i = 0; i < YEARS.length; i++) { const m = vars.gdp_pc[i], w = vars.gdp_pc_ppp[i]; if (m > 0 && w > 0) ov.push([i, Math.log(m / w)]); }
+    if (!ov.length) continue;
+    lastOverlap.set(id, ov[ov.length - 1][0]);
+    const recent = ov.slice(-SPLICE_YEARS);
+    const r = recent.reduce((a, b) => a + b[1], 0) / recent.length;
+    perActor.set(id, { r, n: recent.length });
+    for (const [, x] of recent) R.push(x);
   }
   const pooled = R.length ? R.reduce((a, b) => a + b, 0) / R.length : null;
   // held-out check on the splice itself: for the actors that HAVE both series, how well does the pooled ratio alone
   // reproduce the Maddison value? Printed, not asserted — an actor with its own overlap never uses the pooled number.
   let within = 0, tot = 0;
   for (const [, v] of perActor) { tot++; if (pooled != null && Math.abs(v.r - pooled) < Math.log(1.10)) within++; }
-  let filled = 0; const actorsFilled = new Set();
+  let filled = 0, chained = 0; const actorsFilled = new Set();
   if (pooled != null) for (const [id, vars] of Object.entries(panel)) {
     if (!vars.gdp_pc_ppp) continue;
     vars.gdp_pc ??= new Array(YEARS.length).fill(null);
     vars.gdp_pc_wb ??= new Array(YEARS.length).fill(null);
+    // (a) forward extension past the actor's own last Maddison observation: chain on the World Bank growth rate
+    let lastM = -1; for (let i = 0; i < YEARS.length; i++) if (vars.gdp_pc[i] != null) lastM = i;
+    if (lastM >= 0) for (let i = lastM + 1; i < YEARS.length; i++) {
+      const w = vars.gdp_pc_ppp[i], wPrev = vars.gdp_pc_ppp[i - 1], prev = vars.gdp_pc[i - 1];
+      if (!(w > 0) || !(wPrev > 0) || !(prev > 0)) break;
+      vars.gdp_pc[i] = prev * (w / wPrev); vars.gdp_pc_wb[i] = 1; filled++; chained++; actorsFilled.add(id);
+    }
+    // (b) interior and whole-life gaps: the level-matched ratio splice, on the recent overlap
     const r = perActor.get(id)?.r ?? pooled;
     for (let i = 0; i < YEARS.length; i++) { const w = vars.gdp_pc_ppp[i]; if (vars.gdp_pc[i] != null || !(w > 0)) continue; vars.gdp_pc[i] = Math.exp(r) * w; vars.gdp_pc_wb[i] = 1; filled++; actorsFilled.add(id); }
   }
-  sources.gdp_pc += `; where Maddison has no row and the World Bank PPP series does, gdp_pc is that series level-matched to Maddison (geometric-mean ratio on the actor's own overlap, else the pooled ratio exp(${pooled?.toFixed(3)}) over ${R.length} actor-years) and flagged in gdp_pc_wb`;
+  sources.gdp_pc += `; past the actor's own last Maddison year gdp_pc is chained on the World Bank PPP series' year-on-year growth rate (no level join, so no jump at the seam), and where Maddison has no row at all it is that series level-matched to Maddison (geometric-mean ratio on the actor's last ${SPLICE_YEARS} overlap years, else the pooled ratio exp(${pooled?.toFixed(3)}) over ${R.length} actor-years). Every filled year is flagged in gdp_pc_wb`;
   sources.gdp_pc_wb = 'derived: 1 where gdp_pc was spliced from the World Bank PPP series (data/variables.yaml gdp_pc_ppp) because Maddison has no row for that actor-year';
-  console.log(`gdp_pc World Bank splice: ${filled} actor-years across ${actorsFilled.size} actors; pooled log ratio ${pooled?.toFixed(3)} over ${R.length} overlap actor-years; ${within}/${tot} actors with an overlap sit within 10% of the pooled ratio`);
+  console.log(`gdp_pc World Bank splice: ${filled} actor-years across ${actorsFilled.size} actors (${chained} chained past the actor's last Maddison year, ${filled - chained} level-matched); pooled log ratio ${pooled?.toFixed(3)} over ${R.length} recent-overlap actor-years; ${within}/${tot} actors with an overlap sit within 10% of the pooled ratio`);
 }
 
 // ---- derived: gdp growth, log gdp pc, milex share proxy, great power flag
@@ -430,7 +601,10 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.modeled = YEARS.map(() => (a?.modeled ? 1 : 0));
   vars.year = YEARS.map(y => y);
   // superpower client ties: 0 inside coverage when absent, carried forward after the alliance data ends (2000)
-  for (const v of ['pact_usa', 'pact_rus']) { vars[v] ??= new Array(YEARS.length).fill(null); let last = null; YEARS.forEach((y, i) => { if (!a || !isLive(a, y)) return; if (vars[v][i] == null) vars[v][i] = y <= 2000 ? 0 : last; last = vars[v][i]; }); }
+  // era-1991-2026-r2/data-7: the graph now reaches 2026 (loadPacts carries ATOP's last edge set forward itself and
+  // adds the dated accessions), so a null here is a genuine non-pact for every year and the old `carry the last
+  // value past 2000` rule — which carried a ZERO for any state that had no alliance in 2000 — is gone.
+  for (const v of ['pact_usa', 'pact_rus']) { vars[v] ??= new Array(YEARS.length).fill(null); YEARS.forEach((y, i) => { if (!a || !isLive(a, y)) return; if (vars[v][i] == null) vars[v][i] = 0; }); }
   vars.sp_client_any = YEARS.map((y, i) => ((vars.pact_usa[i] || vars.pact_rus[i]) ? 1 : 0));
   vars.sp_client_one = YEARS.map((y, i) => ((vars.pact_usa[i] ? 1 : 0) + (vars.pact_rus[i] ? 1 : 0) === 1 ? 1 : 0));
   vars.patron_regime = YEARS.map((y, i) => { const usa = panel.USA?.regime?.[i], rus = panel.RUS?.regime?.[i]; if (vars.pact_usa?.[i] && !vars.pact_rus?.[i]) return usa ?? null; if (vars.pact_rus?.[i] && !vars.pact_usa?.[i]) return rus ?? null; if (vars.pact_usa?.[i] && vars.pact_rus?.[i]) return ((usa ?? 0) + (rus ?? 0)) / 2; return 0; });
@@ -447,6 +621,26 @@ for (const [id, vars] of Object.entries(panel)) {
   vars.anticoup_norm_dates = YEARS.map(y => (y >= 2000 ? 1 : 0));   // AU Lomé 2000 / OAS 1991-2001: coups cost recognition and aid
 }
 
+// ---- build guard on gdp_growth (era-1991-2026-r2/engine-3). A splice that joins two series at different price
+// levels shows up here and nowhere else: the median live actor's log growth in 2023 was 0.426 under the old
+// whole-overlap ratio join, i.e. a 53% one-year jump in world income that nothing in the sources says happened.
+// The guard is on the MEDIAN, not on a tail: a real year of world crisis or recovery moves the median by a few
+// points, a splice artefact moves it by tens. Threshold 0.15 = a 16% median one-year move, four times the largest
+// median in the whole 1816-2022 measured record.
+{
+  const MAX_MEDIAN_GROWTH = 0.15;
+  const bad = [];
+  for (let i = 1; i < YEARS.length; i++) {
+    const g = [];
+    for (const [id, vars] of Object.entries(panel)) { const a = actors.get(id); if (!a || !isLive(a, YEARS[i])) continue; const x = vars.gdp_growth?.[i]; if (x != null && Number.isFinite(x)) g.push(x); }
+    if (g.length < 20) continue;
+    g.sort((p, q) => p - q);
+    const med = g[Math.floor(g.length / 2)];
+    if (Math.abs(med) > MAX_MEDIAN_GROWTH) bad.push(`${YEARS[i]} median ${med.toFixed(3)} over ${g.length} live actors`);
+  }
+  if (bad.length) throw new Error(`build guard: median live-actor gdp_growth exceeds ${MAX_MEDIAN_GROWTH} in ${bad.length} year(s) — a level jump between two spliced income series, not growth:\n  ${bad.join('\n  ')}`);
+}
+
 // ---- modern capability: extend `cinc` past NMC's last year (operator / modern-capability, package 10).
 // NMC stops; the forecast horizon does not. Rather than carry the last CINC forward for the rest of the run, the
 // years after it are the five-indicator composite of scripts/lib/capability.mjs, spliced onto CINC per actor over
@@ -457,19 +651,19 @@ for (const [id, vars] of Object.entries(panel)) {
   const cincOf = (id, y) => panel[id]?.cinc?.[y - Y0] ?? null;
   const { composite } = compositeShares({ from: 1960, to: Y1, idOf: owid, liveAt });
   const check = validate({ composite, cincOf, liveAt, from: 1990, to: nmcLast });
-  const { values, factor } = spliceComposite({ composite, cincOf, liveAt, lastCinc: nmcLast, extendTo: Y1 });
-  for (const [id, vars] of Object.entries(panel)) if (vars.cinc) YEARS.forEach((y, i) => { if (vars.cinc[i] != null && y <= nmcLast) put(id, 'cinc_spliced', y, 0); });
+  const { values, carried, extended, refused, factor } = spliceComposite({ composite, cincOf, liveAt, lastCinc: nmcLast, extendTo: Y1, ids: Object.keys(panel) });
+  for (const [id, vars] of Object.entries(panel)) if (vars.cinc) YEARS.forEach((y, i) => { if (vars.cinc[i] != null && y <= nmcLast) { put(id, 'cinc_spliced', y, 0); put(id, 'cinc_carried', y, 0); } });
   const ext = [];
   for (const y of Object.keys(values).map(Number).sort((a, b) => a - b)) {
-    let k = 0;
-    for (const [id, v] of Object.entries(values[y])) { put(id, 'cinc', y, v); put(id, 'cinc_spliced', y, 1); k++; }
-    ext.push(`${y}:${k}`);
+    for (const [id, v] of Object.entries(values[y])) { put(id, 'cinc', y, v); put(id, 'cinc_spliced', y, 1); put(id, 'cinc_carried', y, carried[y]?.[id] ?? 0); }
+    ext.push(`${y}:${extended[y]}+${Object.keys(carried[y] ?? {}).length}c`);
   }
   const parts = COMPONENTS.map(c => `${c.stands_for}<-${c.id}`).join(' ');
   const extLast = Object.keys(values).map(Number).sort((a, b) => a - b).pop() ?? nmcLast;
   sources.cinc += `; ${nmcLast + 1}-${extLast} is the modern capability composite (${parts}; ${MISSING_COMPONENTS.map(m => m.stands_for).join(', ')} not represented) spliced onto CINC over the ${SPLICE_YEARS} overlap years to ${nmcLast}, scripts/lib/capability.mjs; ${extLast < Y1 ? `${extLast + 1}-${Y1} has no source and is left null — the engine carries the last value forward and records the staleness` : 'no year is carried'}`;
-  sources.cinc_spliced = `0 where cinc is CoW NMC's own measurement, 1 where it is the modern composite spliced onto it (scripts/lib/capability.mjs); composite vs CINC 1990-${nmcLast} r=${check.r?.toFixed(3)} (n=${check.n}), log r=${check.r_log?.toFixed(3)}`;
-  console.log(`capability composite: r=${check.r?.toFixed(4)} log r=${check.r_log?.toFixed(4)} against CINC 1990-${nmcLast} (n=${check.n} actor-years); ${Object.keys(factor).length} actors spliced; extended ${ext.join(' ') || 'nothing'}`);
+  sources.cinc_spliced = `0 where cinc is CoW NMC's own measurement, 1 where it is the modern composite spliced onto it (scripts/lib/capability.mjs); composite vs CINC 1990-${nmcLast} r=${check.r?.toFixed(3)} (n=${check.n}), log r=${check.r_log?.toFixed(3)}. The extension is used for RANKS and RATIOS, so the acceptance test is not the pooled level correlation alone (era-1991-2026-r2/statistics-7): worst-year Spearman ${check.rho_min?.toFixed(3)} (${check.rho_min_year}), and the largest displacement of a CINC top-20 actor in the composite's own ranking is ${check.rank_shift_top20} places (${check.rank_shift_actor}, ${check.rank_shift_year}) — the composite drops CINC's military-personnel indicator and stands GDP at PPP in for iron and steel, which moves conscript-heavy poor states down and small rich states up`;
+  sources.cinc_carried = `derived: years since the actor's cinc was last measured. 0 for a CoW NMC value and for a composite-extended one; > 0 where the actor is live past ${nmcLast} but the composite cannot reach it (fewer than the required components in the World Bank / OWID series, which are not published for sanctioned or unrecognised states) or its splice factor is too far from 1 to be a level correction, so its last CINC-scale value is carried instead of the actor vanishing from the column (era-1991-2026-r2/data-3, statistics-7). Actors whose factor was refused: ${refused.join(', ') || 'none'}`;
+  console.log(`capability composite: r=${check.r?.toFixed(4)} log r=${check.r_log?.toFixed(4)} rho_min=${check.rho_min?.toFixed(4)} (${check.rho_min_year}) top20 rank shift ${check.rank_shift_top20} (${check.rank_shift_actor} ${check.rank_shift_year}) against CINC 1990-${nmcLast} (n=${check.n} actor-years); ${Object.keys(factor).length} actors spliced, ${refused.length} refused for |log factor| > ln2 (${refused.join(',') || 'none'}); extended ${ext.join(' ') || 'nothing'} (n extended + n carried)`);
 }
 
 // ---- derived world state: polarity, the hegemon and the eras (operator / derived-polarity, package 9).
@@ -491,18 +685,44 @@ for (const [id, vars] of Object.entries(panel)) {
 
   // the first year any actor has an ODA/GNI observation: before it, aid conditionality is a structural zero
   const aidFrom = Math.min(...Object.values(panel).map(v => { const i = v.aid_gni?.findIndex(x => x != null) ?? -1; return i < 0 ? Infinity : YEARS[i]; }));
-  let sm = null;
+  // and whether the actor is in the recipient series at all (era-1991-2026-r2/data-6): the World Bank publishes
+  // ODA/GNI only for recipients, so an actor with no row in any year is a non-recipient and its conditionality
+  // exposure is a structural zero, not an unobserved value. One with rows in some years and not others is the
+  // second case and keeps its null.
+  for (const [id, vars] of Object.entries(panel)) {
+    const any = (vars.aid_gni ?? []).some(x => x != null);
+    vars.aid_recipient = YEARS.map((y) => (y >= aidFrom ? (any ? 1 : 0) : null));
+  }
+  sources.aid_recipient = 'derived from World Bank WDI DT.ODA.ODAT.GN.ZS: 1 where the actor appears in the ODA/GNI recipient series in any year, 0 where it never does (a donor or graduated high-income state), null before the series starts';
+  let sm = null, lastRaw = null, lastRawYear = null;
+  // era-1991-2026-r2/engine-7 and data-8: a year with no capability observation used to return null for the WHOLE
+  // derived block, so at the panel's last year — the origin the live forecast runs from — bipolar, unipolar,
+  // multipolar, cold_war, promotion_era, anticoup_norm, n_poles, hegemon_share, hegemon_regime, dem_share,
+  // is_hegemon, pol_mass, pol_share, great_game and aid_conditionality were all null for all 195 live actors, and
+  // every 2025 row was dropped from every template reading one of them. Two of those (dem_share, aid_conditionality)
+  // need no capability at all and were collateral damage of one `return null`. The capability distribution is now
+  // carried forward from the last year that has one, restricted to the actors alive in the year it is carried into
+  // and renormalised — the same last-observation carry the engine already applies to a stale `cinc` — and the
+  // staleness is recorded per year in `capability_carried` so a carried classification is never read as a measured
+  // one. Nothing before the carry moves: for every year with its own shares this is the previous construction.
   const W = YEARS.map(y => {
-    const raw = projectionShares(cincShare(y), milexShare(y));
-    if (!raw.size) return null;
+    let raw = projectionShares(cincShare(y), milexShare(y));
+    let carried = 0;
+    if (!raw.size) {
+      if (!lastRaw) return null;
+      const alive0 = new Set(Object.keys(panel).filter(id => liveAt(id, y)));
+      raw = normalise(new Map([...lastRaw].filter(([id]) => alive0.has(id))));
+      if (!raw.size) return null;
+      carried = y - lastRawYear;
+    } else { lastRaw = raw; lastRawYear = y; }
     const alive = new Set(Object.keys(panel).filter(id => liveAt(id, y)));
     sm = smoothShares(sm, raw, POLARITY.lambda, alive);
     const st = classify(sm); if (!st) return null;
-    let n = 0, d = 0;
-    for (const id of Object.keys(panel)) { if (!liveAt(id, y)) continue; const r = panel[id].regime?.[at(y)]; if (r == null) continue; n++; if (r >= POLARITY.hegemon_regime_min) d++; }
+    let n = 0, d = 0, live = 0;
+    for (const id of Object.keys(panel)) { if (!liveAt(id, y)) continue; live++; const r = panel[id].regime?.[at(y)]; if (r == null) continue; n++; if (r >= POLARITY.hegemon_regime_min) d++; }
     const demShare = n ? d / n : null;
     const hegRegime = panel[st.hegemon]?.regime?.[at(y)] ?? null;
-    return { y, raw, sm: new Map(sm), st, demShare, hegRegime, flags: eraFlags({ polarity: st.polarity, hegemonRegime: hegRegime, demShare }) };
+    return { y, raw, sm: new Map(sm), st, demShare, demN: n, demLive: live, carried, hegRegime, flags: eraFlags({ polarity: st.polarity, hegemonRegime: hegRegime, demShare }) };
   });
   const r9 = (v) => (v == null ? null : Math.round(v * 1e9) / 1e9);
   for (const [id, vars] of Object.entries(panel)) {
@@ -520,7 +740,8 @@ for (const [id, vars] of Object.entries(panel)) {
   // the world-level series itself, for the diagnostic and for docs: one row per year, no actor lookup needed
   meta_polarity = W.filter(Boolean).map(w => ({ year: w.y, polarity: w.st.polarity, poles: w.st.poles, hegemon: w.st.hegemon,
     hegemon_share: r9(w.st.hegemon_share), gap1: w.st.gap1 == null ? null : +w.st.gap1.toFixed(3), gap2: w.st.gap2 == null ? null : +w.st.gap2.toFixed(3),
-    hegemon_regime: w.hegRegime, dem_share: r9(w.demShare), promotion_era: w.flags.promotion_era, anticoup_norm: w.flags.anticoup_norm }));
+    hegemon_regime: w.hegRegime, dem_share: r9(w.demShare), dem_share_n: w.demN, dem_share_live: w.demLive,
+    capability_carried: w.carried || 0, promotion_era: w.flags.promotion_era, anticoup_norm: w.flags.anticoup_norm }));
 
   // the information wave: the logistic the panel's own info_access traces, fitted here and read by the engine, in
   // place of the hand-typed rate switch at 1985 (src/engine/polarity.js).
@@ -545,10 +766,11 @@ for (const [id, vars] of Object.entries(panel)) {
   sources.cold_war = 'derived: the world is bipolar (replaces the typed year <= 1991; cold_war_dates keeps it for one run)';
   sources.promotion_era = `derived: unipolar and the hegemon's own regime >= ${POLARITY.hegemon_regime_min} (replaces the typed 1992-2016)`;
   sources.anticoup_norm = `derived: at least ${POLARITY.dem_share} of live states score regime >= ${POLARITY.hegemon_regime_min} (replaces the typed year >= 2000; anticoup_norm_dates keeps it for one run)`;
-  sources.dem_share = `share of live actors with a regime score, scoring >= ${POLARITY.hegemon_regime_min} (V-Dem RoW)`;
+  sources.dem_share = `share of live actors WITH A REGIME SCORE scoring >= ${POLARITY.hegemon_regime_min} (V-Dem RoW). The denominator is the observed set, not the live set — era-1991-2026-r2/data-4 and statistics-5: 22 live states (the Caribbean and Pacific parliamentary democracies and the four European microstates) have no V-Dem row in any year, so at 2024 the share is 85/173 = 0.491 over observed actors against 195 live, and the anticoup_norm flag that reads it switches off on the boundary of V-Dem's country list rather than on a fall in the democratic share. panel.meta.polarity carries dem_share_n (the denominator) and dem_share_live beside it every year so the coverage is visible; filling the 22 from a sourced series that has them is docs/escalations.md era-1991-2026-r2/data-4`;
+  sources.capability_carried = 'panel.meta.polarity only: years since the capability distribution the polarity classification was computed from was last measured (0 = measured in that year)';
   sources.hegemon_regime = 'derived: the regime score of the top actor by pol_share (replaces the typed largest-power-by-date rule; hegemon_regime_dates keeps it for one run)';
   sources.great_game = 'derived: superpower client x bipolar world (bipolar is now derived; great_game_dates keeps the typed-era version for one run)';
-  sources.aid_conditionality = `derived: ODA/GNI capped at ${POLARITY.aid_cap}% in tens during the derived promotion era, a structural zero outside it (aid_conditionality_dates keeps the typed-era version for one run)`;
+  sources.aid_conditionality = `derived: ODA/GNI capped at ${POLARITY.aid_cap}% in tens during the derived promotion era, a structural zero outside it. Inside the era a missing ODA/GNI row is a structural zero too — the World Bank series covers recipients only, so its silence about a donor or a graduated state is "receives no measurable aid" and not a missing observation (era-1991-2026-r2/statistics-4, data-6). The aid_recipient column keeps "never in the series" separable from "in it in some years"`;
   for (const v of ['bipolar', 'unipolar_us', 'cold_war', 'anticoup_norm', 'great_game', 'aid_conditionality', 'hegemon_regime']) sources[`${v}_dates`] = 'the typed calendar-year era flag this build replaced with derived world state, kept one run for the checker to diff (operator / derived-polarity)';
   console.log(`derived polarity: ${runs.length} states 1816-${Y1}; bipolar ${bi ? `${bi.a}-${bi.b}` : 'none'} (typed 1947-1991), unipolar ${uni ? `${uni.a}-${uni.b}` : 'none'} (typed 1992-2016); ${W.filter(w => w && w.st.polarity === 'multipolar' && w.y >= 1870 && w.y <= 1938).length}/69 of 1870-1938 multipolar; info wave L=${meta_info_wave?.L} r=${meta_info_wave?.r} t0=${meta_info_wave?.t0} rmse=${meta_info_wave?.rmse} (n=${meta_info_wave?.n}), diffusion kappa=${meta_info_wave?.kappa} rmse=${meta_info_wave?.kappa_rmse} (n=${meta_info_wave?.kappa_n})`);
 }
@@ -750,6 +972,19 @@ for (const v of vars) {
   }
   meta.vars[v] = { source: sources[v] ?? 'derived', introduced: first == null ? null : Y0 + first, last: last == null ? null : Y0 + last, actor_years: n, actors: actorsWith };
   meta.introduced[v] = first == null ? null : Y0 + first;
+}
+// era-1991-2026-r2/statistics-6 (d) and data-8: a template may not name a column that exists in ONE year. The
+// snapshot columns (data/actors.yaml at SNAP: cap_*, nuclear_status, regime_type, personalism, succession, the
+// chokepoint exposures) are single-year by construction — introduced == last, <= 44 actors, and chokepoint_suez has
+// exactly one actor-year — so a covariate over one could never be estimated at any as-of and would silently delete
+// every row of the template. No template names one today; nothing in the build stopped one from doing so.
+{
+  const bad = [];
+  for (const t of Y('data/templates.yaml').templates) for (const c of [...(t.covariates ?? []), ...(t.candidates ?? [])]) {
+    const m = meta.vars[c.var];
+    if (m && m.introduced != null && m.introduced === m.last) bad.push(`${t.id}.${c.var} (${c.var} exists only at ${m.introduced}, ${m.actors} actors)`);
+  }
+  if (bad.length) throw new Error(`template covariate over a single-year column — it cannot be estimated at any as-of and drops every row:\n  ${bad.join('\n  ')}`);
 }
 const out = { meta, years: YEARS, vars, sources, actors: panel };
 writeFileSync('data/panel.json', JSON.stringify(out));

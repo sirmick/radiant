@@ -144,3 +144,63 @@ export function makeOwidMap(actors, { preferAlt = false } = {}) {
 
 /** System membership: any span contains `year` ([from, to) with to null = open). */
 export const isLive = (a, year) => (a.spans ?? [[a.introduced, a.retired]]).some(([f, t]) => year >= (f ?? 1816) && (t == null || year < t));
+
+/**
+ * The dated defence-pact graph, as one construction read by scripts/build-panel.mjs, scripts/lib/fit.mjs,
+ * scripts/backtest.mjs and scripts/run-forward.mjs — era-1991-2026-r2/data-7 and engine-6.
+ *
+ * Three sources, spliced at their own boundaries so no year is taken from two of them:
+ *   1816-2000  CoW Formal Alliances 3.03 dyadic, sstype 1 (defense). Unchanged: every pre-2001 row this repo has
+ *              ever scored comes from here and still does.
+ *   2001-2018  ATOP 5.1 (scripts/fetch-atop.mjs), atop_defense = 1. CoW 3.03 ENDS IN 2000, and the build used to
+ *              carry the last value past it — which for a state that had no alliance in 2000 is a carried ZERO, so
+ *              the seven 2004 NATO entrants, the two of 2009 and Montenegro in 2017 were coded as allies of nobody
+ *              for the rest of the run, and the dyadic `allied` feature was the year-2000 edge set at as-of 2000,
+ *              2010 and 2025 alike (1,010 edges at all three, byte-identical).
+ *   2019-      dated hand rows in data/history/events.yaml (`kind: pact`), which is where the accessions past
+ *              ATOP's own last year live. Each row names the acceding state, the members it thereby allies with,
+ *              and its source.
+ *
+ * Returns a Set of `A|B|year` (ids ordered) plus `meta` describing the splice for a source line.
+ */
+export function loadPacts(codeMap = null) {
+  const actors = loadActors();
+  const code = codeMap ?? makeCodeMap(actors);
+  const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+  const pacts = new Set();
+  const COW_LAST = 2000;
+  let nCow = 0, nAtop = 0, nHand = 0, atopLast = COW_LAST;
+  for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) {
+    if (r.sstype !== '1') continue;
+    const y = +r.year; if (y > COW_LAST) continue;
+    const a = code(r.ccode1, y), b = code(r.ccode2, y);
+    if (a && b && a !== b) { pacts.add(`${pairKey(a, b)}|${y}`); nCow++; }
+  }
+  try {
+    for (const r of readCsv('data/raw/hist/atop_alliance_5.1.csv')) {
+      const y = +r.year; if (y <= COW_LAST) continue;
+      if (+r.atop_defense !== 1) continue;
+      atopLast = Math.max(atopLast, y);
+      const a = code(r.ccode1, y), b = code(r.ccode2, y);
+      if (a && b && a !== b) { pacts.add(`${pairKey(a, b)}|${y}`); nAtop++; }
+    }
+  } catch { /* ATOP not fetched: the graph stops at CoW's end and the source line says so */ }
+  const lastYear = Math.max(atopLast, 2026);
+  // past the last dataset year the graph is CARRIED, not empty — the same last-observation carry the panel applies
+  // to every stale column, made explicit here rather than done per column downstream. `stale_from` says where it
+  // starts so a reader can tell a measured edge from a carried one.
+  let nCarried = 0;
+  const lastEdges = [...pacts].filter(k => k.endsWith(`|${atopLast}`)).map(k => k.slice(0, k.lastIndexOf('|')));
+  for (const k of lastEdges) for (let y = atopLast + 1; y <= lastYear; y++) { const key = `${k}|${y}`; if (!pacts.has(key)) { pacts.add(key); nCarried++; } }
+  for (const e of Y('data/history/events.yaml')) {
+    if (e.kind !== 'pact' || e.type !== 'defense') continue;
+    const y0 = Math.floor(e.year);
+    if (y0 <= atopLast) continue;                      // inside a dataset's own coverage: the dataset owns it
+    for (const a of e.members ?? []) for (const b of e.with ?? []) {
+      if (a === b) continue;
+      for (let y = y0; y <= lastYear; y++) { pacts.add(`${pairKey(a, b)}|${y}`); nHand++; }
+    }
+  }
+  return { pacts, meta: { cow_last: COW_LAST, atop_last: atopLast, stale_from: atopLast + 1, n_cow: nCow, n_atop: nAtop, n_hand: nHand, n_carried: nCarried,
+    source: `CoW Formal Alliances 3.03 dyadic sstype 1 (1816-${COW_LAST}), ATOP 5.1 atop_defense (${COW_LAST + 1}-${atopLast}, scripts/fetch-atop.mjs), the ${atopLast} edge set carried forward past it, and dated \`kind: pact\` rows in data/history/events.yaml for the accessions after ${atopLast}` } };
+}

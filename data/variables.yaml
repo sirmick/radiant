@@ -272,6 +272,8 @@ variables:
     dynamics: slow
     equation: oil_production           # high-cost producers cut first as brent falls
     display: { fan: true, map: true, format: ".3s" }
+    retired: 2026-09-07
+    retired_reason: "era-1991-2026-r2/data-8 (d): an exact duplicate of the existing panel column `oil_prod` (OWID fossil production, the same Energy Institute series), which the fold's name-based clash guard could not see. Measured over the 2,013 overlapping actor-years the median ratio oil_production / oil_prod is 1.0000002 and the 10th-90th percentiles are 0.991-1.007 — the same numbers to rounding, sitting in the panel as a second entity with 3,541 actor-years against oil_prod's 14,063 and a first year of 2000 against 1900. `oil_prod` is the survivor. The fold's clash guard is value-based as well as name-based now (scripts/build-panel.mjs), so this cannot recur silently; the record stays here rather than being deleted."
 
   - id: gas_demand
     group: energy
@@ -770,6 +772,8 @@ variables:
     dynamics: slow
     equation: chokepoint_exposure      # falls as corridors get built
     drives: [fiscal_stress]
+    retired: 2026-09-07
+    retired_reason: "era-1991-2026-r2/corridors-8: a second, disagreeing estimate of a quantity data/corridors.yaml already holds as `load_bearing_for`, with no source on either side. Measured: suez EGY 0.4 here against 0.7 in the corridor layer; bab_al_mandab had 8 dependents in the corridor layer (EGY 0.6 the largest) and 2 here; taiwan_strait JPN 0.6/0.5 and KOR 0.6/0.5 with USA 0.4 and PHL 0.3 absent here; hormuz JPN 0.70/0.75 and KOR 0.65/0.70 with KWT 0.9, TWN 0.4 and THA 0.4 absent; only malacca agreed. scripts/build-panel.mjs now writes the chokepoint_<record> columns from data/corridors.yaml instead, so the layer has one estimate. The `chokepoints:` field stays in data/actors.yaml for the viewer's actor card; it is no longer a panel column."
 
   - id: alignment
     group: external

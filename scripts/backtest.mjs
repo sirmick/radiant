@@ -9,9 +9,9 @@
 // pooled summary — an unfitted model is a miss, not a clean score.
 // Run: node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 200 [--no-dyads] [--no-refit]
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { readCsv, Y, loadActors, makeCodeMap } from './lib/hist.mjs';
+import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
 import { createFitter } from './lib/fit.mjs';
-import { createWorld, runEnsemble, CORRIDOR_UNIT, corridorFirstYear, corridorTransitionYears, corridorStateAt } from '../src/engine/core.js';
+import { createWorld, runEnsemble, CORRIDOR_UNIT, corridorFirstYear, corridorLastYear, corridorTransitionYears, corridorStateAt } from '../src/engine/core.js';
 import { IMPAIRED, RESOLVED, SPELL_UNITS, territoryFirstYear, territoryStateAt, endYears } from '../src/engine/termination.js';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
@@ -35,15 +35,29 @@ const MIN_EPV = 3;        // events per estimated covariate: below it the fit ca
 // `record_reopen` do NOT move: 1.63% against 4.32%, and 7.44% against 27.33%. 29 of the 46 corridor records still have
 // no post-1945 transition and about a dozen of those stopped being corridors decades ago and are not retired, so the
 // gap is a missing `retired:` field rather than missing history rows. The templates' own window comments in
-// data/templates.yaml carry the numbers. 1992-2026 stays outside for all three.
+// data/templates.yaml carry the numbers.
+// era-1991-2026-r2/corridors-1: `corridor` MOVES to 2025 and the other two do not, on the same measurement rerun
+// after that turn coded the 1992-2025 layer and retired twenty records whose thing had ended (`exists_until`).
+// corridor 3.52% over 1,107 modern record-years against 4.77% over the 1,529 coded ones — ratio 0.74, inside the
+// band, against 0.20 before the turn. chokepoint 3.27% against 5.11% — ratio 0.64, just under the 0.67 floor, so it
+// stays at 1991, and the nine records with no modern transition are quiet straits rather than missing history.
+// record_reopen 6.87% over 131 modern impaired record-years against 27.52% coded — ratio 0.25, and that one is real:
+// Benguela 1975-2014, Kerch and Yamal closed since 2022 and the Ukrainian transit lines since 2025 are long modern
+// closures that have not ended, i.e. right-censored spells, not uncoded years.
 // regime_change opens at 1816, not 1900 (era-1870-1914-r2/data-3): its source is V-Dem Regimes of the World via OWID,
 // which runs 1789-2025, and data/events.json carries 179 regime_change events dated before 1900. The ERT-derived
 // onset kinds keep their own 1900 start — that is where the Episodes of Regime Transformation data begins.
+// era-1991-2026-r2/data-1: mid_force, mid_war and war_end move from [1816, 2001] to [1816, 2010]. The window was
+// CoW MID 3.02's last dispute year, and it made the modern dyadic layer unscorable — as-of 2000 graded a 20-year
+// horizon on 2001 alone and as-of 2010 reported n: 0. GML MID 2.2.1 (scripts/fetch-mid.mjs, spliced in
+// scripts/build-events.mjs) carries the same hostlev variable to 2010. The two sources agree on the decade they
+// share: 14.0 pair-onsets a year at hostlev >= 4 over 1992-2001 against midb's 14.5, inside the factor of 1.5 the
+// corridor windows are held to. Past 2010 there is still no source and the window does not move.
 // operator/termination adds four ending kinds. Their windows are their sources': CoW MID endyear stops in 2001,
 // UCDP in 2024, and the two record layers are complete only where the refine loop has been — the reopen window is the
 // same 1869-1945 corridor_status is scored in (chokepoint_status now reaches 1991; the reopen sample is the two kinds
 // pooled, so it moves with the corridor half), and the territory histories run 1871-2025.
-const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1816, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2001], mid_war: [1816, 2001], chokepoint: [1869, 1991], corridor: [1869, 1945], war_end: [1816, 2001], intrastate_end: [1946, 2024], record_reopen: [1869, 1945], territory_settle: [1871, 2025] };
+const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1816, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2010], mid_war: [1816, 2010], chokepoint: [1869, 1991], corridor: [1869, 2025], war_end: [1816, 2010], intrastate_end: [1946, 2024], record_reopen: [1869, 1945], territory_settle: [1871, 2025] };
 const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
 // the structural zeros src/engine/core.js:stepLifecycle gives an actor introduced inside the horizon (see missingVars)
 const ENTRY_ZEROS = ['at_war', 'intrastate', 'mid_force', 'mid_war', 'coup_attempt', 'coup_success', 'interstate_ucdp', 'pact_usa', 'pact_rus', 'defence_pacts', 'sp_client_any', 'sp_client_one', 'great_game', 'aid_conditionality'];
@@ -68,8 +82,11 @@ const successors = Object.fromEntries([...actors.values()].filter(a => a.success
 const Y0 = panel.meta.y0;
 const liveAt = (id, y) => panel.actors[id]?.live?.[y - Y0] === 1;
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
-const pacts = new Set();
-for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) { if (r.sstype !== '1') continue; const y = +r.year, a = code(r.ccode1, y), b = code(r.ccode2, y); if (a && b) pacts.add(`${pairKey(a, b)}|${y}`); }
+// era-1991-2026-r2/data-7, engine-6: the dyadic `allied` feature is built from the same dated graph the panel and the
+// fitter read — CoW 3.03 to 2000, ATOP 5.1 to 2018, dated accessions past it, then carried. It used to be CoW alone,
+// which ends in 2000, so `world.allied` was the year-2000 edge set at as-of 2000, 2010 and 2025 alike (1,010 edges at
+// all three, byte-identical) and USA-EST, USA-FIN and twelve other pairs read NO PACT EVER.
+const { pacts, meta: pactMeta } = loadPacts(code);
 
 // ---- rolling-origin coefficients: one fits object per as-of year, cached (the design matrices are built once).
 const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence }) : null;
@@ -100,7 +117,8 @@ const auc = (pairs) => { // [[p, y]]
 const fmt = (x, d = 2) => (x == null ? '   —' : x.toFixed(d).padStart(5));
 
 const results = []; const pooled = {};
-console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}, coefficients=${REFIT ? 'refit per as-of year' : 'full-sample (leaky)'}\n`);
+console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}, coefficients=${REFIT ? 'refit per as-of year' : 'full-sample (leaky)'}`);
+console.log(`alliance graph: ${pactMeta.source}; measured through ${pactMeta.atop_last}, carried from ${pactMeta.stale_from}\n`);
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
   const F = fitsAt(asOf);
@@ -169,7 +187,11 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
         // 136 against observed 170 (a mild under-prediction) while the same ensemble fired ~1300 leader exits against
         // 654 observed. Reported, not pooled: the pooled score stays the Brier so the comparison against every
         // previous run is unchanged, and the two numbers below are what a 2x over-firing can no longer hide behind.
-        expCount += ens.expected[key] ?? 0; obsCount += real.anyCount.get(key) ?? 0;
+        // era-1991-2026-r2/engine-1: the two sides of count_ratio measured over the same number of years. realized()
+        // drops observed events outside COVERAGE, so where the ground truth ends inside the horizon the expected
+        // count must be truncated to match — it was not, and count_ratio was inflated by horizon/scored_years.
+        expCount += covYears < horizon ? ens.expectedWithin(key, covYears) : (ens.expected[key] ?? 0);
+        obsCount += real.anyCount.get(key) ?? 0;
       }
     } else if (RECORD_UNITS.has(t.unit)) {
       // one unit per corridor/chokepoint record that exists at as-of. A record whose dated history opens INSIDE the
@@ -178,8 +200,9 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
       const truthEnd = Math.min(asOf + horizon, cov ? cov[1] : asOf + horizon);
       for (const r of corridors) {
         if (CORRIDOR_UNIT[r.kind] !== t.unit) continue;
+        if (asOf > corridorLastYear(r, Infinity)) continue;   // era-1991-2026-r2/corridors-6: a retired record is not a unit
         const first = corridorFirstYear(r, t.window[0]);
-        const y = corridorTransitionYears(r, asOf + 1, truthEnd).size ? 1 : 0;
+        const y = corridorTransitionYears(r, asOf + 1, Math.min(truthEnd, corridorLastYear(r, Infinity))).size ? 1 : 0;
         if (first == null || first > asOf) { unborn++; unbornEvents += y; continue; }
         const key = `${t.id}|${r.id}`;
         pairs.push([covYears < horizon ? ens.pAnyWithin(key, covYears) : (ens.pAny[key] ?? 0), y, r.id]);
@@ -193,9 +216,10 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
       const kinds = new Set(t.kinds ?? []);
       for (const r of corridors) {
         if (!kinds.has(r.kind)) continue;
+        if (asOf > corridorLastYear(r, Infinity)) continue;   // era-1991-2026-r2/corridors-6
         const first = corridorFirstYear(r, t.window[0]);
         const st = (yy) => corridorStateAt(r, yy)?.status ?? null;
-        const y = endYears({ open: (yy) => st(yy - 1), close: st, inSpell: (x) => IMPAIRED.has(x), from: asOf + 1, to: truthEnd }).size ? 1 : 0;
+        const y = endYears({ open: (yy) => st(yy - 1), close: st, inSpell: (x) => IMPAIRED.has(x), from: asOf + 1, to: Math.min(truthEnd, corridorLastYear(r, Infinity)) }).size ? 1 : 0;
         if (first == null || first > asOf) { unborn++; unbornEvents += y; continue; }
         const key = `${t.id}|${r.id}`;
         pairs.push([covYears < horizon ? ens.pAnyWithin(key, covYears) : (ens.pAny[key] ?? 0), y, r.id]);

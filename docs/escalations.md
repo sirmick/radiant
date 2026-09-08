@@ -1152,3 +1152,132 @@ their `COVERAGE` entry moving past 1945.
 **Test.** With the field honoured, the 1946–1991 corridor label rate must come inside a factor of 1.5 of the coded
 window's 4.32% before either window moves. Guard: the 1869–1945 rate must not move by more than 0.2 points (a record
 retired in 1972 changes nothing before 1946), and pooled 1870–2010 `corridor_status` skill must not fall.
+
+## era-1991-2026-r2 / data-4 — a regime source for the 22 live states V-Dem does not cover
+
+**What it would add.** A second regime series folded under the existing `regime` column with a `regime_source` column
+beside it, so "V-Dem" and "filled" stay distinguishable in every fit.
+
+**Why.** 22 states are live in 2024 and have **zero regime observations in the whole 210-year panel**: BHS DMA GRD LCA
+VCT ATG KNA BLZ MCO LIE AND SMR KOSOVO BRN KIR TUV TON NRU MHL PLW FSM WSM. V-Dem's Regimes of the World series does
+not reach them. `regime` is a covariate on `leader_exit`, `irregular_exit`, `coup_attempt`, `democratize_step`,
+`autocratic_closure`, `intrastate_onset` and `intrastate_end`, so 11% of live states are excluded from all seven,
+forever — `leader_exit`'s `excluded_vars.regime` is 21 at as-of 2000 with 18 of 173 observed events inside the
+exclusion, and `coup_attempt`'s at-risk set falls 165 (1980) → 140 (2010) as more of them enter the system.
+
+The same hole decides a published era flag. `dem_share` is computed over live actors **that have a regime score**, so
+2024 is 85/173 = 0.4913 and `POLARITY.dem_share = 0.5` switches `anticoup_norm` off. Counting the ~18 of the 22 that
+are plainly electoral or liberal democracies gives about 103/195 = 0.528 and the flag does not switch off; the same
+correction removes the 1999/2000/2001 on/off/on flicker. This turn made the denominator visible (`dem_share_n` and
+`dem_share_live` are written into `panel.meta.polarity` every year and `sources.dem_share` says which denominator it
+is) but could not fix the numerator without a source.
+
+**Data.** Bjørnskov–Rode *Regime Characteristics* (1950–2020, 192 states, covers every one of the 22) or
+Boix–Miller–Rosato *Democracy and Dictatorship* (1800–2020). Both are single downloadable tables. The crosswalk onto
+the RoW 0–3 scale is the work: BR ships a democracy/autocracy dichotomy plus a regime-type classification, so
+`liberal_democracy` vs `electoral_democracy` cannot be recovered from it and the fill would have to enter at the
+`>= 2` cut the templates actually use, with `regime_source` saying so.
+
+**Templates it would feed.** All seven above, and `dem_share` / `anticoup_norm` through the derived polarity block.
+
+**Test.** Zero live actors in 2000–2024 have a null `regime`. `dem_share` 2024 ≥ 0.53 and `anticoup_norm` is 1 for
+every year 2001–2024 with no flicker at 1999–2001. `leader_exit` `n_excluded_with_event` at as-of 2000 falls from 18
+toward 0 and `n_at_risk` rises from 173 toward 195; `coup_attempt` `n_at_risk` at as-of 2010 rises from 140. Report
+the `auc_at_risk` movement honestly — adding 21 low-hazard democracies should cost discrimination and buy coverage.
+
+## era-1991-2026-r2 / statistics-3 — a UCDP-derived dyadic conflict kind for 2011–2024
+
+**What it would add.** A new dyadic event kind (`mid_war_ucdp`, or a second scored template on the existing fit) built
+from `UcdpPrioConflict_v25_1.csv` `type_of_conflict == 2`, expanding side_a/side_a_2nd × side_b/side_b_2nd into pairs
+through the existing GW map, with `intensity_level` carried so a ≥1000-death threshold is separable from the ≥25 one.
+A new event kind is a new template kind, which is why this is escalated rather than done.
+
+**Why.** This turn moved `mid_force` / `mid_war` / `war_end` from [1816, 2001] to [1816, 2010] by splicing GML MID
+2.2.1 on (era-1991-2026-r2/data-1), which is what the dyadic layer needed for the era it was scored blind in. GML
+itself stops in 2010. There is no MID-family source past it, so 2011–2024 is still unscorable: an as-of-2010 row now
+gets 1 scored year of its 20, and an as-of 2020 row would get none. UCDP is the only open dyadic interstate source
+that reaches 2024 — 147 type-2 conflict-years 1946–2024, 30 of them post-2001, carrying RUS–UKR 2022–24, IND–PAK
+2002–03 and 2013–20, IRN–ISR 2018–24, KGZ–TJK 2021–22, SSD–SDN 2012, CHN–IND 2020, KHM–THA 2011, ERI–ETH 2016,
+DJI–ERI 2008, AFG–PAK 2024 and the two coalition cases.
+
+**Data.** Already on disk: `data/raw/hist/UcdpPrioConflict_v25_1.csv`, already parsed by `scripts/build-events.mjs`
+for its intrastate half and its `interstate_onset` dyads.
+
+**Templates it would feed.** A new dyadic template with its own `COVERAGE` window, NOT a silent splice onto
+`mid_force`: the definitions differ (MID hostility ≥ 4 vs UCDP 25 battle deaths) and UCDP is an order of magnitude
+thinner — 33 dyad-years over 2002–2024 against MID's ~6/yr of onsets over 2002–2010. Keeping them separate is what
+lets the CoW-fitted coefficients be scored against UCDP labels without mixing the label definitions.
+
+**Test.** `scored_years: 20` for the new dyadic template at as-of 2000 and a non-zero n at as-of 2010 and 2020, and
+≥ 30 post-2001 dyad-years of the new kind covering at least RUS–UKR, IND–PAK, IRN–ISR and CHN–IND. Guard:
+`mid_force`'s pooled skill must not be recomputed over a mixed-definition label set.
+
+## era-1991-2026-r2 / engine-2 — the era terms need a forward distribution, not a frozen one
+
+**What it would add.** Either (a) a non-degenerate forward distribution over polarity — the great-power entry/exit
+hazard already escalated as era-1945-1991-r2/engine-8 is the principled version — or (b) replacing the hard
+`promotion_era` indicator with the continuous quantity the gap rule already computes (`hegemon_share` / `gap1`, or a
+logistic of `gap1` around `POLARITY.gap`), so 149 actors' covariate cannot flip in one step.
+
+**Why.** `conditionality()` returns 0 whenever `promotion_era` is 0, and `promotion_era` requires unipolarity with a
+democratic hegemon. `stepPolarity` moves capability shares only by simulated growth, so the ranked share order is
+effectively frozen and the mechanism is ONE-WAY: measured over 15 runs × 20y, universe all, as-of 1990 (bipolar) and
+as-of 2025 (bipolar) both give **0.0 actors with a non-zero `aid_conditionality` at every horizon year**, while as-of
+2010 (unipolar) starts with 149 and collapses to 0 for all of them at once around +10y. `aid_conditionality` is the
+largest promoted coefficient on `democratize_step`, and `democratize_step` is the worst-calibrated actor-year
+template in the era. This turn fixed the term's *sample* (a non-recipient is a structural zero, not a null —
+statistics-4) but not its *dynamics*.
+
+**Data.** None new.
+
+**Templates it would feed.** `democratize_step`, `democratic_deepening`, `autocratic_closure` through
+`aid_conditionality`; `coup_attempt` and `irregular_exit` through `great_game`; every template through `cold_war`.
+
+**Test.** `scripts/analysis/polarity.mjs` at as-of 1990 and 2025 must report a non-zero simulated unipolar-entry rate
+per 100 world-years, against 0.00 today. Then `node scripts/backtest.mjs --from 1980 --to 1990 --runs 100 --universe
+all`: `democratize_step` `count_ratio` at as-of 1980/1990 moves up from 0.53/0.51 toward 1 without pushing as-of 2000
+and 2010 past ~1.3.
+
+## era-1991-2026-r2 / data-8 (b) — the panel's year axis should reach the snapshot's own year
+
+**What it would add.** `Y1 = 2026` in `scripts/build-panel.mjs` (and the horizon arithmetic that follows it), so the
+modern actor snapshot lands on the year `data/actors.yaml` says it describes.
+
+**Why.** `SNAP = Y1 = 2025` while the file's header says "Snapshot date: 2026-09-06" and it carries fields that are
+2026 judgements (`leader_since: 2026`). 44 actors × 19 `cap_*` columns plus `nuclear_status`, `nuclear_warheads`,
+`personalism`, `succession`, `regime_type` and the chokepoint exposures therefore sit one year ahead of the panel's
+last measured year. This turn declared the lookahead in every one of those columns' source lines and added a build
+guard that refuses any template covariate over a single-year column, so nothing can read them by accident — but the
+year is still wrong.
+
+**Data.** None new.
+
+**Templates it would feed.** None directly; it moves every horizon by one year, which is why it is a package and not
+a fix.
+
+**Test.** The snapshot columns land on the year `data/actors.yaml` describes; `data/fits.json` and the 1870–2010
+backtest change only by the one extra year of panel.
+
+## era-1991-2026-r2 / statistics-7 (3) — restore CINC's military-personnel component
+
+**What it would add.** A fifth-plus-one indicator for the modern capability composite: military personnel, the one
+CINC component `MISSING_COMPONENTS` declares has no open successor.
+
+**Why.** Without it the composite systematically moves conscript-heavy poor states down and small rich states up, and
+the per-actor splice factor absorbs the whole indicator as a fabricated constant. Measured at 2022 over the 191
+actors both series score: Spearman is 0.978 but PRK is CINC rank 12 and composite rank 55 (factor 5.07), ERI 46
+against 145 (factor 9.75), while IRL rises 122 → 78 and CHE 85 → 59. This turn stopped the damage — `validate()` now
+reports the Spearman and the largest top-20 rank displacement beside the Pearson, and an actor whose |log factor|
+exceeds ln 2 is no longer extended from the composite but carried at its last CINC with `cinc_carried` recording the
+staleness (28 actors) — but carrying a stale value is a refusal to guess, not a measurement.
+
+**Data.** World Bank `MS.MIL.TOTL.P1` (armed forces personnel, total), which `MISSING_COMPONENTS` records as
+unreachable when the composite was built; it is reachable from the same `scripts/fetch-wb.mjs` route as the other
+fourteen indicators. Failing that, NMC 7.0's own `milper` share held at its 2022 value and renormalised.
+
+**Templates it would feed.** `cap_ratio` on `mid_force` and `mid_war`; the projection-weighted shares in
+`src/engine/polarity.js` that classify polarity and set `great_game` / `cold_war` for every downstream template.
+
+**Test.** With the component restored, no actor's |log splice factor| exceeds ln 2 and `cinc_carried` is 0 for every
+live actor in 2023–24; the composite's rank for PRK at 2022 is within 10 places of NMC's 12. `panel.meta.polarity`
+must be unchanged for 1816–2022 and the 1870–2010 backtest byte-identical.

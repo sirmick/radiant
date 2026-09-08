@@ -4,6 +4,10 @@
 // No country names anywhere in this file.
 
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
+
+/** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
+ *  2024, and without them the memory is empty at every origin past the MID window (era-1991-2026-r2/engine-4). */
+export const DYADIC_DISPUTE = new Set(['mid_force', 'mid_war', 'interstate_onset']);
 import { PRESENCE, presenceIndex, lastFall, patronMap, patronFeatures, guarantorLevel, guarantorFall, hostLevel } from './presence.js';
 import { IMPAIRED, RESOLVED, SPELL_UNITS, warSpells, spellAge, territoryFirstYear, territoryStateAt,
   warEndFeatures, contestFeatures, reopenFeatures } from './termination.js';
@@ -16,6 +20,10 @@ const sigmoid = (x) => 1 / (1 + Math.exp(-x));
 // Structural drift constants. GROWTH_MEAN is the panel's live-actor mean log growth 1900–2000 (n=8,453, mean 0.0172,
 // sd 0.0705); GROWTH_PHI gives the deviation from it a ~4-year half-life. Source: data/panel.json gdp_growth.
 const GROWTH_MEAN = 0.0172, GROWTH_PHI = 0.85;
+// POP_GROWTH_MEAN is the same statistic on `population`: the panel's live-actor mean log population growth
+// 1900–2000 (n=9,977, mean 0.0174). It is the fallback for an actor nobody simulates in stepPolarity's projection
+// of capability MASS (era-1991-2026-r2/engine-5).
+const POP_GROWTH_MEAN = 0.0174;
 // Ablation switch (node only), like RIVALRY_DECAY: INFO_DIFFUSION=switch restores the hand-typed diffusion rate the
 // fitted information wave replaced (0.15/yr from 1985, 0.03 before), so the two halves of package 9 — the derived
 // eras and the derived diffusion — can be scored apart. Unset (the default) uses the fitted wave.
@@ -228,6 +236,24 @@ export function corridorFirstYear(rec, windowFrom) {
   const first = rec.exists_from != null ? Math.floor(rec.exists_from) : Math.floor(h[0].year);
   return Math.max(windowFrom, first);
 }
+/**
+ * The last year a record is a unit at all — era-1991-2026-r2/corridors-6. Records had `exists_from` and no
+ * counterpart, so a corridor whose thing stopped existing decades ago went on contributing non-event record-years
+ * forever: 952 of the 1,479 corridor-years in 1992-2025 came from 28 records whose last dated row is before 1950,
+ * and 102 of the 133 impaired record-years in that window were three pipelines sitting closed since 1948, 1944 and
+ * 1990 — the exact artefact data/templates.yaml's own record_reopen note describes for the pre-1946 sample. Actors
+ * (data/history/actors.yaml `retired`) and waves (data/waves.yaml `retired`) both had an ending; records did not.
+ * `exists_until` + `exists_until_source` on the record is that ending, and it is honoured here so the engine, the
+ * fitter and the backtest all stop at the same year.
+ */
+export function corridorLastYear(rec, windowTo) {
+  return rec.exists_until != null ? Math.min(windowTo, Math.floor(rec.exists_until)) : windowTo;
+}
+/** Whether the record exists as a unit in `year` (its history has opened and it has not been retired). */
+export const corridorAlive = (rec, year, windowFrom = -Infinity) => {
+  const f = corridorFirstYear(rec, windowFrom);
+  return f != null && year >= f && year <= corridorLastYear(rec, Infinity);
+};
 /** Status and controller in force at the END of `year`; controller carries forward across rows that omit it. */
 export function corridorStateAt(rec, year) {
   const h = histOf(rec); if (!h.length) return null;
@@ -413,7 +439,10 @@ function initPolarity(panel, asOf, actors) {
   const hegemonRegime = last(panel.actors[state.hegemon] ?? {}, 'regime');
   const pol = {
     raw: normalise(raw), sm: normalise(sm), state, hegemonRegime,
-    demShare, demShare0: demShare, simDem0: simDemShare(actors),
+    demShare, demShare0: demShare, simDem0: simDemShare(actors), simN0: simDemN(actors),
+    // era-1991-2026-r2/engine-7: the denominator the panel's own dem_share is measured over (the actors V-Dem
+    // scores), so a regime step inside a small simulated universe is not scored as if it moved the whole system.
+    demN: (panel.meta.polarity ?? []).find(w => w.year === asOf)?.dem_share_n ?? null,
     simIds: new Set(Object.keys(actors)),
     infoWave: panel.meta.info_wave ?? INFO_WAVE,
     aidFrom: panel.meta.introduced?.aid_gni ?? 1960,
@@ -427,6 +456,8 @@ function simDemShare(actors) {
   for (const a of Object.values(actors)) { if (a.cur.regime == null) continue; n++; if (a.cur.regime >= POLARITY.hegemon_regime_min) d++; }
   return n ? d / n : null;
 }
+/** How many actor states that share was measured over. */
+function simDemN(actors) { let n = 0; for (const a of Object.values(actors)) if (a.cur.regime != null) n++; return n; }
 /**
  * One year of the derived world state. Capability share follows relative output: an actor's projection mass is
  * carried forward multiplied by its own simulated growth (an actor nobody simulates grows at the panel's long-run
@@ -442,8 +473,17 @@ function stepPolarity(world) {
   for (const [id, m] of p.raw) {
     if (p.simIds.has(id) && !world.actors[id]) continue;   // a state that has left the system leaves the distribution
     const a = world.actors[id];
+    // era-1991-2026-r2/engine-5: TOTAL output growth, not per-capita. `gdp_growth` is log(gdp_pc / gdp_pc[-1]) —
+    // per capita — while the quantity being projected is `pol_mass`, the geometric mean of the CINC share and the
+    // military-expenditure share, and four of CINC's six indicators (tpop, upop, energy, iron/steel) are pure mass.
+    // The population half was computed two lines from here (buildActorState's popGrowth, applied to population and
+    // tpop in the drift loop) and thrown away, and the cross-actor spread in it is large: trailing 10-year
+    // population growth to 2024 runs 3.3%/yr (COD) to -0.3%/yr (JPN), a factor of 4.2 in projected mass over a
+    // 40-year horizon that the projector simply omitted. The unsimulated-actor fallback takes the panel's long-run
+    // means for both halves.
     const g = a && a.cur.gdp_growth != null ? a.cur.gdp_growth : GROWTH_MEAN;
-    raw.set(id, m * Math.exp(g));
+    const pg = a ? (a.popGrowth ?? POP_GROWTH_MEAN) : POP_GROWTH_MEAN;
+    raw.set(id, m * Math.exp(g + pg));
   }
   p.raw = normalise(raw);
   p.sm = smoothShares(p.sm, p.raw, POLARITY.lambda, new Set(p.raw.keys()));
@@ -451,7 +491,14 @@ function stepPolarity(world) {
   const heg = world.actors[p.state.hegemon];
   if (heg && heg.cur.regime != null) p.hegemonRegime = heg.cur.regime;
   const sim = simDemShare(world.actors);
-  if (sim != null && p.simDem0 != null && p.demShare0 != null) p.demShare = Math.max(0, Math.min(1, p.demShare0 + (sim - p.simDem0)));
+  // era-1991-2026-r2/engine-7: the simulated delta is a share over the SIMULATED universe and the anchor is a share
+  // over the panel's, so adding one to the other unscaled amplified every regime step by nPanel/nSim — with
+  // universe='modeled' (59-64 actors against the panel's 173 regime-scored ones) a single step moved the world share
+  // by 1/64 instead of 1/173, about 2.7x, on a quantity that is then thresholded at 0.5. The delta is converted to
+  // the panel's scale by the ratio of the two denominators; where the panel denominator is unknown it is left as it
+  // was, which is the universe='all' case where the two are nearly the same number anyway.
+  const scale = p.demN && p.simN0 ? p.simN0 / p.demN : 1;
+  if (sim != null && p.simDem0 != null && p.demShare0 != null) p.demShare = Math.max(0, Math.min(1, p.demShare0 + (sim - p.simDem0) * scale));
   p.flags = eraFlags({ polarity: p.state.polarity, hegemonRegime: p.hegemonRegime, demShare: p.demShare });
 }
 /** Write the derived world state onto one actor — the same columns scripts/build-panel.mjs writes into the panel. */
@@ -504,8 +551,13 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   }
   // dyad memory: the year of the pair's last militarized dispute, over the whole observed history (the rivalry trace
   // decays, so it has no window to truncate at — and the year itself, not asOf, is what δ^(age) is measured from).
+  // era-1991-2026-r2/engine-4: `interstate_onset` (UCDP/PRIO type 2, 1946-2024) counts too. Seeding only from the
+  // CoW/GML MID kinds left the memory dead at every modern origin — at as-of 2025 not one pair scored above 0.2 and
+  // RUS|UKR, IRN|ISR and CHN|IND read "no dispute ever", so z(rivalry) (+0.382 on mid_force) was a constant at the
+  // live forecast origin. The same union is applied in scripts/lib/fit.mjs, so the trace means one thing in the fit
+  // and one thing in the simulation.
   const dyadRecent = new Map();
-  for (const e of events) if ((e.kind === 'mid_force' || e.kind === 'mid_war') && e.a && e.b && e.year <= asOf) {
+  for (const e of events) if (DYADIC_DISPUTE.has(e.kind) && e.a && e.b && e.year <= asOf) {
     const k = pairKey(e.a, e.b), y = Math.floor(e.year);
     if (y > (dyadRecent.get(k) ?? -Infinity)) dyadRecent.set(k, y);
   }
@@ -569,7 +621,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // history has opened by asOf (a corridor announced inside the horizon is not knowledge the forecaster holds — the
     // backtest reports those records and their transitions separately rather than scoring them at zero), its status and
     // controller are the ones in force at asOf, and the outcome mix a fired transition draws from is the history to date.
-    corridors: NO_CORRIDORS ? [] : corridors.filter(rec => { const t = templates.find(x => x.unit === CORRIDOR_UNIT[rec.kind] && !x.spell); const f = t ? corridorFirstYear(rec, t.window[0]) : null; return f != null && f <= asOf; })
+    corridors: NO_CORRIDORS ? [] : corridors.filter(rec => { const t = templates.find(x => x.unit === CORRIDOR_UNIT[rec.kind] && !x.spell); const f = t ? corridorFirstYear(rec, t.window[0]) : null; return f != null && f <= asOf && asOf <= corridorLastYear(rec, Infinity); })
       .map(rec => ({ rec, state: corridorStateAt(rec, asOf), impairAge: impairAgeAt(rec, asOf) })),
     corridorMix: corridorOutcomeMix(corridors, asOf),
     // the territory layer (operator/termination): the records whose dated history has opened by asOf, with the status
@@ -1183,6 +1235,12 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
   }
   const norm = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v / runs]));
   const pAnyWithin = (k, years) => (firstBy[k] ?? []).slice(0, years).reduce((a, b) => a + b, 0) / runs;
+  // era-1991-2026-r2/engine-1: the COUNT truncated to the same number of years the indicator is truncated to. The
+  // backtest already compares P(any event within covYears) when the ground truth ends inside the horizon, but it was
+  // summing `expected` over the FULL horizon against an observed count truncated at the source's last year, so
+  // count_ratio was inflated by horizon/covYears — 1.811 on leader_exit at as-of 2010, where 20/11 = 1.818 is the
+  // whole of it. yearHist already carries the per-year-offset counts; this is the sum over the first `years` of them.
+  const expectedWithin = (k, years) => (yearHist[k] ?? []).slice(0, years).reduce((a, b) => a + b, 0) / runs;
   const cumulative = (k) => { let c = 0; return (firstBy[k] ?? new Array(horizon).fill(0)).map(x => (c += x) / runs); };
   const quantiles = (arr) => { const out = []; for (let h = 0; h < horizon; h++) { const col = []; for (let r = 0; r < runs; r++) { const v = arr[r * horizon + h]; if (v > 0) col.push(v); } col.sort((a, b) => a - b); out.push(col.length ? [col[Math.floor(col.length * 0.1)], col[Math.floor(col.length * 0.5)], col[Math.floor(col.length * 0.9)]] : null); } return out; };
   const tracks = track ? {
@@ -1190,5 +1248,5 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     gdp_pc: Object.fromEntries(Object.entries(gdpRuns).map(([id, arr]) => [id, quantiles(arr)])),
     info_access: Object.fromEntries(Object.entries(infoRuns).map(([id, arr]) => [id, quantiles(arr)])),
   } : null;
-  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, cumulative, firstBy, tracks };
+  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, expectedWithin, cumulative, firstBy, tracks };
 }

@@ -1,6 +1,6 @@
 // Compile dated events 1816–2026 -> data/events.json
 // Machine-derived: leader exits (REIGN), coups (Powell–Thyne via REIGN), regime-type changes (OWID/V-Dem RoW),
-// autocratization/democratization episode onsets (V-Dem ERT), militarized disputes (CoW MID 3.02 dyads),
+// autocratization/democratization episode onsets (V-Dem ERT), militarized disputes (CoW MID 3.02 + GML 2.2.1 dyads),
 // interstate/intrastate onsets (UCDP). Hand-coded: data/history/events.yaml (wars, chokepoints, corridors, nuclear...).
 // Output: { events: [ {kind, year, actor|a,b, ...} ], counts: {kind: n} }
 import { writeFileSync, readFileSync } from 'node:fs';
@@ -44,16 +44,36 @@ function occupationCause(actor, year) {
 }
 
 // ---- regime-type changes (RoW 0..3)
+// era-1991-2026-r2/statistics-2: a one-year change in the V-Dem RoW ordinal is not yet a regime change. 299 of the
+// 1,130 events this loop used to stamp (26.5%; 84 of 388 since 1990) are followed by an OPPOSITE-direction event on
+// the same actor within three years — CAN 2020 autocratize / 2021 democratize / 2022 autocratize, LVA 2013/2014/2016,
+// SVN 2021/2022/2023, SVK 2019/2020/2023 — and those are the labels the four regime templates are fitted and scored
+// on, which are the model's worst performers (pooled Brier skill -0.19 on democratize_step, -0.13 on
+// autocratic_closure). Nothing is deleted: every step is still emitted, and `durable` says how many consecutive
+// observed years the new category actually held (capped at DURABLE_K), with `flap: 1` on the ones that did not reach
+// it. The four regime templates filter on `durable: 3`; the raw steps stay in the file for anything that wants them.
+// A step whose run reaches the end of the actor's own series is RIGHT-CENSORED, not a flap: it is credited with the
+// full K rather than dropped, so the last three years of the panel do not lose their labels.
+const DURABLE_K = 3;
 {
   const by = new Map();
   for (const r of readCsv(H + 'regime.csv')) { const y = +r.year, id = owid(r.code, y); if (!id || r.regime_row_owid === '') continue; (by.get(id) ?? by.set(id, []).get(id)).push([y, +r.regime_row_owid]); }
+  let nFlap = 0, nDurable = 0;
   for (const [id, arr] of by) {
     arr.sort((a, b) => a[0] - b[0]);
+    const cat = new Map(arr.map(([y, c]) => [y, c]));
+    const lastY = arr[arr.length - 1][0];
     for (let i = 1; i < arr.length; i++) if (arr[i][1] !== arr[i - 1][1] && arr[i][0] === arr[i - 1][0] + 1) {
       const cause = occupationCause(id, arr[i][0]);
-      events.push({ kind: 'regime_change', actor: id, year: arr[i][0], from: arr[i - 1][1], to: arr[i][1], direction: arr[i][1] > arr[i - 1][1] ? 'democratize' : 'autocratize', cause, source: 'V-Dem RoW via OWID' + (cause ? `; cause=${cause} from data/history/events.yaml occupation spans` : '') });
+      const y0 = arr[i][0], to = arr[i][1];
+      let held = 1;
+      while (held < DURABLE_K && y0 + held <= lastY && cat.get(y0 + held) === to) held++;
+      const durable = y0 + held > lastY ? DURABLE_K : held;   // right-censored at the end of the actor's series
+      if (durable >= DURABLE_K) nDurable++; else nFlap++;
+      events.push({ kind: 'regime_change', actor: id, year: y0, from: arr[i - 1][1], to, direction: to > arr[i - 1][1] ? 'democratize' : 'autocratize', cause, durable, ...(durable < DURABLE_K ? { flap: 1 } : {}), source: `V-Dem RoW via OWID; durable = consecutive observed years the new category held, capped at ${DURABLE_K} and credited in full where the run reaches the end of the actor's series` + (cause ? `; cause=${cause} from data/history/events.yaml occupation spans` : '') });
     }
   }
+  console.log(`regime_change: ${nDurable} durable (held ${DURABLE_K}y or right-censored), ${nFlap} flaps (reversed sooner)`);
 }
 
 // ---- ERT episode onsets
@@ -101,6 +121,40 @@ function occupationCause(actor, year) {
     }
   }
   console.log(`dyads: ${nDisjoint} pairs dropped (CoW participant spans do not overlap)`);
+}
+
+// ---- MIDs 2002-2010: the GML 2.2.1 splice (era-1991-2026-r2/data-1).
+// CoW MID 3.02's disputes stop in 2001, so the dyadic layer had no ground truth for the whole modern era: as-of 2000
+// scored one year of a twenty-year horizon and as-of 2010 scored none. GML MID 2.2.1 (scripts/fetch-mid.mjs) carries
+// the same `hostlev` variable, dyadic and directed, to 2010, so the years past midb's end are read from it and
+// spliced on. Same thresholds and the same pair rule as the block above: a pair's hostility is min of the two sides'
+// own levels, its onset is the first year both are in the dispute and its end the last. Only pairs whose onset is
+// 2002 or later are emitted — a dispute that opened before midb's end is already in the block above, and taking it
+// from both sources would double-count it.
+// Validation of the join, measured on the overlap: GML gives 14.0 pair-onsets/yr at hostlev >= 4 over 1992-2001
+// against midb's 14.5 over the same years — the two sources agree on the era they share. The post-splice rate is
+// 6.2/yr over 2002-2010, i.e. MID onsets really do roughly halve after 2001; that is the data, not the join.
+{
+  const pairs = new Map();
+  for (const r of readCsv(H + 'gml_dirdisp_2.2.1.csv')) {
+    const y = +r.year, c1 = +r.ccode1, c2 = +r.ccode2;
+    if (c1 === c2) continue;
+    const hl = Math.min(+r.hostlev1, +r.hostlev2);
+    const k = `${r.dispnum}|${Math.min(c1, c2)}|${Math.max(c1, c2)}`;
+    const p = pairs.get(k) ?? pairs.set(k, { c: [Math.min(c1, c2), Math.max(c1, c2)], y0: y, y1: y, hl, np: (+r.numa || 1) + (+r.numb || 1) }).get(k);
+    p.y0 = Math.min(p.y0, y); p.y1 = Math.max(p.y1, y); p.hl = Math.max(p.hl, hl); p.np = Math.max(p.np, (+r.numa || 1) + (+r.numb || 1));
+  }
+  let nSplice = 0;
+  for (const [num, p] of pairs) {
+    if (p.hl < 4 || p.y0 < 2002) continue;
+    const a = code(p.c[0], p.y0), b = code(p.c[1], p.y0);
+    if (!a || !b || a === b) continue;
+    const base = { a, b, year: p.y0, end: p.y1, dispnum: +num.split('|')[0], hostlev: p.hl, n_participants: p.np, multilateral: p.np > 2, source: 'GML MID 2.2.1 directed dyad-years (dyad hostility = min of the pair\'s two hostlev values, onset = first shared year, end = last; spliced onto CoW MID 3.02 from 2002, the first year past midb 3.02\'s end)' };
+    events.push({ kind: 'mid_force', ...base });
+    if (p.hl >= 5) events.push({ kind: 'mid_war', ...base });
+    nSplice++;
+  }
+  console.log(`dyads: ${nSplice} GML MID 2.2.1 pairs spliced on for 2002-2010`);
 }
 
 // ---- UCDP onsets (first year of each conflict episode)
@@ -211,7 +265,7 @@ try {
   let hand = 0, real = 0, agree = 0; const missByDecade = {};
   for (const [id, vars] of Object.entries(panel.actors)) {
     for (let i = 0; i < (vars.live?.length ?? 0); i++) {
-      const y = P0 + i; if (vars.live[i] !== 1 || y > 2001) continue;
+      const y = P0 + i; if (vars.live[i] !== 1 || y > 2010) continue;   // the MID window's own end (era-1991-2026-r2/data-1)
       const h = (vars.at_war?.[i] ?? 0) > 0, r = spellYears.has(`${id}|${y}`);
       if (h) hand++; if (r) real++; if (h && r) agree++;
       if (r && !h) { const d = Math.floor(y / 10) * 10; missByDecade[d] = (missByDecade[d] ?? 0) + 1; }

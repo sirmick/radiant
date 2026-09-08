@@ -167,6 +167,14 @@
 - { kind: alliance, id: saudi_pakistan_defence, year: 2025.7, members: [SAU, PAK] }
 - { kind: alliance, id: safe_canada, year: 2026.4, members: [CAN], notes: "First non-EU member of the EU SAFE fund" }
 
+# Defence pacts past ATOP 5.1's own last year (2018) — era-1991-2026-r2/data-7, engine-6. The alliance graph is
+# CoW 3.03 to 2000 and ATOP 5.1 to 2018 (scripts/lib/hist.mjs:loadPacts); these are the accessions after it, dated
+# and sourced, with the members each acceding state thereby allies with under Article 5. Without them the panel's
+# pact_usa and the dyadic `allied` feature read 0 for these states forever.
+- { kind: pact, type: defense, id: nato_mkd, year: 2020.24, members: [MKD], with: [USA, CAN, GBR, FRA, ITA, NLD, BEL, DNK, NOR, PRT, ISL, LUX, GRC, TUR, DEU, ESP, CZE, HUN, POL, BGR, EST, LVA, LTU, ROU, SVK, SVN, ALB, HRV, MNE], source: "North Macedonia deposits its instrument of accession to the North Atlantic Treaty, 27 March 2020 (NATO, 30th member)" }
+- { kind: pact, type: defense, id: nato_fin, year: 2023.26, members: [FIN], with: [USA, CAN, GBR, FRA, ITA, NLD, BEL, DNK, NOR, PRT, ISL, LUX, GRC, TUR, DEU, ESP, CZE, HUN, POL, BGR, EST, LVA, LTU, ROU, SVK, SVN, ALB, HRV, MNE, MKD], source: "Finland accedes to the North Atlantic Treaty, 4 April 2023 (NATO, 31st member)" }
+- { kind: pact, type: defense, id: nato_swe, year: 2024.18, members: [SWE], with: [USA, CAN, GBR, FRA, ITA, NLD, BEL, DNK, NOR, PRT, ISL, LUX, GRC, TUR, DEU, ESP, CZE, HUN, POL, BGR, EST, LVA, LTU, ROU, SVK, SVN, ALB, HRV, MNE, MKD, FIN], source: "Sweden accedes to the North Atlantic Treaty, 7 March 2024 (NATO, 32nd member)" }
+
 # ---------------------------------------------------------------- 2022–2026 tail (past the datasets' end; scoring targets from launch)
 - { kind: regime, actor: SYR, year: 2024.93, event: state_collapse, notes: "Assad falls" }
 - { kind: leader, actor: SYR, year: 2024.93, event: irregular_exit }
