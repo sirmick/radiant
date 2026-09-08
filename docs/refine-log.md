@@ -1286,3 +1286,23 @@ applied findings (data-2, data-7) are about the published artefacts themselves, 
 built by the code path the turn just fixed — with an empty corridor layer and a `meta.templates` list that claims four
 record templates ran — would have been the defect the finding describes, published. `public/forecast.json`
 (500 runs × 40y), `public/forecasts.json` and `public/world.json` are regenerated; nothing else under `public/` is.*
+
+*Checker note (2026-09-08). The turn's own numbers verify: rerunning `node scripts/backtest.mjs --from 2000 --to
+2010 --step 10 --horizon 20 --runs 100 --universe all` at this commit reproduces
+`scores/backtest-2000-2010-h20-all.json` exactly apart from `meta.run` and the per-row `ms`, and
+`build-panel` → `build-events` → `fit-hazards` rebuild to byte-identical `panel.json` / `events.json` / `fits.json`
+apart from their `built` stamps. One guard the turn did not run: corridors-1 asked that the pooled
+`chokepoint_status` Brier skill over as-of 1870-1990 not fall, and the turn only ever ran the two modern origins. Run
+over 1870-2010 it does fall, 0.185 → 0.037, and the cause is this turn's own coverage correction rather than a lost
+mechanism: the as-of-1990 row went from `scored_years: 1`, 0 observed and Brier 0.002 — a horizon whose labels were
+almost entirely outside the old [1869,1991] window, scored as if they were non-events — to `scored_years: 20`, 3
+observed and Brier 0.259, and as-of 1980 from 11 scored years to 20. `record_reopen` moves the same way for the same
+reason (3 as-of rows to 8, pooled 1870-1990 skill 0.020 → −0.253). The pre-1992 origins' own rows are otherwise
+unchanged to within ensemble noise on n=12-17. Two smaller corrections to this section's claims: `grep transcript
+public/world.json` returns 1, not 0 — the surviving hit is the `hormuz` note that quotes the removed sentence while
+documenting its removal — and the data-7 mismatch check prints 5 rather than 0 unless retired records are excluded,
+which is the exclusion `scripts/build-world.mjs` makes and states (all five carry an `exists_until` before 2026; no
+live record disagrees with its own history). No rule violation found: no country id entered a covariate, column or
+branch, the five ids in the `liberal_erosion` label note moved into `retired:` with the block they were already in,
+all fifteen `rejected:` blocks survive, and every new `data/corridors.yaml` history row and every new
+`data/history/events.yaml` coup and leader-exit row carries a `source:`.*
