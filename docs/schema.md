@@ -214,7 +214,7 @@ Dated great-power stations: `{ actor, host | sea:<area>, name, kind: base|garris
 
 ## Dated history on records
 
-Corridors and territories carry `history: [{ year, status?, controller?, capacity?, source }]`; the top-level `status`/`controller` is the 2026 snapshot. The viewer reads the entry in force at the slider year (`statusAt`) and does not draw a record before its first entry; `scripts/build-events.mjs` and `scripts/build-world.mjs` fail the build when a `corridor`/`chokepoint`/`territory` event id has no record, or a record has no history. The corridor-year / chokepoint-year panel unit (package 4) is built from these histories.
+Corridors and territories carry `history: [{ year, status?, controller?, capacity?, source }]`; the top-level `status`/`controller` is the 2026 snapshot. The viewer reads the entry in force at the slider year (`statusAt`) and, past the forecast seam, the ensemble's simulated status distribution instead (`recordStateAt`, from the `state` block below); it does not draw a record before its first entry; `scripts/build-events.mjs` and `scripts/build-world.mjs` fail the build when a `corridor`/`chokepoint`/`territory` event id has no record, or a record has no history. The corridor-year / chokepoint-year panel unit (package 4) is built from these histories.
 
 ## Fields (`src/lib/influence.js`)
 
@@ -222,7 +222,22 @@ A field is a continuous geographic overlay: `{ label, note, paint: 'dominant'|'h
 
 ## Ensembles (`public/forecast*.json`, `public/forecasts.json`)
 
-`run-forward.mjs` writes `{ meta: { asOf, from, to, runs, horizon, fit_source, templates }, actors: { id: { regime0, p: { template: cumulative P by year }, regime: [[p0,p1,p2,p3] per year], gdp_pc: [[q10,q50,q90]], info_access } }, dyads: { "A|B": { template: { pAny, curve } } } }`. With `--as-of Y < 2025` the coefficients are refit on labels ≤ Y (`scripts/lib/fit.mjs`), and the index `forecasts.json` lists every ensemble for the viewer's *forecast from* menu.
+`run-forward.mjs` writes `{ meta: { asOf, from, to, runs, horizon, fit_source, templates, state }, actors: { id: { regime0, p: { template: cumulative P by year }, regime: [[p0,p1,p2,p3] per year], gdp_pc: [[q10,q50,q90]], info_access } }, dyads: { "A|B": { template: { pAny, curve } } }, records: { template: { record: curve } }, state: {...} }`. With `--as-of Y < 2025` the coefficients are refit on labels ≤ Y (`scripts/lib/fit.mjs`), and the index `forecasts.json` lists every ensemble for the viewer's *forecast from* menu.
+
+### The `state` block — occupancy (2026-09-08, `operator / occupancy`, package 11)
+
+Everything above answers "when does this event first fire inside the horizon". `state` answers the other question — **what state is the world in each year** — and is what the map paints after the seam and what `scripts/backtest.mjs` grades under `occupancy`.
+
+```
+state.actors[id] = { live, at_war, intrastate, intrastate_war, occupied,   // P per year offset k (null = zero in every run)
+                     cinc: [[p10,p50,p90] per k], pol_share: [[p10,p50,p90] per k] }
+state.dyads["A|B"] = [P(the pair is at war during year k)]                 // only pairs whose peak year is >= meta.state threshold
+state.records[id]  = { kind, status: [{ word: P } per k] }                 // corridors, chokepoints and territories alike
+```
+
+`k` is the 0-based offset from `meta.from`. `meta.state.vars` declares every series with a `simulated` flag and a note, because two of them are **not forecasts and must not be read as one**: `cinc` is CoW's index as the engine *carries* it (nothing in `stepYear` rewrites it, so the p10–p90 band is degenerate and the series is the as-of ranking held still — `pol_share`, which `src/engine/polarity.js` advances by each actor's own simulated growth, is the one that moves), and `occupied` is the as-of value held still because occupation is data in this model rather than a hazard. `intrastate_war` carries only the level-2 spells the world entered with: the onset template has no intensity, so the engine writes level 1 and never 2. `meta.state.vars` also carries the dyad threshold and how many pairs fell below it, so a missing pair is a stated omission rather than a silent zero.
+
+The block is produced by `runEnsemble(..., { state: true })` in `src/engine/core.js`. It reads the world after each `stepYear` and **consumes no random numbers**, so a run with it on is bit-identical to a run with it off — which is what lets the backtest turn it on permanently without moving a single event number.
 
 
 ## Cleanup 2026-09-07

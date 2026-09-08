@@ -4,7 +4,7 @@
   import { loadGeometry, buildOwnerGrid, makeProjection, unproject, visible } from './geo.js';
   import { drawScene } from './render.js';
   import { buildGrid, FIELDS, evaluateField } from './influence.js';
-  import { valueAt, forecastAt, seriesAt, industryAt, washed, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
+  import { valueAt, forecastAt, seriesAt, industryAt, washed, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, actorStateAt, recordStateAt, stateOffset, stateVarMeta, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
   let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, mode = '2d', selected, onSelect } = $props();
 
@@ -35,11 +35,24 @@
   const lastNonNull = (arr, upto) => { if (!arr) return null; for (let i = Math.min(arr.length - 1, upto ?? arr.length - 1); i >= 0; i--) if (arr[i] != null) return arr[i]; return null; };
   const popAt = (id) => { const a = history?.actors?.[id]; if (!a) return 0; return (yi >= 0 ? lastNonNull(a.population, yi) : lastNonNull(a.population)) ?? 0; };
   const capOf = (id) => { const a = history?.actors?.[id]; if (!a?.cinc) return 0; return (yi >= 0 ? lastNonNull(a.cinc, yi) : lastNonNull(a.cinc)) ?? 0; };
-  const atWar = (id) => { const a = history?.actors?.[id]; return a && inHist ? (a.at_war?.[yi] ?? 0) > 0 : false; };
   const intrastateOf = (id) => { const a = history?.actors?.[id]; return a && inHist ? (a.intrastate?.[yi] ?? 0) : 0; };
   const isGreat = (id) => { const a = history?.actors?.[id]; return a && inHist ? (a.great_power?.[yi] ?? 0) > 0 : ['USA', 'CHN', 'RUS', 'GBR', 'FRA', 'IND', 'JPN', 'TUR'].includes(id); };
   const yearItems = $derived(news?.years?.[Math.round(year)] ?? []);
   const isForecastYear = $derived(forecast && Math.round(year) >= forecast.meta.from);
+  // operator/occupancy (package 11): after the seam the conflict layer reads the ensemble's expected state instead of
+  // freezing at the panel's last row. Both helpers return a PROBABILITY — the panel's 0/1 is the degenerate case — so
+  // the outlines and the belligerents field carry the ensemble's uncertainty rather than a threshold nobody can see.
+  const actorState = (id) => (isForecastYear && forecast?.state ? actorStateAt(forecast, id, year) : null);
+  const atWarP = (id) => { if (inHist) { const a = history?.actors?.[id]; return a && (a.at_war?.[yi] ?? 0) > 0 ? 1 : 0; } return actorState(id)?.at_war ?? 0; };
+  const atWar = (id) => atWarP(id) >= 0.5;
+  // the belligerents field weights internal conflict 0.6 at level 1 and 1.0 at level 2; after the seam that is the
+  // same weight in expectation over the runs (the engine only ever writes level 1, so the 1.0 term is the carried-in
+  // spells — see meta.state in the ensemble file).
+  const intrastateW = (id) => { if (inHist) { const l = intrastateOf(id); return l >= 2 ? 1 : l > 0 ? 0.6 : 0; } const s = actorState(id); return s ? 0.6 * Math.max(0, s.intrastate - s.intrastate_war) + s.intrastate_war : 0; };
+  // a corridor / chokepoint / territory record's status: its dated history up to the seam, the ensemble's modal
+  // simulated status past it, with the modal probability carried so the paint can wash by it.
+  const recStatus = (rec) => { if (isForecastYear && forecast?.state) { const s = recordStateAt(forecast, rec.id, year); if (s) return { exists: true, status: s.status, controller: statusAt(rec, forecast.meta.from - 1).controller, p: s.p, dist: s.dist, entries: s.entries, forecast: true }; } return statusAt(rec, year); };
+  const recColor = (st) => { const c = STATUS_COLORS[st.status] ?? '#8b94a3'; return st.forecast ? washed(c, st.p) : c; };
 
   // ---- fills
   const values = $derived.by(() => {
@@ -83,7 +96,7 @@
   const fieldCtx = $derived.by(() => {
     if (!fieldSpec || !history) return null;
     const live = inHist ? [...liveNow] : Object.keys(forecast?.actors ?? history.actors);
-    const ctx = { powers: powersNow, colors: POWER_COLORS, lonlat, neKey, atWar: live.filter(atWar), intrastate: live.map(id => [id, intrastateOf(id)]).filter(([, l]) => l > 0), disputes: [...new Set(yearItems.filter(it => it.k === 'dispute' && it.a).flatMap(it => it.a))], actorHazards: [], dyadHazards: [], routes: [], industry: [] };
+    const ctx = { powers: powersNow, colors: POWER_COLORS, lonlat, neKey, atWar: live.map(id => [id, atWarP(id)]).filter(([, w]) => w > 0.05), intrastate: live.map(id => [id, intrastateW(id)]).filter(([, w]) => w > 0.05), disputes: [...new Set(yearItems.filter(it => it.k === 'dispute' && it.a).flatMap(it => it.a))], actorHazards: [], dyadHazards: [], routes: [], industry: [] };
     if (layers.field === 'industry') { const cells = variable?.industry ? values : industryAt(history, year); const mx = Math.max(1e-9, ...Object.values(cells).map(c => c.value ?? 0)); for (const [key, c] of Object.entries(cells)) if (c.value > 0) ctx.industry.push({ key, lonlat: geom.centroid.get(key) ?? null, w: c.value / mx }); }
     if (layers.field === 'hazard' && forecast) {
       const tpls = forecast.meta.templates.filter(t => t.unit === 'actor-year' && !/leader_exit/.test(t.id));
@@ -94,7 +107,7 @@
       for (const [pair, d] of Object.entries(forecast.dyads ?? {})) { const [a, b] = pair.split('|'); const A = lonlat(a), B = lonlat(b); if (!A || !B) continue; let w = 0; for (const v of Object.values(d)) { const c = v.curve; if (!c) continue; const before = k > 0 ? c[k - 1] ?? 0 : 0; const end = c[Math.min(c.length - 1, k - 1 + horizon)] ?? 0; const p = before >= 1 ? 0 : (end - before) / (1 - before); w = 1 - (1 - w) * (1 - p); } if (w < 0.05) continue; const mid = d3.geoInterpolate(A, B)(0.5); const dist = d3.geoDistance(A, B) * 6371; ctx.dyadHazards.push({ a: A, b: B, mid, w, lambda: Math.max(300, Math.min(1500, dist / 2.5)) }); }
       ctx.dyadHazards.sort((p, q) => q.w - p.w); ctx.dyadHazards.length = Math.min(ctx.dyadHazards.length, 150);   // the pairs that matter; the rest would only add cost
     }
-    if (layers.field === 'routes') for (const c of world.corridors) { const st = statusAt(c, year); if (!st.exists || st.status === 'abandoned' || st.status === 'planned') continue; const w = Object.values(c.load_bearing_for ?? {}).reduce((s, x) => s + x, 0) * (st.status === 'building' ? 0.4 : 1); const contested = st.status === 'closed' || st.status === 'contested'; if (c.geometry.point) ctx.routes.push({ lonlat: c.geometry.point, w, lambda: 700, contested }); else if (c.geometry.line) for (const p of c.geometry.line) ctx.routes.push({ lonlat: p, w: w / Math.max(1, c.geometry.line.length / 2), lambda: 500, contested }); }
+    if (layers.field === 'routes') for (const c of world.corridors) { const st = recStatus(c); if (!st.exists || st.status === 'abandoned' || st.status === 'planned') continue; const w = Object.values(c.load_bearing_for ?? {}).reduce((s, x) => s + x, 0) * (st.status === 'building' ? 0.4 : 1); const contested = st.status === 'closed' || st.status === 'contested'; if (c.geometry.point) ctx.routes.push({ lonlat: c.geometry.point, w, lambda: 700, contested }); else if (c.geometry.line) for (const p of c.geometry.line) ctx.routes.push({ lonlat: p, w: w / Math.max(1, c.geometry.line.length / 2), lambda: 500, contested }); }
     return ctx;
   });
   const field = $derived(fieldSpec && grid && fieldCtx ? evaluateField(grid, fieldSpec, fieldCtx) : null);
@@ -105,12 +118,36 @@
   const arcs = $derived.by(() => {
     const out = []; const sel = selected?.kind === 'actor' ? selected.id : null;
     if (layers.alliances) for (const e of allianceView.edges) { const mine = sel && (e.a === sel || e.b === sel); if (layers.alliances === 'major' && !mine && !(isGreat(e.a) || isGreat(e.b))) continue; if (!mine && !zoomedIn && layers.alliances !== 'all' && !isGreat(e.a) && !isGreat(e.b)) continue; const p = lonlat(e.a), q = lonlat(e.b); if (!p || !q) continue; out.push({ coords: [p, q], color: e.multilateral ? '#8ab4e8' : '#6cb4ff', alpha: mine ? 0.95 : e.multilateral ? 0.22 : 0.45, width: mine ? 1.6 : e.multilateral ? 0.6 : 0.9, dash: e.multilateral ? [3, 2] : null }); }
+    // operator/occupancy: after the seam the arcs are the ensemble's dyadic war occupancy — P(this pair is at war in
+    // this year) — since the news feed has nothing to draw there. Alpha and width are the probability.
+    if (layers.conflicts && isForecastYear && forecast?.state?.dyads) {
+      const k = stateOffset(forecast, year);
+      const rows = [];
+      // the floor is 0.01, not 0.05: the engine spreads its war mass thinly over pairs (the strongest pair-year in the
+      // 2026-2125 ensemble peaks under 0.02), so a 5% floor would draw nothing at all. Alpha is the probability itself
+      // and is deliberately not rescaled — a 1.7% war has to look like a 1.7% war.
+      if (k >= 0) for (const [pair, curve] of Object.entries(forecast.state.dyads)) { const p = curve[k] ?? 0; if (p < 0.01) continue; const [a, b] = pair.split('|'); const q = lonlat(a), r = lonlat(b); if (!q || !r) continue; rows.push({ p, coords: [q, r] }); }
+      rows.sort((x, z) => z.p - x.p);
+      for (const r of rows.slice(0, 120)) out.push({ coords: r.coords, color: '#ef6a5a', alpha: Math.min(0.9, 0.15 + 0.85 * r.p), width: 0.4 + 1.5 * r.p, dash: null });
+    }
     if (layers.conflicts) { const seen = new Set(); for (const it of yearItems) { if (!it.sides || it.sides.length < 2) continue; const hub = (side) => side.reduce((b, m) => (popAt(m) > popAt(b) ? m : b), side[0]); const a = hub(it.sides[0]), b = hub(it.sides[1]); const key = a < b ? `${a}|${b}` : `${b}|${a}`; if (seen.has(key)) continue; seen.add(key); const p = lonlat(a), q = lonlat(b); if (!p || !q) continue; out.push({ coords: [p, q], color: it.k === 'war' ? '#ef6a5a' : '#e8a04f', alpha: it.ongoing ? 0.45 : 0.85, width: it.k === 'war' ? 1.4 : 0.8, dash: it.ongoing ? [4, 3] : null }); } }
     return out;
   });
-  const conflictStroke = $derived.by(() => { const o = {}; if (!layers.conflicts) return o; for (const f of geom.countries) { const id = actorOfNe(f.id); if (atWar(id)) o[f.id] = { c: '#ef6a5a', w: 1.4 }; else { const it = intrastateOf(id); if (it > 0) o[f.id] = { c: '#e8a04f', w: it >= 2 ? 1.2 : 0.8, d: true }; } } return o; });
-  const territoriesScene = $derived.by(() => { if (!layers.territories) return []; const out = []; for (const f of geom.disputed) { const t = terrByNe.get(f.id); if (!t) continue; const st = statusAt(t, year); if (!st.exists || st.status === 'settled') continue; out.push({ feature: f, color: STATUS_COLORS[st.status] ?? '#8b94a3', selected: selected?.kind === 'territory' && selected.id === t.id, id: t.id }); } for (const t of world.territories) { if (t.geometry?.sketch) { const st = statusAt(t, year); if (!st.exists) continue; out.push({ feature: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...t.geometry.sketch, t.geometry.sketch[0]]] } }, color: STATUS_COLORS[st.status] ?? '#8b94a3', sketch: true, selected: selected?.kind === 'territory' && selected.id === t.id, id: t.id }); } else if (t.geometry?.point && !t.geometry.ne_ids) { const st = statusAt(t, year); if (!st.exists || st.status === 'settled') continue; out.push({ point: t.geometry.point, color: STATUS_COLORS[st.status] ?? '#8b94a3', id: t.id }); } } return out; });
-  const corridorsScene = $derived.by(() => { if (!layers.corridors) return []; const out = []; for (const c of world.corridors) { const st = statusAt(c, year); if (!st.exists || st.status === 'abandoned') continue; const color = STATUS_COLORS[st.status] ?? '#8b94a3'; const dash = st.status === 'planned' ? [2, 4] : st.status === 'building' ? [6, 3] : c.mode === 'cable' ? [1, 3] : []; out.push({ id: c.id, line: c.geometry.line, point: c.geometry.point, color, dash, mode: c.mode, selected: selected?.kind === 'corridor' && selected.id === c.id }); } return out; });
+  // conflict outlines: the panel's flag in history, P(at war) / P(internal conflict) from the ensemble after the seam,
+  // with the probability as saturation and as line weight so a 20%-likely war does not read like a war.
+  const conflictStroke = $derived.by(() => {
+    const o = {}; if (!layers.conflicts) return o;
+    for (const f of geom.countries) {
+      const id = actorOfNe(f.id);
+      if (inHist) { if (atWar(id)) o[f.id] = { c: '#ef6a5a', w: 1.4 }; else { const it = intrastateOf(id); if (it > 0) o[f.id] = { c: '#e8a04f', w: it >= 2 ? 1.2 : 0.8, d: true }; } continue; }
+      const pw = atWarP(id), pi = intrastateW(id);
+      if (pw >= 0.05) o[f.id] = { c: washed('#ef6a5a', pw), w: 0.6 + 0.8 * pw };
+      else if (pi >= 0.05) o[f.id] = { c: washed('#e8a04f', pi), w: 0.5 + 0.7 * pi, d: true };
+    }
+    return o;
+  });
+  const territoriesScene = $derived.by(() => { if (!layers.territories) return []; const out = []; for (const f of geom.disputed) { const t = terrByNe.get(f.id); if (!t) continue; const st = recStatus(t); if (!st.exists || st.status === 'settled') continue; out.push({ feature: f, color: recColor(st), selected: selected?.kind === 'territory' && selected.id === t.id, id: t.id }); } for (const t of world.territories) { if (t.geometry?.sketch) { const st = recStatus(t); if (!st.exists) continue; out.push({ feature: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[...t.geometry.sketch, t.geometry.sketch[0]]] } }, color: recColor(st), sketch: true, selected: selected?.kind === 'territory' && selected.id === t.id, id: t.id }); } else if (t.geometry?.point && !t.geometry.ne_ids) { const st = recStatus(t); if (!st.exists || st.status === 'settled') continue; out.push({ point: t.geometry.point, color: recColor(st), id: t.id }); } } return out; });
+  const corridorsScene = $derived.by(() => { if (!layers.corridors) return []; const out = []; for (const c of world.corridors) { const st = recStatus(c); if (!st.exists || st.status === 'abandoned') continue; const dash = st.status === 'planned' ? [2, 4] : st.status === 'building' ? [6, 3] : c.mode === 'cable' ? [1, 3] : []; out.push({ id: c.id, line: c.geometry.line, point: c.geometry.point, color: recColor(st), dash, mode: c.mode, selected: selected?.kind === 'corridor' && selected.id === c.id }); } return out; });
   const AXES_Q = [['regime', 'regime'], ['gdp_pc', 'GDP/cap'], ['cinc', 'capability'], ['info_access', 'info access'], ['urban_share', 'urban']];
   const AXES_I = [['irst', 'steel'], ['electricity_generation', 'electricity'], ['rd_gdp', 'R&D share'], ['manuf_va', 'manufacturing'], ['hitech_exports', 'high-tech exports']];
   const AXES = $derived(layers.glyphs === 'industry' ? AXES_I : AXES_Q);
@@ -158,26 +195,35 @@
   const hoverInfo = $derived.by(() => {
     if (!hover) return null;
     if (hover.mark) return { title: hover.mark };
-    if (hover.corridor) { const c = world.corridors.find(x => x.id === hover.corridor); const st = statusAt(c, year); return { title: `${c.name} — ${st.status}${st.controller ? ` (${st.controller})` : ''}` }; }
-    if (hover.territory) { const t = world.territories.find(x => x.id === hover.territory); const st = statusAt(t, year); return { title: `${t.name} — ${st.status}${st.controller ? ` (${st.controller})` : ''}` }; }
+    // operator/occupancy: past the seam the record's card carries the whole simulated status distribution, not a
+    // single word — "open 71% · contested 22% · closed 7%" is the forecast; one word would hide the other 29%.
+    const distNote = (st) => (st.forecast ? ` — ${st.entries.slice(0, 4).map(([w, p]) => `${w} ${(p * 100).toFixed(0)}%`).join(' · ')}` : ` — ${st.status}${st.controller ? ` (${st.controller})` : ''}`);
+    if (hover.corridor) { const c = world.corridors.find(x => x.id === hover.corridor); const st = recStatus(c); return { title: `${c.name}${distNote(st)}` }; }
+    if (hover.territory) { const t = world.territories.find(x => x.id === hover.territory); const st = recStatus(t); return { title: `${t.name}${distNote(st)}` }; }
     const id = actorOfNe(hover.neId); const ha = history?.actors?.[id]; const wa = world.actors[id];
     const name = wa?.name ?? ha?.name ?? geom.countries.find(f => f.id === hover.neId)?.properties.name ?? id;
     const rg = regimeAt(history, forecast, id, year); const pop = popAt(id);
     const pacts = (pactsOf.get(id) ?? []).map(p => ({ partners: p.members.filter(m => m !== id), greats: p.members.filter(m => m !== id && isGreat(m)) }));
     const items = yearItems.filter(it => it.a?.includes(id) && !it.ongoing).slice(0, 4);
-    const conflicts = [atWar(id) ? 'at war' : null, intrastateOf(id) >= 2 ? 'civil war' : intrastateOf(id) > 0 ? 'internal armed conflict' : null].filter(Boolean);
+    const ast = actorState(id);
+    const conflicts = inHist
+      ? [atWar(id) ? 'at war' : null, intrastateOf(id) >= 2 ? 'civil war' : intrastateOf(id) > 0 ? 'internal armed conflict' : null].filter(Boolean)
+      : ast ? [ast.at_war >= 0.02 ? `${(ast.at_war * 100).toFixed(0)}% at war` : null, ast.intrastate >= 0.02 ? `${(ast.intrastate * 100).toFixed(0)}% internal armed conflict` : null, ast.occupied >= 0.02 ? `${(ast.occupied * 100).toFixed(0)}% occupied (carried, not simulated)` : null].filter(Boolean) : [];
     const hosted = presenceNow.filter(r => r.host === id).map(r => `${r.actor} ${r.kind}${r.level >= 3 ? ' (major)' : ''}`);
     const lo = ha?.last_observed; const staleNote = lo && Math.round(year) > (history?.meta.y1 ?? 0) ? Object.entries(lo).filter(([k, y]) => ['cinc', 'regime', 'gdp_pc', 'population'].includes(k) && y != null && y < history.meta.y1 - 1).map(([k, y]) => `${k} as of ${y}`).join(' · ') : '';
     let hz = null; if (isForecastYear && forecast.actors[id]) { const tp = forecast.meta.templates.filter(t => t.unit === 'actor-year').map(t => [t.label ?? t.id, forecastAt(forecast, { template: t.id }, id, year, horizon).value]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]).slice(0, 3); hz = tp.map(([l, v]) => `${(v * 100).toFixed(0)}% ${l}`).join(' · '); }
     const cell = values[hover.neId]; const rgNote = cell?.dist ? `in ${(Math.max(...cell.dist) * 100).toFixed(0)}% of runs` : cell?.stale > 0 && variable?.var === 'regime' ? `as of ${cell.observed}` : '';
     const held = layers.waves ? wavesHeld(id, Math.round(year)) : []; const waveNote = held.length ? `${held.length} wave${held.length > 1 ? 's' : ''}: ${held.slice(-3).map(w => `${w.label} ${w.year}`).join(' · ')}` : '';
-    const cellNote = cell && variable?.industry ? `${(cell.value * 100).toFixed(1)}% of world ${cell.series}${cell.stale > 0 ? ` (as of ${cell.observed})` : ''}` : cell && variable?.gradient ? (cell.mean ? `regime axis: ${cell.value.toFixed(2)} of 3, mean over runs` : cell.category ? `regime axis: category only (no polyarchy score${cell.stale > 0 ? `, as of ${cell.observed}` : ''})` : `polyarchy ${cell.poly.toFixed(2)} → ${cell.value.toFixed(2)} on the regime axis${cell.stale > 0 ? ` (as of ${cell.observed})` : ''}`) : cell && variable?.var !== 'regime' && variable?.kind === 'history' ? (cell.forecast ? `${variable.label}: ${d3.format(variable.display?.format ?? '.3~s')(cell.value)} median (${d3.format('.3~s')(cell.lo)}–${d3.format('.3~s')(cell.hi)})` : cell.stale > 0 ? `${variable.label}: ${d3.format(variable.display?.format ?? '.3~s')(cell.value)} as of ${cell.observed}` : '') : '';
+    const stateNote = cell?.state ? (cell.dist && variable?.display?.categorical
+      ? `${variable.label}: ${cell.dist.map((p, i) => `${variable.display.categoricalLabels?.[i] ?? i} ${(p * 100).toFixed(0)}%`).filter((_, i) => cell.dist[i] >= 0.005).join(' · ')} over ${forecast?.meta.runs} runs`
+      : `${variable.label}: ${d3.format(variable.display?.format ?? '.3~s')(cell.value)} median (${d3.format(variable.display?.format ?? '.3~s')(cell.lo)}–${d3.format(variable.display?.format ?? '.3~s')(cell.hi)})${cell.simulated === false ? ' · carried from the as-of year, not simulated' : ''}`) : null;
+    const cellNote = stateNote ?? (cell && variable?.industry ? `${(cell.value * 100).toFixed(1)}% of world ${cell.series}${cell.stale > 0 ? ` (as of ${cell.observed})` : ''}` : cell && variable?.gradient ? (cell.mean ? `regime axis: ${cell.value.toFixed(2)} of 3, mean over runs` : cell.category ? `regime axis: category only (no polyarchy score${cell.stale > 0 ? `, as of ${cell.observed}` : ''})` : `polyarchy ${cell.poly.toFixed(2)} → ${cell.value.toFixed(2)} on the regime axis${cell.stale > 0 ? ` (as of ${cell.observed})` : ''}`) : cell && variable?.var !== 'regime' && variable?.kind === 'history' ? (cell.forecast ? `${variable.label}: ${d3.format(variable.display?.format ?? '.3~s')(cell.value)} median (${d3.format('.3~s')(cell.lo)}–${d3.format('.3~s')(cell.hi)})` : cell.stale > 0 ? `${variable.label}: ${d3.format(variable.display?.format ?? '.3~s')(cell.value)} as of ${cell.observed}` : '') : '');
     return { id, name, flag: flagEmoji(ha?.iso2), rg, rgNote, cellNote, waveNote, pop, pacts, items, conflicts, hosted, staleNote, hz, live: ha ? (inHist ? !!ha.live[yi] : true) : !!wa };
   });
   const fmtPop = (n) => (n == null || !n ? '—' : n >= 1e9 ? (n / 1e9).toFixed(2) + ' bn' : n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? (n / 1e3).toFixed(0) + ' k' : String(Math.round(n)));
 
   // ---- legend
-  const presentStatuses = $derived.by(() => { const t = new Set(), c = new Set(); for (const x of territoriesScene) { const st = statusAt(world.territories.find(w => w.id === x.id), year); t.add(st.status); } for (const x of corridorsScene) { const st = statusAt(world.corridors.find(w => w.id === x.id), year); c.add(st.status); } return { t: [...t], c: [...c] }; });
+  const presentStatuses = $derived.by(() => { const t = new Set(), c = new Set(); for (const x of territoriesScene) { const r = world.territories.find(w => w.id === x.id); if (r) t.add(recStatus(r).status); } for (const x of corridorsScene) { const r = world.corridors.find(w => w.id === x.id); if (r) c.add(recStatus(r).status); } return { t: [...t], c: [...c] }; });
   const presenceCounts = $derived.by(() => { if (!layers.presence) return []; const m = {}; for (const r of presenceNow) m[r.actor] = (m[r.actor] ?? 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1]); });
   const catLabel = (c, i) => variable?.display?.categoricalLabels?.[i] ?? c;
 </script>
@@ -216,13 +262,13 @@
         <div class="bar" style="background: linear-gradient(90deg, {d3.range(0, 1.01, 0.1).map(t => scale.scale(scale.log ? Math.exp(Math.log(scale.domain[0]) + t * (Math.log(scale.domain[1]) - Math.log(scale.domain[0]))) : scale.domain[0] + t * (scale.domain[1] - scale.domain[0]))).join(',')})"></div>
         <div class="ticks"><span>{d3.format('.3~s')(scale.domain[0])}</span><span>{d3.format('.3~s')(scale.domain[1])}</span></div>
       {/if}
-      <div class="muted small">{variable.kind === 'forecast' ? (isForecastYear ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs` : 'before the forecast start: last observed state') : variable.kind === 'history' ? (isForecastYear ? (variable.industry ? `after ${history.meta.y1}: the last reported shares held still (no industrial model yet) · ${Object.values(values).find(c => c.series)?.series ?? ''}` : variable.gradient ? `after ${history.meta.y1}: the ensemble mean on the same axis · colour washes to grey as the runs spread out` : variable.var === 'regime' ? `after ${history.meta.y1}: the most likely state in each of ${forecast?.meta.runs} runs · colour washes to grey where the runs disagree` : `after ${history.meta.y1}: ensemble median where the engine carries the series, else the last observation · colour washes to grey with staleness`) : (variable.industry ? `${Object.values(values).find(c => c.series)?.series ?? 'no series covers this year'} · share of the total over the states reporting that year, each carried up to 3 y` : variable.gradient ? `V-Dem polyarchy placed on the category axis by the panel's category medians (estimate) · where only the category is known it is painted flat and washed` : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''} · a series that stopped early is carried forward and washes to grey`)) : 'modern snapshot'}</div>
+      <div class="muted small">{variable.kind === 'forecast' ? (isForecastYear ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs` : 'before the forecast start: last observed state') : variable.kind === 'history' ? (isForecastYear ? (variable.industry ? `after ${history.meta.y1}: the last reported shares held still (no industrial model yet) · ${Object.values(values).find(c => c.series)?.series ?? ''}` : variable.gradient ? `after ${history.meta.y1}: the ensemble mean on the same axis · colour washes to grey as the runs spread out` : variable.var === 'regime' ? `after ${history.meta.y1}: the most likely state in each of ${forecast?.meta.runs} runs · colour washes to grey where the runs disagree` : (Object.values(values)[0]?.state ? `after ${history.meta.y1}: the ensemble's occupancy — ${variable.display?.categorical ? 'the modal state, washed by 1 − P' : 'the median with the p10–p90 band on the hover card'}${stateVarMeta(forecast, variable.var)?.simulated === false ? ' · carried from the as-of year, not simulated' : ''}` : `after ${history.meta.y1}: ensemble median where the engine carries the series, else the last observation · colour washes to grey with staleness`)) : (variable.industry ? `${Object.values(values).find(c => c.series)?.series ?? 'no series covers this year'} · share of the total over the states reporting that year, each carried up to 3 y` : variable.gradient ? `V-Dem polyarchy placed on the category axis by the panel's category medians (estimate) · where only the category is known it is painted flat and washed` : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''} · a series that stopped early is carried forward and washes to grey`)) : 'modern snapshot'}</div>
     {/if}
     {#if fieldSpec}<div class="lt" style="margin-top:6px">{fieldSpec.label} <span class="muted">{fieldSpec.note}{layers.field === 'hazard' ? ` · blur ${fieldBlur.toFixed(0)} px` : ''}</span></div>
       {#if fieldSpec.paint === 'dominant'}{#each field?.groups ?? [] as g}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx, g)}"></i>{g}</span>{/each}{:else}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx)}"></i>intensity</span>{/if}{/if}
     {#if presentStatuses.t.length}<div class="lt" style="margin-top:6px">Territories <span class="muted">hatched · ◇ point</span></div>{#each presentStatuses.t as s}<span class="sw"><i style="background:{STATUS_COLORS[s] ?? '#8b94a3'}"></i>{s.replace('_', ' ')}</span>{/each}{/if}
     {#if presentStatuses.c.length}<div class="lt" style="margin-top:6px">Corridors <span class="muted">line · ○ chokepoint · ┄ cable</span></div>{#each presentStatuses.c as s}<span class="sw"><i style="background:{STATUS_COLORS[s] ?? '#8b94a3'}"></i>{s}</span>{/each}{/if}
-    {#if layers.conflicts}<div class="lt" style="margin-top:6px">Conflicts <span class="muted">red outline at war · orange dashed internal · arcs join principal belligerents</span></div>{/if}
+    {#if layers.conflicts}<div class="lt" style="margin-top:6px">Conflicts <span class="muted">red outline at war · orange dashed internal · arcs join principal belligerents{isForecastYear ? ` · after ${history?.meta.y1}: the ensemble's occupancy — outline and arc saturation are P(at war in this year) over ${forecast?.meta.runs} runs, not a record` : ''}</span></div>{/if}
     {#if presenceCounts.length}<div class="lt" style="margin-top:6px">Military presence <span class="muted">■ base · ◆ garrison · ⚓ fleet · • advisors{zoomedIn ? '' : ' · minor stations at zoom'}</span></div>{#each presenceCounts as [p, n]}<span class="sw"><i style="background:{POWER_COLORS[p] ?? '#8b94a3'}"></i>{p} {n}</span>{/each}{/if}
     {#if layers.alliances}<div class="lt" style="margin-top:6px">Alliances{layers.alliances === 'major' ? ' (great-power pacts)' : ''} <span class="muted">{allianceView.pacts} defence pacts (CoW){allianceView.carried ? ` · carried forward from ${allianceView.from}` : ''}</span></div>{/if}
     {#if layers.labels}<div class="lt" style="margin-top:6px">Regime</div>{#each REGIME_LABELS as l, i}<span class="sw" style="color:{REGIME_COL4[i]}"><b>{REGIME_GLYPH[i]}</b> <span style="color:var(--fg)">{l}</span></span>{/each}{/if}

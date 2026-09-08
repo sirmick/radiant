@@ -155,10 +155,21 @@ export function seriesAt(h, fc, variable, year) {
   }
   if (!fc) return out;
   const k = Math.min(fc.meta.horizon - 1, Math.max(0, y - fc.meta.from));
-  for (const [id, a] of Object.entries(fc.actors)) {
+  // the union of the two blocks: `actors` holds the as-of world, `state` also holds every actor the run introduced
+  // inside the horizon (a past-as-of ensemble from 1955 carries 193 of them against 86 at as-of), and dropping those
+  // would leave a hole in the map exactly where decolonisation is.
+  for (const id of new Set([...Object.keys(fc.actors), ...Object.keys(fc.state?.actors ?? {})])) {
+    const a = fc.actors[id] ?? {};
     const ha = h.actors[id]; const name = ha?.name ?? id;
     if (variable.gradient && a.regime?.[k]) { const d = a.regime[k]; const mean = d.reduce((t, p, l) => t + p * l, 0); const H = -d.reduce((t, p) => t + (p > 0 ? p * Math.log2(p) : 0), 0); out[id] = { value: mean, year, actor: id, name, forecast: true, conf: Math.max(0.15, 1 - H / 2), dist: d, mean: true }; continue; }
     if (v === 'regime' && a.regime?.[k]) { const d = a.regime[k]; const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, conf: d[m], dist: d }; continue; }
+    // operator/occupancy: the state block carries the conflict and capability series across the seam, so Conflict and
+    // Routes stop freezing at the last observation while Politics moves. The painted value is the MODAL state and the
+    // wash is 1 − P(that state), which is what makes a 50/50 year read as grey rather than as a confident war.
+    const st = fc.state?.actors?.[id];
+    if (st && v === 'at_war') { const p = st.at_war?.[k] ?? 0; const m = p >= 0.5 ? 1 : 0; out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p, conf: Math.max(p, 1 - p), dist: [1 - p, p] }; continue; }
+    if (st && v === 'intrastate') { const p1 = st.intrastate?.[k] ?? 0, p2 = st.intrastate_war?.[k] ?? 0; const d = [Math.max(0, 1 - p1), Math.max(0, p1 - p2), p2]; const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p: d[m], conf: d[m], dist: d }; continue; }
+    if (st && (v === 'cinc' || v === 'pol_share') && st[v]?.[k]) { const t = st[v][k]; const meta = stateVarMeta(fc, v); out[id] = { value: t[1], year, actor: id, name, forecast: true, state: true, lo: t[0], hi: t[2], simulated: meta?.simulated !== false, note: meta?.note ?? null, conf: meta?.simulated === false ? fade(y - fc.meta.from) : Math.max(0.5, 1 - 0.015 * (y - fc.meta.from)) }; continue; }
     const tri = a[v]?.[k];
     if (Array.isArray(tri)) { out[id] = { value: tri[1], year, actor: id, name, forecast: true, lo: tri[0], hi: tri[2], conf: Math.max(0.5, 1 - 0.015 * (y - fc.meta.from)) }; continue; }
     if (!ha?.[v]) continue;
@@ -166,6 +177,25 @@ export function seriesAt(h, fc, variable, year) {
     out[id] = { value: val, year, actor: id, name, carried: true, observed: h.meta.y0 + j, stale: y - (h.meta.y0 + j), conf: fade(y - (h.meta.y0 + j)) };
   }
   return out;
+}
+/**
+ * operator/occupancy (package 11): the ensemble's OCCUPANCY block — what state the world is in each forecast year,
+ * beside the `p` curves that say when an event first fires. `fc.state.actors[id][var][k]`, `fc.state.dyads[pair][k]`
+ * and `fc.state.records[id][k]` with k the 0-based offset from `fc.meta.from`; `fc.meta.state.vars` says what is
+ * carried and, for each, whether the engine actually simulates it (cinc and `occupied` are carried, not forecast).
+ */
+export const stateOffset = (fc, year) => { if (!fc?.state) return -1; const k = Math.round(year) - fc.meta.from; return k >= 0 && k < fc.meta.horizon ? k : -1; };
+export const stateVarMeta = (fc, id) => fc?.meta?.state?.vars?.find(v => v.id === id) ?? null;
+/** Actor state at a forecast year: { at_war, intrastate, intrastate_war, cinc, pol_share } as the block carries them. */
+export function actorStateAt(fc, id, year) { const k = stateOffset(fc, year); if (k < 0) return null; const s = fc.state.actors?.[id]; return s ? { k, at_war: s.at_war?.[k] ?? 0, intrastate: s.intrastate?.[k] ?? 0, intrastate_war: s.intrastate_war?.[k] ?? 0, occupied: s.occupied?.[k] ?? 0, cinc: s.cinc?.[k] ?? null, pol_share: s.pol_share?.[k] ?? null } : null; }
+/** P(this pair is at war) in a forecast year; 0 where the pair is below the file's threshold (meta.state.vars). */
+export function dyadWarAt(fc, a, b, year) { const k = stateOffset(fc, year); if (k < 0) return 0; const key = a < b ? `${a}|${b}` : `${b}|${a}`; return fc.state.dyads?.[key]?.[k] ?? 0; }
+/** A record's simulated status distribution at a forecast year: the modal word, its probability, and the whole mix. */
+export function recordStateAt(fc, recId, year) {
+  const k = stateOffset(fc, year); if (k < 0) return null;
+  const d = fc.state.records?.[recId]?.status?.[k]; if (!d) return null;
+  const entries = Object.entries(d).sort((a, b) => b[1] - a[1]);
+  return entries.length ? { status: entries[0][0], p: entries[0][1], dist: d, entries } : null;
 }
 /** A colour washed toward the map's neutral by how little we know: conf 1 = the colour, 0 = mostly grey. */
 export const washed = (color, conf) => (color == null ? null : conf == null || conf >= 1 ? color : d3.interpolateLab(color, '#3a4250')((1 - conf) * 0.8));

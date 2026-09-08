@@ -1030,10 +1030,14 @@ export function stepYear(world, rng, opts = {}) {
   // lag1(at_war) and the war shock mean in simulation what they mean in the panel. Whether the spell stops this year
   // is the fitted `war_end` hazard, drawn once per running spell with the spell's own duration-so-far in it — a
   // resampled length, which is what this replaces, could not depend on the state of the war.
+  // operator/occupancy: the pairs that are at war DURING this year, which is not the same set as the spells still open
+  // when the year closes — a spell that ends in y was at war in y, and a war that fires and ends in y never enters the
+  // map at all. Collected here rather than reconstructed by a caller, and read only by the ensemble's state tracking.
+  const atWarPairs = new Set();
   for (const [k, sp] of [...world.warSpells]) {
     const i = k.indexOf('|'); const A = world.actors[k.slice(0, i)], B = world.actors[k.slice(i + 1)];
     if (!A || !B) { world.warSpells.delete(k); continue; }
-    A.cur.at_war = 1; B.cur.at_war = 1;
+    A.cur.at_war = 1; B.cur.at_war = 1; atWarPairs.add(k);
     const p = warEndHazard(world, A.id, B.id, y - sp.y0, sp.coalition);
     const u = rng();
     if (p == null || u < p) { world.warSpells.delete(k); fired.push({ kind: 'war_end', a: A.id, b: B.id, year: y, start: sp.y0, duration: y - sp.y0 + 1 }); }
@@ -1164,6 +1168,8 @@ export function stepYear(world, rng, opts = {}) {
     }
     entry.age = (entry.age ?? 0) + 1;
   }
+  for (const [a, b] of warPairs) atWarPairs.add(pairKey(a, b));   // this year's onsets and the coalition pairs they opened
+  world.atWarPairs = atWarPairs;
   // the war graph the next year's relevance clause reads: this year's onsets, its joiners, and any spell still open
   if (world.coalition) {
     const spans = new Map(); for (const [a, b] of warPairs) spans.set(pairKey(a, b), [[y, y]]);
@@ -1230,11 +1236,30 @@ function coalitionJoin(world, rng, warPairs, y) {
   return out;
 }
 
-/** Run an ensemble from a world factory. Returns per-run event logs and aggregated probabilities. */
-export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false, track = false } = {}) {
+/**
+ * Run an ensemble from a world factory. Returns per-run event logs and aggregated probabilities.
+ *
+ * `state: true` adds the OCCUPANCY block (operator/occupancy, package 11): what state the world is in each year,
+ * rather than only when an event first fires. Three units, all read off the world after `stepYear` returns:
+ *   actors  — P(at war), P(internal conflict ≥ 1), P(≥ 2), P(occupied), and the p10/p50/p90 of the capability share;
+ *   dyads   — P(this pair is at war during the year), from world.atWarPairs (spells that end in the year included);
+ *   records — the full status distribution of every corridor, chokepoint and territory record the world carries.
+ * The tracking reads state and consumes NO random numbers, so a run with it on reproduces a run with it off exactly
+ * (docs/escalations.md package 11, test (d)); that is the reason it is a separate flag from `track` rather than more
+ * work inside it, and the reason nothing here calls `rng`.
+ */
+export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false, track = false, state = false } = {}) {
   const regimeHist = {};  // actor -> Uint32Array(horizon*4): counts of regime level per year offset
   const gdpRuns = {};     // actor -> Float32Array(runs*horizon)
   const infoRuns = {};
+  // occupancy accumulators (state: true). Counts per year offset; the denominator is carried beside them because an
+  // actor introduced or retired inside the horizon is not at risk in every year, and a record can lack a state.
+  const occActor = {};    // actor -> { live, at_war, intrastate, intrastate_war, occupied } of Uint32Array(horizon)
+  const cincRuns = {};    // actor -> Float32Array(runs*horizon)
+  const polRuns = {};     // actor -> Float32Array(runs*horizon): the projected capability share (see below)
+  const occDyad = new Map();   // pairKey -> Uint32Array(horizon)
+  const occRecord = {};   // record id -> { n: Uint32Array(horizon), status: { word -> Uint32Array(horizon) } }
+  const newOcc = () => ({ live: new Uint32Array(horizon), at_war: new Uint32Array(horizon), intrastate: new Uint32Array(horizon), intrastate_war: new Uint32Array(horizon), occupied: new Uint32Array(horizon) });
   const anyBy = {};   // `${kind}|${actor}` -> count of runs with ≥1 event within horizon
   const countBy = {}; // expected counts
   const dyadAny = {};
@@ -1249,6 +1274,30 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
         if (a.cur.gdp_pc != null) (gdpRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.gdp_pc;
         if (a.cur.info_access != null) (infoRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.info_access;
+      }
+      if (state) {
+        const k = h - 1;
+        for (const [id, a] of Object.entries(w.actors)) {
+          const o = occActor[id] ??= newOcc(); o.live[k]++;
+          if (a.cur.at_war) o.at_war[k]++;
+          const ic = a.cur.intrastate ?? 0;
+          if (ic >= 1) o.intrastate[k]++;
+          if (ic >= 2) o.intrastate_war[k]++;
+          if (a.cur.occupied) o.occupied[k]++;
+          // two capability shares, because they are two different objects and only one of them moves: `cinc` is CoW's
+          // index as the engine CARRIES it (nothing in stepYear rewrites it, so its p10-p90 band is degenerate and it
+          // is the as-of ranking held still), while `pol_share` is the projection-weighted share stepPolarity actually
+          // advances by each actor's own simulated output and population growth. Reporting only the first would paint a
+          // frozen number as a forecast; reporting only the second would answer a question with a different index.
+          if (a.cur.cinc != null) (cincRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + k] = a.cur.cinc;
+          if (a.cur.pol_share != null) (polRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + k] = a.cur.pol_share;
+        }
+        for (const pk of w.atWarPairs ?? []) { let arr = occDyad.get(pk); if (!arr) occDyad.set(pk, arr = new Uint32Array(horizon)); arr[k]++; }
+        for (const entry of [...(w.corridors ?? []), ...(w.territories ?? [])]) {
+          const s = entry.state?.status; if (s == null) continue;
+          const rec = occRecord[entry.rec.id] ??= { n: new Uint32Array(horizon), kind: entry.rec.kind, status: {} };
+          rec.n[k]++; (rec.status[s] ??= new Uint32Array(horizon))[k]++;
+        }
       }
       for (const e of fired) {
         const unit = e.actor ?? e.record;   // actor-year, corridor-year and chokepoint-year units all key the same way
@@ -1272,5 +1321,29 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     gdp_pc: Object.fromEntries(Object.entries(gdpRuns).map(([id, arr]) => [id, quantiles(arr)])),
     info_access: Object.fromEntries(Object.entries(infoRuns).map(([id, arr]) => [id, quantiles(arr)])),
   } : null;
-  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, expectedWithin, cumulative, firstBy, tracks };
+  // the occupancy block. Probabilities are per year offset; an actor's denominator is the runs it exists in that year
+  // (`live`), a record's the runs the world carried a state for it, a dyad's the whole ensemble.
+  const r3 = (x) => +x.toFixed(3);
+  const sig4 = (x) => (x == null ? null : +x.toPrecision(4));
+  const allZero = (a) => a.every(x => !x);
+  const occupancy = state ? {
+    actors: Object.fromEntries(Object.entries(occActor).map(([id, o]) => {
+      const p = (arr) => Array.from({ length: horizon }, (_, k) => (o.live[k] ? r3(arr[k] / o.live[k]) : null));
+      // a series that is zero in every year of every run is emitted as null, not as a hundred zeroes: the difference
+      // between "no mass anywhere" and "not carried" is in meta.state, and the array would be a third of the file.
+      const q = (src) => (src ? quantiles(src).map(t => (t ? t.map(sig4) : null)) : null);
+      const keep = (arr) => (allZero(arr) ? null : p(arr));
+      return [id, { live: o.live.every(x => x === runs) ? null : Array.from(o.live, x => r3(x / runs)), at_war: keep(o.at_war), intrastate: keep(o.intrastate), intrastate_war: keep(o.intrastate_war), occupied: keep(o.occupied), cinc: q(cincRuns[id]), pol_share: q(polRuns[id]) }];
+    })),
+    dyads: Object.fromEntries([...occDyad].map(([k, arr]) => [k, Array.from(arr, x => r3(x / runs))])),
+    records: Object.fromEntries(Object.entries(occRecord).map(([id, rec]) => [id, {
+      kind: rec.kind,
+      status: Array.from({ length: horizon }, (_, k) => {
+        const n = rec.n[k]; if (!n) return null;
+        const d = {}; for (const [w, arr] of Object.entries(rec.status)) if (arr[k]) d[w] = r3(arr[k] / n);
+        return d;
+      }),
+    }])),
+  } : null;
+  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, expectedWithin, cumulative, firstBy, tracks, occupancy };
 }

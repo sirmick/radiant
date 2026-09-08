@@ -224,6 +224,27 @@
             <tr><td class="mono">{r.asOf}</td>{#each Object.keys(scores.pooled) as t}{@const c = r.templates[t]}<td class="val mono tiny" class:muted={!c || c.underpowered}>{c && c.n ? `${c.obs ? (c.exp / c.obs).toFixed(1) : '—'}·${c.auc == null ? '—' : c.auc.toFixed(2)}` : '—'}</td>{/each}</tr>
           {/each}
         </tbody></table></div>
+        {#if scores.occupancy}
+          <h3>Occupancy — what state the world is in each year</h3>
+          <div class="tiny muted" style="margin-bottom:6px">The table above scores <b>first occurrence within the horizon</b>: it cannot see whether a simulated war is still running twenty years later. This one scores the <b>state each year</b> — the Brier of P(state in as-of + k) against the panel and the record layer, pooled over every lead year and every as-of row. Skill is against the base rate of the scored rows themselves.</div>
+          <table><tbody>
+            <tr class="tiny muted"><td>variable</td><td class="val">n</td><td class="val">rate</td><td class="val">exp/obs</td><td class="val">skill</td></tr>
+            {#each Object.entries(scores.occupancy.vars) as [v, o]}
+              <tr><td class="lbl" title={o.note ?? ''}>{v.replace(/_/g, ' ')}{o.note ? ' *' : ''}</td><td class="val mono">{o.n}</td><td class="val mono">{o.base_rate == null ? '—' : (o.base_rate * 100).toFixed(1) + '%'}</td><td class="val mono">{o.exp_obs == null ? '—' : o.exp_obs.toFixed(2)}</td><td class="val mono" style="color:{o.skill > 0.05 ? 'var(--good)' : o.skill < -0.05 ? 'var(--bad)' : 'inherit'}">{o.skill == null ? '—' : (o.skill >= 0 ? '+' : '') + o.skill.toFixed(2)}</td></tr>
+            {/each}
+          </table>
+          {#each Object.entries(scores.occupancy.vars).filter(([, o]) => o.by_lead?.length) as [v, o]}
+            <div class="tiny muted" style="margin-top:6px">{v.replace(/_/g, ' ')} by lead year — simulated occupancy over observed; a bar past 1 is the process running hot</div>
+            <div class="bars">
+              {#each o.by_lead as L}
+                {@const r = L.obs ? L.exp / L.obs : null}
+                <div class="bar-row"><span class="mono">+{L.k}y</span><div class="bar"><i style="width:{Math.min(100, (r ?? 0) * 50)}%; background:{r > 1 ? 'var(--bad)' : 'var(--accent)'}"></i></div><span class="mono muted">{r == null ? (L.exp > 0 ? '∞' : '—') : r.toFixed(2)}</span></div>
+              {/each}
+            </div>
+          {/each}
+          <div class="tiny muted" style="margin-top:6px">Capability rank (Spearman of the ensemble's median share against CoW's): {#each Object.entries(scores.occupancy.capability_rank) as [k, r]}{k.replace('_', ' ')} {r.mean_spearman.toFixed(2)} · {/each}</div>
+          {#each Object.entries(scores.occupancy.vars).filter(([, o]) => o.note) as [v, o]}<div class="tiny muted" style="margin-top:4px">* {v.replace(/_/g, ' ')}: {o.note}</div>{/each}
+        {/if}
       {/if}
     {:else if tab === 'territories'}
       {#each world.territories as t}

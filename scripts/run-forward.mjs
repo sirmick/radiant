@@ -44,7 +44,7 @@ if (asOf < panel.meta.y1) {   // honest past forecast: coefficients from labels 
 const OUT = arg('out', asOf === panel.meta.y1 ? 'public/forecast.json' : `public/forecast-${asOf}.json`);
 const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom });
 const t0 = Date.now();
-const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, track: true });
+const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, track: true, state: true });
 const w0 = make(); const ids = Object.keys(w0.actors);
 const simulated = templates.filter(t => fits[t.id]?.status === 'fitted' && t.status !== 'monitored');
 // era-modern-2000-2025/data-2: what the run actually produced, not what was fitted. A template with no unit in the
@@ -66,12 +66,44 @@ for (const t of simulated) {
   for (const id of units) { const c = ens.cumulative(`${t.id}|${id}`); if (c.some(x => x > 0)) (out.records[t.id] ??= {})[id] = c.map(x => +x.toFixed(3)); }
 }
 for (const [k, v] of Object.entries(ens.pAnyDyad)) { const [kind, pair] = k.split('|', 2); const rest = k.slice(kind.length + 1); if (v >= 0.05) (out.dyads[rest] ??= {})[kind] = { pAny: +v.toFixed(3), curve: ens.cumulative(k).map(x => +x.toFixed(3)) }; }
+// operator/occupancy (package 11): what state the world is IN each year, beside the first-occurrence curves above.
+// The event block answers "when does this first fire within the horizon"; it cannot say whether the simulated war
+// process is still running twenty years later, which is what the map after the seam has to paint and what the
+// backtest's occupancy score grades. `state.actors[id][var][k]`, `state.dyads[pair][k]`, `state.records[id][k]`,
+// k = 0-based year offset from `meta.from`.
+// The dyad block is thresholded: at 300 runs x 100 years every pair that ever fires a war in any run would carry a
+// 100-number array, and the file is loaded by a browser. The rule: every pair whose peak year reaches DYAD_MIN, topped up to at least DYAD_FLOOR pairs by peak so the block
+// is never empty at high run counts (at 200 runs a pair at war in 3 of them peaks at 0.015 and would vanish), and
+// capped at DYAD_CAP so a 300 x 100 run cannot run away. All three numbers and both counts go into meta.state.
+const DYAD_MIN = 0.02, DYAD_FLOOR = 500, DYAD_CAP = 2000;
+const occ = ens.occupancy;
+const ranked = Object.entries(occ.dyads).map(([k, curve]) => [k, curve, Math.max(...curve)]).sort((a, b) => b[2] - a[2]);
+const nKeep = Math.min(DYAD_CAP, Math.max(DYAD_FLOOR, ranked.filter(x => x[2] >= DYAD_MIN).length));
+const stateDyads = {};
+for (const [k, curve] of ranked.slice(0, nKeep)) stateDyads[k] = curve;
+const dyadKept = Object.keys(stateDyads).length, dyadDropped = ranked.length - dyadKept;
+const dyadFloorP = ranked[dyadKept - 1]?.[2] ?? null;
+out.state = { actors: occ.actors, dyads: stateDyads, records: occ.records };
+out.meta.state = {
+  vars: [
+    { id: 'at_war', unit: 'actor-year', label: 'P(at war during the year)', simulated: true },
+    { id: 'intrastate', unit: 'actor-year', label: 'P(internal armed conflict, level ≥ 1)', simulated: true },
+    { id: 'intrastate_war', unit: 'actor-year', label: 'P(internal conflict at war intensity, level ≥ 2)', simulated: false, note: 'the onset template has no intensity: the engine only ever writes level 1, so every year of this is a spell carried in from the as-of state. Reported so the zero is visible rather than implied.' },
+    { id: 'occupied', unit: 'actor-year', label: 'P(occupied)', simulated: false, note: 'carried from the panel at as-of — occupation is data in this model, not a hazard (docs/system.md), so this is the as-of value held still, not a forecast' },
+    { id: 'cinc', unit: 'actor-year', label: 'CoW capability share, p10 / p50 / p90 over runs', simulated: false, note: 'nothing in the engine rewrites cinc: this is the as-of value held still for the whole horizon, so the band is degenerate and the series is the as-of ranking, not a forecast' },
+    { id: 'pol_share', unit: 'actor-year', label: 'Projection-weighted capability share, p10 / p50 / p90 over runs', simulated: true, note: 'src/engine/polarity.js — the share stepPolarity advances by each actor’s own simulated output and population growth, and the one the derived era flags read' },
+    { id: 'dyad_at_war', unit: 'dyad-year', label: 'P(the pair is at war during the year)', simulated: true, threshold: DYAD_MIN, floor: DYAD_FLOOR, cap: DYAD_CAP, kept: dyadKept, lowest_kept_peak: dyadFloorP, dropped: dyadDropped, note: 'the pairs kept are the ones whose peak year reaches the threshold, topped up to `floor` by peak and capped at `cap`; every other pair had a lower peak than `lowest_kept_peak` and is omitted, not zero' },
+    { id: 'record_status', unit: 'record-year', label: 'status distribution of each corridor / chokepoint / territory record', simulated: true },
+  ],
+  actors: Object.keys(occ.actors).length, dyads: dyadKept, records: Object.keys(occ.records).length,
+};
 writeFileSync(OUT, JSON.stringify(out));
 // index of available ensembles for the UI
 const idxPath = 'public/forecasts.json'; const idx = existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : { ensembles: [] };
 idx.ensembles = idx.ensembles.filter(e => e.asOf !== asOf); idx.ensembles.push({ asOf, file: OUT.replace(/^public\//, ''), from: asOf + 1, to: asOf + H, runs: RUNS, horizon: H, fit_source: fitSource, built: out.meta.built }); idx.ensembles.sort((a, b) => a.asOf - b.asOf);
 writeFileSync(idxPath, JSON.stringify(idx));
 console.log(`${OUT}: ${ids.length} actors, ${Object.keys(out.dyads).length} dyads ≥5%, ${RUNS} runs × ${H}y in ${((Date.now() - t0) / 1000).toFixed(0)}s, ${(JSON.stringify(out).length / 1024).toFixed(0)} KB`);
+console.log(`   state: ${out.meta.state.actors} actors, ${dyadKept} dyads kept (lowest peak ${dyadFloorP == null ? '—' : dyadFloorP.toFixed(3)}, ${dyadDropped} dropped), ${out.meta.state.records} records`);
 // headline table
 const row = (id) => { const a = out.actors[id]; const at = (t, k) => a.p[t] ? (a.p[t][k - 1] * 100).toFixed(0) + '%' : '—'; return `${id.padEnd(5)} regime ${a.regime0}  coup10y ${at('coup_attempt', 10).padStart(4)}  irregular10y ${at('irregular_exit', 10).padStart(4)}  civilwar10y ${at('intrastate_onset', 10).padStart(4)}  democratize10y ${at('democratize_step', 10).padStart(4)}  close10y ${at('autocratic_closure', 10).padStart(4)}  regime2045 [${(a.regime?.[19] ?? []).map(x => (x * 100).toFixed(0)).join(' ')}]`; };
 for (const id of ['USA', 'CHN', 'RUS', 'IRN', 'ISR', 'TUR', 'SAU', 'IND', 'PAK', 'NGA', 'EGY', 'UKR', 'DEU', 'HUN', 'BRA', 'MLI']) if (out.actors[id]) console.log(row(id));

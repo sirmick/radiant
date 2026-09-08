@@ -30,6 +30,8 @@ node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 10
 ```
 Output: `scores/backtest-<from>-<to>-h<H>-<universe>[-norefit].json` with `byAsOf[]` rows (n, expected, observed, Brier, AUC, `auc_at_risk`, `n_at_risk`, `fit_source`, `underpowered`) and `pooled`. Ground truth is scored only inside each dataset's window.
 
+Every run also carries an **occupancy** score (`operator / occupancy`, 2026-09-08): the event score above grades *first occurrence within the horizon*, which cannot see whether the simulated process is still running twenty years later. The occupancy score grades the **state each year** — P(at war), P(internal armed conflict ≥ 1 and ≥ 2), P(occupied), the dyadic war-years, and the corridor/chokepoint/territory status layer (binary "impaired" plus the multi-class distribution) — as a Brier score against the panel and the record histories, per lead year k = 1…H and pooled, with the same base-rate skill, plus the Spearman rank correlation of the ensemble's median capability share against CoW's at k = 10 and 20. It lands in `byAsOf[].occupancy` and top-level `occupancy`; the console prints, per as-of year, the lead years where **the simulated war occupancy exceeds the panel's** (the hot-process diagnosis). Turning it on moves no event number: the tracking reads state and draws no random numbers.
+
 ## Forecast
 
 ```
@@ -66,4 +68,11 @@ While a workflow runs, commit only your own paths (`git add <paths>`), never `gi
 
 ## Forecast length
 
-`node scripts/run-forward.mjs --runs 300 --horizon 100` builds the main ensemble a century long (`public/forecast.json`, ~4 MB); the viewer's **to** control offers +40…+100 years up to the loaded ensemble's horizon. Cost is linear in runs × years: 20 runs × 40 years take ~14 s on the dev machine including the fit, so 300 × 100 took 432 s (7 min). Past-as-of ensembles stay at 40 years, which is all the backtest can score.
+`node scripts/run-forward.mjs --runs 300 --horizon 100` builds the main ensemble a century long (`public/forecast.json`, ~4 MB); the viewer's **to** control offers +40…+100 years up to the loaded ensemble's horizon. Cost is linear in runs × years: 20 runs × 40 years take ~14 s on the dev machine including the fit, so 300 × 100 took 432 s (7 min). Past-as-of ensembles run 200 runs × 40 years:
+
+```
+for y in 1900 1930 1955 1975 1990 2005; do node scripts/run-forward.mjs --as-of $y --runs 200 --horizon 40; done
+node scripts/build-scores-slice.mjs && npx vite build
+```
+
+Every ensemble carries the `state` (occupancy) block described in `docs/schema.md`; it is what the Conflict and Routes views paint after the seam, so a rebuild that skips these leaves those views frozen at the last record.
