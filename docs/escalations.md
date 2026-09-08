@@ -1187,6 +1187,17 @@ the `auc_at_risk` movement honestly — adding 21 low-hazard democracies should 
 
 ## era-1991-2026-r2 / statistics-3 — a UCDP-derived dyadic conflict kind for 2011–2024
 
+**IMPLEMENTED 2026-09-08 (turn era-modern-2000-2025, findings data-1 / engine-4 / statistics-3, which re-raised it as
+three high-severity findings).** Built as this escalation specified — its own template (`interstate_onset`, unit
+dyad-year, window [1946, 2024]) with its own `COVERAGE` entry, NOT spliced onto `mid_force` — plus a six-line generic
+draw in `src/engine/core.js:stepYear` for dyadic onset templates outside the nested MID pair. No new event kind was
+needed: `scripts/build-events.mjs` already emitted the 84 UCDP interstate onsets and `DYADIC_DISPUTE` already counted
+them in the rivalry trace; nothing consumed them as labels. Fit: n=83,391 / 79 events, holdout AUC 0.862 at split
+2000. Backtest, this turn: as-of 2000 scored_years 20, AUC 0.86; as-of 2010 scored_years 14, n_at_risk 557, AUC 0.86
+against `n: 0` before. The escalation's guard holds — `mid_force`'s labels are untouched and its pooled skill is
+computed over the same CoW/GML label set as before.
+
+
 **What it would add.** A new dyadic event kind (`mid_war_ucdp`, or a second scored template on the existing fit) built
 from `UcdpPrioConflict_v25_1.csv` `type_of_conflict == 2`, expanding side_a/side_a_2nd × side_b/side_b_2nd into pairs
 through the existing GW map, with `intensity_level` carried so a ≥1000-death threshold is separable from the ≥25 one.
@@ -1281,3 +1292,128 @@ fourteen indicators. Failing that, NMC 7.0's own `milper` share held at its 2022
 **Test.** With the component restored, no actor's |log splice factor| exceeds ln 2 and `cinc_carried` is 0 for every
 live actor in 2023–24; the composite's rank for PRK at 2022 is within 10 places of NMC's 12. `panel.meta.polarity`
 must be unchanged for 1816–2022 and the 1870–2010 backtest byte-identical.
+
+## era-modern-2000-2025 / statistics-1 — within-year standardisation (`transform: z_year`)
+
+**What it would add.** A second standardising transform in `scripts/lib/fit.mjs:encode` and
+`src/engine/core.js:featureActor` — the value's z-score (or percentile rank) inside its OWN YEAR's cross-section
+rather than inside the pooled fitting sample — plus the machinery for the engine to compute that cross-section from
+the simulated world each horizon year instead of applying a training mean/sd. It is a new derivation shared by the
+fitter and the engine, which is why it is escalated rather than done.
+
+**Why (the evidence).** `transform: z` standardises on the pooled sample and the engine then applies the training
+mean/sd to horizon rows, so any covariate with a strong calendar trend enters the horizon as a near-uniform offset on
+every actor. `info_access` has 53.5% of its variance BETWEEN years; its live-actor mean runs 0.077 (1960) → 0.400
+(2000) → 0.894 (2020), 1.99 pooled sd. At as-of 2010 the refit sample has mean 0.274 / sd 0.352 and the scored horizon
+has mean 0.860, i.e. mean z = +1.67 for every actor; with the fitted coup coefficient −0.46 that is a uniform
+−0.77 log-odds. Observed at as-of 2010 after this turn's other fixes: `coup_attempt` count_ratio 0.38, and the whole
+series is monotone (0.76 / 0.77 / 0.73 / 0.54 / 0.61 / 0.38 at as-of 1960…2010). The same mechanism runs the other way
+on `democratic_deepening`, whose `z(log_gdp_pc)` = +1.31 against a +0.5 prior produces count_ratio 1.82 / 4.11 at
+as-of 2000 / 2010 — and `src/engine/polarity.js:infoStep` is monotone toward a frontier, so a 2026-origin run drives
+z(info_access) to +2.06 and multiplies every coup hazard by 0.22 regardless of conditions. Between-year variance
+shares to audit at the same time: info_access 0.535, internet_users 0.518, infant_mortality 0.272, log_gdp_pc 0.103,
+urban_share 0.082.
+
+**Data.** None. Every variable is already in `data/panel.json`; this is a transform, not a source.
+
+**Templates it would feed.** `coup_attempt` and `irregular_exit` (`info_access`), `democratic_deepening` and
+`democratize_step` / `autocratic_closure` (`log_gdp_pc`), and any other `transform: z` covariate that fails the
+between-year variance audit.
+
+**Test.** `node scripts/fit-hazards.mjs coup_attempt --split 1986` before and after (holdout AUC 0.793, exp/obs 1.16
+is the base to beat), then the rolling-origin backtest: `count_ratio` for coup_attempt at as-of 1990 / 2000 / 2010
+(0.54 / 0.61 / 0.38 today) and democratic_deepening's (1.82 / 4.11) must move toward 1 without the pre-1990 rows
+regressing. If the coefficient collapses under within-year standardisation, the honest conclusion is that the
+promoted gain was a calendar trend and the term should be replaced by a bounded era covariate.
+
+## era-modern-2000-2025 / corridors-4 — the nine corridors that define 2000-2026 and have no record
+
+**What it would add.** Nine new records in `data/corridors.yaml`, each with transits, geometry, dated per-row sourced
+history and a dated `load_bearing_for`: central_asia_china_gas (first gas 14 Dec 2009), kazakhstan_china_oil
+(Atasu-Alashankou, Jul 2006), espo_pipeline (Taishet-Skovorodino Dec 2009, the China branch Jan 2011, Kozmino 2012),
+southern_gas_corridor (TANAP 12 Jun 2018, TAP 31 Dec 2020), kirkuk_ceyhan_pipeline (shut 25 Mar 2023 by the ICC award
+and still shut — a live `record_reopen` spell), cpec_gwadar (Apr 2015), china_laos_railway (3 Dec 2021),
+northern_sea_route (NSR Administration 2013, mandatory pilotage 2019) and kaliningrad_transit (blockaded 18 Jun 2022,
+partially released 13 Jul 2022 — the cleanest coded corridor seizure of the decade). Escalated because each record is
+a research task with per-row citations, not a field on an existing entity, and the turn's own measurement rule
+(`agent/fixer.md`: every hand-set number carries a source) makes a bulk hand-add without sources worse than the gap.
+
+**Why.** Only 15 corridor records open anywhere in 2000-2020 and 8 of the 15 are Russian or Baltic, so the layer's
+picture of Eurasia after 2010 is Russian pipelines plus five planned routes. Three of the nine open BEFORE 2010 and
+are therefore inside the horizon an as-of-2000 or as-of-2010 forecast is scored on. The 1992-2010 corridor label rate
+is 2.07% against 4.77% in the coded era, and this is where the missing half is.
+
+**Data.** Public and dated, but not in any file on disk; each record needs its own citations.
+
+**Templates it would feed.** `corridor_status`, `record_reopen` (Kirkuk-Ceyhan is an open impaired spell), and the
+dyadic `corridor_stake` dampener.
+
+**Test.** `node scripts/build-events.mjs` derives the new histories with no unresolved id and the derived count rises
+by ≥ 25; `node scripts/fit-hazards.mjs corridor_status` shows a 1992-2025 sample ≥ 250 rows larger with the label rate
+no lower than 3.52%; the as-of 2000 / 2010 `corridor_status` rows rise from n=28 / 33 to ≥ 34 / 40 with auc_at_risk not
+falling below 0.84 / 0.72.
+
+## era-modern-2000-2025 / corridors-5 — substitution between records (`substitutes_for`)
+
+**What it would add.** A `substitutes_for: [<record ids>]` key on corridor records that carry a bypassed flow, and a
+`substitute_impaired` covariate in `src/engine/core.js:corridorFeatures` = 1 where any record this one substitutes for
+is impaired in the simulated year. A new covariate computed from cross-record state is a new mechanism, not a field.
+
+**Why.** The layer models dependence (`load_bearing_for`) but not substitution. With hormuz `closed` from 2026.2,
+nothing in the state of middle_corridor, instc, gulf_landbridge or development_road changes — yet those four records'
+own notes describe them as Hormuz bypasses, and `data/corridors.yaml` says in as many words that "the bypass response
+is what corridor_status should predict". The mechanism the layer was built for is the one it cannot express.
+
+**Data.** None new: the substitution pairs are hand relations over records that already exist (suez↔sumed↔cape,
+hormuz↔the four bypasses, malacca↔lombok/sunda, bosphorus↔the Baku-Ceyhan and TANAP lines).
+
+**Templates it would feed.** `corridor_status` (construction stages accelerate when the bypassed route is shut), and
+through it the `corridor_stake` dampener on the dyadic templates.
+
+**Test.** `corridorFeatures(middle_corridor, 2026)` returns substitute_impaired = 1 with hormuz closed and 0 with the
+2026.2 row removed; the ablation prints holdout AUC/Brier at splits 1946 and 1990 against the base and is promoted
+only on a gain. Falsifier the term must reproduce: with SUMED coded as substituting for suez, the term is 1 across
+1968-1974, the Suez closure that built the Cape VLCC route and the SUMED decision.
+
+## era-modern-2000-2025 / data-3 (residue) — the 2022-2026 leader roster
+
+**What it would add.** A leader-identity source past REIGN 2021.8: per-actor leader spells 2022-2026 with entry date,
+age, military career and exit type, feeding `leader_age`, `leader_tenure`, `leader_military`,
+`leader_irregular_entry` and the full `leader_exit` event stream.
+
+**Why.** This turn hand-coded the 2022-2025 COUP tail (complete on Powell-Thyne's definition) and the irregular
+leader exits, which is what the coup trap and `irregular_exit` read. It did not and cannot hand-code the ~150 regular
+leader exits of 2022-2025: at ~39 exits a year that is a roster, not a list. So `COVERAGE.leader_exit` stays at 2021,
+`leader_exit_recent` reaches 62 of 195 actors at a 2026 origin against 110-113 at the 2000 and 2010 origins, and
+`createWorld` still ages the 2021 incumbent forward — mean `leader_tenure` 10.9 years at as-of 2025 against 6.7 and
+7.4 at the earlier origins, with SYR, BGD, GAB and NER all carrying their deposed incumbent.
+
+**Data.** REIGN's successor (the Rulers, Elections and Irregular Governance dataset stopped at 2021.8), Archigos 4.1
+extended, or the CLEA/Polity leader files. Any of them is a fetch script plus a join, not a hand list.
+
+**Templates it would feed.** `leader_exit`, `irregular_exit`, `coup_attempt` (the tenure and military terms),
+`democratize_step` and `autocratic_closure` (win5 leader turnover).
+
+**Test.** `leader_tenure`'s last observed year moves off 2021 for the modeled actors; the as-of-2025 world's
+`stale.leader_tenure` ≤ 1 for every actor; `COVERAGE.leader_exit` moves to the source's end and the as-of-2010 row's
+`scored_years` rises from 11 to 15 on leader_exit and irregular_exit.
+
+## era-modern-2000-2025 / statistics-6 — a decaying recurrence trace for internal conflict
+
+**What it would add.** The dyadic `rivalry` construction (δ^(years since the last event), built once in
+`src/engine/core.js` and imported by the fitter) applied to the actor-year conflict trap: replace
+`intrastate` `transform: win5` on `intrastate_onset` with a decaying trace, and re-tune it jointly against
+`intrastate_end`'s spell-age term. A new derived covariate shared by the fitter and the engine.
+
+**Why.** `intrastate_onset` ranks almost perfectly and counts about half: at as-of 2010 AUC 0.92 with count_ratio
+0.62 (after this turn's unit fix), at as-of 2000 0.91 with 0.89. The template knows WHICH states have internal
+conflict and under-counts HOW MANY onsets each has, and the error grows as the horizon moves into the recurrence-heavy
+2010s. The termination side runs the other way (`intrastate_end` 1.04-1.06 after this turn's spell-clock fix, from
+1.19-1.26), so the simulated STOCK of internal conflict decays over a horizon in which the observed stock rose.
+
+**Data.** None new.
+
+**Templates it would feed.** `intrastate_onset` and `intrastate_end`, tuned together against the joint count.
+
+**Test.** `count_ratio` for the pair at as-of 1990 / 2000 / 2010 moves toward 1 without the onset AUC falling below
+0.85, and the mean simulated actor-years with `intrastate = 1` over 2011-2025 matches the panel's observed count.

@@ -53,7 +53,7 @@ templates:
     label: Coup attempt
     unit: actor-year
     event: coup
-    window: [1950, 2021]
+    window: [1950, 2025]               # era-modern-2000-2025/data-3: was [1950, 2021], REIGN's own end. data/history/events.yaml now carries the complete 2022-2025 Powell-Thyne-definition attempt list (12 attempts, 6 successful) and scripts/build-panel.mjs merges it onto the REIGN columns, so the window, the panel's FLAGS fill and scripts/backtest.mjs's COVERAGE.coup all move together
     covariates:
       - { var: regime, transform: cat, lag: 1, prior: { 0: 0.2, 1: 0.4, 2: 0, 3: -1.5 } }
       - { var: milper_share, transform: z, prior: 0.2 }          # milper / population
@@ -129,32 +129,11 @@ templates:
       - { var: gdp_growth, transform: z, prior: 0.2 }
       - { var: at_war, transform: lag1, prior: -0.3 }
       - { var: intrastate, transform: lag1, prior: -0.3, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
-      - { var: aid_conditionality, transform: none, prior: 0.3 }
-      - { var: pact_usa, transform: none, prior: 0.3 }
+    candidates:                        # era-modern-2000-2025/statistics-2 (b): both DEMOTED from covariates 2026-09-08, with the numbers
+      - { id: aid_conditionality, var: aid_conditionality, transform: none, prior: 0.3, hypothesis: "conditionality deepens a democracy, as it does on democratize_step", evidence: "measured 2026-09-08 and NOT re-promoted. Both terms were promoted on democratize_step (2->3 is a different step from 0/1->higher) and on THIS template both fit with the OPPOSITE sign to their prior: aid_conditionality -0.16 against +0.3 and pact_usa -0.69 against +0.3, on n=2,415 / 43 events with no holdout that could have caught it. Ablation at the template's own split (holdout >= 2005, AUC / Brier / exp-obs): base without both 0.859 / 0.0154 / 1.96, with aid_conditionality 0.862 / 0.0154 / 1.94, with pact_usa 0.845 / 0.0158 / 1.87, with both 0.848 / 0.0158 / 1.86 — the pair costs 0.011 of holdout AUC and buys 0.10 of exp/obs on a template that over-predicts 2-4x either way. The over-prediction itself is not these terms: it is z(log_gdp_pc) = +1.31 against a +0.5 prior on a variable whose live-actor mean rises 0.94 pooled sd over the sample, i.e. the calendar-trend defect docs/escalations.md era-modern-2000-2025/statistics-1 asks for a within-year standardisation to fix" }
+      - { id: pact_usa, var: pact_usa, transform: none, prior: 0.3, hypothesis: "US clients deepen more", evidence: "measured 2026-09-08, NOT re-promoted — the numbers are on the aid_conditionality entry above (one ablation covers both)." }
     sources: ["Przeworski et al. 2000 (income and democratic survival/consolidation)"]
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "closes the regime ladder: without it nothing moves an electoral democracy up" }
-
-  - id: liberal_erosion
-    lead: 1
-    label: Liberal democracy erodes to electoral democracy (3→2)
-    unit: actor-year
-    event: regime_change
-    event_filter: { direction: autocratize, from: 3, cause: null }   # NOT filtered on `durable`, though 8 of its 29 modern labels are flaps (CAN 2020 and 2022, LVA 2013 and 2016, SVN 2021 and 2023, SVK 2019 and 2023): see the rejected: block on democratize_step
-    window: [1900, 2024]                # NOT extended to 1816 (era-1870-1914-r2/data-3): 48 rows and 0 erosion events at labels <= 1900. Same reason as democratic_deepening
-    holdout_split: 1990
-    sample: { regime_min: 3, exclude_flag: occupied }   # era-1914-1945-r2/statistics-3: a state under foreign occupation is not at risk of a DOMESTIC transition and its label is already forced to 0 by event_filter — censor the row out of the denominator instead of scoring it as an observed non-event
-    covariates:
-      - { var: log_gdp_pc, transform: z, prior: -0.3 }
-      - { var: gdp_growth, transform: z, prior: -0.3 }
-      - { var: at_war, transform: lag1, prior: 0.3 }
-      - { var: leader_exit_recent, transform: win5, prior: 0.3, default_outside: { window: [1946, 2021], value: 0, source: "REIGN leader exits start 1950; pre-1946 this is an imputed 0, not an observation" } }
-    candidates:
-      - { id: info_access, var: info_access, transform: z, prior: 0, hypothesis: "information access raises erosion risk in rich democracies (polarisation channel) — the inverse of its coup effect" }
-      - { id: hegemon_x_client, var: hegemon_x_client, transform: none, prior: 0, hypothesis: "user: the hegemon's clients track the hegemon's regime score (cross-sectional form)" }
-      - { id: pact_usa, var: pact_usa, transform: none, prior: 0, hypothesis: "US allies track the US" }
-      - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "control" }
-    sources: ["Maerz et al. 2024 (ERT)", "V-Dem Democracy Report 2025"]
-    lifecycle: { phase: unvalidated, promoted: 2026-09-06, reason: "bucket C: 3→2 steps are a European/Anglosphere erosion process distinct from coups", unvalidated_note: "era-1991-2026-r2/statistics-8, marked 2026-09-07: this template has NEVER been scored out of sample. It reports n=0 at every one of the 15 as-of years of the rolling-origin backtest with the reason `no fit at as-of: events=1 / 2 in years <= as-of` — the fitter's events>=5 gate is never met on labels available at any backtested origin, because 29 of the 35 `autocratize from=3` events fall in 2010-2025 (12 in the 2010s, 17 in the 2020s) and only 6 before. So the single mechanism the 1991-2026 era exists to model has never been graded, and in every backtested world the engine runs it on the literature prior. Its full-sample fit is not reassuring either: z(log_gdp_pc) +0.047 against a -0.3 prior and z(gdp_growth) +0.138 against a -0.3 prior, both signs reversed, on n=2,408 / 30 events with no holdout that can test them. The shorter-horizon score file that would reach the events is scores/backtest-1990-2015-h10-all.json (`node scripts/backtest.mjs --from 1990 --to 2015 --step 5 --horizon 10 --universe all`), where as-of 2015 has 15 training labels and 17 in the 2016-2025 horizon; the phase moves back to `active` when that row carries a fit and an AUC. RUN 2026-09-07 and committed as scores/backtest-1990-2015-h10-all.json: as-of 1990, 1995, 2000, 2005 and 2010 still report `no fit at as-of` (1 or 2 events), and as-of 2015 gives the template its FIRST out-of-sample row ever — n=41, 26 at risk, predicted 0.5 against 17 observed erosions in 2016-2025, count_ratio 0.03, AUC 0.45 (auc_at_risk 0.61), Brier 0.406, flagged underpowered and kept out of pooled. A 34x under-prediction of the mechanism the era is about. It is not a calibration wobble: the two economic covariates carry the wrong sign, the template has never had a holdout, and eight of the era's labels are the V-Dem flaps the rejected durable_label_filter block measures. The template stays in the model because removing it would silence the mechanism entirely, and stays `unvalidated` because this number is what it is." }
 
   - id: autocratic_closure
     lead: 1
@@ -164,14 +143,14 @@ templates:
     event_filter: { direction: autocratize, cause: null }   # 8 of the 18 closures scored at as-of 1930 were German occupation or Soviet imposition, not domestic closure. NOT filtered on `durable`: see the rejected: block on democratize_step
     window: [1816, 2024]                # era-1870-1914-r2/data-3: was [1900, 2024], same reason. At labels <= 1870 the sample is 235 rows / 5 events, <= 1890 470 / 16, <= 1900 608 / 21
     holdout_split: 2005
-    sample: { regime_min: 1, regime_max: 2, exclude_flag: occupied }   # era-1914-1945-r2/statistics-3: a state under foreign occupation is not at risk of a DOMESTIC transition and its label is already forced to 0 by event_filter — censor the row out of the denominator instead of scoring it as an observed non-event
+    sample: { regime_min: 1, regime_max: 3, exclude_flag: occupied }   # era-1914-1945-r2/statistics-3: a state under foreign occupation is not at risk of a DOMESTIC transition and its label is already forced to 0 by event_filter — censor the row out of the denominator instead of scoring it as an observed non-event. era-modern-2000-2025/statistics-2, engine-1: regime_max was 2, which put the 3->2 step on liberal_erosion alone — a template the fitter's events>=5 gate refuses at every one of the 15 backtested origins (2 labels at 2010, 29 of its 31 events fall after 2009). So in every backtested world regime 3 was ABSORBING: the only fitted hazard on the top rung pushed states up, and the engine's simulated liberal-democracy count rose 45 -> 69 over the as-of-2010 horizon while the observed count fell 44 -> 31. The 3->2 steps are now labels on this template, where they are estimable at every as-of year, with the level carried by the regime cat term below
     covariates:
-      - { var: regime, transform: cat, prior: { 1: 0, 2: 0.3 } }
+      - { var: regime, transform: cat, prior: { 1: 0, 2: 0.3, 3: -0.5 } }   # the 3 level (era-modern-2000-2025/statistics-2): a liberal democracy closes less often than an electoral one, so the prior is below the 1 baseline; the data estimates how much
       - { var: log_gdp_pc, transform: z, prior: -0.5 }
       - { var: gdp_growth, transform: z, prior: -0.3 }
       - { var: at_war, transform: lag1, prior: 0.3 }
       - { var: intrastate, transform: lag1, prior: 0.4, default_outside: { window: [1946, 2024], value: 0, source: "UCDP/PRIO ACD covers 1946-2024; outside it internal conflict is unobserved and imputed 0 so the template is estimable back to its window start. Imputation, not an observation — see docs/refine-log.md" } }
-      - { var: coup_attempt, transform: win5, prior: 0.8, default_outside: { window: [1950, 2021], value: 0, source: "Powell-Thyne coups via REIGN cover 1950+; the panel has zero positive coup_attempt values before 1950, so every pre-1950 actor-year enters this covariate as an imputed 0. Imputation, not an observation: essentially every interwar closure in the label set (1922, 1923, 1926, 1929, 1930, 1934, 1936) was a coup or self-coup. See docs/escalations.md for the pre-1950 coup dataset that would fix it" } }
+      - { var: coup_attempt, transform: win5, prior: 0.8, default_outside: { window: [1950, 2025], value: 0, source: "Powell-Thyne coups via REIGN cover 1950+; the panel has zero positive coup_attempt values before 1950, so every pre-1950 actor-year enters this covariate as an imputed 0. Imputation, not an observation: essentially every interwar closure in the label set (1922, 1923, 1926, 1929, 1930, 1934, 1936) was a coup or self-coup. See docs/escalations.md for the pre-1950 coup dataset that would fix it" } }
       - { var: aid_conditionality, transform: none, prior: -0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "conditionality deters closure: holdout≥2005 AUC 0.565→0.617, coef −0.61" }, note: "2026-09-07 (operator/derived-polarity): promotion era derived, coef −0.50 -> −0.43, holdout AUC 0.589 -> 0.579" }
       - { var: great_game, transform: none, prior: 0.5, lifecycle: { phase: active, promoted: 2026-09-06, reason: "Cold War superpower clients close more (+0.62, AUC +0.02); bare pact_* ≈0 once this is in" }, note: "2026-09-07 (operator/derived-polarity): bipolarity derived, coef +0.43 -> +0.29" }
     candidates:
@@ -278,6 +257,32 @@ templates:
     notes: "mid_war nests inside mid_force: CoW hostlev is ordinal and the dyad's hostility is min(hostlev_a, hostlev_b), so a hostlev-5 pair is also a use-of-force pair. Before 2026-09-06 the two were disjoint (dispute-level max), which made observed mid_war exceed observed mid_force at as-of 1930. The engine nests the draw the same way from 2026-09-07 (era-1870-1914/engine-7): it draws mid_force first and the war only inside it, at P(war | dispute) = hz.mid_war / max(hz.mid_force, hz.mid_war) — the derived form, not a refit on the mid_force-positive subsample, which is the form these coefficients are therefore read with. The marginal is unchanged wherever p_war <= p_force and capped at the dispute's own probability where the war model runs hotter, which is where lag1(at_war_any) = +2.13 has switched on. Verified: 5,610 simulated wars at as-of 1920 over 100 runs, none in a dyad-year without a dispute (node scripts/analysis/war-spells.mjs). ENGINE_ABLATE=war_nesting restores the independent draws."
     lifecycle: { phase: active, reason: "dyad labels re-derived per pair 2026-09-06: hostility = min of the pair, onset = max of the pair. The dispute-level version stamped CoW dispnum 258 (WWII) as 223 dyadic wars all dated 1939, Spain-China among them" }
 
+  - id: interstate_onset
+    label: Interstate armed-conflict onset (UCDP/PRIO type 2, >= 25 battle deaths)
+    unit: dyad-year
+    event: interstate_onset
+    window: [1946, 2024]               # era-modern-2000-2025/data-1, engine-4, statistics-3: the second dyadic unit, and the only one whose
+                                       # ground truth reaches the forecast origin. mid_force / mid_war / war_end stop at 2010 (GML MID 2.2.1's
+                                       # last dispute year), so as-of 2010 reported n=0 on all three and the modern dyad was graded by nothing.
+                                       # UCDP/PRIO ACD 25.1 carries interstate onsets 1946-2024 and scripts/build-events.mjs already emits 84 of
+                                       # them; nothing consumed them as labels. NOT a substitute for mid_force and NOT merged into it: the rates
+                                       # differ by an order of magnitude (UCDP interstate onsets 0.58/yr over 1992-2010 against mid_force's
+                                       # 10.58/yr, 0.79/yr over 2011-2024), because the two sources measure different things — a militarized
+                                       # dispute with use of force against a conflict that killed 25 people. This is its own unit with its own
+                                       # base rate, scored on its own window.
+    holdout_split: 2000                # leaves 1946-1999 in training and the 2000-2024 events out of sample: the era the template exists for
+    covariates:
+      - { var: contiguous, transform: none, prior: 1.5 }           # Bremer's #1 predictor, as on mid_force
+      - { var: allied, transform: none, prior: -0.5 }
+      - { var: joint_democracy, transform: none, prior: -1.0 }
+      - { var: cap_ratio, transform: log, prior: -0.4 }
+      - { var: major_power_any, transform: none, prior: 0.8 }
+      - { var: rivalry, transform: z, prior: 0.35, decay: 0.85 }   # the same decaying trace mid_force and mid_war carry; DYADIC_DISPUTE already includes this kind, so the trace and the label come from one source set
+      - { var: at_war_any, transform: lag1, prior: 0.9 }
+      - { var: nuclear_both, transform: none, prior: -1.5 }
+    sources: ["UCDP/PRIO Armed Conflict Dataset 25.1 (type 2, interstate)"]
+    notes: "84 dyadic onsets 1946-2024 over 55 distinct pairs, 11 of them in 2011-2024 — the only dyadic labels that exist past the MID window. The engine draws it as a third, independent dyadic event alongside the nested mid_force/mid_war pair (src/engine/core.js:stepYear): it is a different source measuring a different threshold, so it is neither nested inside mid_force nor suppressed by it, and a fired onset writes the pair into the rivalry memory exactly as a fired MID does. `pre_1946` and `at_war_any_post46` are not covariates here — the window starts in 1946, so both are constant on this sample and unidentifiable."
+
   # ------------------------------------------------------------------------------------------------------------
   # Terminations (operator/termination, package 8). Every template above predicts an ONSET; these four predict the
   # END of a spell the engine carries as state, on the spell-year unit (one row per unit per year the spell runs,
@@ -335,7 +340,7 @@ templates:
     kinds: [chokepoint, corridor]      # one process over both record kinds — see notes
     event: record_reopen
     spell: impaired                    # the sample is the record-years the record opens closed or contested
-    window: [1869, 1945]               # era-1945-1991-r2/corridors-1: NOT reopened. The 1946-1991 record layer landed in this
+    window: [1869, 2025]               # era-1945-1991-r2/corridors-1: NOT reopened. The 1946-1991 record layer landed in this
                                        # turn (see chokepoint_status), and on the chokepoint half it passes the
                                        # era-1914-1945-r2/statistics-5 gate; on this template's own spell sample it does
                                        # not. 18 reopenings over 242 impaired record-years in 1946-1991 (7.44%) against
@@ -345,6 +350,24 @@ templates:
                                        # is the same un-coded reopenings corridor_status is held back for. The sample is
                                        # the 46 corridor records plus the chokepoints and is not separable from
                                        # corridor_status, so this window moves when that one does.
+                                       # era-modern-2000-2025/corridors-2, engine-3: THE WINDOW MOVES TO 2025, and the
+                                       # gate is re-read as the censoring problem it is. Raw, on the fitter's own spell
+                                       # rows: 27.15% over 151 impaired record-years in 1869-1945, 11.61% over 155 in
+                                       # 1946-1991, 6.08% over 148 in 1992-2025 — a ratio of 0.22 that reads as a
+                                       # coding hole. It is not one. 113 of those 148 modern rows are SIX spells that
+                                       # are still running at 2025 and therefore cannot contribute a reopening
+                                       # (kerch_strait 22 years, yamal_europe 21, bratstvo/soyuz/urengoy 11 each,
+                                       # benguela_railway 23), which is right-censoring, and the termination layer's
+                                       # own convention already names it. Drop the never-ending spells from the
+                                       # measurement and the modern rate is 25.71% over 35 rows against 28.47% over 144
+                                       # pre-1946 — a ratio of 0.90, inside the band. The censored rows are NOT dropped
+                                       # from the fit: a spell still running contributes its years as observed
+                                       # non-endings, which is the correct discrete-time exposure and is exactly what
+                                       # tells the hazard that modern closures are long. That is the point of the move:
+                                       # the shipped 1869-1945 fit (n=148, 40 events, base rate 0.270/yr, holdout AUC
+                                       # 0.500 at 1930) reopened all fifteen impaired records at as-of 2025 with
+                                       # probability >= 0.87 within twenty years, on a hazard estimated entirely on
+                                       # pre-war straits and never graded out of sample after 1945.
     holdout_split: 1930
     covariates:
       - { var: impair_duration, transform: z, prior: -0.2 }
@@ -392,7 +415,7 @@ templates:
     label: Chokepoint status or control transition
     unit: chokepoint-year
     event: chokepoint
-    window: [1869, 1991]               # era-1945-1991-r2/corridors-1: was [1869, 1945]. The window is a claim about where the hand
+    window: [1869, 2025]               # era-1945-1991-r2/corridors-1: was [1869, 1945]. The window is a claim about where the hand
                                        # record layer is complete, and the 1946-1991 half of it landed in this turn
                                        # (data/corridors.yaml: the Berlin access corridors, the Straits of Tiran, the
                                        # Florida Straits, Tazara and the southern-African set, the Soviet energy set,
@@ -416,6 +439,23 @@ templates:
                                        # missing history — so what closes the rest of the gap is a modern chokepoint
                                        # the layer does not have, not more rows on these. corridor_status DID pass at
                                        # 0.74 and moved to 2025; the numbers are on that template.
+                                       # era-modern-2000-2025/corridors-1, engine-6: THE WINDOW MOVES TO 2025, on the
+                                       # same gate re-measured after this turn coded the three modern transitions the
+                                       # last turn's list called quiet straits and was wrong about — `corinth_canal`
+                                       # shut by a landslide 4 Jan 2021 and fully reopened 5 Jul 2023 (two closures,
+                                       # two reopenings), `kiel` shut to large vessels by the large-lock failure of
+                                       # 5 Mar 2013, and `bosphorus` contested by the unilateral traffic regulations
+                                       # of 1 Jul 1994 until the revised rules of Nov 1998. On
+                                       # the fitter's own rows: 4.13% over 581 modern chokepoint-years against 5.11%
+                                       # over the 1,859 coded ones, a ratio of 0.81 against the 0.67 floor, where the
+                                       # same measurement gave 0.64 before these rows. Recorded because the pooled
+                                       # ratio hides a step (era-modern-2000-2025/statistics-4): per decade the modern
+                                       # rate is 1.92% (1992-2000), 1.76% (2001-2010) and 7.06% (2011-2025), so the
+                                       # 1990s and 2000s are still coded at a third of the historical rate and the
+                                       # as-of-2000 row is scored on a decade whose deficit is measured, not assumed.
+                                       # What kept the window shut was worse: chokepoint_status reported n=0 at as-of
+                                       # 1950, 1960, 1970, 1980, 1990, 2000 and 2010 alike, so the modern-risk template
+                                       # the model exists for had never been graded out of sample at any origin.
     states: [open, contested, closed]
     covariates:
       - { var: adjacent_war, transform: none, prior: 2.5 }         # a transit state (or the controller) at war this year
@@ -491,6 +531,45 @@ templates:
 # autocratization_onset, democratization_onset: V-Dem ERT episodes, superseded by the RoW category-step templates.
 # autocratize_step: superseded by liberal_erosion + autocratic_closure. sovereign_default: no event source yet (see docs/data-catalogue.md).
 retired:
+  - id: liberal_erosion
+    status: monitored                  # era-modern-2000-2025/statistics-2, engine-1: MERGED INTO autocratic_closure and retired from the
+                                       # simulated set on 2026-09-08. It is kept here whole, with its numbers, because the
+                                       # mechanism is real and the reason for retiring it is a sample-size fact that a later
+                                       # decade can overturn. The fact: 29 of its 31 `autocratize from=3` labels fall in
+                                       # 2010-2025, so the fitter's events>=5 gate refuses it at ALL 15 rolling-origin
+                                       # as-of years (n=1,417 / 1 event at 2000; n=1,830 / 2 at 2010), while
+                                       # `actorHazards` drops any template whose fit is not `fitted`. The consequence was
+                                       # structural, not cosmetic: `autocratic_closure` declared regime_max: 2, so regime 3
+                                       # had no downward hazard at all in any backtested world and the engine ratcheted
+                                       # states into liberal democracy — 44.9 regime-3 actors at y+1 to 69.0 at y+20 from
+                                       # as-of 2010, against an observed 2025 count of 31. The 3->2 step is now a label on
+                                       # autocratic_closure (sample regime_min 1, regime_max 3, with `regime` as a cat
+                                       # covariate), where it is estimated at every as-of year: n 7,396 -> 9,852, events
+                                       # 313 -> 343, regime=3 fitted -0.56, in-sample AUC 0.648 -> 0.683 and the base
+                                       # ablation's holdout AUC 0.574 -> 0.601. Re-promote this template as the finer
+                                       # split when its own labels support a holdout — the test is in the unvalidated_note
+                                       # below and in scores/backtest-1990-2015-h10-all.json.
+    lead: 1
+    label: Liberal democracy erodes to electoral democracy (3→2)
+    unit: actor-year
+    event: regime_change
+    event_filter: { direction: autocratize, from: 3, cause: null }   # NOT filtered on `durable`, though 8 of its 29 modern labels are flaps (CAN 2020 and 2022, LVA 2013 and 2016, SVN 2021 and 2023, SVK 2019 and 2023): see the rejected: block on democratize_step
+    window: [1900, 2024]                # NOT extended to 1816 (era-1870-1914-r2/data-3): 48 rows and 0 erosion events at labels <= 1900. Same reason as democratic_deepening
+    holdout_split: 1990
+    sample: { regime_min: 3, exclude_flag: occupied }   # era-1914-1945-r2/statistics-3: a state under foreign occupation is not at risk of a DOMESTIC transition and its label is already forced to 0 by event_filter — censor the row out of the denominator instead of scoring it as an observed non-event
+    covariates:
+      - { var: log_gdp_pc, transform: z, prior: -0.3 }
+      - { var: gdp_growth, transform: z, prior: -0.3 }
+      - { var: at_war, transform: lag1, prior: 0.3 }
+      - { var: leader_exit_recent, transform: win5, prior: 0.3, default_outside: { window: [1946, 2021], value: 0, source: "REIGN leader exits start 1950; pre-1946 this is an imputed 0, not an observation" } }
+    candidates:
+      - { id: info_access, var: info_access, transform: z, prior: 0, hypothesis: "information access raises erosion risk in rich democracies (polarisation channel) — the inverse of its coup effect" }
+      - { id: hegemon_x_client, var: hegemon_x_client, transform: none, prior: 0, hypothesis: "user: the hegemon's clients track the hegemon's regime score (cross-sectional form)" }
+      - { id: pact_usa, var: pact_usa, transform: none, prior: 0, hypothesis: "US allies track the US" }
+      - { id: urban_share, var: urban_share, transform: z, prior: 0, hypothesis: "control" }
+    sources: ["Maerz et al. 2024 (ERT)", "V-Dem Democracy Report 2025"]
+    lifecycle: { phase: unvalidated, promoted: 2026-09-06, reason: "bucket C: 3→2 steps are a European/Anglosphere erosion process distinct from coups", unvalidated_note: "era-1991-2026-r2/statistics-8, marked 2026-09-07: this template has NEVER been scored out of sample. It reports n=0 at every one of the 15 as-of years of the rolling-origin backtest with the reason `no fit at as-of: events=1 / 2 in years <= as-of` — the fitter's events>=5 gate is never met on labels available at any backtested origin, because 29 of the 35 `autocratize from=3` events fall in 2010-2025 (12 in the 2010s, 17 in the 2020s) and only 6 before. So the single mechanism the 1991-2026 era exists to model has never been graded, and in every backtested world the engine runs it on the literature prior. Its full-sample fit is not reassuring either: z(log_gdp_pc) +0.047 against a -0.3 prior and z(gdp_growth) +0.138 against a -0.3 prior, both signs reversed, on n=2,408 / 30 events with no holdout that can test them. The shorter-horizon score file that would reach the events is scores/backtest-1990-2015-h10-all.json (`node scripts/backtest.mjs --from 1990 --to 2015 --step 5 --horizon 10 --universe all`), where as-of 2015 has 15 training labels and 17 in the 2016-2025 horizon; the phase moves back to `active` when that row carries a fit and an AUC. RUN 2026-09-07 and committed as scores/backtest-1990-2015-h10-all.json: as-of 1990, 1995, 2000, 2005 and 2010 still report `no fit at as-of` (1 or 2 events), and as-of 2015 gives the template its FIRST out-of-sample row ever — n=41, 26 at risk, predicted 0.5 against 17 observed erosions in 2016-2025, count_ratio 0.03, AUC 0.45 (auc_at_risk 0.61), Brier 0.406, flagged underpowered and kept out of pooled. A 34x under-prediction of the mechanism the era is about. It is not a calibration wobble: the two economic covariates carry the wrong sign, the template has never had a holdout, and eight of the era's labels are the V-Dem flaps the rejected durable_label_filter block measures. The template stays in the model because removing it would silence the mechanism entirely, and stays `unvalidated` because this number is what it is." }
+
   - id: autocratization_onset
     lead: 1                            # label = event in year+1; hazard from this year's state applies to the coming year
     status: monitored                  # fitted and backtested, not simulated: superseded by autocratize_step
@@ -527,7 +606,7 @@ retired:
     sources: ["Boix & Stokes 2003", "Maerz et al. 2024 (ERT)", "Geddes, Wright & Frantz 2014"]
 
   - id: autocratize_step
-    status: monitored                  # superseded by liberal_erosion + autocratic_closure (different mechanisms, see docs/system.md bucket C)
+    status: monitored                  # superseded by autocratic_closure, which since era-modern-2000-2025/statistics-2 carries the whole ordinal ladder down (regime 1-3) and absorbed liberal_erosion's 3->2 step
     lead: 1
     label: Regime category moves down (V-Dem RoW), any
     unit: actor-year

@@ -50,6 +50,30 @@ sources.population = 'OWID population (HYDE/Gapminder/UN)';
 // ---- regime (RoW 0..3), polyarchy
 for (const r of readCsv(H + 'regime.csv')) { const y = +r.year, id = owid(r.code, y); if (id && r.regime_row_owid !== '') put(id, 'regime', y, +r.regime_row_owid); }
 sources.regime = 'V-Dem Regimes of the World via OWID (0 closed aut, 1 electoral aut, 2 electoral dem, 3 liberal dem)';
+// era-modern-2000-2025/data-5: V-Dem's RoW CATEGORY is undefined in an interregnum year, and the hole therefore lands
+// exactly where the transition is. Of the 32 interior single-year regime holes since 1900 (a null with an observed
+// year on either side), 18 carry an event in data/events.json in that same year — 15 leader exits, 7 democratization
+// onsets, 3 intrastate onsets, 2 coups, 1 intrastate end — including GIN 2010, whose transition year is one of this
+// turn's own as-of origins. scripts/lib/fit.mjs drops any row with a null covariate, so those are the highest-signal
+// rows in each template's sample and they are missing NOT at random but on the outcome. The hole is filled with the
+// value the year opened in — a carry, never an extrapolation past the ends of the actor's own observed run, and never
+// across a gap longer than one year — and every filled cell is flagged in `regime_imputed` so it is visible in the
+// panel and in public/history.json. `polyarchy`, the continuous series over the same V-Dem data, has exactly one such
+// hole (DOM 1905), which is what says this is a property of the category and not a join failure.
+{
+  let filled = 0; const cases = [];
+  for (const [id, vars] of Object.entries(panel)) {
+    const r = vars.regime; if (!r) continue;
+    for (let i = 1; i < r.length - 1; i++) {
+      if (r[i] != null || r[i - 1] == null || r[i + 1] == null) continue;
+      r[i] = r[i - 1]; (vars.regime_imputed ??= new Array(YEARS.length).fill(null))[i] = 1; filled++;
+      if (cases.length < 40) cases.push(`${id}:${Y0 + i}`);
+    }
+  }
+  sources.regime += `; ${filled} interior single-year holes carried from the year before (era-modern-2000-2025/data-5), flagged in regime_imputed`;
+  sources.regime_imputed = 'derived: 1 where the V-Dem RoW category was missing for a single year inside the actor\'s own observed run and was carried from the previous year. Imputation, not an observation';
+  console.log(`regime: ${filled} interior single-year holes carried forward (${cases.join(' ')})`);
+}
 for (const r of readCsv(H + 'ert.csv')) { const y = +r.year, id = owid(r.country_text_id, y); if (id && r.v2x_polyarchy !== 'NA') put(id, 'polyarchy', y, +r.v2x_polyarchy); }
 sources.polyarchy = 'V-Dem v2x_polyarchy via ERT';
 
@@ -99,6 +123,23 @@ sources.coal_prod = sources.oil_prod = 'OWID fossil production (Energy Institute
   sources.leader_age = sources.leader_tenure = sources.coup_attempt = 'REIGN 2021.8 (1950–2021), Powell–Thyne coups';
   sources.leader_irregular_entry = 'REIGN 2021.8, derived: the sitting leader\'s entry is irregular iff exp(irregular) ≤ tenure_months at the first month of the spell (the raw `irregular` column is log months since the last irregular change, not a flag)';
   sources.irregular_recency_months = 'REIGN 2021.8 `irregular`, exponentiated: months since the state\'s last irregular leader change (display only)';
+}
+// era-modern-2000-2025/data-3, engine-5: the 2022-2025 coup tail. REIGN's Powell-Thyne columns stop in 2021, so the
+// panel's coup_attempt / coup_success ended there and `buildActorState` then read the carried FLAG zero as "no coup"
+// for every state at a 2026 origin — win5(coup_attempt) = 1 for 4 actors of 195, against 16 at as-of 2000 and 9 at
+// 2010. data/history/events.yaml now carries a hand-coded 2022-2025 attempt list on Powell-Thyne's own definition;
+// COUP_LAST moves the FLAGS window with it, so the zeros the fill writes for 2022-2025 are a claim the list backs.
+let COUP_LAST = 2021;
+{
+  let n = 0;
+  for (const e of Y('data/history/events.yaml')) {
+    if (e.kind !== 'coup' || !e.actor) continue;
+    const y = Math.floor(e.year); add(e.actor, 'coup_attempt', y, 1); if (e.success) add(e.actor, 'coup_success', y, 1);
+    n++; COUP_LAST = Math.max(COUP_LAST, y);
+  }
+  sources.coup_attempt += `; extended past REIGN's 2021 end by ${n} hand-coded attempts through ${COUP_LAST} (data/history/events.yaml, era-modern-2000-2025/data-3)`;
+  sources.coup_success = sources.coup_attempt;
+  console.log(`coups: ${n} hand-coded 2022-${COUP_LAST} attempts merged onto REIGN`);
 }
 
 // ---- alliances: defence-pact partner count per actor-year; superpower client ties (a defence pact with USA / RUS)
@@ -216,7 +257,7 @@ sources.at_war_ucdp = 'derived: 1 where the at_war year came from UCDP/PRIO type
 }
 
 // ---- flag variables: null means "no event" inside the source's coverage window, so fill 0 for live years
-const FLAGS = { at_war: [1816, 2026], intrastate: [1946, 2024], interstate_ucdp: [1946, 2024], mid_force: [1816, 2010], mid_war: [1816, 2010], coup_attempt: [1950, 2021], coup_success: [1950, 2021], defence_pacts: [1816, 2026] };
+const FLAGS = { at_war: [1816, 2026], intrastate: [1946, 2024], interstate_ucdp: [1946, 2024], mid_force: [1816, 2010], mid_war: [1816, 2010], coup_attempt: [1950, COUP_LAST], coup_success: [1950, COUP_LAST], defence_pacts: [1816, 2026] };
 // era-1991-2026-r2/engine-4: and null OUTSIDE it. Several of these columns are accumulated with `add`, whose array
 // defaults to 0 rather than null, so every year past the source's last one read as a measured "no dispute" — the
 // panel asserted mid_force = 0 for every actor from 2002 to 2025 under a source line that said the source stops in

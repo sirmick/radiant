@@ -1069,3 +1069,220 @@ added to `data/corridors.yaml` and `data/territories.yaml` carries a `source:`; 
 `exists_until_source`. The one rejection this turn (`durable_label_filter`) carries a `rejected:` entry with both
 runs' numbers, and the one retraction (`anticoup_norm` on `irregular_exit`) says what the retracted numbers were and
 why they do not reproduce.*
+
+## Turn era-modern-2000-2025 — 2026-09-07
+
+Backtest range as-of 2000 and 2010, horizon 20y, 100 runs, universe all, coefficients refit per as-of year
+(`scores/backtest-2000-2010-h20-all.json`). Baseline for every number below is the same two rows of
+`scores/backtest-1870-2010-h20-all.json`.
+
+**The headline is coverage, not skill.** At as-of 2010 six of sixteen templates reported `n: 0` — no row, no score,
+no miss. After this turn three do, and all three are the MID family, whose source genuinely ends in 2010. At as-of
+2000 four reported `n: 0`; now one does. The modern dyad, the reopen mechanism and the chokepoint layer are graded out
+of sample at a modern origin for the first time.
+
+### applied
+
+**data-1 / engine-4 / statistics-3 — the modern dyad gets ground truth (`interstate_onset`).**
+New dyad-year template in `data/templates.yaml` (event `interstate_onset`, window [1946, 2024], the mid_force
+covariate block minus the two era constants that are degenerate on a post-1946 sample), `COVERAGE.interstate_onset =
+[1946, 2024]` in `scripts/backtest.mjs`, and a six-line generic draw in `src/engine/core.js:stepYear` for dyadic onset
+templates outside the nested MID pair (`NESTED_DYAD`), which writes a fired onset into the rivalry memory
+`DYADIC_DISPUTE` already counts it in. NOT merged into `mid_force`: the definitions differ (MID hostility ≥ 4 against
+UCDP's 25 battle deaths) and so do the rates by an order of magnitude. Fit n=83,391 / 79 events, holdout AUC 0.862 at
+split 2000. Backtest: as-of 2000 `scored_years` 20, n_at_risk 661, AUC 0.86; as-of 2010 `scored_years` 14, n_at_risk
+557, AUC 0.90 (auc_at_risk 0.78) where the whole dyadic layer previously read `n: 0`. This implements the open
+escalation era-1991-2026-r2/statistics-3 exactly as that entry specified it; the entry is annotated as implemented.
+
+**statistics-2 / engine-1 — regime 3 stops being an absorbing state.**
+`autocratic_closure` sample widened from `{regime_min: 1, regime_max: 2}` to `regime_max: 3` with `3: -0.5` added to
+its `regime` cat prior; `liberal_erosion` moved to the top-level `retired:` list with `status: monitored` and its full
+evidence, because it is the SAME process on a sample the fitter refuses at every backtested origin (29 of its 31
+labels fall after 2009; `no fit at as-of` at all 15 as-of years). Before: the only fitted hazard on the top rung
+pushed states up, and a 20-run as-of-2010 ensemble took liberal democracies from 44.8 at y+1 to 69.0 at y+20 while the
+observed count fell 44 → 31. Fit: n 7,396 → 9,852, events 313 → 343, `regime=3` estimable at −0.56 (full sample) and
+−1.87 at as-of 2010, in-sample AUC 0.648 → 0.683, base-ablation holdout AUC 0.574 → 0.601. Backtest: the at-risk set
+rises 102 → 142 (as-of 2000) and 107 → 152 (as-of 2010) and the observed event count 45 → 55 and 47 → 68 — **the 21
+erosion steps of 2011-2025 are now scored misses instead of invisible ones**, which is why the row's Brier gets worse
+at as-of 2010 (0.318 → 0.358, count_ratio 0.57 → 0.39) and better at as-of 2000 (0.238 → 0.235). Honest cost,
+recorded: the ratchet is no longer structural but it is still there in the fitted numbers — the y+20 regime-3 count is
+69.8 against 44.8 at y+1 — because a forecaster standing at 2010 has two 3→2 labels in the whole record. What remains
+is `democratic_deepening`'s over-supply, which is the calendar-trend defect escalated as statistics-1.
+
+**statistics-2 (b) — two sign-flipped covariates demoted on `democratic_deepening`.**
+`aid_conditionality` (fitted −0.16 against a +0.3 prior) and `pact_usa` (−0.69 against +0.3) were promoted on
+`democratize_step` and carry the opposite sign on this template. Demoted to `candidates:` with the ablation numbers
+(holdout ≥ 2005, AUC / Brier / exp-obs: without both 0.859 / 0.0154 / 1.96, with both 0.848 / 0.0158 / 1.86). The
+backtest is a wash and is recorded as one: as-of 2000 Brier 0.155 → 0.148 and AUC 0.76 → 0.73; as-of 2010 Brier 0.143
+→ 0.164, AUC 0.54 → 0.67, count_ratio 4.02 → 4.89. The 2-4x over-prediction is not these terms.
+
+**corridors-1 / engine-6 — the chokepoint window moves to 2025, after the gate was re-measured.**
+Three modern transitions the last turn's list called "quiet straits" and was wrong about, added to
+`data/corridors.yaml` with sources: the Corinth Canal shut by the Agios Ioannis landslide 4 Jan 2021, reopened to
+limited traffic 1 Jul 2021, shut again Jan 2023 and fully reopened 5 Jul 2023; the Kiel Canal shut to large vessels by
+the Holtenau large-lock failure of 5 Mar 2013; the Turkish Straits contested by the unilateral 1994 traffic
+regulations until the revised rules of Nov 1998. Gate re-measured on the fitter's own rows: modern chokepoint label
+rate 3.27% → **4.13%** over 581 record-years against 5.11% over the 1,859 coded ones, ratio 0.64 → **0.81**, past the
+0.67 floor. `chokepoint_status` window and `COVERAGE.chokepoint` move to 2025. Fit n 1,859 → 2,423, events 95 → 119,
+holdout AUC (≥1946) 0.594 → 0.608. Backtest: as-of 2000 n=17, predicted 8.3 against 5 observed, AUC 0.74; as-of 2010
+n=17, predicted 7.2 against 10, AUC 0.59 — against `n: 0` at both, and at every as-of year since 1950.
+
+**corridors-2 / engine-3 — `record_reopen` fitted and scored on 1869-2025, with the censoring stated.**
+The raw modern reopen rate (6.08% over 148 impaired record-years against 27.15% pre-1946) reads as a coding hole and
+is not one: 113 of the 148 rows are six spells still impaired at 2025 and therefore incapable of carrying a reopening.
+Drop the never-ending spells from the MEASUREMENT and the modern rate is 25.71% over 35 rows against 28.47% over 144,
+a ratio of 0.90. The censored rows stay in the FIT as observed non-endings — the correct discrete-time exposure, and
+what tells the hazard that modern closures are long. Window and `COVERAGE.record_reopen` move to [1869, 2025]. Fit:
+n 148 → 395, events 40 → 68, base rate 27.0%/yr → 17.2%/yr, holdout AUC (≥1930) 0.500 (chance) → 0.546. Backtest:
+as-of 2000 n=45, AUC 0.87; as-of 2010 n=50, AUC 0.60, against `n: 0` at every as-of year after 1945. The mechanism
+still over-fires (pooled exp/obs 3.98) and engine-3's proposed demotion was MEASURED rather than assumed: with
+`ENGINE_ABLATE=record_reopen` the reopen row scores nothing at all (7 observed reopenings at p=0, no AUC,
+underpowered) and both status templates lose skill (corridor_status pooled 0.13 → 0.07, chokepoint 0.03 → 0.03), so
+the mechanism stays on. Run committed as `scores/backtest-2000-2010-h20-all-abl-engine_ablate_record_reopen.json`.
+
+**data-2 — the published forecast was built with an empty corridor layer.**
+`scripts/run-forward.mjs` called `createWorld` without `corridors`, `territories`, `successors` or `contiguityFrom`,
+which `scripts/backtest.mjs` has always passed: the built world held 0 corridor records and 0 territory records
+against the backtest's 61 and 96 at the same as-of year, so every record hazard iterated an empty array and
+`corridorStakeFor` returned 0 for every dyad — while `meta.templates` advertised all four record templates as
+simulated. All four inputs now passed; `out.records` carries the per-record probability curves (record_reopen 57,
+contest_settle 33, chokepoint_status 17, corridor_status 44 records with non-zero mass on a 20-run smoke test); and
+`meta.templates` now carries `produced: true|false` per template, read from what the ensemble actually fired.
+
+**data-3 / engine-5 — the 2022-2025 coup tail.**
+`data/history/events.yaml` gains 12 dated coup attempts (6 successful) 2022-2025 on Powell-Thyne's own definition and
+12 dated `leader_exit` events (9 irregular, plus two deaths in office and the 2025 US transition; two `kind: leader`
+news rows that no template reads were converted). `scripts/build-panel.mjs` merges the hand coups onto the REIGN
+columns and moves the `coup_attempt` / `coup_success` FLAGS window with them (`COUP_LAST`), the template window moves
+to [1950, 2025], and `COVERAGE.coup` moves to 2025. Effect at the live origin: `win5(coup_attempt)` = 1 for **11**
+actors of 195 at as-of 2025, against 4 before and 16 / 9 at the 2000 / 2010 origins. Effect in the backtest: the
+as-of-2010 coup row is scored over 15 of its 20 horizon years instead of 11, with 24 observed events instead of 19.
+`COVERAGE.leader_exit` does NOT move: the tail there is the irregular half only, and the roster is escalated.
+
+**data-4 — Kosovo had no code and therefore no data.**
+`data/raw/hist/codelist_panel.csv` leaves Kosovo's iso3c empty, so `loadActors` built the id from the country name and
+defaulted `owid` to it — `KOSOVO`, a code no source file carries — and all 18 live years were null for regime,
+polyarchy, gdp_pc, population, urban_share and info_access, i.e. the actor was outside every template and every dyad.
+Hand entry in `data/history/actors.yaml` with `owid: XKX` (World Bank) and `owid_alt: OWID_KOS` (V-Dem via OWID, OWID
+population), the same fix pattern DDR carries one line up. At 2020 the actor now reads regime 2, polyarchy 0.67,
+gdp_pc 8,670, urban_share 45.2.
+
+**data-5 — `regime` was missing exactly in the years transitions happen.**
+V-Dem's RoW category is undefined in an interregnum year, so 18 of the 32 interior single-year holes carried an event
+in that same year (15 leader exits, 7 democratization onsets, 2 coups, 3 intrastate onsets — GIN 2010 among them, this
+turn's own origin), and `scripts/lib/fit.mjs` drops any row with a null covariate: the highest-signal rows in each
+sample were missing on the outcome. `scripts/build-panel.mjs` now carries the value across a single-year interior hole
+inside the actor's own observed run — never across a longer gap, never past the ends — and flags every filled cell in
+a new `regime_imputed` column (43 cells) with its own source line.
+
+**data-7 / engine-8 — a record's state is its dated history.**
+Thirteen corridor records carried a top-level `status`/`controller` that contradicted their own history, and
+`scripts/build-world.mjs` republished the header verbatim (`public/world.json` said Suez was open while the record's
+2023.9 row said contested). The eight live disagreements are corrected in `data/corridors.yaml`, the published
+snapshot is now DERIVED with `corridorStateAt(rec, T0)` and carries a `state_source`, and a build guard fails on any
+reintroduced mismatch — retired records excluded, since their header describes how they ended. The scenario sentence
+left on `hormuz` from the retired conversation-era layer ("the transcript's modal path is a Hormuz-for-blockade swap")
+is replaced by a note pointing at the dated history and the reopen hazard.
+
+**engine-2 — a second onset no longer restarts a running conflict.**
+`applyActorEvent` set `conflictStart = y` and `conflict_duration = 0` on every `intrastate_onset`, and 43% of the
+onsets a run fires land on an actor already carrying `intrastate = 1`; `z(conflict_duration)` is `intrastate_end`'s
+strongest term (−1.35 per sd, mean 10.6 / sd 13.7), so a fifteen-year war was moved back into the high-hazard
+young-conflict bin. The clock is now idempotent on a running spell. `intrastate_end` count_ratio **1.19 → 1.08**
+(as-of 2000) and **1.26 → 1.04** (as-of 2010), exactly the direction the finding predicted; the cost is 0.03-0.04 of
+AUC (0.90 → 0.87 and 0.81 → 0.77) on the indicator, which is the saturated statistic the count pair exists to
+replace.
+
+**engine-7 — the observed count is counted in the unit the engine can produce.**
+UCDP codes one `intrastate_onset` per conflict-dyad, so 2011-2024 carries 149 onset events on 131 actor-years while
+`firedHere` lets a template fire at most once per actor per year. `realized()` now counts one event per actor-year and
+reports the discarded multiplicity as `observed_count_raw`. `intrastate_onset` count_ratio 0.55 → **0.61** at as-of
+2010 and 0.79 → 0.90 at as-of 2000, with the Brier and AUC unchanged; `leader_exit`, `irregular_exit` and
+`coup_attempt` move the same way (their observed counts fall 798 → 675, 31 → 23, 47 → 43 at as-of 2000).
+
+**corridors-3 (part) — two transit lists that named a departed colonial power.**
+`uganda_railway` transited `[GBR]` with no dated handover, so `corridorTransits` returned Britain for every year to
+2026 and the line's `adjacent_war`, `transit_gdp_growth_mean` and guarantor terms were Britain's, including all 34 of
+its modern record-years; it is now `[KEN, UGA]` with a dated 1963 control transfer and GBR as the pre-1963 controller,
+which is where a departed power belongs. `cape_bulawayo` likewise `[GBR]` → `[ZAF, BWA, ZWE]`. The other fourteen
+records in that finding are not fixed — see deferred.
+
+### before → after (the turn's two as-of rows; `sy` = scored years, `cr` = count_ratio)
+
+| template | as-of 2000 before → after | as-of 2010 before → after |
+|---|---|---|
+| leader_exit | n=195 sy20 brier .164 auc .84 cr 1.35 → brier .167 auc .83 cr 1.61 | sy11 brier .202 auc .73 cr 1.29 → brier .194 auc .76 cr 1.54 |
+| irregular_exit | brier .080 auc .76 cr 0.43 → brier .078 auc .79 cr 0.58 | brier .050 auc .79 cr 0.50 → brier .050 auc .80 cr 0.71 |
+| coup_attempt | brier .106 auc .78 cr 0.57 → brier .103 auc .80 cr 0.62 | sy11 brier .079 auc .84 cr 0.36 → **sy15** brier .097 auc .80 cr 0.38 |
+| democratize_step | brier .297 auc .53 → brier .294 auc .55 | brier .307 auc .48 → brier .313 auc .47 |
+| democratic_deepening | brier .155 auc .76 cr 1.81 → brier .148 auc .73 cr 1.74 | brier .143 auc .54 cr 4.02 → brier .164 auc .67 cr 4.89 |
+| autocratic_closure | n=102 obs 45 brier .238 auc .68 → **n=142 obs 55** brier .235 auc .69 | n=107 obs 47 brier .318 auc .48 → **n=152 obs 68** brier .358 auc .48 |
+| liberal_erosion | n=0 (no fit at as-of) → retired into autocratic_closure | n=0 → retired |
+| intrastate_onset | brier .119 auc .90 cr 0.79 → brier .121 auc .90 cr 0.90 | brier .104 auc .92 cr 0.55 → brier .104 auc .92 cr 0.61 |
+| intrastate_end | brier .113 auc .90 cr 1.19 → brier .117 auc .87 **cr 1.08** | brier .126 auc .81 cr 1.26 → brier .128 auc .77 **cr 1.04** |
+| mid_force | sy10 brier .0020 auc .91 → brier .0020 auc .90 | n=0 (source ends 2010) → n=0 |
+| mid_war | sy10 auc .61 → auc .61 | n=0 → n=0 |
+| interstate_onset | **n=0 → n=18915 sy20 auc .86** | **n=0 → n=18915 sy14 auc .90 (auc@risk .78)** |
+| record_reopen | **n=0 → n=45 auc .87** (pred 15.2 vs 2 obs) | **n=0 → n=50 auc .60** (pred 12.7 vs 5) |
+| chokepoint_status | **n=0 → n=17 auc .74** (pred 8.3 vs 5) | **n=0 → n=17 auc .59** (pred 7.2 vs 10) |
+| corridor_status | brier .173 auc .78 → brier .160 **auc .87** | brier .204 auc .74 → brier .229 auc .72 |
+| contest_settle | brier .064 auc .80 auc@risk .43 → .063 / .80 / .43 | brier .054 auc .75 auc@risk .29 → .053 / .77 / **.35** |
+| templates reporting n=0 | **4 of 16 → 1 of 16** | **6 of 16 → 3 of 16** |
+
+Pooled over the two as-of years (new run only; the baseline file's `pooled` is over 15 as-of years and is not
+comparable): leader_exit skill −0.39 / AUC 0.77, coup_attempt +0.12 / 0.80, intrastate_onset +0.44 / 0.91,
+intrastate_end +0.25 / 0.83, mid_force +0.14 / 0.90, interstate_onset −0.03 / 0.88, corridor_status +0.13 / 0.70,
+chokepoint_status +0.03 / 0.59, record_reopen −0.93 / 0.56, autocratic_closure −0.23 / 0.58,
+democratic_deepening −0.85 / 0.72.
+
+### skipped
+
+- **corridors-4** (nine missing modern corridor records) — escalated: each record needs its own dated citations, and
+  a bulk hand-add without sources is the one thing worse than the gap.
+- **corridors-5** (five missing chokepoints and a `substitutes_for` structure) — the substitution covariate is a new
+  mechanism; escalated. The five records are part of the same escalation's research task.
+- **corridors-6** (territory records one row deep; the territory↔corridor join) — the missing rows (Crimea 2022.75,
+  Donbas 2022.75, Kherson 2022.86, Nagorno-Karabakh 2023.72) are codable, but the finding's actual ask is a
+  cross-layer validation between two record sets that disagree today; deferred to a turn that can do both halves.
+- **corridors-7** (undated `load_bearing_for` on 61 records; ten rows stamped with the file's build date) — real, and
+  a mechanical edit on 61 records that changes `corridor_stake` in every era at once. Deferred rather than done
+  half-way; nothing in this turn's backtest reads the dampener (it is a candidate).
+- **data-6** (the 1992-2010 corridor coding hole) — partly addressed on the chokepoint half (three records coded, the
+  gate re-measured, the window moved) and not on the corridor half, which is corridors-4's research task.
+- **data-8** (`liberal_erosion` advertised as fitted) — resolved by retiring the template: it is out of
+  `data/fits.json` and out of `public/forecast.json`'s `meta.templates` entirely, so no artefact claims it was
+  scored.
+- **statistics-4** (per-decade window gate) — the transparency half is ADOPTED: the per-decade table (chokepoint
+  1.92% / 1.76% / 7.06% for 1992-2000 / 2001-2010 / 2011-2025) is recorded in `data/templates.yaml` and
+  `scripts/backtest.mjs` beside the pooled ratio, so the as-of-2000 row is read against a measured deficit. The
+  BLOCKING half is not adopted: on a per-decade floor no modern chokepoint window could open at all, and the cost of
+  that rule is what this turn just paid off — seven consecutive as-of years reporting `n: 0` on the layer the modern
+  era is about. Re-propose the floor once the 1990s are coded.
+- **statistics-7** (demote `contest_settle`) — not measured this turn. Its `auc_at_risk` is still 0.43 / 0.35 at the
+  two origins and the demotion is defensible, but the finding's own test is an `ENGINE_ABLATE=contest_settle` run
+  showing nothing downstream moves, and this turn spent its ablation budget on `record_reopen`.
+- **statistics-8 / data-5 (b)** (22 live actors with no regime in any year) — already escalated as
+  era-1991-2026-r2/data-4 and not re-escalated; the reported-`n`-versus-scored-`n` half is a one-line change that
+  belongs with it.
+
+### deferred
+
+- **statistics-1** — `transform: z_year`. Escalated (new derivation shared by fitter and engine).
+- **corridors-4** — the nine modern corridor records. Escalated (needs sourced construction/closure dates).
+- **corridors-5** — `substitutes_for` / `substitute_impaired`. Escalated (new mechanism).
+- **data-3 residue / statistics-5** — the 2022-2026 leader roster. Escalated (needs a dataset; the coup half is done).
+- **statistics-6** — a decaying recurrence trace for internal conflict. Escalated (new derived covariate).
+
+**Falsifier not met, recorded rather than buried (corridors-2 / engine-3).** The reopen falsifier asked that no
+impaired record at as-of 2025 carry P(reopen within 20y) above the layer's own modern implied ceiling (~0.76). In the
+published run it is 0.976 for `hormuz`, 0.984 for `suez`, 0.968 for `bab_al_mandab` and 0.982 for `nord_stream` —
+better than the 1.00 the pre-1946 fit gave (100/100 runs) and still far above the ceiling. `kerch_strait`, whose
+impairment is 22 years old, comes in at 0.554, which says the duration term is doing its job and the intercept is
+still too high for records that have just closed. The next move on it is the era or censoring-aware duration term the
+template note names, not another window.
+
+*Published slices ARE rebuilt this turn, against the previous turns' convention and for a stated reason: two of the
+applied findings (data-2, data-7) are about the published artefacts themselves, and leaving `public/forecast.json`
+built by the code path the turn just fixed — with an empty corridor layer and a `meta.templates` list that claims four
+record templates ran — would have been the defect the finding describes, published. `public/forecast.json`
+(500 runs × 40y), `public/forecasts.json` and `public/world.json` are regenerated; nothing else under `public/` is.*

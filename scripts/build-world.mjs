@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync, existsSync, copyFileSync, mkdirSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { resolveFetch, describeSource } from './lib/modern.mjs';
+import { corridorStateAt, corridorLastYear } from '../src/engine/core.js';
 
 const T0_YEAR = 2026.5, STEPS = 160, HIST_FROM = 2000, PROJ_TO = 2066;
 const Y = (f) => parseYaml(readFileSync(`data/${f}.yaml`, 'utf8'));
@@ -151,6 +152,17 @@ for (const e of Y('history/events')) {
   if (e.kind === 'territory' && !terrIds.has(e.id)) errors.push(`events.yaml territory ${e.id} @${e.year}: no record in data/territories.yaml`);
 }
 for (const c of corridors) if (!c.history?.length) errors.push(`corridor ${c.id}: no dated history (a 2026 snapshot alone cannot be read as-of a historical year)`);
+// era-modern-2000-2025/data-7, engine-8: a record's state is its DATED HISTORY, and this file used to republish the
+// hand-maintained header verbatim — so public/world.json said Suez was open while the record's own last row (2023.9)
+// said contested, and thirteen records disagreed with themselves. The header is now checked against the history and
+// the published snapshot is derived from it, so there is exactly one statement of a record's state. A retired record
+// (past its `exists_until`) is skipped: its header describes how it ended, and corridorStateAt at T0 cannot.
+for (const c of corridors) {
+  if (corridorLastYear(c, Infinity) < Math.floor(T0_YEAR)) continue;
+  const st = corridorStateAt(c, Math.floor(T0_YEAR)); if (!st) continue;
+  if (c.status != null && st.status != null && c.status !== st.status) errors.push(`corridor ${c.id}: header status '${c.status}' contradicts its own dated history at ${Math.floor(T0_YEAR)} ('${st.status}')`);
+  if (c.controller != null && st.controller != null && c.controller !== st.controller) errors.push(`corridor ${c.id}: header controller '${c.controller}' contradicts its own dated history at ${Math.floor(T0_YEAR)} ('${st.controller}')`);
+}
 for (const t of territories) if (!t.history?.length) errors.push(`territory ${t.id}: no dated history`);
 const claimIds = new Set(claims.map(c => c.id));
 for (const c of claims) {
@@ -170,7 +182,10 @@ mkdirSync('public', { recursive: true });
 const world = {
   meta: { built: new Date().toISOString(), t0: '2026Q3', t0_year: T0_YEAR, steps: STEPS },
   registry: { groups: registry.groups, variables: registry.variables, latents: registry.latents ?? [] },
-  actors: compiledActors, world: worldVars, territories, corridors, hazards, claims,
+  actors: compiledActors, world: worldVars, territories,
+  // the published corridor snapshot is derived from each record's dated history at T0 (era-modern-2000-2025/data-7)
+  corridors: corridors.map(c => { const st = corridorLastYear(c, Infinity) < Math.floor(T0_YEAR) ? null : corridorStateAt(c, Math.floor(T0_YEAR)); return st ? { ...c, status: st.status ?? c.status, controller: st.controller ?? c.controller ?? null, state_source: `derived from this record's dated history at ${Math.floor(T0_YEAR)}` } : c; }),
+  hazards, claims,
 };
 writeFileSync('public/world.json', JSON.stringify(world));
 copyFileSync('data/geo/world.topo.json', 'public/geo.topo.json');

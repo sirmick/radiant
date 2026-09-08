@@ -176,10 +176,51 @@
 - { kind: pact, type: defense, id: nato_swe, year: 2024.18, members: [SWE], with: [USA, CAN, GBR, FRA, ITA, NLD, BEL, DNK, NOR, PRT, ISL, LUX, GRC, TUR, DEU, ESP, CZE, HUN, POL, BGR, EST, LVA, LTU, ROU, SVK, SVN, ALB, HRV, MNE, MKD, FIN], source: "Sweden accedes to the North Atlantic Treaty, 7 March 2024 (NATO, 32nd member)" }
 
 # ---------------------------------------------------------------- 2022–2026 tail (past the datasets' end; scoring targets from launch)
-- { kind: regime, actor: SYR, year: 2024.93, event: state_collapse, notes: "Assad falls" }
-- { kind: leader, actor: SYR, year: 2024.93, event: irregular_exit }
+- { kind: regime, actor: SYR, year: 2024.93, event: state_collapse, notes: "Assad falls; the leader exit itself is the dated leader_exit row below" }
 - { kind: leader, actor: IRN, year: 2026.2, event: irregular_exit, notes: "Khamenei killed" }
-- { kind: leader, actor: USA, year: 2025.05, event: regular_exit }
+
+# ---------------------------------------------------------------- the 2022-2025 coup and irregular-exit tail
+# era-modern-2000-2025/data-3, engine-5. REIGN 2021.8 and the Powell-Thyne coup list inside it both stop in 2021, so
+# data/events.json held ZERO coup and ZERO leader_exit events for 2022, 2023, 2024 and 2025 (against 47 exits and 3
+# coups in 2019, 43/2 in 2020, 30/7 in 2021) and every state entered a 2026 forecast reading "no coup in five years".
+# win5(coup_attempt) is the largest coefficient in the actor-year layer (+1.28 on coup_attempt, +1.10 on
+# irregular_exit, +0.55 on autocratic_closure, +0.46 on leader_exit) and it was 0 for Burkina Faso, Niger, Gabon,
+# Guinea-Bissau and Madagascar at the origin.
+#
+# COUPS: intended as a COMPLETE 2022-2025 list on Powell-Thyne's own definition (an illegal and overt attempt by the
+# military or other state elites to unseat the sitting executive, successful or not), which is why the panel's
+# coup_attempt / coup_success window and scripts/backtest.mjs's COVERAGE.coup move to 2025 with it. A missed failed
+# attempt would be a false zero in one actor-year; the state it replaces was a false zero in every one of them.
+- { kind: coup, actor: BFA, year: 2022.07, success: 1, source: "24 Jan 2022: Lt-Col Damiba's MPSR detains and removes President Kabore" }
+- { kind: coup, actor: GNB, year: 2022.09, success: 0, source: "1 Feb 2022: gunmen attack the Government Palace during a cabinet meeting; the attempt on President Embalo fails" }
+- { kind: coup, actor: BFA, year: 2022.75, success: 1, source: "30 Sep 2022: Capt. Traore removes Damiba eight months after the January coup" }
+- { kind: coup, actor: STP, year: 2022.90, success: 0, source: "25 Nov 2022: an armed attack on the army headquarters in Sao Tome is put down" }
+- { kind: coup, actor: NER, year: 2023.57, success: 1, source: "26 Jul 2023: the presidential guard detains President Bazoum; Gen. Tiani heads the CNSP" }
+- { kind: coup, actor: GAB, year: 2023.66, success: 1, source: "30 Aug 2023: officers annul the election and depose President Ali Bongo, ending 55 years of family rule" }
+- { kind: coup, actor: SLE, year: 2023.90, success: 0, source: "26 Nov 2023: armouries and the prison in Freetown are attacked; the government calls it a failed coup" }
+- { kind: coup, actor: GNB, year: 2023.92, success: 0, source: "1 Dec 2023: a National Guard unit frees two detained ministers in Bissau and is put down; the president calls it an attempted coup and dissolves parliament" }
+- { kind: coup, actor: COD, year: 2024.38, success: 0, source: "19 May 2024: an armed group attacks the Palais de la Nation and a minister's residence in Kinshasa and is defeated" }
+- { kind: coup, actor: BOL, year: 2024.48, success: 0, source: "26 Jun 2024: Gen. Zuniga takes armoured vehicles into the Plaza Murillo and withdraws the same day" }
+- { kind: coup, actor: MDG, year: 2025.78, success: 1, source: "Oct 2025: the CAPSAT unit sides with the Gen-Z protests, President Rajoelina leaves the country and Col. Randrianirina takes power" }
+- { kind: coup, actor: GNB, year: 2025.90, success: 1, source: "26 Nov 2025: the army seizes power days after the presidential election and detains President Embalo" }
+#
+# IRREGULAR LEADER EXITS 2022-2025 plus the two deaths in office. This list is NOT complete for regular exits — a
+# complete 2022-2025 leader roster is a dataset (REIGN's successor), not a hand list — so COVERAGE.leader_exit stays
+# at 2021 and `leader_exit_recent` is still an undercount past it. What it does fix is the irregular half, which is
+# what `irregular_exit` is scored on and what the coup trap reads. tenure_years is the sitting leader's own tenure at
+# the exit, to one decimal, and is an estimate where the entry date is a range.
+- { kind: leader_exit, actor: BFA, year: 2022.07, irregular: 1, tenure_years: 6.1, source: "Roch Kabore removed by the MPSR coup of 24 Jan 2022" }
+- { kind: leader_exit, actor: LKA, year: 2022.53, irregular: 1, tenure_years: 2.9, source: "Gotabaya Rajapaksa flees the country 13 Jul and resigns 14 Jul 2022 after the storming of the presidential residence" }
+- { kind: leader_exit, actor: BFA, year: 2022.75, irregular: 1, tenure_years: 0.7, source: "Damiba removed by the Traore coup of 30 Sep 2022" }
+- { kind: leader_exit, actor: NER, year: 2023.57, irregular: 1, tenure_years: 2.3, source: "Mohamed Bazoum detained and deposed 26 Jul 2023" }
+- { kind: leader_exit, actor: GAB, year: 2023.66, irregular: 1, tenure_years: 14.6, source: "Ali Bongo deposed 30 Aug 2023" }
+- { kind: leader_exit, actor: NAM, year: 2024.10, irregular: 0, tenure_years: 8.2, source: "Hage Geingob dies in office 4 Feb 2024; the vice-president succeeds constitutionally" }
+- { kind: leader_exit, actor: IRN, year: 2024.38, irregular: 0, tenure_years: 2.9, source: "President Raisi dies in a helicopter crash 19 May 2024; a constitutional interim and an election follow. Coded regular: an accidental death is not an irregular seizure" }
+- { kind: leader_exit, actor: BGD, year: 2024.59, irregular: 1, tenure_years: 15.5, source: "Sheikh Hasina resigns and flees 5 Aug 2024 after the July uprising; an army-brokered interim government follows" }
+- { kind: leader_exit, actor: SYR, year: 2024.94, irregular: 1, tenure_years: 24.2, source: "Bashar al-Assad leaves the country 8 Dec 2024 as the HTS offensive takes Damascus" }
+- { kind: leader_exit, actor: USA, year: 2025.05, irregular: 0, tenure_years: 4.0, source: "the presidential transition of 20 Jan 2025 (was a `kind: leader` news row, which no template reads)" }
+- { kind: leader_exit, actor: MDG, year: 2025.78, irregular: 1, tenure_years: 6.8, source: "Andry Rajoelina leaves the country and is impeached in absentia, Oct 2025" }
+- { kind: leader_exit, actor: GNB, year: 2025.90, irregular: 1, tenure_years: 5.8, source: "Umaro Sissoco Embalo detained by the army 26 Nov 2025" }
 - { kind: territory, id: syria_buffer, year: 2024.95, controller: ISR, status: buffer }   # id must resolve in data/territories.yaml
 - { kind: territory, id: nagorno_karabakh, year: 2023.7, controller: AZE, status: frozen }
 - { kind: territory, id: crimea, year: 2014.2, controller: RUS, status: occupied }

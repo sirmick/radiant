@@ -53,11 +53,30 @@ const MIN_EPV = 3;        // events per estimated covariate: below it the fit ca
 // scripts/build-events.mjs) carries the same hostlev variable to 2010. The two sources agree on the decade they
 // share: 14.0 pair-onsets a year at hostlev >= 4 over 1992-2001 against midb's 14.5, inside the factor of 1.5 the
 // corridor windows are held to. Past 2010 there is still no source and the window does not move.
+// era-modern-2000-2025/corridors-1, corridors-2, engine-3, engine-6: `chokepoint` and `record_reopen` MOVE to 2025,
+// on the same gate, re-measured after this turn's rows landed. chokepoint: 4.13% over 581 modern chokepoint-years
+// against 5.11% over the 1,859 coded ones — ratio 0.81 against 0.64 before the corinth_canal 2021/2023, kiel 2013
+// and bosphorus 1994/1998 entries. Per decade the modern rate is 1.92% / 1.76% / 7.06% (1992-2000, 2001-2010,
+// 2011-2025), so the 1990s and 2000s are still under-coded and the as-of-2000 row is scored on a measured deficit;
+// the alternative was a seventh consecutive as-of year reporting n=0 on the layer the modern era is about.
+// record_reopen: the raw modern rate (6.08% over 148 impaired record-years against 27.15% pre-1946) is right-
+// censoring, not a coding hole — 113 of the 148 rows are six spells still impaired at 2025 and incapable of carrying
+// a reopening. Drop those and the modern rate is 25.71% over 35 rows against 28.47%, a ratio of 0.90. The censored
+// rows stay in the fit as observed non-endings, which is the correct exposure and is what tells the hazard that
+// modern closures are long: the fit moves from n=148 / 40 events / 27.0% a year / holdout AUC 0.500 to n=395 / 68 /
+// 17.2% / 0.546.
+// era-modern-2000-2025/data-3, engine-5: `coup` moves to 2025 and `leader_exit` does NOT. The coup tail is a
+// complete hand list on Powell-Thyne's own definition (12 attempts 2022-2025, data/history/events.yaml), so a zero
+// past 2021 is now a claim the list backs; a complete 2022-2025 LEADER roster is a dataset, not a hand list, and the
+// tail there is the irregular half only — so leader_exit keeps REIGN's 2021 end and its horizon stays truncated.
+// era-modern-2000-2025/data-1, engine-4, statistics-3: `interstate_onset` is the modern dyad's ground truth, covered
+// 1946-2024 (UCDP/PRIO ACD 25.1). mid_force / mid_war / war_end still stop at GML MID 2.2.1's 2010 and still report
+// n=0 at as-of 2010; what changes is that the dyadic layer is no longer graded by nothing there.
 // operator/termination adds four ending kinds. Their windows are their sources': CoW MID endyear stops in 2001,
 // UCDP in 2024, and the two record layers are complete only where the refine loop has been — the reopen window is the
 // same 1869-1945 corridor_status is scored in (chokepoint_status now reaches 1991; the reopen sample is the two kinds
 // pooled, so it moves with the corridor half), and the territory histories run 1871-2025.
-const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2021], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1816, 2025], intrastate_onset: [1946, 2024], mid_force: [1816, 2010], mid_war: [1816, 2010], chokepoint: [1869, 1991], corridor: [1869, 2025], war_end: [1816, 2010], intrastate_end: [1946, 2024], record_reopen: [1869, 1945], territory_settle: [1871, 2025] };
+const COVERAGE = { leader_exit: [1950, 2021], coup: [1950, 2025], autocratization_onset: [1900, 2024], democratization_onset: [1900, 2024], regime_change: [1816, 2025], intrastate_onset: [1946, 2024], interstate_onset: [1946, 2024], mid_force: [1816, 2010], mid_war: [1816, 2010], chokepoint: [1869, 2025], corridor: [1869, 2025], war_end: [1816, 2010], intrastate_end: [1946, 2024], record_reopen: [1869, 2025], territory_settle: [1871, 2025] };
 const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
 // the structural zeros src/engine/core.js:stepLifecycle gives an actor introduced inside the horizon (see missingVars)
 const ENTRY_ZEROS = ['at_war', 'intrastate', 'mid_force', 'mid_war', 'coup_attempt', 'coup_success', 'interstate_ucdp', 'pact_usa', 'pact_rus', 'defence_pacts', 'sp_client_any', 'sp_client_one', 'great_game', 'aid_conditionality'];
@@ -99,14 +118,25 @@ function fitsAt(asOf) {
 
 // events actually observed in (asOf, asOf+H] per key
 function realized(asOf, horizon) {
-  const any = new Set(); const dy = new Set(); const anyCount = new Map();
+  const any = new Set(); const dy = new Set(); const anyCount = new Map(); const anyCountRaw = new Map();
+  // era-modern-2000-2025/engine-7: the observed COUNT is counted in the unit the engine can produce — one event per
+  // actor per year. UCDP codes one intrastate_onset per conflict-dyad, so 2011-2024 carries 149 onset events on 131
+  // distinct actor-years, while `firedHere` lets each template fire at most once per actor per year: the simulated
+  // ceiling was 131 and count_ratio was being read against 149. The raw multiplicity is kept and reported
+  // (observed_count_raw) rather than silently dropped.
+  const seenYear = new Set();
   for (const e of events) {
     const y = Math.floor(e.year ?? e.start); if (y <= asOf || y > asOf + horizon) continue;
     const cov = COVERAGE[e.kind]; if (cov && (y < cov[0] || y > cov[1])) continue;
-    if (e.actor) for (const t of templates) if (t.event === e.kind && (!t.event_filter || Object.entries(t.event_filter).every(([k, v]) => e[k] === v))) { const k = `${t.id}|${e.actor}`; any.add(k); anyCount.set(k, (anyCount.get(k) ?? 0) + 1); }
+    if (e.actor) for (const t of templates) if (t.event === e.kind && (!t.event_filter || Object.entries(t.event_filter).every(([k, v]) => e[k] === v))) {
+      const k = `${t.id}|${e.actor}`; any.add(k);
+      anyCountRaw.set(k, (anyCountRaw.get(k) ?? 0) + 1);
+      const ky = `${k}|${y}`; if (seenYear.has(ky)) continue; seenYear.add(ky);
+      anyCount.set(k, (anyCount.get(k) ?? 0) + 1);
+    }
     if (e.a && e.b) dy.add(`${e.kind}|${pairKey(e.a, e.b)}`);
   }
-  return { any, dy, anyCount };
+  return { any, dy, anyCount, anyCountRaw };
 }
 const auc = (pairs) => { // [[p, y]]
   const pos = pairs.filter(x => x[1]).length, neg = pairs.length - pos; if (!pos || !neg) return null;
@@ -160,7 +190,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     const f = F[t.id];
     if (f?.status !== 'fitted') { row.templates[t.id] = { n: 0, reason: `no fit at as-of: ${f?.reason ?? 'unfitted'}`, fit_source: 'none (no training data at as-of)', fit_split: null, leaky: false, scored_years: covYears }; continue; }
     let excluded = 0, excludedWithEvent = 0; const excludedVars = {};
-    let expCount = 0, obsCount = 0;   // the count scale, for the saturated actor-year templates (era-1945-1991-r2/statistics-6)
+    let expCount = 0, obsCount = 0, obsCountRaw = 0;   // the count scale, for the saturated actor-year templates (era-1945-1991-r2/statistics-6)
     let unborn = 0, unbornEvents = 0;   // corridor/chokepoint records whose dated history opens inside the horizon
     if (t.unit === 'actor-year') {
       if (t.status === 'monitored') continue;
@@ -192,6 +222,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
         // count must be truncated to match — it was not, and count_ratio was inflated by horizon/scored_years.
         expCount += covYears < horizon ? ens.expectedWithin(key, covYears) : (ens.expected[key] ?? 0);
         obsCount += real.anyCount.get(key) ?? 0;
+        obsCountRaw += real.anyCountRaw.get(key) ?? 0;
       }
     } else if (RECORD_UNITS.has(t.unit)) {
       // one unit per corridor/chokepoint record that exists at as-of. A record whose dated history opens INSIDE the
@@ -277,6 +308,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     if (t.unit === 'actor-year' || t.unit === 'dyad-year') { rec.n_excluded_no_covariate = excluded; rec.n_excluded_with_event = excludedWithEvent; rec.excluded_vars = excludedVars; }
     if (t.unit === 'actor-year') {
       rec.expected_count = expCount; rec.observed_count = obsCount;
+      if (obsCountRaw !== obsCount) rec.observed_count_raw = obsCountRaw;   // era-modern-2000-2025/engine-7: events dropped by the one-per-actor-year cap, reported rather than hidden
       rec.count_ratio = obsCount ? expCount / obsCount : null;
       // a template whose horizon base rate is past this line cannot be discriminated by the indicator score at all:
       // brier_base = p(1-p) collapses and every unreachable unit costs the full 1.0. Flagged so the count pair above

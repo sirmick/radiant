@@ -24,7 +24,7 @@
   transits: [IRN, OMN, ARE]
   load_bearing_for: { QAT: 0.95, IRQ: 0.9, IRN: 0.85, KWT: 0.9, ARE: 0.6, SAU: 0.55, IND: 0.5, JPN: 0.7, KOR: 0.65, CHN: 0.35, TWN: 0.4, THA: 0.4 }
   hazard: hormuz_reopens
-  notes: "Effectively shut since Feb 2026 (tanker war). Reopening is a hazard; the transcript's modal path is a Hormuz-for-blockade swap."
+  notes: "The record's state is its dated history below; the 2026.2 closure is the hand event in data/history/events.yaml. era-modern-2000-2025/engine-8: this field used to carry a scenario sentence from the retired conversation-era layer (\"the transcript's modal path is a Hormuz-for-blockade swap\"), which docs/system.md says was retired to docs/origin/ — a hand-typed future on the world's most consequential chokepoint. How long the closure lasts is the `record_reopen` hazard's business, and that hazard is now fitted on 1869-2025 rather than on pre-1946 straits alone (era-modern-2000-2025/corridors-2)."
   history:
     - { year: 1892.0, status: open, controller: GBR, source: "the Trucial exclusive agreements of 1892 formalise a British Gulf that had been de facto since the 1850s: the strait is open and its littoral bound to one power (era-1870-1914-r2/corridors-1)" }
     - { year: 1971.91, status: contested, source: "Iran seizes Abu Musa and the Greater and Lesser Tunbs 30 Nov 1971, the day before the British withdrawal completes — the islands that command the approach lanes (data/territories.yaml abu_musa_tunbs)" }
@@ -61,7 +61,7 @@
   name: Suez Canal
   kind: chokepoint
   mode: sea
-  status: open
+  status: contested
   geometry: { point: [32.5, 30.5] }
   transits: [EGY]
   load_bearing_for: { EGY: 0.7, ITA: 0.3, DEU: 0.25, NLD: 0.25, CHN: 0.25, IND: 0.3, SAU: 0.25 }
@@ -139,6 +139,8 @@
     - { year: 1936.50, status: open, controller: TUR, source: "Montreux Convention 20 Jul 1936" }
     - { year: 1939.67, status: closed, controller: TUR, source: "Montreux Art. 19: the Straits are closed to belligerent warships — the closure that makes the Persian Corridor necessary" }
     - { year: 1945.75, status: open, controller: TUR, source: "the war ends and the Montreux peacetime regime resumes; the record's own history used to stop at the 1939 closure and never reopen, which is the case scripts/backtest.mjs's COVERAGE comment cites (era-1870-1914-r2/engine-5)" }
+    - { year: 1994.50, status: contested, controller: TUR, source: "Turkish Straits Maritime Traffic Regulations in force 1 Jul 1994, drafted after the Nassia collision of 13 Mar 1994: unilateral transit restrictions and notification requirements on large tankers, protested by Russia, Ukraine and Greece as incompatible with Montreux (era-modern-2000-2025/corridors-1: the 1992-2010 chokepoint decade had four coded transitions in the whole world)" }
+    - { year: 1998.85, status: open, controller: TUR, source: "the revised regulations of Nov 1998, written after the IMO's review of the 1994 rules, settle the dispute; transits resume under an agreed traffic-separation regime" }
     - { year: 2022.16, status: contested, controller: TUR, source: "Turkey invokes Montreux Art. 19 on 28 Feb 2022 and closes the Straits to belligerent warships of both sides; Ukraine's Black Sea ports are blockaded and its grain exports stop. The record declares UKR 0.8 load-bearing and had no row for the year that dependence was cut (era-1991-2026-r2/corridors-3)" }
     - { year: 2023.54, status: open, controller: TUR, source: "Russia terminates the Black Sea Grain Initiative 17 Jul 2023; the Straits revert to the peacetime regime for a corridor that no longer runs" }
 
@@ -146,7 +148,7 @@
   name: Taiwan Strait / Luzon Strait
   kind: chokepoint
   mode: sea
-  status: open
+  status: contested
   geometry: { point: [119.5, 24.5] }
   transits: [TWN, CHN, PHL]
   load_bearing_for: { TWN: 1.0, JPN: 0.6, KOR: 0.6, CHN: 0.3, USA: 0.4, PHL: 0.3 }
@@ -176,7 +178,7 @@
   kind: chokepoint
   mode: sea
   status: open
-  controller: EGY
+  controller: SAU
   geometry: { point: [34.5, 27.9] }
   transits: [EGY, SAU, ISR, JOR]
   load_bearing_for: { ISR: 0.45, JOR: 0.8 }
@@ -451,6 +453,8 @@
     - { year: 1939.67, status: closed, controller: DEU, source: "closed to belligerents on the outbreak of war" }
     - { year: 1945.40, status: open, controller: GBR, source: "Allied control from May 1945" }
     - { year: 1955.34, status: open, controller: DEU, source: "the Paris Agreements enter into force 5 May 1955 and the occupation statute ends: the canal returns to German administration. The record carried GBR forward to 2026, which put Britain's Korea, Suez, Falklands and Gulf wars on the canal's adjacent_war covariate (era-1945-1991-r2/corridors-3)" }
+    - { year: 2013.18, status: closed, controller: DEU, source: "both large lock chambers at Kiel-Holtenau fail on 5 Mar 2013 and the canal is shut to large vessels, which divert around Skagen (era-modern-2000-2025/corridors-1)" }
+    - { year: 2013.20, status: open, controller: DEU, source: "a repaired chamber returns the canal to service on 12 Mar 2013; the lock replacement programme runs on for years" }
   notes: "The corridor fact most often cited as an input to German war timing in 1914. Recorded so the claim is datable, not asserted."
 
 - id: us_transcontinental
@@ -484,7 +488,7 @@
   name: Trans-Siberian Railway
   kind: corridor
   mode: rail
-  status: built
+  status: contested
   controller: RUS
   geometry: { line: [[37.6, 55.8], [60.6, 56.8], [73.4, 55.0], [82.9, 55.0], [92.9, 56.0], [104.3, 52.3], [113.5, 52.0], [127.5, 50.3], [135.1, 48.5], [131.9, 43.1]] }
   transits: [RUS]
@@ -615,8 +619,8 @@
   mode: rail
   status: built
   geometry: { line: [[18.4, -33.9], [24.8, -28.7], [25.6, -25.8], [27.5, -22.6], [28.6, -20.2]] }
-  transits: [GBR]
-  load_bearing_for: { GBR: 0.25 }
+  transits: [ZAF, BWA, ZWE]           # era-modern-2000-2025/corridors-3: was [GBR]. The line runs Cape Town - Vryburg - Bulawayo, through what are now South Africa, Botswana and Zimbabwe; Britain is the pre-1980 CONTROLLER (already dated in the history below), not a transit state
+  load_bearing_for: { ZWE: 0.5, ZMB: 0.4, ZAF: 0.2 }
   load_bearing_source: estimate
   history:
     - { year: 1893.0, status: building, source: "construction north from Vryburg resumes 1893 under the Bechuanaland Railway Company" }
@@ -632,12 +636,14 @@
   mode: rail
   status: built
   geometry: { line: [[39.7, -4.1], [37.1, -2.4], [36.8, -1.3], [35.3, -0.4], [34.8, -0.1]] }
-  transits: [GBR]
-  load_bearing_for: { GBR: 0.2 }
+  transits: [KEN, UGA]                # era-modern-2000-2025/corridors-3: was [GBR], with no dated handover, so corridorTransits returned [GBR] for every year to 2026 and the line's adjacent_war, transit_gdp_growth_mean and guarantor covariates were BRITAIN's — including all 34 of its modern record-years. The colonial years still read GBR through the controller, which is where a departed power belongs
+  load_bearing_for: { KEN: 0.4, UGA: 0.6 }
   load_bearing_source: estimate
+  load_bearing_from: 1964
   history:
-    - { year: 1896.41, status: building, source: "construction begins at Mombasa 30 May 1896" }
-    - { year: 1901.98, status: built, source: "Kisumu reached Dec 1901" }
+    - { year: 1896.41, status: building, controller: GBR, source: "construction begins at Mombasa 30 May 1896" }
+    - { year: 1901.98, status: built, controller: GBR, source: "Kisumu reached Dec 1901" }
+    - { year: 1963.95, status: built, controller: KEN, source: "Kenyan independence 12 Dec 1963: the line and the East African Railways and Harbours administration pass to the successor states; Uganda is independent from 9 Oct 1962 and is the traffic's origin" }
   notes: "Built to reach the Nile headwaters — the corridor rationale for the British position in Uganda and, through it, Egypt."
 
 - id: trans_caspian
@@ -846,7 +852,7 @@
   name: Druzhba (Friendship) oil pipeline
   kind: corridor
   mode: pipeline
-  status: built
+  status: closed
   controller: RUS
   geometry: { line: [[52.6, 55.8], [48.4, 54.3], [37.6, 55.8], [30.5, 50.4], [23.0, 52.2], [14.5, 51.9]] }
   transits: [RUS, UKR, POL, DDR]
@@ -1071,6 +1077,10 @@
     - { year: 1893.60, status: open, controller: GRC, source: "opened 6 Aug 1893" }
     - { year: 1941.32, status: closed, controller: DEU, source: "German airborne seizure of the Corinth bridge 26 Apr 1941; the demolished bridge falls into the cut and blocks the canal" }
     - { year: 1948.51, status: open, controller: GRC, source: "cleared by US Army engineers and reopened 7 Jul 1948 — outside the chokepoint coverage window, recorded so the spell is not right-censored forever" }
+    - { year: 2021.01, status: closed, controller: GRC, source: "landslides on the west bank at Agios Ioannis from 4 Jan 2021 drop rock into the cut; the canal is shut to all traffic (era-modern-2000-2025/corridors-1)" }
+    - { year: 2021.50, status: open, controller: GRC, source: "reopened to limited traffic 1 Jul 2021 after the first phase of slope works" }
+    - { year: 2023.04, status: closed, controller: GRC, source: "closed again in Jan 2023 for the full slope-stabilisation programme" }
+    - { year: 2023.51, status: open, controller: GRC, source: "full reopening 5 Jul 2023" }
   notes: "The only chokepoint transition the layer had in 1891-1900; it was missing. The 1941 closure and the 1948 reopening were added in era-1914-1945-r2: the record had the canal open through the German seizure and the demolition."
 
 - id: panama_railway
@@ -1344,7 +1354,7 @@
   name: Bratstvo (Brotherhood) gas pipeline
   kind: corridor
   mode: pipeline
-  status: built
+  status: closed
   controller: RUS
   geometry: { line: [[35.0, 48.5], [30.5, 50.4], [24.0, 48.9], [21.2, 48.7], [19.0, 47.5], [16.4, 48.2]] }
   transits: [RUS, UKR, SVK, AUT, HUN]
@@ -1366,7 +1376,7 @@
   name: Soyuz gas pipeline (Orenburg–Uzhgorod)
   kind: corridor
   mode: pipeline
-  status: built
+  status: closed
   controller: RUS
   geometry: { line: [[55.1, 51.8], [50.0, 51.5], [42.0, 50.5], [34.0, 49.5], [28.0, 49.5], [22.3, 48.6]] }
   transits: [RUS, UKR]
@@ -1388,7 +1398,7 @@
   name: Urengoy–Pomary–Uzhgorod (the trans-Siberian export line)
   kind: corridor
   mode: pipeline
-  status: built
+  status: closed
   controller: RUS
   sponsor: RUS
   geometry: { line: [[76.7, 66.1], [65.5, 61.3], [56.2, 58.0], [47.5, 56.3], [39.0, 54.0], [31.0, 51.5], [24.0, 49.0], [22.3, 48.6]] }

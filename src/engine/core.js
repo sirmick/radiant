@@ -8,6 +8,9 @@ import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, 
 /** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
  *  2024, and without them the memory is empty at every origin past the MID window (era-1991-2026-r2/engine-4). */
 export const DYADIC_DISPUTE = new Set(['mid_force', 'mid_war', 'interstate_onset']);
+/** The two kinds the engine draws as one nested pair (a war is a dispute). Any other dyadic onset template is a
+ *  separate source at a separate threshold and is drawn on its own (era-modern-2000-2025/engine-4). */
+const NESTED_DYAD = new Set(['mid_force', 'mid_war']);
 import { PRESENCE, presenceIndex, lastFall, patronMap, patronFeatures, guarantorLevel, guarantorFall, hostLevel } from './presence.js';
 import { IMPAIRED, RESOLVED, SPELL_UNITS, warSpells, spellAge, territoryFirstYear, territoryStateAt,
   warEndFeatures, contestFeatures, reopenFeatures } from './termination.js';
@@ -906,7 +909,19 @@ function applyActorEvent(world, a, kind, rng) {
     // operator/termination: the length is no longer typed here. The fitted `intrastate_end` hazard draws it year by
     // year (stepYear, after the actor hazards), so a fresh onset only records the year it started. With the mechanism
     // ablated off the old uniform 1..6-year draw is restored, and it consumes the same one random number it always did.
-    case 'intrastate_onset': a.cur.intrastate = 1; a.conflictStart = y; a.cur.conflict_duration = 0; if (NO_TERM.intrastate) a.conflictLeft = 1 + Math.floor(rng() * 6); a.cur.gdp_pc *= 0.97; break;
+    // era-modern-2000-2025/engine-2: a second onset on an actor whose conflict is ALREADY running does not restart
+    // the spell clock. UCDP codes one onset per conflict-dyad and the engine's draw is per actor-year, so 43% of the
+    // onsets a run fires land on an actor already carrying `intrastate = 1`; each one used to zero conflict_duration,
+    // and z(conflict_duration) is intrastate_end's strongest term (-1.35 per sd, mean 10.6, sd 13.7), so a fifteen-
+    // year war was moved back into the high-hazard young-conflict bin and ended ~4x too readily. The flag, the shock
+    // and the ablation branch are unchanged; only the clock is now idempotent on a running spell.
+    case 'intrastate_onset': {
+      const running = a.cur.intrastate === 1 && a.conflictStart != null && !a.conflictOver;
+      a.cur.intrastate = 1;
+      if (!running) { a.conflictStart = y; a.cur.conflict_duration = 0; }
+      if (NO_TERM.intrastate) a.conflictLeft = 1 + Math.floor(rng() * 6);
+      a.cur.gdp_pc *= 0.97; break;
+    }
     default: throw new Error(`applyActorEvent: no state rewrite for '${kind}' — a simulated template must change state`);
   }
 }
@@ -1083,6 +1098,15 @@ export function stepYear(world, rng, opts = {}) {
       // the war's first year is also a chance for it to be its only year: the fitted hazard is drawn at age 0, exactly
       // as the fit's first spell-year row is labelled. One random number per fired war, as the resampled length was.
       if (world.warDuration) openWarSpell(world, k, a.id, b.id, y, rng, fired);
+    }
+    // Any other dyadic onset template is drawn independently of the MID pair (era-modern-2000-2025/engine-4). The
+    // modern dyad's only ground truth is a different source at a different threshold — a conflict that killed people,
+    // not a dispute that reached use of force — so it is neither nested inside the dispute draw nor suppressed by it.
+    // A fired onset writes the pair into the rivalry memory, which counts this kind already (DYADIC_DISPUTE).
+    for (const t of world.templates) {
+      if (t.unit !== 'dyad-year' || t.spell || NESTED_DYAD.has(t.event)) continue;
+      const p = hz[t.id]; if (p == null) continue;
+      if (rng() < p) { fired.push({ kind: t.event, a: a.id, b: b.id, year: y }); if (DYADIC_DISPUTE.has(t.event)) world.dyadRecent.set(k, y); }
     }
   }
   if (world.coalition && !opts.skipDyads) fired.push(...coalitionJoin(world, rng, warPairs, y));
