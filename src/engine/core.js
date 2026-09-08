@@ -478,9 +478,9 @@ function stepPolarity(world) {
     // military-expenditure share, and four of CINC's six indicators (tpop, upop, energy, iron/steel) are pure mass.
     // The population half was computed two lines from here (buildActorState's popGrowth, applied to population and
     // tpop in the drift loop) and thrown away, and the cross-actor spread in it is large: trailing 10-year
-    // population growth to 2024 runs 3.3%/yr (COD) to -0.3%/yr (JPN), a factor of 4.2 in projected mass over a
-    // 40-year horizon that the projector simply omitted. The unsimulated-actor fallback takes the panel's long-run
-    // means for both halves.
+    // population growth to 2024 runs from +3.3%/yr to -0.3%/yr across live actors, a factor of 4.2 in projected
+    // mass over a 40-year horizon that the projector simply omitted. The unsimulated-actor fallback takes the
+    // panel's long-run means for both halves.
     const g = a && a.cur.gdp_growth != null ? a.cur.gdp_growth : GROWTH_MEAN;
     const pg = a ? (a.popGrowth ?? POP_GROWTH_MEAN) : POP_GROWTH_MEAN;
     raw.set(id, m * Math.exp(g + pg));
@@ -553,8 +553,8 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   // decays, so it has no window to truncate at — and the year itself, not asOf, is what δ^(age) is measured from).
   // era-1991-2026-r2/engine-4: `interstate_onset` (UCDP/PRIO type 2, 1946-2024) counts too. Seeding only from the
   // CoW/GML MID kinds left the memory dead at every modern origin — at as-of 2025 not one pair scored above 0.2 and
-  // RUS|UKR, IRN|ISR and CHN|IND read "no dispute ever", so z(rivalry) (+0.382 on mid_force) was a constant at the
-  // live forecast origin. The same union is applied in scripts/lib/fit.mjs, so the trace means one thing in the fit
+  // the era's three most active pairs all read "no dispute ever", so z(rivalry) (+0.382 on mid_force) was a
+  // constant at the live forecast origin. The same union is applied in scripts/lib/fit.mjs, so the trace means one thing in the fit
   // and one thing in the simulation.
   const dyadRecent = new Map();
   for (const e of events) if (DYADIC_DISPUTE.has(e.kind) && e.a && e.b && e.year <= asOf) {

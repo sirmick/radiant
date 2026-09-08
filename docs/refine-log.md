@@ -1056,7 +1056,12 @@ coverage bought at a price, and both prices are here rather than in a footnote.
 
 *Published slices (`public/*.json`) are deliberately not rebuilt: they are regenerated as one set at a re-baseline.*
 
-*Rule check: no country ids were added to `data/templates.yaml` or `src/engine/`. `exists_until`, `speculative`,
+*Rule check (amended by the checker, 2026-09-08): no country id was added to any covariate, column or branch. Five
+country ids DID enter `data/templates.yaml` as prose inside the `durable_label_filter` rejection and the
+`liberal_erosion` label note — the flapping cases the rejection is evidence about — which is the same use the
+`great_game` and `corridor_stake` entries already made of them; four pairs and two actor ids also entered two
+comments in `src/engine/core.js`, and the checker rewrote those two comments, since that file states it carries no
+country name anywhere. `exists_until`, `speculative`,
 `cinc_carried`, `at_war_ucdp`, `aid_recipient`, `dem_share_n`, `durable`/`flap`, `DYADIC_DISPUTE`, `corridorLastYear`,
 `expectedWithin`, `POP_GROWTH_MEAN` and `MAX_LOG_FACTOR` are generic fields, columns and constants. Every history row
 added to `data/corridors.yaml` and `data/territories.yaml` carries a `source:`; every new `load_bearing_for` and
