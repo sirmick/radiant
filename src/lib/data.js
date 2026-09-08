@@ -71,10 +71,10 @@ export function alliancesAt(al, year, hubOf) {
 }
 /** URL hash <-> view state: #y=1956&v=h_regime&a=EGY&l=territories,corridors */
 export function readHash() {
-  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); if (h.get('f')) o.asOf = +h.get('f'); if (h.get('h')) o.horizon = +h.get('h'); if (h.get('view')) o.view = h.get('view'); if (h.get('m')) o.mode = h.get('m'); return o; } catch { return {}; }
+  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); if (h.get('f')) o.asOf = +h.get('f'); if (h.get('h')) o.horizon = +h.get('h'); if (h.get('view')) o.view = h.get('view'); if (h.get('m')) o.mode = h.get('m'); if (h.get('to')) o.fcTo = +h.get('to'); return o; } catch { return {}; }
 }
-export function writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode }) {
-  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (horizon) h.set('h', String(horizon)); if (view) h.set('view', view); if (mode && mode !== '2d') h.set('m', mode); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
+export function writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode, fcTo }) {
+  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (horizon) h.set('h', String(horizon)); if (view) h.set('view', view); if (mode && mode !== '2d') h.set('m', mode); if (fcTo && fcTo !== 40) h.set('to', String(fcTo)); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
 }
 /** Regime level for an actor at a year: history panel, else the forecast's modal regime. */
 export function regimeAt(history, forecast, id, year) {
@@ -86,9 +86,15 @@ export function regimeAt(history, forecast, id, year) {
 }
 
 /** Pseudo-variables from the historical panel slice (public/history.json). */
+// Regime as a gradient: V-Dem's polyarchy placed on the four-category axis by the panel's own category medians (estimate:
+// polyarchy 0.085 / 0.281 / 0.649 / 0.843 at RoW 0 / 1 / 2 / 3, n = 9,018 / 4,751 / 2,707 / 2,508 actor-years), so 'position'
+// 0..3 reads as the category axis; after the seam the ensemble mean of the level is the same quantity.
+const GRADIENT_STOPS = [0.085, 0.281, 0.649, 0.843];
+export const regimePosition = (poly) => { if (poly == null) return null; const S = GRADIENT_STOPS; if (poly <= S[0]) return 0; if (poly >= S[3]) return 3; for (let k = 0; k < 3; k++) if (poly <= S[k + 1]) return k + (poly - S[k]) / (S[k + 1] - S[k]); return 3; };
+export const GRADIENT_VAR = { id: 'h_regime_gradient', group: 'history', label: 'Regime (gradient)', unit: 'V-Dem polyarchy on the 0 closed … 3 liberal axis; ensemble mean after the seam', kind: 'history', scope: 'actor', var: 'polyarchy', gradient: true, display: { map: true, format: '.2f' } };
 export function historyVariables(h) {
   if (!h) return [];
-  return Object.entries(h.vars).map(([id, spec]) => ({ id: `h_${id}`, group: 'history', label: spec.label, unit: spec.unit, kind: 'history', scope: 'actor', var: id, display: { map: true, format: spec.format, log: spec.log, categorical: spec.categorical, categoricalLabels: id === 'regime' ? REGIME_LABELS : id === 'intrastate' ? ['none', 'minor', 'war'] : spec.categorical ? ['no', 'yes'] : undefined } }));
+  return [GRADIENT_VAR, ...Object.entries(h.vars).map(([id, spec]) => ({ id: `h_${id}`, group: 'history', label: spec.label, unit: spec.unit, kind: 'history', scope: 'actor', var: id, display: { map: true, format: spec.format, log: spec.log, categorical: spec.categorical, categoricalLabels: id === 'regime' ? REGIME_LABELS : id === 'intrastate' ? ['none', 'minor', 'war'] : spec.categorical ? ['no', 'yes'] : undefined } }))];
 }
 /** Values per Natural-Earth id for a history variable at a year: live actors, historical entities mapped to their successor polygon when the successor is not itself live. */
 export function historyAt(h, variable, year) {
@@ -120,7 +126,9 @@ export function seriesAt(h, fc, variable, year) {
     for (const [id, a] of Object.entries(h.actors)) {
       if (!a.live[i]) continue;
       const key = liveIds.has(a.map_to) ? null : (a.map_to ?? id); if (!key || !a[v]) continue;
-      const [val, j] = lastAt(a[v], i); if (val == null) { out[key] = { value: null, year, actor: id, name: a.name, history: true }; continue; }
+      const [val, j] = lastAt(a[v], i);
+      if (variable.gradient) { if (val != null && i - j <= 2) { out[key] = { value: regimePosition(val), year, actor: id, name: a.name, history: true, observed: h.meta.y0 + j, stale: i - j, conf: fade(i - j), poly: val }; continue; } const [rg, jr] = a.regime ? lastAt(a.regime, i) : [null, -1]; if (rg != null) out[key] = { value: rg, year, actor: id, name: a.name, history: true, observed: h.meta.y0 + jr, stale: i - jr, conf: 0.85 * fade(i - jr), category: true }; continue; }
+      if (val == null) { out[key] = { value: null, year, actor: id, name: a.name, history: true }; continue; }
       out[key] = { value: val, year, actor: id, name: a.name, history: true, observed: h.meta.y0 + j, stale: i - j, conf: fade(i - j) };
     }
     return out;
@@ -129,6 +137,7 @@ export function seriesAt(h, fc, variable, year) {
   const k = Math.min(fc.meta.horizon - 1, Math.max(0, y - fc.meta.from));
   for (const [id, a] of Object.entries(fc.actors)) {
     const ha = h.actors[id]; const name = ha?.name ?? id;
+    if (variable.gradient && a.regime?.[k]) { const d = a.regime[k]; const mean = d.reduce((t, p, l) => t + p * l, 0); const H = -d.reduce((t, p) => t + (p > 0 ? p * Math.log2(p) : 0), 0); out[id] = { value: mean, year, actor: id, name, forecast: true, conf: Math.max(0.15, 1 - H / 2), dist: d, mean: true }; continue; }
     if (v === 'regime' && a.regime?.[k]) { const d = a.regime[k]; const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, conf: d[m], dist: d }; continue; }
     const tri = a[v]?.[k];
     if (Array.isArray(tri)) { out[id] = { value: tri[1], year, actor: id, name, forecast: true, lo: tri[0], hi: tri[2], conf: Math.max(0.5, 1 - 0.015 * (y - fc.meta.from)) }; continue; }
@@ -191,6 +200,7 @@ export const STATUS_COLORS = {
 
 /** Build a colour function for a variable given all actor values at the current year. */
 export function colorScale(variable, values) {
+  if (variable?.gradient) { const sc = d3.scaleLinear().domain([0, 1, 2, 3]).range(REGIME_COL4).interpolate(d3.interpolateLab).clamp(true); return { color: v => (Number.isFinite(v) ? sc(v) : null), kind: 'numeric', domain: [0, 3], log: false, ticks: [0, 1, 2, 3], scale: sc }; }
   const cat = variable?.display?.categorical;
   if (cat) {
     const REG4 = { 0: '#d95c4f', 1: '#e8a04f', 2: '#7fc4f0', 3: '#4f9be8' }, FLAG = { 0: '#2a3340', 1: '#ef6a5a', 2: '#b3261e' };

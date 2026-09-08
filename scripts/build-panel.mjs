@@ -76,6 +76,8 @@ sources.regime = 'V-Dem Regimes of the World via OWID (0 closed aut, 1 electoral
 }
 for (const r of readCsv(H + 'ert.csv')) { const y = +r.year, id = owid(r.country_text_id, y); if (id && r.v2x_polyarchy !== 'NA') put(id, 'polyarchy', y, +r.v2x_polyarchy); }
 sources.polyarchy = 'V-Dem v2x_polyarchy via ERT';
+for (const r of readCsv(H + 'libdem.csv')) { const y = +r.year, id = owid(r.code, y); if (id && r.libdem_vdem__estimate_best !== '') put(id, 'libdem', y, +r.libdem_vdem__estimate_best); }
+sources.libdem = 'V-Dem v2x_libdem via OWID (liberal-democracy-index)';
 
 // ---- energy by source (TWh), coal/oil production
 for (const r of readCsv(H + 'energy_hist.csv')) {

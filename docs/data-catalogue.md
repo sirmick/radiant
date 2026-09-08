@@ -15,6 +15,7 @@ Every dataset the model reads, where it comes from, what it covers, and what it 
 | Maddison Project (via OWID) | `maddison.csv` | 1820–2022 | `gdp_pc`, `gdp_growth`, `log_gdp_pc` | 2011 intl $; empire-wide series derived per package 5 |
 | OWID population | `population.csv` | 1816–2023 | `population` | HYDE / Gapminder / UN; modern-borders series dropped for empires (`successor_borders_until`) in favour of NMC `tpop` |
 | V-Dem Regimes of the World (via OWID) | `regime.csv` | 1789–2025 | `regime` 0–3, regime steps (events), regime templates | occupation years are not regime change (era-2 fix) |
+| V-Dem liberal democracy index (via OWID) | `libdem.csv` | 1789–2024 | `libdem` (display; the regime gradient's non-electoral complement) | OWID grapher `liberal-democracy-index` |
 | V-Dem Episodes of Regime Transformation | `ert.csv` | 1900–2024 | `polyarchy`; autocratization/democratization episode onsets (monitored templates) | GitHub vdeminstitute/ERT |
 | REIGN 2021.8 | `reign.csv` | 1950–2021 | leader age/tenure/military, leader exits, coups (Powell–Thyne columns), irregular exits (derived: exit within 2 months of a successful coup) | the shipped `irregular` column is empty |
 | UCDP/PRIO Armed Conflict 25.1 | `UcdpPrioConflict_v25_1.csv` | 1946–2024 | `intrastate` (intensity), `interstate_ucdp`, intrastate onsets | GW codes |

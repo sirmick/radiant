@@ -18,6 +18,7 @@
   const fcOnly = $derived(!actor && !!fcActor);
   const REG_COL = ['#d95c4f', '#e8a04f', '#7fc4f0', '#4f9be8'];
   const fcYearIdx = $derived(forecast ? Math.max(0, Math.min(forecast.meta.horizon - 1, Math.round(year) - forecast.meta.from)) : 0);
+  const FC_COLS = $derived([5, 10, 20, 40, 60, 100].filter(h => h <= (forecast?.meta.horizon ?? 40)));
   const atYears = (curve, ys) => ys.map(y => (curve && curve[y - 1] != null ? curve[y - 1] : null));
   const pastFc = $derived(forecast && history && forecast.meta.asOf < history.meta.y1);
   const actualCell = (id, t) => { if (!pastFc) return null; const y = actualWithin(news, id, t, forecast.meta.asOf, Math.min(forecast.meta.horizon, history.meta.y1 - forecast.meta.asOf)); return y; };
@@ -108,12 +109,12 @@
             <div class="tiny">{#each d as p, l}{#if p > 0.02}<span class="sw"><i style="background:{REG_COL[l]}"></i>{REGIME_LABELS[l]} {(p * 100).toFixed(0)}%</span>{/if}{/each}</div>
           {/if}
           <table class="fc"><tbody>
-            <tr class="muted tiny"><td>P(at least once) within</td><td>5y</td><td>10y</td><td>20y</td><td>40y</td>{#if pastFc}<td>actual</td>{/if}</tr>
+            <tr class="muted tiny"><td>P(at least once) within</td>{#each FC_COLS as h}<td>{h}y</td>{/each}{#if pastFc}<td>actual</td>{/if}</tr>
             {#each forecast.meta.templates.filter(t => t.unit === 'actor-year' && fcActor.p[t.id]) as t}
               {@const act = actualCell(actor.id, t.id)}
               <tr onclick={() => onPickVariable(`fc_${t.id}`)} class="clickable">
                 <td class="lbl">{t.label}</td>
-                {#each atYears(fcActor.p[t.id], [5, 10, 20, 40]) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}
+                {#each atYears(fcActor.p[t.id], FC_COLS) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}
                 {#if pastFc}<td class="val mono" style="color:{act ? 'var(--bad)' : act === false ? 'var(--good)' : 'inherit'}">{act ? act : act === false ? 'no' : '—'}</td>{/if}
               </tr>
             {/each}
@@ -159,9 +160,9 @@
           <div class="regbar">{#each d as p, l}{#if p > 0.005}<i style="width:{p * 100}%;background:{REG_COL[l]}"></i>{/if}{/each}</div>
         {/if}
         <table class="fc"><tbody>
-          <tr class="muted tiny"><td>P(at least once) within</td><td>5y</td><td>10y</td><td>20y</td><td>40y</td></tr>
+          <tr class="muted tiny"><td>P(at least once) within</td>{#each FC_COLS as h}<td>{h}y</td>{/each}</tr>
           {#each forecast.meta.templates.filter(t => t.unit === 'actor-year' && fcActor.p[t.id]) as t}
-            <tr onclick={() => onPickVariable(`fc_${t.id}`)} class="clickable"><td class="lbl">{t.label}</td>{#each atYears(fcActor.p[t.id], [5, 10, 20, 40]) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}</tr>
+            <tr onclick={() => onPickVariable(`fc_${t.id}`)} class="clickable"><td class="lbl">{t.label}</td>{#each atYears(fcActor.p[t.id], FC_COLS) as v}<td class="val mono">{v == null ? '—' : (v * 100).toFixed(0) + '%'}</td>{/each}</tr>
           {/each}
         </tbody></table>
         {/if}

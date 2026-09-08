@@ -5,7 +5,7 @@
 ## Layout
 
 - **Header** — variable picker (History · Forecast · Capabilities · modern groups), five one-click **views**, **2D / 3D** map toggle, ⋯ opens the advanced layer drawer, actor picker, build stamp.
-- **Timeline** — 1870→2066 slider with era ticks and a *now* marker; ▶ plays (space), ←/→ step one year. The shaded band is the active forecast window. **horizon** sets the window for forecast probabilities on the map (P within the next H years, given not yet). **forecast from** switches to an ensemble run as of a past year (1900, 1930, 1955, 1975, 1990, 2005) whose coefficients were refit on data up to that year — the map then shows the model's belief at that date over what actually happened, and the actor panel gains an *actual* column.
+- **Timeline** — 1870→forecast end slider (**to** picks +40/50/60/80/100 years past the forecast start, up to the loaded ensemble's horizon) with era ticks and a *now* marker; ▶ plays (space), ←/→ step one year. The shaded band is the active forecast window. **horizon** sets the window for forecast probabilities on the map (P within the next H years, given not yet). **forecast from** switches to an ensemble run as of a past year (1900, 1930, 1955, 1975, 1990, 2005) whose coefficients were refit on data up to that year — the map then shows the model's belief at that date over what actually happened, and the actor panel gains an *actual* column.
 - **Headline strip** — the year's top three recorded events (wars, nuclear, territory, corridors, coups, alliances); in forecast years, the three most surprising hazards, one per template.
 - **Map** (left) and **panel** (right, tabs: News · Detail · Territories · Corridors · Scores).
 
@@ -15,15 +15,17 @@ A view is a preset of fill variable + layers + field. One click each; the advanc
 
 | view | fill | field | vector layers |
 |---|---|---|---|
-| Politics (default) | regime, one series across the seam (see below) | — | territories, flags · regime glyphs |
+| Politics (default) | regime gradient, one series across the seam (see below) | — | territories, flags · regime glyphs |
 | Power | capability share | spheres of influence | great-power pacts, military presence |
 | Conflict | at war | belligerents (heat) | territories, corridors, conflict outlines and arcs |
 | Routes | primary energy | routes (open green / contested red, weighted by how many states each is load-bearing for) | corridors and chokepoints |
-| Forecast | regime, jumps the slider to 2036 if it is in the past | forecast hazard | flags · regime glyphs |
+| Forecast | regime gradient, jumps the slider to 2036 if it is in the past | forecast hazard | flags · regime glyphs |
 
 ## Across the seam
 
 A history variable is one series from 1870 to 2066; nothing switches palette at the forecast start. Before the panel ends it is the observed value, carried forward where a source stopped early and washed toward grey by staleness (GDP stops in 2022, so 2023–2025 are already a little pale). After it, regime is the *most likely* category in each of the 300 runs, painted in the same four colours with the modal share as saturation — a state at 90% keeps its colour, a 50/50 one goes grey. Continuous series the engine carries (GDP per head, information access) show the ensemble median with a slow wash by lead; the rest hold their last observation and fade. The hover card says which: "in 63% of runs", "23.4k median (20k–26.8k)", or "as of 2022". The ensemble mean of the regime level and its entropy remain as separate forecast variables.
+
+**Regime (gradient)**, the default fill, is V-Dem's continuous polyarchy score placed on the four-category axis: the panel's median polyarchy inside each Regimes-of-the-World category (0.085, 0.281, 0.649, 0.843 — an estimate, recorded in `src/lib/data.js`) maps to 0, 1, 2, 3 and the colour ramp passes through the four category colours at those points. Hungary drifts from blue toward orange instead of flipping; a state with a category but no polyarchy score (before 1900) is painted flat and washed. After the seam the same axis carries the ensemble mean of the level, washed by the entropy of the run distribution. The liberal democracy index (`libdem`) is on the panel as well for the non-electoral dimension.
 
 ## Renderer
 

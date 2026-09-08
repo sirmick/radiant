@@ -20,6 +20,9 @@ node scripts/fetch-nmc.mjs
 echo "== CoW Direct Contiguity v3.2 (1816-2016)"
 node scripts/fetch-contdir.mjs
 
+echo "== V-Dem liberal democracy index (OWID grapher)"
+[ -s data/raw/hist/libdem.csv ] || curl -sL -o data/raw/hist/libdem.csv "https://ourworldindata.org/grapher/liberal-democracy-index.csv?v=1&csvType=full&useColumnShortNames=true"
+
 echo "== World Bank WDI"
 node scripts/fetch-wb.mjs
 

@@ -62,3 +62,8 @@ While a workflow runs, commit only your own paths (`git add <paths>`), never `gi
 
 - A checker's standard: rebuild panel/events/fits and rerun the turn's backtest; the committed artefacts must reproduce byte-for-byte except timestamps.
 - Golden numbers live in `docs/refine-log.md` (baseline tables) and `scores/`.
+
+
+## Forecast length
+
+`node scripts/run-forward.mjs --runs 300 --horizon 100` builds the main ensemble a century long (`public/forecast.json`, ~4 MB); the viewer's **to** control offers +40…+100 years up to the loaded ensemble's horizon. Cost is linear in runs × years: 20 runs × 40 years take ~14 s on the dev machine including the fit, so 300 × 100 took 432 s (7 min). Past-as-of ensembles stay at 40 years, which is all the backtest can score.

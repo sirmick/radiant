@@ -8,6 +8,7 @@ const Y0 = 1870, y0i = Y0 - p.meta.y0;
 const VARS = {
   regime: { label: 'Regime (V-Dem RoW)', unit: '0 closed … 3 liberal', format: '.0f', categorical: [0, 1, 2, 3], dp: 0 },
   polyarchy: { label: 'Electoral democracy index', unit: 'V-Dem', format: '.2f', dp: 3 },
+  libdem: { label: 'Liberal democracy index', unit: 'V-Dem', format: '.2f', dp: 3 },
   gdp_pc: { label: 'GDP per capita (Maddison)', unit: '2011 intl $', format: '.3s', log: true, dp: 0 },
   population: { label: 'Population', unit: 'persons', format: '.3s', log: true, dp: 0 },
   cinc: { label: 'Capability share (CINC)', unit: 'share of world', format: '.2%', log: true, dp: 5 },
