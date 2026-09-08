@@ -1,7 +1,7 @@
 // Hazard-template fitting, factored out of scripts/fit-hazards.mjs so the backtest can refit at each as-of year.
 //
 // One fitter holds the design matrices (they are expensive: the dyad sample is every politically relevant pair-year
-// 1886–2001) and fits them as many times as asked. `maxYear` is the forecaster's information set: a row is kept only
+// 1816–2001, since data/contiguity.json carries CoW Direct Contiguity back to 1816) and fits them as many times as asked. `maxYear` is the forecaster's information set: a row is kept only
 // if the year its *label* is read from is at or before that year, so a fit at maxYear = asOf sees no outcome the
 // forecaster standing at asOf could not have seen. Standardisation means/sds are recomputed on each training subset —
 // a z-score whose mean came from the full sample is the same leak in a smaller coat.
