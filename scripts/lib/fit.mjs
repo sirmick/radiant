@@ -14,6 +14,7 @@ import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt,
 import { PRESENCE, presenceIndex, patronMap, patronFeatures, guarantorLevel, guarantorFall, hostLevel } from '../../src/engine/presence.js';
 import { IMPAIRED, RESOLVED, SPELL_UNITS, warSpells, territoryFirstYear, territoryStateAt, endYears, spellAge,
   warEndFeatures, contestFeatures, reopenFeatures } from '../../src/engine/termination.js';
+import { loadWaves, attainRows, WAVE_UNIT } from '../../src/engine/waves.js';
 
 export const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const mean = xs => xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -29,13 +30,14 @@ export function loadFitInputs() {
   const corridors = Y('data/corridors.yaml');
   const territories = Y('data/territories.yaml');
   const presence = Y('data/presence.yaml');
+  const waves = loadWaves(Y('data/waves.yaml')).waves;   // operator/capability-waves: the attainment template's own data layer
   const actors = loadActors(); const code = makeCodeMap(actors);
   const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
   const { pacts } = loadPacts(code);   // era-1991-2026-r2/data-7: CoW 3.03 + ATOP 5.1 + the dated accessions past it
-  return { panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence };
+  return { panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence, waves };
 }
 
-export function createFitter({ panel, events, templates, contiguity, contiguityFrom = null, pacts, corridors = [], territories = [], successors = {}, presence = null }) {
+export function createFitter({ panel, events, templates, contiguity, contiguityFrom = null, pacts, corridors = [], territories = [], successors = {}, presence = null, waves = [] }) {
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
@@ -334,8 +336,21 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
     return dyadFeatureRows(w0, w1).map(r => ({ unit: r.unit, year: r.year, feats: r.feats, y: hasDyadEvent(t.event, r.a, r.b, r.year) ? 1 : 0 }));
   }
   const RECORD_UNITS = new Set(Object.values(CORRIDOR_UNIT));
+  // operator/capability-waves: the attainment sample is built by src/engine/waves.js, the same call the engine's
+  // forward step makes, so the design matrix here and the hazard drawn there are one construction. The label is the
+  // dated sovereign_by history in data/waves.yaml rather than a row of data/events.json — the only template whose
+  // ground truth lives in the infrastructure layer rather than the event log.
+  function buildWaveRows(t) {
+    if (!waves.length) return [];
+    return attainRows({
+      waves, panel, window: t.window, lead: t.lead ?? 1,
+      allied: (a, b, y) => pacts.has(`${pairKey(a, b)}|${y}`),
+      ...(t.sample?.min_industry != null ? { minIndustry: t.sample.min_industry } : {}),
+    });
+  }
   const rowsOf = (t) =>
-    t.unit === SPELL_UNITS.war ? buildWarSpellRows(t)
+    t.unit === WAVE_UNIT ? buildWaveRows(t)
+    : t.unit === SPELL_UNITS.war ? buildWarSpellRows(t)
       : t.unit === SPELL_UNITS.territory ? buildTerritoryRows(t)
         : t.unit === SPELL_UNITS.record ? buildReopenRows(t)
           : t.unit === 'dyad-year' ? buildDyadRows(t)

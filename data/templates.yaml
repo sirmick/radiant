@@ -395,6 +395,36 @@ templates:
     sources: ["hand records: data/territories.yaml dated history, 57 territory records 1871-2026", "Huth 1996 (standing territorial disputes)"]
     notes: "Sample: 1,584 unsettled territory-years carrying 22 settlements 1871-2025. `settled` is the only resolved status: `annexed` is a change of holder and the records show it cycling (one record is annexed three times before it is settled once), so treating it as a resolution would score a conquest as an ending. This is the package's `contested_active` template widened, and the widening is forced: the literal sample — territory-years with status `contested_active` — is 21 rows and 0 endings, because that status only appears on live 2014-2026 records."
 
+  - id: wave_attain
+    label: An actor reaches sovereign production in a capability wave
+    unit: actor-wave-year              # operator/capability-waves (package 12); rows built by src/engine/waves.js
+    event: wave_attain                 # the label is the dated sovereign_by history in data/waves.yaml, not data/events.json
+    window: [1825, 2024]
+    lead: 1                            # a state-transition template: this year's state, next year's attainment
+    holdout_split: 1945                # the era split; test (a) in docs/escalations.md cuts by WAVE COHORT instead
+    sample:
+      min_industry: 0.0003             # the at-risk floor, src/engine/waves.js WAVES.min_industry — see notes
+    covariates:
+      - { var: wave_clock, transform: z, prior: 0.3, source: "estimate: a follower's hazard rises with the years since a technology existed — cost falls, tooling and trained people diffuse. log1p(years since introduced), so the rise is fast early and flat late" }
+      - { var: wave_industry, transform: z, prior: 0.8, source: "Gerschenkron 1962 (relative backwardness) read forwards: the industrial base is what a state builds a new capability ON. log10 share of world industrial output (panel industry_share)" }
+      - { var: log_gdp_pc, transform: z, prior: 0.4, source: "estimate: income buys the tooling and the engineers; the standard capability covariate everywhere else in this file" }
+      - { var: wave_access, transform: none, prior: 0.4, source: "estimate: a defence pact with an actor already sovereign IN THIS WAVE — the licence-production and technology-transfer channel (Gholz & Sapolsky 1999 on alliance production sharing)" }
+      - { var: wave_diffusion, transform: z, prior: 1.0, source: "estimate: the share of live actors already sovereign; the epidemic term of a diffusion model (Rogers 1962), and the term that makes late waves spread faster than early ones" }
+      - { var: at_war, transform: none, prior: 0.3, source: "estimate: war is the demand shock that funds a domestic line — the file's own clearest case is an actor attaining an armed-UAV capability in 2023 under invasion" }
+      - { var: great_power, transform: none, prior: 0.5, source: "estimate: great powers try to make everything themselves; the flag is frozen at as-of in the engine like every other use of it" }
+    # The SECOND half of operator/capability-waves, and it is a candidate, not a promotion. `capability.status: active`
+    # (or WAVE_CAPABILITY=1) makes the dyadic capability ratio and the termination layer read the wave-weighted share
+    # in place of CINC. Publishing the share as a forecast and letting it decide a war are two different claims, and
+    # only the first is on. The backtest is why: see `rejected` below.
+    capability:
+      status: candidate
+      switch: WAVE_CAPABILITY=1
+      reads: [cap_ratio, war_end, contest_settle, record_reopen]
+    rejected:                          # tested 2026-09-08 (operator/capability-waves); kept so the loop does not re-propose them unchanged
+      - { id: wave_capability_substitution, evidence: "Letting the wave-weighted share REPLACE cinc in the dyadic capability ratio (and in the termination layer's capability read). It passes the package's own outcome test and fails the model's promotion rule, which is the backtest. Package test (b), AUC of 'the stronger side prevails' over GML MID 2.2.1 decisive outcomes with capability read the year before the dispute: wave_share 0.603 against cinc 0.512 over 1900-2001 (n=715) and 0.612 against 0.517 over 1946-2001 (n=322) — both bars cleared, the post-1945 one by 0.095 against a required 0.02. The 1870-2010 +20y 100-run event backtest with WAVE_CAPABILITY=1 against the same run without it: mid_force AUC 0.810 -> 0.773 and skill +0.113 -> +0.074, mid_war AUC 0.780 -> 0.688 and skill +0.032 -> -0.016, interstate_onset AUC 0.889 -> 0.812. It is BETTER on everything that reads capability through the termination layer — record_reopen skill -0.300 -> -0.102, corridor_status +0.036 -> +0.085, chokepoint_status +0.037 -> +0.055, autocratic_closure -0.058 -> -0.052 — and worse on every dyadic template, which is where the ratio does its work. The diagnosis is in test (b)'s own decomposition: the raw industrial share alone scores 0.628 after 1945, ABOVE the wave portfolio built on it (0.612), so the mass and displacement weights add nothing over their own input on that test and the dyadic AUC they cost is real. The wave index beats CINC and loses to the industrial share it is made of. Re-propose with the mass coefficients fitted rather than hand-typed (the obvious form: mass as a per-wave coefficient estimated on dispute outcomes, which needs a wave-level outcome sample this model does not have), or with the ratio reading a blend rather than a swap. Reproduce with WAVE_CAPABILITY=1 on scripts/backtest.mjs; both runs are committed as scores/backtest-1870-2010-h20-all.json and scores/backtest-1870-2010-h20-all-abl-wave_capability_1.json." }
+    sources: ["Rogers, Diffusion of Innovations (1962)", "Gerschenkron, Economic Backwardness in Historical Perspective (1962)", "Bairoch, International Industrialization Levels 1750-1980 (1982)", "data/waves.yaml sovereign_by (dated, sourced per entry from 1900)"]
+    notes: "The attainment half of operator/capability-waves. AT-RISK FLOOR: the sample is the actor-wave-years where the actor holds at least 0.03% of world industrial output, which stands in for the wave ladder's level I (nothing in the data says who IMPORTS a technology). Without it the sample is 167,506 rows carrying 175 attainments (0.10%), nine tenths of them states that were never candidates; with it, 65,879 rows and 153 attainments (0.23%). The 22 attainments below the floor are structural misses, counted by scripts/analysis/waves.mjs and not hidden. Unit: the actor-wave-year while the wave exists and the actor is not yet sovereign; the actor leaves the sample the year it attains, and a wave it never attains inside the window is right-censored by the window rather than scored as a permanent non-attainer. Rows are built by src/engine/waves.js attainRows() and read from there by scripts/lib/fit.mjs AND by the engine's forward step, so the sample fitted and the sample simulated are one object. The test that decides it is test (a) in docs/escalations.md: fit on the waves introduced before 1900 and predict the 20th-century ones."
+
   - id: weaponization
     label: Nuclear latency to weapon
     unit: actor-year

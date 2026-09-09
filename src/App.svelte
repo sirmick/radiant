@@ -30,10 +30,10 @@
   let advanced = $state(false);
   const VIEWS = {
     politics: { label: 'Politics', layers: { territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false }, variable: () => 'h_regime_gradient' },
-    power:    { label: 'Power',    layers: { territories: false, corridors: false, alliances: 'major', conflicts: false, presence: true, field: 'influence', labels: false, glyphs: false }, variable: () => 'h_cinc' },
+    power:    { label: 'Power',    layers: { territories: false, corridors: false, alliances: 'major', conflicts: false, presence: true, field: 'influence', labels: false, glyphs: false }, variable: () => 'h_wave_share' },
     conflict: { label: 'Conflict', layers: { territories: true, corridors: true, alliances: false, conflicts: true, presence: false, field: 'conflict', labels: false, glyphs: false }, variable: () => 'h_at_war' },
     routes:   { label: 'Routes',   layers: { territories: false, corridors: true, alliances: false, conflicts: false, presence: false, field: 'routes', labels: false, glyphs: false }, variable: () => 'h_energy_twh' },
-    industry: { label: 'Industry', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'industry', labels: false, glyphs: 'industry', waves: true }, variable: () => 'h_industry' },
+    industry: { label: 'Industry', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'industry', labels: false, glyphs: 'industry', waves: true }, variable: () => 'h_wave_share' },
     forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'h_regime_gradient', year: 2036 },
   };
   function applyView(v) { view = v; const V = VIEWS[v]; if (V.year && year < 2026) year = V.year; for (const k of Object.keys(V.layers)) layers[k] = V.layers[k]; const want = V.variable(year); if (mapVars.some(x => x.id === want)) varId = want; }

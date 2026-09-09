@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
 import { createFitter } from './lib/fit.mjs';
+import { loadWaves, WAVE_UNIT } from '../src/engine/waves.js';
 import { createWorld, runEnsemble, CORRIDOR_UNIT, corridorFirstYear, corridorLastYear, corridorTransitionYears, corridorStateAt } from '../src/engine/core.js';
 import { IMPAIRED, RESOLVED, SPELL_UNITS, territoryFirstYear, territoryStateAt, endYears, warSpells } from '../src/engine/termination.js';
 
@@ -88,6 +89,7 @@ const templates = Y('data/templates.yaml').templates;
 const corridors = Y('data/corridors.yaml');
 const territories = Y('data/territories.yaml');
 const presence = Y('data/presence.yaml');
+const waves = loadWaves(Y('data/waves.yaml')).waves;   // operator/capability-waves (package 12)
 // era-1914-1945/corridors-7: CORRIDOR_DAMPENER=1 promotes the `corridor_stake` candidate on every template that
 // declares it, for one run, without editing the data — the fitter and the engine read the same templates array, so the
 // covariate is estimated and drawn on the same sample. Refit-only (the default): the published data/fits.json has no
@@ -108,7 +110,7 @@ const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const { pacts, meta: pactMeta } = loadPacts(code);
 
 // ---- rolling-origin coefficients: one fits object per as-of year, cached (the design matrices are built once).
-const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence }) : null;
+const fitter = REFIT ? createFitter({ panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence, waves }) : null;
 const fitCache = new Map();
 function fitsAt(asOf) {
   if (!REFIT) return fits;
@@ -209,14 +211,14 @@ function spearman(pairs) {
 const warYears = new Map();
 for (const [k, spans] of warSpells(events)) { const s = new Set(); for (const sp of spans) for (let y = sp.y0; y <= sp.y1; y++) s.add(y); warYears.set(k, s); }
 
-const results = []; const pooled = {}; const occPooled = {}; const occRank = { cinc: {}, pol_share: {} };
+const results = []; const pooled = {}; const occPooled = {}; const occRank = { cinc: {}, pol_share: {}, wave_share: {} };
 const occMcRows = { record_status_multiclass: [], territory_status_multiclass: [] };   // pooled multi-class rows across as-of years
 console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}, coefficients=${REFIT ? 'refit per as-of year' : 'full-sample (leaky)'}`);
 console.log(`alliance graph: ${pactMeta.source}; measured through ${pactMeta.atop_last}, carried from ${pactMeta.stale_from}\n`);
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
   const F = fitsAt(asOf);
-  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom, corridors, territories, presence });
+  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom, corridors, territories, presence, waves });
   const t0 = Date.now();
   // `state: true` adds the occupancy tracking. It reads the world after each step and consumes no random numbers, so
   // every event number below is bit-identical to a run without it (docs/escalations.md package 11, test (d)).
@@ -252,6 +254,12 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     // as-of date). That is reported as a row with n=0 and a reason, and kept out of pooled — not silently dropped.
     // operator/termination: a spell template whose engine mechanism is a candidate fires nothing, so scoring it would
     // report a dead template as a perfectly calibrated zero. Reported with n=0 and the reason instead.
+    // operator/capability-waves (package 12): the attainment template's unit is the actor-wave-year and its ground
+    // truth is the dated sovereign_by history in data/waves.yaml, not a row of data/events.json — so this backtest,
+    // which scores event kinds over actors, dyads and records, cannot express it. Its own test is (a) in
+    // docs/escalations.md, run by scripts/analysis/waves.mjs (fit on the pre-1900 waves, predict the 20th-century
+    // ones). Reported with n: 0 and that reason rather than dropped: silence about a template reads as a clean score.
+    if (t.unit === WAVE_UNIT) { row.templates[t.id] = { n: 0, reason: 'unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)', scored_years: covYears }; continue; }
     if (t.spell === 'war' && !warSpellsOn) { row.templates[t.id] = { n: 0, reason: 'the war-spell mechanism is a candidate (data/templates.yaml, dyadic war template `duration.status`); the engine fires no war_end. Run with WAR_DURATION_ON=1 to score it', scored_years: covYears }; continue; }
     const f = F[t.id];
     if (f?.status !== 'fitted') { row.templates[t.id] = { n: 0, reason: `no fit at as-of: ${f?.reason ?? 'unfitted'}`, fit_source: 'none (no training data at as-of)', fit_split: null, leaky: false, scored_years: covYears }; continue; }
@@ -437,13 +445,18 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     }
     const mc = (rows) => mcBrier(rows, horizon);
     // capability: does the ensemble's median share rank the world the way CoW does ten and twenty years out
+    // operator/capability-waves: each simulated capability series is graded against ITS OWN observed panel column —
+    // `cinc` and the projection-weighted share against CoW's index (pol_share is a reweighting of it), the wave share
+    // against the wave share the panel computes from the observed sovereign_by dates. Grading the wave index against
+    // CINC would score it on how well it reproduces the index it was built to replace.
+    const CAP_TRUTH = { cinc: 'cinc', pol_share: 'cinc', wave_share: 'wave_share' };
     const capRank = {};
-    for (const v of ['cinc', 'pol_share']) for (const k of [10, 20]) {
+    for (const [v, truthVar] of Object.entries(CAP_TRUTH)) for (const k of [10, 20]) {
       if (k > horizon) continue; const y = asOf + k;
       const ps = [];
-      for (const id of windowIds) { if (!liveAt(id, y)) continue; const truth = panel.actors[id]?.cinc?.[y - Y0]; const q = occ.actors[id]?.[v]?.[k - 1]; if (truth == null || !q) continue; ps.push([q[1], truth]); }
-      const rho = spearman(ps); (capRank[v] ??= {})[`k${k}`] = { n: ps.length, spearman: rho };
-      if (rho != null) ((occRank[v][`k${k}`] ??= [])).push(rho);
+      for (const id of windowIds) { if (!liveAt(id, y)) continue; const truth = panel.actors[id]?.[truthVar]?.[y - Y0]; const q = occ.actors[id]?.[v]?.[k - 1]; if (truth == null || !q) continue; ps.push([q[1], truth]); }
+      const rho = spearman(ps); (capRank[v] ??= {})[`k${k}`] = { n: ps.length, spearman: rho, truth: truthVar };
+      if (rho != null) ((occRank[v] ??= {})[`k${k}`] ??= []).push(rho);
     }
     const vars = {};
     for (const [v, a] of Object.entries(acc)) vars[v] = { ...occStat(a.all, { coverage: OCC_COVERAGE[v] ?? null, note: OCC_NOTE[v] }), by_lead: a.lead.map((x, i) => occStat(x, { k: i + 1 })).filter(x => x.n) };
@@ -587,7 +600,7 @@ for (const v of ['at_war', 'dyad_at_war']) {
 mkdirSync('scores', { recursive: true });
 // An ablation run is not the published run: the engine switches go into meta and into the filename, so a sweep can
 // never overwrite scores/backtest-<window>.json with a number that was produced under a different engine.
-const ENGINE_ENV = ['ENGINE_ABLATE', 'RIVALRY_DECAY', 'COALITION_ON', 'COALITION_P_JOIN', 'COALITION_RELEVANCE', 'CORRIDOR_DAMPENER', 'INFO_DIFFUSION', 'WAR_DURATION_ON']
+const ENGINE_ENV = ['ENGINE_ABLATE', 'RIVALRY_DECAY', 'COALITION_ON', 'COALITION_P_JOIN', 'COALITION_RELEVANCE', 'CORRIDOR_DAMPENER', 'INFO_DIFFUSION', 'WAR_DURATION_ON', 'WAVE_CAPABILITY']
   .filter(k => process.env[k] != null && process.env[k] !== '').map(k => `${k}=${process.env[k]}`);
 const slug = ENGINE_ENV.length ? '-abl-' + ENGINE_ENV.join(',').replace(/[^A-Za-z0-9.=,_-]/g, '').toLowerCase().replace(/[=,]/g, '_') : '';
 const out = { meta: { run: new Date().toISOString(), from: FROM, to: TO, step: STEP, horizon: H, runs: RUNS, skipDyads, refit: REFIT, fit_source: REFIT ? 'rolling-origin: refit per as-of year on labels ≤ as-of' : 'full-sample data/fits.json (leaks past the as-of date)', engine: { env: ENGINE_ENV, mechanisms: Object.fromEntries(templates.filter(t => t.unit === 'dyad-year').flatMap(t => [['duration', t.duration?.status], ['coalition', t.coalition?.status]].filter(([, v]) => v))) } }, byAsOf: results, pooled: summary, occupancy: occSummary };

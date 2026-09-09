@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run": "2026-09-08T23:22:44.895Z",
+  "run": "2026-09-09T00:05:25.035Z",
   "from": 1870,
   "to": 2010,
   "step": 10,
@@ -24,7 +24,7 @@
    "actors": 55,
    "window_actors": 58,
    "dyad_actors": 58,
-   "ms": 3009,
+   "ms": 3274,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -236,6 +236,11 @@
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
+     "scored_years": 20
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
      "scored_years": 20
     },
     "chokepoint_status": {
@@ -1676,21 +1681,37 @@
      "cinc": {
       "k10": {
        "n": 36,
-       "spearman": 0.978
+       "spearman": 0.978,
+       "truth": "cinc"
       },
       "k20": {
        "n": 34,
-       "spearman": 0.976
+       "spearman": 0.976,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 23,
-       "spearman": 0.943
+       "spearman": 0.943,
+       "truth": "cinc"
       },
       "k20": {
        "n": 22,
-       "spearman": 0.941
+       "spearman": 0.941,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 54,
+       "spearman": 0.845,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 50,
+       "spearman": 0.835,
+       "truth": "wave_share"
       }
      }
     },
@@ -1989,7 +2010,7 @@
    "actors": 54,
    "window_actors": 54,
    "dyad_actors": 54,
-   "ms": 2964,
+   "ms": 3296,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -2198,6 +2219,11 @@
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
+     "scored_years": 20
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
      "scored_years": 20
     },
     "chokepoint_status": {
@@ -3639,21 +3665,37 @@
      "cinc": {
       "k10": {
        "n": 35,
-       "spearman": 0.991
+       "spearman": 0.991,
+       "truth": "cinc"
       },
       "k20": {
        "n": 35,
-       "spearman": 0.987
+       "spearman": 0.987,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 24,
-       "spearman": 0.981
+       "spearman": 0.981,
+       "truth": "cinc"
       },
       "k20": {
        "n": 24,
-       "spearman": 0.974
+       "spearman": 0.974,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 50,
+       "spearman": 0.999,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 49,
+       "spearman": 0.859,
+       "truth": "wave_share"
       }
      }
     },
@@ -3947,7 +3989,7 @@
    "actors": 50,
    "window_actors": 57,
    "dyad_actors": 57,
-   "ms": 3692,
+   "ms": 4012,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -4157,6 +4199,11 @@
      "fit_source": "none (no training data at as-of)",
      "fit_split": null,
      "leaky": false,
+     "scored_years": 20
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
      "scored_years": 20
     },
     "chokepoint_status": {
@@ -5635,21 +5682,37 @@
      "cinc": {
       "k10": {
        "n": 38,
-       "spearman": 0.987
+       "spearman": 0.987,
+       "truth": "cinc"
       },
       "k20": {
        "n": 41,
-       "spearman": 0.961
+       "spearman": 0.961,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 30,
-       "spearman": 0.98
+       "spearman": 0.98,
+       "truth": "cinc"
       },
       "k20": {
        "n": 30,
-       "spearman": 0.972
+       "spearman": 0.972,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 49,
+       "spearman": 0.861,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 55,
+       "spearman": 0.888,
+       "truth": "wave_share"
       }
      }
     },
@@ -5942,7 +6005,7 @@
    "actors": 49,
    "window_actors": 66,
    "dyad_actors": 66,
-   "ms": 5270,
+   "ms": 5634,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -6168,6 +6231,11 @@
      "degenerate": [],
      "underpowered": true,
      "underpowered_reason": "events per estimated covariate 1.67 < 3"
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 15,
@@ -7645,21 +7713,37 @@
      "cinc": {
       "k10": {
        "n": 45,
-       "spearman": 0.979
+       "spearman": 0.979,
+       "truth": "cinc"
       },
       "k20": {
        "n": 54,
-       "spearman": 0.839
+       "spearman": 0.839,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 34,
-       "spearman": 0.993
+       "spearman": 0.993,
+       "truth": "cinc"
       },
       "k20": {
        "n": 32,
-       "spearman": 0.949
+       "spearman": 0.949,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 55,
+       "spearman": 0.966,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 61,
+       "spearman": 0.754,
+       "truth": "wave_share"
       }
      }
     },
@@ -7946,7 +8030,7 @@
    "actors": 55,
    "window_actors": 70,
    "dyad_actors": 70,
-   "ms": 5938,
+   "ms": 6304,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -8170,6 +8254,11 @@
      "epv": 3,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 16,
@@ -9644,21 +9733,37 @@
      "cinc": {
       "k10": {
        "n": 51,
-       "spearman": 0.862
+       "spearman": 0.862,
+       "truth": "cinc"
       },
       "k20": {
        "n": 55,
-       "spearman": 0.875
+       "spearman": 0.875,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 35,
-       "spearman": 0.928
+       "spearman": 0.928,
+       "truth": "cinc"
       },
       "k20": {
        "n": 35,
-       "spearman": 0.932
+       "spearman": 0.932,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 61,
+       "spearman": 0.772,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 65,
+       "spearman": 0.747,
+       "truth": "wave_share"
       }
      }
     },
@@ -9951,7 +10056,7 @@
    "actors": 61,
    "window_actors": 69,
    "dyad_actors": 69,
-   "ms": 7052,
+   "ms": 7525,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -10186,6 +10291,11 @@
      "epv": 3.6666666666666665,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 16,
@@ -11660,21 +11770,37 @@
      "cinc": {
       "k10": {
        "n": 63,
-       "spearman": 0.978
+       "spearman": 0.978,
+       "truth": "cinc"
       },
       "k20": {
        "n": 62,
-       "spearman": 0.949
+       "spearman": 0.949,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 49,
-       "spearman": 0.918
+       "spearman": 0.918,
+       "truth": "cinc"
       },
       "k20": {
        "n": 45,
-       "spearman": 0.89
+       "spearman": 0.89,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 65,
+       "spearman": 0.959,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 63,
+       "spearman": 0.862,
+       "truth": "wave_share"
       }
      }
     },
@@ -11982,7 +12108,7 @@
    "actors": 65,
    "window_actors": 84,
    "dyad_actors": 84,
-   "ms": 7400,
+   "ms": 7869,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -12218,6 +12344,11 @@
      "epv": 6.666666666666667,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 16,
@@ -13833,21 +13964,37 @@
      "cinc": {
       "k10": {
        "n": 61,
-       "spearman": 0.972
+       "spearman": 0.972,
+       "truth": "cinc"
       },
       "k20": {
        "n": 74,
-       "spearman": 0.831
+       "spearman": 0.831,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 54,
-       "spearman": 0.958
+       "spearman": 0.958,
+       "truth": "cinc"
       },
       "k20": {
        "n": 49,
-       "spearman": 0.946
+       "spearman": 0.946,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 63,
+       "spearman": 0.913,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 80,
+       "spearman": 0.832,
+       "truth": "wave_share"
       }
      }
     },
@@ -14134,7 +14281,7 @@
    "actors": 63,
    "window_actors": 113,
    "dyad_actors": 113,
-   "ms": 9237,
+   "ms": 9930,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -14376,6 +14523,11 @@
      "epv": 7.666666666666667,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 16,
@@ -16211,21 +16363,37 @@
      "cinc": {
       "k10": {
        "n": 75,
-       "spearman": 0.811
+       "spearman": 0.811,
+       "truth": "cinc"
       },
       "k20": {
        "n": 107,
-       "spearman": 0.728
+       "spearman": 0.728,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 39,
-       "spearman": 0.883
+       "spearman": 0.883,
+       "truth": "cinc"
       },
       "k20": {
        "n": 40,
-       "spearman": 0.862
+       "spearman": 0.862,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 80,
+       "spearman": 0.904,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 110,
+       "spearman": 0.799,
+       "truth": "wave_share"
       }
      }
     },
@@ -16522,7 +16690,7 @@
    "actors": 80,
    "window_actors": 137,
    "dyad_actors": 137,
-   "ms": 13255,
+   "ms": 14241,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -16794,6 +16962,11 @@
      "epv": 11.666666666666666,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 17,
@@ -18737,21 +18910,37 @@
      "cinc": {
       "k10": {
        "n": 106,
-       "spearman": 0.896
+       "spearman": 0.896,
+       "truth": "cinc"
       },
       "k20": {
        "n": 133,
-       "spearman": 0.816
+       "spearman": 0.816,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 65,
-       "spearman": 0.947
+       "spearman": 0.947,
+       "truth": "cinc"
       },
       "k20": {
        "n": 66,
-       "spearman": 0.949
+       "spearman": 0.949,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 110,
+       "spearman": 0.876,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 136,
+       "spearman": 0.794,
+       "truth": "wave_share"
       }
      }
     },
@@ -19062,7 +19251,7 @@
    "actors": 110,
    "window_actors": 158,
    "dyad_actors": 158,
-   "ms": 19033,
+   "ms": 20499,
    "templates": {
     "leader_exit": {
      "n": 158,
@@ -19444,6 +19633,11 @@
      "epv": 14,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 17,
@@ -21389,21 +21583,37 @@
      "cinc": {
       "k10": {
        "n": 134,
-       "spearman": 0.923
+       "spearman": 0.923,
+       "truth": "cinc"
       },
       "k20": {
        "n": 154,
-       "spearman": 0.831
+       "spearman": 0.831,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 99,
-       "spearman": 0.962
+       "spearman": 0.962,
+       "truth": "cinc"
       },
       "k20": {
        "n": 98,
-       "spearman": 0.935
+       "spearman": 0.935,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 136,
+       "spearman": 0.877,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 156,
+       "spearman": 0.814,
+       "truth": "wave_share"
       }
      }
     },
@@ -21690,7 +21900,7 @@
    "actors": 136,
    "window_actors": 165,
    "dyad_actors": 165,
-   "ms": 22224,
+   "ms": 23857,
    "templates": {
     "leader_exit": {
      "n": 165,
@@ -22089,6 +22299,11 @@
      "epv": 14.666666666666666,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 17,
@@ -24033,21 +24248,37 @@
      "cinc": {
       "k10": {
        "n": 154,
-       "spearman": 0.932
+       "spearman": 0.932,
+       "truth": "cinc"
       },
       "k20": {
        "n": 159,
-       "spearman": 0.9
+       "spearman": 0.9,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 125,
-       "spearman": 0.966
+       "spearman": 0.966,
+       "truth": "cinc"
       },
       "k20": {
        "n": 122,
-       "spearman": 0.957
+       "spearman": 0.957,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 156,
+       "spearman": 0.908,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 161,
+       "spearman": 0.847,
+       "truth": "wave_share"
       }
      }
     },
@@ -24336,7 +24567,7 @@
    "actors": 156,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 25299,
+   "ms": 27059,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -24729,6 +24960,11 @@
      "epv": 14.666666666666666,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 17,
@@ -26673,21 +26909,37 @@
      "cinc": {
       "k10": {
        "n": 161,
-       "spearman": 0.978
+       "spearman": 0.978,
+       "truth": "cinc"
       },
       "k20": {
        "n": 191,
-       "spearman": 0.897
+       "spearman": 0.897,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 139,
-       "spearman": 0.965
+       "spearman": 0.965,
+       "truth": "cinc"
       },
       "k20": {
        "n": 138,
-       "spearman": 0.947
+       "spearman": 0.947,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 161,
+       "spearman": 0.924,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 191,
+       "spearman": 0.762,
+       "truth": "wave_share"
       }
      }
     },
@@ -26982,7 +27234,7 @@
    "actors": 161,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 28354,
+   "ms": 30766,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -27372,6 +27624,11 @@
      "epv": 15.333333333333334,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 17,
@@ -29315,21 +29572,37 @@
      "cinc": {
       "k10": {
        "n": 191,
-       "spearman": 0.916
+       "spearman": 0.916,
+       "truth": "cinc"
       },
       "k20": {
        "n": 194,
-       "spearman": 0.913
+       "spearman": 0.913,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 136,
-       "spearman": 0.942
+       "spearman": 0.942,
+       "truth": "cinc"
       },
       "k20": {
        "n": 136,
-       "spearman": 0.923
+       "spearman": 0.923,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 191,
+       "spearman": 0.805,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 194,
+       "spearman": 0.772,
+       "truth": "wave_share"
       }
      }
     },
@@ -29630,7 +29903,7 @@
    "actors": 191,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 32483,
+   "ms": 35266,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -30006,6 +30279,11 @@
      "epv": 17.666666666666668,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 20
     },
     "chokepoint_status": {
      "n": 17,
@@ -31841,21 +32119,37 @@
      "cinc": {
       "k10": {
        "n": 194,
-       "spearman": 0.99
+       "spearman": 0.99,
+       "truth": "cinc"
       },
       "k20": {
        "n": 195,
-       "spearman": 0.971
+       "spearman": 0.971,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 168,
-       "spearman": 0.947
+       "spearman": 0.947,
+       "truth": "cinc"
       },
       "k20": {
        "n": 168,
-       "spearman": 0.925
+       "spearman": 0.925,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 194,
+       "spearman": 0.934,
+       "truth": "wave_share"
+      },
+      "k20": {
+       "n": 195,
+       "spearman": 0.877,
+       "truth": "wave_share"
       }
      }
     },
@@ -32094,7 +32388,7 @@
    "actors": 194,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 26817,
+   "ms": 28985,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -32436,6 +32730,11 @@
      "epv": 18.333333333333332,
      "n_degenerate": 0,
      "degenerate": []
+    },
+    "wave_attain": {
+     "n": 0,
+     "reason": "unit actor-wave-year: the label is the dated sovereign_by history in data/waves.yaml, not an event kind, so the event backtest cannot score it. Its test is scripts/analysis/waves.mjs, test (a)",
+     "scored_years": 15
     },
     "chokepoint_status": {
      "n": 17,
@@ -33731,13 +34030,22 @@
      "cinc": {
       "k10": {
        "n": 195,
-       "spearman": 0.986
+       "spearman": 0.986,
+       "truth": "cinc"
       }
      },
      "pol_share": {
       "k10": {
        "n": 157,
-       "spearman": 0.934
+       "spearman": 0.934,
+       "truth": "cinc"
+      }
+     },
+     "wave_share": {
+      "k10": {
+       "n": 195,
+       "spearman": 0.943,
+       "truth": "wave_share"
       }
      }
     },
@@ -36381,6 +36689,18 @@
     "mean_spearman": 0.936,
     "min": 0.862,
     "max": 0.974
+   },
+   "wave_share_k10": {
+    "as_of_rows": 15,
+    "mean_spearman": 0.899,
+    "min": 0.772,
+    "max": 0.999
+   },
+   "wave_share_k20": {
+    "as_of_rows": 14,
+    "mean_spearman": 0.817,
+    "min": 0.747,
+    "max": 0.888
    }
   },
   "coverage": {

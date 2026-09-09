@@ -28,6 +28,12 @@ const VARS = {
   hitech_exports: { label: 'High-tech exports', unit: 'current US$', format: '.3s', log: true, dp: 0 },
   rd_gdp: { label: 'R&D spending', unit: '% of GDP', format: '.2f', dp: 2 },
   milex: { label: 'Military expenditure (CoW)', unit: 'thousand US$', format: '.3s', log: true, dp: 0 },
+  // operator/capability-waves (package 12): capability as a portfolio of dated technology waves, and the industrial
+  // share it is weighted by. Both are simulated forward in the state block of every ensemble, so unlike `cinc` they
+  // do not freeze at the seam.
+  wave_share: { label: 'Capability share (waves)', unit: 'share of world', format: '.2%', log: true, dp: 5 },
+  wave_attained: { label: 'Waves attained', unit: 'displacement-weighted share of live waves', format: '.0%', dp: 3 },
+  industry_share: { label: 'Industrial base share', unit: 'share of world output', format: '.2%', log: true, dp: 5 },
 };
 const actors = loadActors();
 // ISO2 (for emoji flags) from the countrycode list; historical entities map to the successor's flag or none

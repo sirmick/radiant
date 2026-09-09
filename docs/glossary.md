@@ -32,6 +32,8 @@
 
 **Lifecycle** — `introduced` / `retired` / `successor` / `spans` on actors; `introduced` / `saturates` / `retired` on waves; `history` on corridors and territories.
 
+**Wave / mass / attainment** — a capability wave is a dated technology (`data/waves.yaml`); an actor **attains** it when it reaches sovereign production at scale (`sovereign_by`). A wave's **mass** coefficient in [0,1] says how much of its military value is production rate rather than possession, and is the exponent on the actor's share of world industrial output in the wave-weighted capability share (`src/engine/waves.js`).
+
 **Panel** — the actor-year table 1816–2025 (`data/panel.json`).
 
 **Presence** — where great-power forces sit: bases, garrisons, fleet areas, advisors, dated.

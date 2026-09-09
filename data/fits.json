@@ -1,6 +1,6 @@
 {
  "meta": {
-  "built": "2026-09-08T23:18:51.383Z"
+  "built": "2026-09-09T00:32:45.056Z"
  },
  "fits": {
   "leader_exit": {
@@ -132,7 +132,7 @@
     "brier": 0.14175456651378232,
     "base_rate_test": 0.17470288624787775
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "irregular_exit": {
@@ -350,7 +350,7 @@
     "brier": 0.0098672774417482,
     "base_rate_test": 0.009897610921501706
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "coup_attempt": {
@@ -662,7 +662,7 @@
     "brier": 0.019581683749813335,
     "base_rate_test": 0.020825916696333213
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "democratize_step": {
@@ -850,7 +850,7 @@
     "brier": 0.04025722683696644,
     "base_rate_test": 0.04252657911194497
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "democratic_deepening": {
@@ -1022,7 +1022,7 @@
     "brier": 0.015438159748803344,
     "base_rate_test": 0.01633045148895293
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "autocratic_closure": {
@@ -1282,7 +1282,7 @@
     "brier": 0.03512975244572349,
     "base_rate_test": 0.03586848223181667
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "intrastate_onset": {
@@ -1507,7 +1507,7 @@
     "brier": 0.04181389333964078,
     "base_rate_test": 0.046789989118607184
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_force": {
@@ -1711,7 +1711,7 @@
     "brier": 0.0069223666441854854,
     "base_rate_test": 0.007448325824636073
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "mid_war": {
@@ -1923,7 +1923,7 @@
     "brier": 0.0005016383384218484,
     "base_rate_test": 0.0004980643408571234
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "interstate_onset": {
@@ -2051,7 +2051,7 @@
     "brier": 0.00041384324345967994,
     "base_rate_test": 0.00040975769661540144
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "war_end": {
@@ -2273,7 +2273,7 @@
     "brier": 0.26401758774595435,
     "base_rate_test": 0.40425531914893614
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "intrastate_end": {
@@ -2402,7 +2402,7 @@
     "brier": 0.11620580121739164,
     "base_rate_test": 0.14891774891774892
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "record_reopen": {
@@ -2515,7 +2515,7 @@
     "brier": 0.15918956140012638,
     "base_rate_test": 0.14596273291925466
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "contest_settle": {
@@ -2696,7 +2696,140 @@
     "brier": 0.011953538390781972,
     "base_rate_test": 0.011956954962136309
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
+   "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
+  },
+  "wave_attain": {
+   "ablation": null,
+   "status": "fitted",
+   "unit": "actor-wave-year",
+   "event": "wave_attain",
+   "n": 65879,
+   "events": 153,
+   "base_rate": 0.0023224396241594437,
+   "window": [
+    1825,
+    2024
+   ],
+   "degenerate": [],
+   "epv": 21.857142857142858,
+   "trained_through": 2025,
+   "train_years": [
+    1826,
+    2025
+   ],
+   "intercept": -6.7551677502888285,
+   "coefs": {
+    "z(wave_clock)": {
+     "value": -0.25082880321897405,
+     "prior": 0.3
+    },
+    "z(wave_industry)": {
+     "value": 0.8698386136788012,
+     "prior": 0.8
+    },
+    "z(log_gdp_pc)": {
+     "value": -0.17586886445071734,
+     "prior": 0.4
+    },
+    "wave_access": {
+     "value": -0.7974095315484401,
+     "prior": 0.4
+    },
+    "z(wave_diffusion)": {
+     "value": 0.2540686918296409,
+     "prior": 1
+    },
+    "at_war": {
+     "value": 0.5692056767430957,
+     "prior": 0.3
+    },
+    "great_power": {
+     "value": 1.3900235938208956,
+     "prior": 0.5
+    }
+   },
+   "stats": {
+    "wave_clock": {
+     "mean": 3.853007150594772,
+     "sd": 1.1228323394764237
+    },
+    "wave_industry": {
+     "mean": -2.6266120505224007,
+     "sd": 0.5946760844616691
+    },
+    "log_gdp_pc": {
+     "mean": 9.231194013298829,
+     "sd": 1.0225769790842414
+    },
+    "wave_diffusion": {
+     "mean": 0.06091222211291233,
+     "sd": 0.03730847423257359
+    }
+   },
+   "auc_in": 0.9071947333741842,
+   "brier_in": 0.0022607156456401255,
+   "calibration": [
+    {
+     "pred": 0.0001839720876527979,
+     "obs": 0,
+     "n": 6587
+    },
+    {
+     "pred": 0.0003039345893670116,
+     "obs": 0,
+     "n": 6588
+    },
+    {
+     "pred": 0.00040458673935097494,
+     "obs": 0,
+     "n": 6588
+    },
+    {
+     "pred": 0.0005006409630359918,
+     "obs": 0,
+     "n": 6588
+    },
+    {
+     "pred": 0.0006410068686409353,
+     "obs": 0.00015179113539769278,
+     "n": 6588
+    },
+    {
+     "pred": 0.0008323512572653201,
+     "obs": 0.0004553734061930783,
+     "n": 6588
+    },
+    {
+     "pred": 0.0011130638105872172,
+     "obs": 0.0015179113539769277,
+     "n": 6588
+    },
+    {
+     "pred": 0.00154956906957289,
+     "obs": 0.0025804493017607772,
+     "n": 6588
+    },
+    {
+     "pred": 0.002243528180351789,
+     "obs": 0.0015179113539769277,
+     "n": 6588
+    },
+    {
+     "pred": 0.015451418075354094,
+     "obs": 0.01700060716454159,
+     "n": 6588
+    }
+   ],
+   "holdout": {
+    "split": 1945,
+    "n_train": 4927,
+    "n_test": 60952,
+    "auc": 0.6390824240830814,
+    "brier": 0.009782251956758945,
+    "base_rate_test": 0.0015750098438115237
+   },
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "weaponization": {
@@ -2859,7 +2992,7 @@
     "brier": 0.04883873759102884,
     "base_rate_test": 0.04690990320178704
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   },
   "corridor_status": {
@@ -3005,7 +3138,7 @@
     "brier": 0.0318777249291179,
     "base_rate_test": 0.03139217470427662
    },
-   "fitted": "2026-09-08",
+   "fitted": "2026-09-09",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71"
   }
  }

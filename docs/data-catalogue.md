@@ -52,7 +52,7 @@ Natural Earth 50m admin-0 countries, 10m disputed areas, the CHN point-of-view c
 | `data/actors.yaml` | modern snapshot: regime estimates, nuclear status, capability levels, chokepoint exposure |
 | `data/corridors.yaml`, `data/territories.yaml` | dated infrastructure and contested-territory records (see schema) |
 | `data/presence.yaml` | great-power bases, garrisons, fleet areas 1870–2026 |
-| `data/waves.yaml` | capability waves from steam to quantum |
+| `data/waves.yaml` | capability waves from steam to quantum: dated `sovereign_by` attainment per actor, a `mass` coefficient per wave (how much of its military value is production rate rather than possession) with a `mass_source`, and — for every wave introduced from 1900 — a `sovereign_source` per attainment entry, citation or `estimate`. 19 waves after operator/capability-waves added ballistic missiles, precision strike, stealth, armed drones and hypersonics |
 | `data/templates.yaml` | the generic hazard templates with priors, candidates, rejections, lifecycle records; a `retired:` list at the end |
 | `data/variables.yaml` | the viewer's variable registry; `model: false` marks display-only estimates |
 | `data/overrides.yaml` | values where datasets are silent (Taiwan, North Korea) |

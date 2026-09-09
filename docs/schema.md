@@ -208,6 +208,31 @@ A named set of overrides — latent means, hazard multipliers, parameter values 
 The engine (`src/engine/`) reads this, runs N worlds in a Worker, and writes results into typed arrays the UI queries: per-variable percentile bands by year, per-hazard firing-time histograms, per-territory controller frequencies by year, per-claim marginals, and a run×event bitmask for conditioning.
 
 
+## Capability waves (`data/waves.yaml`) — extended 2026-09-08 (`operator / capability-waves`)
+
+```yaml
+- id: precision_strike
+  introduced: 1972              # first sovereign producer's year; the wave does not exist before it
+  saturates: null               # every industrial state sovereign — the wave stops discriminating
+  retired: null                 # displaced as a capability; the weight decays with a 20-year half-life after it
+  diffusion: { median_years_to_S: 20, spread: 12 }   # also the displacement clock: half weight at +median years
+  mass: 0.75                    # REQUIRED. 0 = possession decides, 1 = production rate decides
+  mass_source: "estimate: ..."  # REQUIRED beside mass
+  sovereign_by:     { USA: 1972, RUS: 1975, ... }    # dated first sovereign production AT SCALE
+  sovereign_source: { USA: "Werrell 2003 ...", RUS: "estimate: ..." }   # REQUIRED per entry from `introduced` >= 1900
+```
+
+`src/engine/waves.js` `loadWaves()` fails the build on a wave with no `mass`/`mass_source`, and on any `sovereign_by`
+entry of a wave introduced in 1900 or later that has no `sovereign_source`. A value beginning `estimate` is a source: it
+says the date is the model's own judgement and names what it was judged on. Waves introduced before 1900 are covered by
+the file header's blanket note. `sovereign_source` is carried into `public/world.json` and shown in the map's ⬢ hover
+text, so a dated claim is never painted without the thing that dates it.
+
+The template unit `actor-wave-year` (`wave_attain`) is built from these histories by `attainRows()` in the same module,
+which `scripts/lib/fit.mjs` and `src/engine/core.js` both call. It is the one template whose ground truth lives in the
+infrastructure layer rather than `data/events.json`, which is why `scripts/backtest.mjs` reports it with `n: 0` and that
+reason instead of scoring it; its own test is `scripts/analysis/waves.mjs`.
+
 ## Military presence (`data/presence.yaml`) — added 2026-09-07
 
 Dated great-power stations: `{ actor, host | sea:<area>, name, kind: base|garrison|fleet|advisors, level 1–3, from, to|null, geometry: [lon, lat], source }`. `level` 1 = outpost/advisors, 2 = base or brigade-scale, 3 = fleet HQ / corps-scale / occupation. Entries whose `source` contains `operator` are the user's own observations and are drawn with emphasis and labelled unverified. Compiled to `public/presence.json` by `scripts/build-presence-slice.mjs`; consumed by the map's presence layer and the influence field, and, since 2026-09-07 (`operator / presence`, package 7), by the model. `src/engine/presence.js` is the only place these records become numbers and is imported by `scripts/build-panel.mjs`, `scripts/lib/fit.mjs` and `src/engine/core.js` at once. Two conventions it states: a station is present in year y iff `from <= y < to` (`to` is the year the presence *ended*, so a withdrawal is visible in the year the source dates it), and the layer's coverage claim is 1870-2026, outside which every derived column is null rather than zero. It produces the panel columns `presence_<POWER>` (for each power with at least `PRESENCE.min_hosts` distinct land hosts), `presence_any`, `presence_change` (some power's level on this actor fell inside the last 3 years) and `troops_usa_host` (Troopdata, the measured series the 0-3 ordinal is calibrated against); the dyad features `patron_presence` and `patron_presence_rival`; and the record-year features `guarantor_presence` (the largest per-power *sum* of station levels within 1,500 km of the record or on one of its transit states - a sum, because the maximum of a 1-3 ordinal saturates and no withdrawal can lower it while one other station remains) and `guarantor_withdrawal` (that weight fell inside the last 3 years), which is the only one promoted. The layer is **frozen at as-of in the engine**, like the alliance and border graphs, while its recency terms still age against the simulated year.
@@ -230,12 +255,15 @@ Everything above answers "when does this event first fire inside the horizon". `
 
 ```
 state.actors[id] = { live, at_war, intrastate, intrastate_war, occupied,   // P per year offset k (null = zero in every run)
-                     cinc: [[p10,p50,p90] per k], pol_share: [[p10,p50,p90] per k] }
+                     cinc: [[p10,p50,p90] per k], pol_share: [...],           // two capability shares...
+                     wave_share: [...], wave_attained: [...], industry_share: [...] }   // ...and the wave layer's three
 state.dyads["A|B"] = [P(the pair is at war during year k)]                 // only pairs whose peak year is >= meta.state threshold
 state.records[id]  = { kind, status: [{ word: P } per k] }                 // corridors, chokepoints and territories alike
 ```
 
 `k` is the 0-based offset from `meta.from`. `meta.state.vars` declares every series with a `simulated` flag and a note, because two of them are **not forecasts and must not be read as one**: `cinc` is CoW's index as the engine *carries* it (nothing in `stepYear` rewrites it, so the p10–p90 band is degenerate and the series is the as-of ranking held still — `pol_share`, which `src/engine/polarity.js` advances by each actor's own simulated growth, is the one that moves), and `occupied` is the as-of value held still because occupation is data in this model rather than a hazard. `intrastate_war` carries only the level-2 spells the world entered with: the onset template has no intensity, so the engine writes level 1 and never 2. `meta.state.vars` also carries the dyad threshold and how many pairs fell below it, so a missing pair is a stated omission rather than a silent zero.
+
+`wave_share`, `wave_attained` and `industry_share` joined the block on 2026-09-08 (`operator / capability-waves`, package 12) and are all `simulated: true`. `wave_share` is capability as a portfolio of dated technology waves (`src/engine/waves.js`) rather than CoW's six-indicator index; unlike `cinc` its p10–p90 band is genuinely wide, because the fitted `wave_attain` hazard makes an actor sovereign in a wave in some runs and not in others. `wave_attained` is the attainment half alone before any mass discount, and `industry_share` is the industrial mass the waves are weighted by, carried forward by each actor's own simulated output and population growth. `meta.waves` says how many waves the run carried and whether the wave share also **replaced** `cinc` in the dyadic capability ratio (`WAVE_CAPABILITY=1`, or `capability.status: active` on the `wave_attain` template) — publishing the series and letting it decide a war are two switches, and only the first is on by default.
 
 The block is produced by `runEnsemble(..., { state: true })` in `src/engine/core.js`. It reads the world after each `stepYear` and **consumes no random numbers**, so a run with it on is bit-identical to a run with it off — which is what lets the backtest turn it on permanently without moving a single event number.
 

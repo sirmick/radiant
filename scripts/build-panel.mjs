@@ -9,7 +9,8 @@
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, makeOwidMap, isLive, loadPacts } from './lib/hist.mjs';
 import { MODERN_FROM, resolveFetch, describeSource, snapshotColumns, snapshotExtras } from './lib/modern.mjs';
-import { COMPONENTS, MISSING_COMPONENTS, SPLICE_YEARS, compositeShares, componentLevels, spliceComposite, validate } from './lib/capability.mjs';
+import { COMPONENTS, MISSING_COMPONENTS, SPLICE_YEARS, MAX_LOG_FACTOR, compositeShares, componentLevels, spliceComposite, validate } from './lib/capability.mjs';
+import { WAVES, loadWaves, waveShares, waveWeight } from '../src/engine/waves.js';
 import { POLARITY, normalise, projectionShares, smoothShares, classify, eraFlags, conditionality, greatGame, fitLogistic, fitDiffusionRate } from '../src/engine/polarity.js';
 import { PRESENCE, presenceIndex, covered, powerLevel, hostLevel, lastFall } from '../src/engine/presence.js';
 
@@ -707,6 +708,124 @@ for (const [id, vars] of Object.entries(panel)) {
   sources.cinc_spliced = `0 where cinc is CoW NMC's own measurement, 1 where it is the modern composite spliced onto it (scripts/lib/capability.mjs); composite vs CINC 1990-${nmcLast} r=${check.r?.toFixed(3)} (n=${check.n}), log r=${check.r_log?.toFixed(3)}. The extension is used for RANKS and RATIOS, so the acceptance test is not the pooled level correlation alone (era-1991-2026-r2/statistics-7): worst-year Spearman ${check.rho_min?.toFixed(3)} (${check.rho_min_year}), and the largest displacement of a CINC top-20 actor in the composite's own ranking is ${check.rank_shift_top20} places (${check.rank_shift_actor}, ${check.rank_shift_year}) — the composite drops CINC's military-personnel indicator and stands GDP at PPP in for iron and steel, which moves conscript-heavy poor states down and small rich states up`;
   sources.cinc_carried = `derived: years since the actor's cinc was last measured. 0 for a CoW NMC value and for a composite-extended one; > 0 where the actor is live past ${nmcLast} but the composite cannot reach it (fewer than the required components in the World Bank / OWID series, which are not published for sanctioned or unrecognised states) or its splice factor is too far from 1 to be a level correction, so its last CINC-scale value is carried instead of the actor vanishing from the column (era-1991-2026-r2/data-3, statistics-7). Actors whose factor was refused: ${refused.join(', ') || 'none'}`;
   console.log(`capability composite: r=${check.r?.toFixed(4)} log r=${check.r_log?.toFixed(4)} rho_min=${check.rho_min?.toFixed(4)} (${check.rho_min_year}) top20 rank shift ${check.rank_shift_top20} (${check.rank_shift_actor} ${check.rank_shift_year}) against CINC 1990-${nmcLast} (n=${check.n} actor-years); ${Object.keys(factor).length} actors spliced, ${refused.length} refused for |log factor| > ln2 (${refused.join(',') || 'none'}); extended ${ext.join(' ') || 'nothing'} (n extended + n carried)`);
+}
+
+// ---- the industrial base and the capability-wave share (operator / capability-waves, package 12).
+// `industry_share` is the actor's share of world industrial output — the quantity every wave's `mass` coefficient is
+// an exponent on. No single source spans 1816-2025, so it is built in two stages, and the reason for two rather than
+// a chain of per-actor splice factors is a bug this replaced: a share computed inside ONE source's coverage is a
+// share of that source's world, and the World Bank manufacturing series covers 19 live actors in 1960 against NMC's
+// 107, so a naive splice handed one of those 19 a sixth of world industry.
+//
+//   stage 1, the base.  Iron and steel production (CoW NMC 1816-2022) where observed; else primary energy
+//     consumption (NMC) rescaled onto the steel scale by that year's median ratio over the actors that have both;
+//     else electricity generation (OWID/EI, which is the only one of the three still published in 2023-24), rescaled
+//     the same way. Normalised to a share of the live world.
+//   stage 2, the modern measure.  Where World Bank manufacturing value added is published (1960-2024), the actors it
+//     covers redistribute THEIR OWN stage-1 aggregate among themselves in proportion to it. An actor the series does
+//     not cover keeps its stage-1 share, and the world still sums to one, so partial coverage cannot inflate anyone.
+//   then a carry.  A live actor-year with none of the four is carried from that actor's last computed share, and the
+//     number of years carried is written to `industry_share_carried` — the same staleness convention `cinc_carried`
+//     uses. This is not cosmetic: the World Bank publishes US manufacturing value added only to 2021, so without the
+//     carry the largest military spender in the world has an industrial base of zero in 2023 and 2024, and every
+//     mass-weighted wave reads it as a non-producer (the package names UNIDO or BEA as the real fix).
+{
+  const liveAt = (id, y) => panel[id]?.live?.[y - Y0] === 1;
+  const val = (id, v, y) => { const x = panel[id]?.[v]?.[y - Y0]; return x == null || !(x >= 0) ? null : x; };
+  // year -> median ratio of `hi` to `lo` over the live actors that report both and are positive in each
+  const scale = (hi, lo) => {
+    const out = new Map();
+    for (const y of YEARS) {
+      const rs = [];
+      for (const id of Object.keys(panel)) { if (!liveAt(id, y)) continue; const a = val(id, hi, y), b = val(id, lo, y); if (a > 0 && b > 0) rs.push(a / b); }
+      rs.sort((a, b) => a - b);
+      if (rs.length >= 3) out.set(y, rs[Math.floor(rs.length / 2)]);
+    }
+    // a year with too few both-observed actors takes the nearest year that has one
+    const ys = [...out.keys()].sort((a, b) => a - b);
+    return (y) => { if (out.has(y)) return out.get(y); let best = null; for (const z of ys) if (best == null || Math.abs(z - y) < Math.abs(best - y)) best = z; return best == null ? null : out.get(best); };
+  };
+  const kEnergy = scale('irst', 'energy_nmc'), kElec = scale('energy_nmc', 'electricity_generation');
+  const MANUF_CARRY = 5;     // years a block member may keep its last relative weight before it drops out
+  const lastR = new Map(); let manufCarried = 0;
+  const share = new Map();   // year -> Map(id -> share), stage 1 then stage 2
+  for (const y of YEARS) {
+    const base = new Map(); let tot = 0;
+    for (const id of Object.keys(panel)) {
+      if (!liveAt(id, y)) continue;
+      const st = val(id, 'irst', y);
+      let v = st;
+      if (v == null) { const e = val(id, 'energy_nmc', y), k = kEnergy(y); if (e != null && k != null) v = e * k; }
+      if (v == null) { const g = val(id, 'electricity_generation', y), k1 = kElec(y), k2 = kEnergy(y); if (g != null && k1 != null && k2 != null) v = g * k1 * k2; }
+      if (v == null) continue;
+      base.set(id, v); tot += v;
+    }
+    if (!(tot > 0)) continue;
+    const s = new Map(); for (const [id, v] of base) s.set(id, v / tot);
+    // stage 2: the covered block redistributes its own aggregate by manufacturing value added.
+    // What is carried between years is each member's RELATIVE weight inside the block, not its dollar figure: a
+    // stale nominal value understates a growing economy, a stale share does not. The World Bank stops publishing US
+    // manufacturing value added after 2021 while it keeps publishing everyone else's, and without this the largest
+    // manufacturer in the OECD leaves the block in 2022 and its share falls from 17% to 4% in one year on a source
+    // seam. MANUF_CARRY bounds how long a member may be carried before it drops out for real.
+    const obs = [...s.keys()].filter(id => val(id, 'manuf_va', y) > 0);
+    if (obs.length >= 2) {
+      let mtot = 0; for (const id of obs) mtot += val(id, 'manuf_va', y);
+      for (const id of obs) lastR.set(id, { y, r: val(id, 'manuf_va', y) / mtot });
+    }
+    const block = [...s.keys()].filter(id => { const L = lastR.get(id); return L && y - L.y <= MANUF_CARRY; });
+    if (block.length >= 2) {
+      let agg = 0, rtot = 0;
+      for (const id of block) { agg += s.get(id); rtot += lastR.get(id).r; }
+      if (agg > 0 && rtot > 0) for (const id of block) { s.set(id, agg * lastR.get(id).r / rtot); if (y - lastR.get(id).y > 0) manufCarried++; }
+    }
+    share.set(y, s);
+  }
+  // the carry, then renormalise so each year is still a share of one
+  let carried = 0, nz = 0, tot = 0;
+  const last = new Map();   // id -> { y, v }
+  for (const y of YEARS) {
+    const s = share.get(y) ?? new Map();
+    const row = new Map();
+    for (const id of Object.keys(panel)) {
+      if (!liveAt(id, y)) continue;
+      const v = s.get(id);
+      if (v != null) { last.set(id, { y, v }); row.set(id, { v, age: 0 }); }
+      else { const L = last.get(id); row.set(id, L ? { v: L.v, age: y - L.y } : { v: 0, age: 0 }); }
+    }
+    let sum = 0; for (const r of row.values()) sum += r.v;
+    for (const [id, r] of row) {
+      const x = sum > 0 ? r.v / sum : 0;
+      put(id, 'industry_share', y, +x.toFixed(9)); put(id, 'industry_share_carried', y, r.age);
+      tot++; if (x > 0) nz++; if (r.age > 0) carried++;
+    }
+    share.set(y, new Map([...row].map(([id, r]) => [id, sum > 0 ? r.v / sum : 0])));
+  }
+  sources.industry_share = "derived (operator/capability-waves): the actor's share of world industrial output among live actors. Stage 1 is CoW NMC iron and steel where observed, else NMC primary energy, else OWID/EI electricity generation, each rescaled onto the steel scale by that year's median ratio over the actors reporting both, and normalised to a world share. Stage 2 redistributes the World Bank manufacturing-value-added block's OWN stage-1 aggregate among the actors that series covers (1960-2024), so partial coverage cannot inflate a covered actor. A live actor-year with none of the four carries its last computed share and records the age in industry_share_carried";
+  sources.industry_share_carried = 'derived: years since industry_share was last computed from a source. > 0 means the share is carried — the World Bank publishes US manufacturing value added only through 2021 and CoW NMC ends in 2022, so the largest economies are carried in 2023-2025 (the package names UNIDO or BEA as the fix)';
+
+  // the wave layer itself. `wave_share` is the wave-weighted capability share computed by src/engine/waves.js from the
+  // OBSERVED attainment dates in data/waves.yaml: the series test (b) scores against CINC and the value the engine
+  // seeds its forward attainment from. `wave_attained` is the attainment half on its own, before any mass discount.
+  const waveDoc = Y('data/waves.yaml');
+  const { waves: WAVE_LIST } = loadWaves(waveDoc);
+  const attainedAt = (id, wid, y) => { const w = WAVE_LIST.find(x => x.id === wid); const s = w?.sovereign_by?.[id]; return s != null && s <= y; };
+  for (const y of YEARS) {
+    const ids = Object.keys(panel).filter(id => liveAt(id, y));
+    if (!ids.length) continue;
+    const ind = (id) => share.get(y)?.get(id) ?? 0;
+    const shares = waveShares({ waves: WAVE_LIST, year: y, ids, attained: (id, wid) => attainedAt(id, wid, y), industry: ind });
+    for (const [id, v] of shares) put(id, 'wave_share', y, +v.toFixed(9));
+    const active = WAVE_LIST.filter(w => w.introduced != null && w.introduced <= y);
+    const wt = active.map(w => waveWeight(w, y)); const tw = wt.reduce((a, b) => a + b, 0);
+    if (tw > 0) for (const id of ids) {
+      let acc = 0; active.forEach((w, i) => { if (attainedAt(id, w.id, y)) acc += wt[i]; });
+      put(id, 'wave_attained', y, +(acc / tw).toFixed(6));
+    }
+  }
+  sources.wave_share = `derived (operator/capability-waves): the wave-weighted capability share — sum over the waves alive in the year of weight(t) x attained x industry_share^mass, plus ${WAVES.base_weight} x industry_share for the capability no coded wave carries, normalised over live actors (src/engine/waves.js). Attainment here is the observed sovereign_by dates in data/waves.yaml; forward in the engine it is the fitted wave_attain hazard`;
+  sources.wave_attained = 'derived: the displacement-weighted fraction of the waves alive in the year that the actor is sovereign in, before any mass discount (src/engine/waves.js waveWeight)';
+  console.log(`waves: ${WAVE_LIST.length} waves; industry_share non-zero in ${nz}/${tot} live actor-years, ${carried} carried whole, ${manufCarried} manufacturing weights carried; wave_share written`);
 }
 
 // ---- derived world state: polarity, the hegemon and the eras (operator / derived-polarity, package 9).

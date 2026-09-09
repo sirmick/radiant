@@ -27,10 +27,13 @@ npm run backtest                    # = backtest.mjs --from 1950 --to 2000 --ste
 node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all     # the baseline file the loop compares against
    --no-refit                       # full-sample coefficients (leaks; for comparison only)
    --universe modeled               # simulate only the 64 modelled actors
+ENGINE_ABLATE=waves node scripts/backtest.mjs ...          # capability waves out of the world entirely (reproduces the pre-package stream)
+WAVE_CAPABILITY=1 node scripts/backtest.mjs ...            # ...and the candidate: the dyadic capability ratio reads the wave share, not CINC
+node scripts/analysis/waves.mjs                            # the three tests that decided operator/capability-waves (a), (b), (c)
 ```
 Output: `scores/backtest-<from>-<to>-h<H>-<universe>[-norefit].json` with `byAsOf[]` rows (n, expected, observed, Brier, AUC, `auc_at_risk`, `n_at_risk`, `fit_source`, `underpowered`) and `pooled`. Ground truth is scored only inside each dataset's window.
 
-Every run also carries an **occupancy** score (`operator / occupancy`, 2026-09-08): the event score above grades *first occurrence within the horizon*, which cannot see whether the simulated process is still running twenty years later. The occupancy score grades the **state each year** — P(at war), P(internal armed conflict ≥ 1 and ≥ 2), P(occupied), the dyadic war-years, and the corridor/chokepoint/territory status layer (binary "impaired" plus the multi-class distribution) — as a Brier score against the panel and the record histories, per lead year k = 1…H and pooled, with the same base-rate skill, plus the Spearman rank correlation of the ensemble's median capability share against CoW's at k = 10 and 20. It lands in `byAsOf[].occupancy` and top-level `occupancy`; the console prints, per as-of year, the lead years where **the simulated war occupancy exceeds the panel's** (the hot-process diagnosis). Turning it on moves no event number: the tracking reads state and draws no random numbers.
+Every run also carries an **occupancy** score (`operator / occupancy`, 2026-09-08): the event score above grades *first occurrence within the horizon*, which cannot see whether the simulated process is still running twenty years later. The occupancy score grades the **state each year** — P(at war), P(internal armed conflict ≥ 1 and ≥ 2), P(occupied), the dyadic war-years, and the corridor/chokepoint/territory status layer (binary "impaired" plus the multi-class distribution) — as a Brier score against the panel and the record histories, per lead year k = 1…H and pooled, with the same base-rate skill, plus the Spearman rank correlation of the ensemble's median capability share against the panel's at k = 10 and 20 — for `cinc` and `pol_share` against CoW's index and, since 2026-09-08 (`operator / capability-waves`), for `wave_share` against the panel's own wave-weighted share, because grading the wave index against CINC would score it on how well it reproduces the index it replaces. It lands in `byAsOf[].occupancy` and top-level `occupancy`; the console prints, per as-of year, the lead years where **the simulated war occupancy exceeds the panel's** (the hot-process diagnosis). Turning it on moves no event number: the tracking reads state and draws no random numbers.
 
 ## Forecast
 
@@ -76,3 +79,5 @@ node scripts/build-scores-slice.mjs && npx vite build
 ```
 
 Every ensemble carries the `state` (occupancy) block described in `docs/schema.md`; it is what the Conflict and Routes views paint after the seam, so a rebuild that skips these leaves those views frozen at the last record.
+
+Size: the `state` block took `public/forecast.json` from 4.07 to 5.94 MB at 300 x 100 when it landed, and the three capability-wave series (`wave_share`, `wave_attained`, `industry_share`, `operator/capability-waves`) took it to 7.62 MB. The main run is 513 s on the dev machine.

@@ -4,8 +4,9 @@
 // forecast knows nothing after its own date. Every run also updates public/forecasts.json, the index the UI reads.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
-import { createWorld, runEnsemble } from '../src/engine/core.js';
+import { createWorld, runEnsemble, waveCapabilityOn } from '../src/engine/core.js';
 import { createFitter, loadFitInputs } from './lib/fit.mjs';
+import { loadWaves } from '../src/engine/waves.js';
 import { existsSync } from 'node:fs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
@@ -25,6 +26,7 @@ const presence = Y('data/presence.yaml');   // operator/presence: the dyadic pat
 // returned 0 for every dyad, and meta.templates still advertised all four record templates as simulated.
 const corridors = Y('data/corridors.yaml');
 const territories = Y('data/territories.yaml');
+const waves = loadWaves(Y('data/waves.yaml')).waves;   // operator/capability-waves (package 12)
 const actors = loadActors(); const code = makeCodeMap(actors);
 const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
@@ -42,7 +44,7 @@ if (asOf < panel.meta.y1) {   // honest past forecast: coefficients from labels 
   fitSource = `refit on labels ≤ ${asOf}`;
 }
 const OUT = arg('out', asOf === panel.meta.y1 ? 'public/forecast.json' : `public/forecast-${asOf}.json`);
-const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom });
+const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves });
 const t0 = Date.now();
 const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, track: true, state: true });
 const w0 = make(); const ids = Object.keys(w0.actors);
@@ -92,10 +94,21 @@ out.meta.state = {
     { id: 'occupied', unit: 'actor-year', label: 'P(occupied)', simulated: false, note: 'carried from the panel at as-of — occupation is data in this model, not a hazard (docs/system.md), so this is the as-of value held still, not a forecast' },
     { id: 'cinc', unit: 'actor-year', label: 'CoW capability share, p10 / p50 / p90 over runs', simulated: false, note: 'nothing in the engine rewrites cinc: this is the as-of value held still for the whole horizon, so the band is degenerate and the series is the as-of ranking, not a forecast' },
     { id: 'pol_share', unit: 'actor-year', label: 'Projection-weighted capability share, p10 / p50 / p90 over runs', simulated: true, note: 'src/engine/polarity.js — the share stepPolarity advances by each actor’s own simulated output and population growth, and the one the derived era flags read' },
+    { id: 'wave_share', unit: 'actor-year', label: 'Wave-weighted capability share, p10 / p50 / p90 over runs', simulated: true, note: 'operator/capability-waves (package 12) — capability as a portfolio of dated technology waves rather than CoW\u2019s steel-energy-soldiers index (src/engine/waves.js). Two things move it forward and both are simulated: the fitted wave_attain hazard, which is why the p10-p90 band is wide where cinc\u2019s is degenerate, and each actor\u2019s own industrial mass carried by its simulated output and population growth. Whether this share REPLACES cinc in the dyadic capability ratio is a separate switch (WAVE_CAPABILITY) and is reported in meta.waves' },
+    { id: 'wave_attained', unit: 'actor-year', label: 'Displacement-weighted share of live waves the actor is sovereign in, p10 / p50 / p90', simulated: true, note: 'the attainment half of wave_share on its own, before any mass discount — 1.0 means sovereign in every wave alive that year' },
+    { id: 'industry_share', unit: 'actor-year', label: 'Share of world industrial output, p10 / p50 / p90 over runs', simulated: true, note: 'carried forward by each actor\u2019s own simulated output and population growth, the same two terms the projection-weighted share uses — an assumption, not a measurement, and the one the wave index\u2019s mass coefficients are an exponent on' },
     { id: 'dyad_at_war', unit: 'dyad-year', label: 'P(the pair is at war during the year)', simulated: true, threshold: DYAD_MIN, floor: DYAD_FLOOR, cap: DYAD_CAP, kept: dyadKept, lowest_kept_peak: dyadFloorP, dropped: dyadDropped, note: 'the pairs kept are the ones whose peak year reaches the threshold, topped up to `floor` by peak and capped at `cap`; every other pair had a lower peak than `lowest_kept_peak` and is omitted, not zero' },
     { id: 'record_status', unit: 'record-year', label: 'status distribution of each corridor / chokepoint / territory record', simulated: true },
   ],
   actors: Object.keys(occ.actors).length, dyads: dyadKept, records: Object.keys(occ.records).length,
+};
+// operator/capability-waves: what the wave layer was doing in this run, so a reader of the file never has to guess
+// whether the capability substitution was on when it was produced.
+out.meta.waves = {
+  n: waves.length,
+  capability: waveCapabilityOn(templates),
+  template: templates.find(t => t.id === 'wave_attain') ? 'wave_attain' : null,
+  note: 'wave_share and wave_attained in state.actors are forecasts of the wave layer. `capability` says whether the dyadic capability ratio read the wave share (WAVE_CAPABILITY=1 / capability.status: active on the template) or CINC',
 };
 writeFileSync(OUT, JSON.stringify(out));
 // index of available ensembles for the UI

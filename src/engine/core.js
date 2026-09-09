@@ -12,6 +12,7 @@ export const DYADIC_DISPUTE = new Set(['mid_force', 'mid_war', 'interstate_onset
  *  separate source at a separate threshold and is drawn on its own (era-modern-2000-2025/engine-4). */
 const NESTED_DYAD = new Set(['mid_force', 'mid_war']);
 import { PRESENCE, presenceIndex, lastFall, patronMap, patronFeatures, guarantorLevel, guarantorFall, hostLevel } from './presence.js';
+import { WAVES, WAVE_UNIT, activeWaves, waveWeight, waveShares, attainFeatures } from './waves.js';
 import { IMPAIRED, RESOLVED, SPELL_UNITS, warSpells, spellAge, territoryFirstYear, territoryStateAt,
   warEndFeatures, contestFeatures, reopenFeatures } from './termination.js';
 
@@ -121,6 +122,117 @@ const NO_TERM = {
   record: ABLATE.includes('record_reopen'),
   territory: ABLATE.includes('contest_settle'),
 };
+// ---- capability waves (operator / capability-waves, package 12) --------------------------------------------------
+// The layer has two switches because it does two separable things, and mixing them would make one number answer for
+// both. `ENGINE_ABLATE=waves` removes the layer entirely — no attainment draws, no random numbers, so an ablated run
+// reproduces the pre-package stream exactly. `WAVE_CAPABILITY=1` (or `capability.status: active` on the wave_attain
+// template) additionally makes the dyadic capability ratio and the termination layer read the wave-weighted share in
+// place of CINC. The first is a forecast the model publishes; the second is a claim about what decides a war, and it
+// is the claim test (b) in docs/escalations.md grades.
+const NO_WAVES = ABLATE.includes('waves');
+/** Whether the wave share REPLACES cinc in the dyadic capability ratio. Declared in the data, forced by the env.
+ *  Exported so a publisher can stamp the answer into its output without building a world to ask. */
+export const waveCapabilityOn = (templates) => {
+  if (NO_WAVES || ABLATE.includes('wave_capability')) return false;
+  const env = (typeof process !== 'undefined' && process.env) || {};
+  if (env.WAVE_CAPABILITY) return true;
+  return (templates ?? []).some(t => t.unit === WAVE_UNIT && t.capability?.status === 'active');
+};
+/**
+ * The capability an actor is measured by, one place. Everything that used to read `a.cur.cinc` for a RATIO reads this
+ * instead, so the substitution is one line rather than a search-and-replace that can miss a caller.
+ */
+const capabilityOf = (world, a) => (world?.waves?.capability ? a?.cur?.wave_share ?? null : a?.cur?.cinc ?? null);
+
+/**
+ * Seed the wave layer at as-of: who is sovereign in what, and the industrial mass each actor carries. Attainment is
+ * DATA up to as-of (the dated `sovereign_by` histories) and a fitted hazard after it, which is the same contract the
+ * corridor and territory layers keep.
+ */
+function initWaves({ waves, actors, asOf, templates }) {
+  if (NO_WAVES || !waves?.length) return null;
+  const held = new Map();     // actor -> Set(wave id) attained at as-of
+  for (const id of Object.keys(actors)) {
+    const s = new Set();
+    for (const w of waves) { const y = w.sovereign_by?.[id]; if (y != null && y <= asOf) s.add(w.id); }
+    held.set(id, s);
+  }
+  // industrial mass, carried forward by each actor's own simulated growth exactly as stepPolarity carries pol_mass.
+  // The panel's `industry_share` is a share of one year's world; what is projected is the MASS behind it, and the
+  // shares are renormalised each year over the actors still live. Frozen mass would make the operator's question —
+  // does a shrinking manufacturing base lose the mass-heavy waves — unanswerable by construction.
+  const mass = new Map();
+  for (const [id, a] of Object.entries(actors)) if (a.cur.industry_share != null) mass.set(id, a.cur.industry_share);
+  return { list: waves, held, mass: normalise(mass), capability: waveCapabilityOn(templates), attained: [] };
+}
+
+/**
+ * One year of the wave layer: industrial mass drifts, every actor that is at risk of a wave draws for it, and the
+ * wave-weighted share is rewritten on every actor state.
+ *
+ * The draws come from `waveRng`, a stream of their own, so switching the layer on perturbs the event process through
+ * the mechanism (the capability ratio) and not through the random numbers — which is what makes the ablation in test
+ * (d) a measurement of the mechanism rather than of the stream.
+ */
+function stepWaves(world, waveRng) {
+  const W = world.waves; if (!W) return;
+  const y = world.year;
+  const ids = Object.keys(world.actors);
+  // industrial mass forward, on the actor's own simulated output and population growth (the same two terms
+  // stepPolarity uses, for the same reason: four of the six things this index is built on are mass).
+  const raw = new Map();
+  for (const [id, m] of W.mass) {
+    const a = world.actors[id];
+    if (!a) continue;                                   // an actor that has left the system leaves the distribution
+    const g = a.cur.gdp_growth != null ? a.cur.gdp_growth : GROWTH_MEAN;
+    raw.set(id, m * Math.exp(g + (a.popGrowth ?? POP_GROWTH_MEAN)));
+  }
+  for (const id of ids) if (!raw.has(id) && world.actors[id].cur.industry_share != null) raw.set(id, world.actors[id].cur.industry_share);
+  W.mass = normalise(raw);
+  // attainment. One draw per at-risk actor-wave-year, in a fixed order (actors are iterated in the world's own key
+  // order and waves in file order) so the stream is reproducible.
+  const t = world.templates?.find(x => x.unit === WAVE_UNIT);
+  const fit = t && world.fits[t.id];
+  const active = activeWaves(W.list, y);
+  const minInd = t?.sample?.min_industry ?? WAVES.min_industry;
+  // per-wave holder list and diffusion share, computed once for the year rather than once per actor-wave
+  const holders = active.map(w => ids.filter(id => W.held.get(id)?.has(w.id)));
+  const diffusion = holders.map(h => (ids.length ? h.length / ids.length : 0));
+  if (fit?.status === 'fitted') for (const id of ids) {
+    const a = world.actors[id];
+    const s = W.held.get(id) ?? W.held.set(id, new Set()).get(id);
+    const ind = W.mass.get(id) ?? 0;
+    if (!(ind >= minInd)) continue;
+    for (let i = 0; i < active.length; i++) {
+      const w = active[i];
+      if (s.has(w.id)) continue;
+      let access = 0;
+      for (const h of holders[i]) { if (h !== id && world.allied.has(pairKey(id, h))) { access = 1; break; } }
+      const feats = attainFeatures({
+        wave: w, year: y, industryShare: ind, logGdpPc: a.cur.log_gdp_pc,
+        access, diffusion: diffusion[i], atWar: a.cur.at_war, greatPower: a.cur.great_power,
+      });
+      if (!feats) continue;
+      const p = spellHazard(world, t, feats);
+      if (p == null) continue;
+      if (waveRng() < p) { s.add(w.id); W.attained.push({ kind: 'wave_attain', actor: id, wave: w.id, year: y }); }
+    }
+  }
+  // the share itself, written onto every actor state
+  const shares = waveShares({
+    waves: W.list, year: y, ids,
+    attained: (id, wid) => W.held.get(id)?.has(wid) ?? false,
+    industry: (id) => W.mass.get(id) ?? 0,
+  });
+  const wt = active.map(w => waveWeight(w, y)); const tw = wt.reduce((p, q) => p + q, 0);
+  for (const id of ids) {
+    const a = world.actors[id];
+    a.cur.industry_share = W.mass.get(id) ?? 0;
+    a.cur.wave_share = shares.get(id) ?? null;
+    if (tw > 0) { let acc = 0; active.forEach((w, i) => { if (W.held.get(id)?.has(w.id)) acc += wt[i]; }); a.cur.wave_attained = acc / tw; }
+  }
+}
+
 /**
  * Whether interstate war has a duration at all. Declared in the data, not here: `duration.status` on the dyadic war
  * template in data/templates.yaml. Until 2026-09-07 the length was a resample of the panel's own at_war run lengths
@@ -539,7 +651,7 @@ function applyPresence(world, a) {
  * Contiguity 3.2 and covers 1816, so the stand-in no longer fires anywhere in the modelled window; the guard stays
  * because the floor is a property of data/contiguity.json's own meta, not of this code.
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [] }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -644,6 +756,9 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // already removed, for a successor that enters a year or more after its predecessor leaves.
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {}, predecessors: invertMap(successors ?? {}), retiredState: new Map() },
     fits, templates, log: [],
+    // capability waves (operator/capability-waves): attainment is the dated sovereign_by history up to as-of and the
+    // fitted wave_attain hazard after it; `capability` says whether the share it produces replaces cinc in the ratio
+    waves: initWaves({ waves, actors, asOf, templates }),
   };
 }
 
@@ -770,7 +885,8 @@ export function actorHazards(world, a) {
   return out;
 }
 export function dyadHazards(world, a, b) {
-  const out = {}; const ca = a.cur.cinc, cb = b.cur.cinc; if (ca == null || cb == null || a.cur.regime == null || b.cur.regime == null) return out;
+  // operator/capability-waves: the ratio reads the wave-weighted share where the substitution is on, CINC otherwise
+  const out = {}; const ca = capabilityOf(world, a), cb = capabilityOf(world, b); if (ca == null || cb == null || a.cur.regime == null || b.cur.regime == null) return out;
   const k = pairKey(a.id, b.id);
   const contiguous = world.contiguous.has(k) ? 1 : 0;
   const major = (a.cur.great_power || b.cur.great_power) ? 1 : 0;
@@ -821,7 +937,7 @@ export function worldLook(world) {
     greatPower: (id) => world.actors[id]?.cur.great_power ?? null,
     successor: (id) => world.lifecycle?.successors?.[id] ?? null,
     // the termination layer's reads (operator/termination) — the engine's twin of scripts/lib/fit.mjs:termLook
-    cinc: (id) => world.actors[id]?.cur.cinc ?? null,
+    cinc: (id) => capabilityOf(world, world.actors[id]),
     regime: (id) => world.actors[id]?.cur.regime ?? null,
     logGdpPc: (id) => world.actors[id]?.cur.log_gdp_pc ?? null,
     gdpGrowthPrev: (id) => world.actors[id]?.prev.gdp_growth ?? null,
@@ -1022,6 +1138,9 @@ export function stepYear(world, rng, opts = {}) {
     for (const v of Object.keys(a.recent)) { a.recent[v].unshift(0); a.recent[v].length = 5; }
     if (a.prev.coup_attempt) a.recent.coup_attempt[0] = 1; if (a.prev.intrastate) a.recent.intrastate[0] = 1; if (a.prev.mid_force) a.recent.mid_force[0] = 1; if (a.prev.at_war) a.recent.at_war[0] = 1;
   }
+  // the wave layer, before the derived world state and before any hazard reads a capability ratio. Its draws come
+  // from a stream of their own (opts.waveRng), so with the layer ablated the main stream is untouched.
+  stepWaves(world, opts.waveRng ?? rng);
   // the derived world state, after the drift (it reads this year's growth) and before any hazard reads an era term
   stepPolarity(world);
   for (const id of ids) { applyWorldState(world, id, world.actors[id]); applyPresence(world, world.actors[id]); }
@@ -1257,6 +1376,9 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
   const occActor = {};    // actor -> { live, at_war, intrastate, intrastate_war, occupied } of Uint32Array(horizon)
   const cincRuns = {};    // actor -> Float32Array(runs*horizon)
   const polRuns = {};     // actor -> Float32Array(runs*horizon): the projected capability share (see below)
+  const waveRuns = {};    // actor -> Float32Array(runs*horizon): the wave-weighted capability share (package 12)
+  const attainRuns = {};  // actor -> Float32Array(runs*horizon): the displacement-weighted share of waves attained
+  const indRuns = {};     // actor -> Float32Array(runs*horizon): the industrial mass share the wave index weights by
   const occDyad = new Map();   // pairKey -> Uint32Array(horizon)
   const occRecord = {};   // record id -> { n: Uint32Array(horizon), status: { word -> Uint32Array(horizon) } }
   const newOcc = () => ({ live: new Uint32Array(horizon), at_war: new Uint32Array(horizon), intrastate: new Uint32Array(horizon), intrastate_war: new Uint32Array(horizon), occupied: new Uint32Array(horizon) });
@@ -1267,9 +1389,12 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
   const firstBy = {};  // first-occurrence histogram, for P(any within k years)
   for (let r = 0; r < runs; r++) {
     const rng = mulberry32(seed * 7919 + r); const w = makeWorld();
+    // the wave layer's own stream (operator/capability-waves): switching the layer on must perturb the event process
+    // through the capability ratio and not through the random numbers, so its draws never come out of `rng`.
+    const waveRng = mulberry32(seed * 104729 + r);
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
-      const fired = stepYear(w, rng, { skipDyads });
+      const fired = stepYear(w, rng, { skipDyads, waveRng });
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
         if (a.cur.gdp_pc != null) (gdpRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.gdp_pc;
@@ -1291,6 +1416,12 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
           // frozen number as a forecast; reporting only the second would answer a question with a different index.
           if (a.cur.cinc != null) (cincRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + k] = a.cur.cinc;
           if (a.cur.pol_share != null) (polRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + k] = a.cur.pol_share;
+          // operator/capability-waves: the third capability share, and the only one whose spread across runs comes from
+          // a hazard rather than from a growth path — an actor that attains a wave in one run and not in another
+          // separates the p10 and the p90. Null (not zero) where the layer is ablated off.
+          if (a.cur.wave_share != null) (waveRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + k] = a.cur.wave_share;
+          if (a.cur.wave_attained != null) (attainRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + k] = a.cur.wave_attained;
+          if (a.cur.industry_share != null) (indRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + k] = a.cur.industry_share;
         }
         for (const pk of w.atWarPairs ?? []) { let arr = occDyad.get(pk); if (!arr) occDyad.set(pk, arr = new Uint32Array(horizon)); arr[k]++; }
         for (const entry of [...(w.corridors ?? []), ...(w.territories ?? [])]) {
@@ -1333,7 +1464,7 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
       // between "no mass anywhere" and "not carried" is in meta.state, and the array would be a third of the file.
       const q = (src) => (src ? quantiles(src).map(t => (t ? t.map(sig4) : null)) : null);
       const keep = (arr) => (allZero(arr) ? null : p(arr));
-      return [id, { live: o.live.every(x => x === runs) ? null : Array.from(o.live, x => r3(x / runs)), at_war: keep(o.at_war), intrastate: keep(o.intrastate), intrastate_war: keep(o.intrastate_war), occupied: keep(o.occupied), cinc: q(cincRuns[id]), pol_share: q(polRuns[id]) }];
+      return [id, { live: o.live.every(x => x === runs) ? null : Array.from(o.live, x => r3(x / runs)), at_war: keep(o.at_war), intrastate: keep(o.intrastate), intrastate_war: keep(o.intrastate_war), occupied: keep(o.occupied), cinc: q(cincRuns[id]), pol_share: q(polRuns[id]), wave_share: q(waveRuns[id]), wave_attained: q(attainRuns[id]), industry_share: q(indRuns[id]) }];
     })),
     dyads: Object.fromEntries([...occDyad].map(([k, arr]) => [k, Array.from(arr, x => r3(x / runs))])),
     records: Object.fromEntries(Object.entries(occRecord).map(([id, rec]) => [id, {

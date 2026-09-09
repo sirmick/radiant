@@ -169,7 +169,10 @@ export function seriesAt(h, fc, variable, year) {
     const st = fc.state?.actors?.[id];
     if (st && v === 'at_war') { const p = st.at_war?.[k] ?? 0; const m = p >= 0.5 ? 1 : 0; out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p, conf: Math.max(p, 1 - p), dist: [1 - p, p] }; continue; }
     if (st && v === 'intrastate') { const p1 = st.intrastate?.[k] ?? 0, p2 = st.intrastate_war?.[k] ?? 0; const d = [Math.max(0, 1 - p1), Math.max(0, p1 - p2), p2]; const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p: d[m], conf: d[m], dist: d }; continue; }
-    if (st && (v === 'cinc' || v === 'pol_share') && st[v]?.[k]) { const t = st[v][k]; const meta = stateVarMeta(fc, v); out[id] = { value: t[1], year, actor: id, name, forecast: true, state: true, lo: t[0], hi: t[2], simulated: meta?.simulated !== false, note: meta?.note ?? null, conf: meta?.simulated === false ? fade(y - fc.meta.from) : Math.max(0.5, 1 - 0.015 * (y - fc.meta.from)) }; continue; }
+    // operator/capability-waves (package 12): wave_share, wave_attained and industry_share join cinc and pol_share as
+    // quantile series in the state block. Unlike cinc they are simulated — the band is a forecast, not a frozen value —
+    // and `meta.state.vars[].simulated` is what the card reads to say so.
+    if (st && ['cinc', 'pol_share', 'wave_share', 'wave_attained', 'industry_share'].includes(v) && st[v]?.[k]) { const t = st[v][k]; const meta = stateVarMeta(fc, v); out[id] = { value: t[1], year, actor: id, name, forecast: true, state: true, lo: t[0], hi: t[2], simulated: meta?.simulated !== false, note: meta?.note ?? null, conf: meta?.simulated === false ? fade(y - fc.meta.from) : Math.max(0.5, 1 - 0.015 * (y - fc.meta.from)) }; continue; }
     const tri = a[v]?.[k];
     if (Array.isArray(tri)) { out[id] = { value: tri[1], year, actor: id, name, forecast: true, lo: tri[0], hi: tri[2], conf: Math.max(0.5, 1 - 0.015 * (y - fc.meta.from)) }; continue; }
     if (!ha?.[v]) continue;
@@ -187,7 +190,7 @@ export function seriesAt(h, fc, variable, year) {
 export const stateOffset = (fc, year) => { if (!fc?.state) return -1; const k = Math.round(year) - fc.meta.from; return k >= 0 && k < fc.meta.horizon ? k : -1; };
 export const stateVarMeta = (fc, id) => fc?.meta?.state?.vars?.find(v => v.id === id) ?? null;
 /** Actor state at a forecast year: { at_war, intrastate, intrastate_war, cinc, pol_share } as the block carries them. */
-export function actorStateAt(fc, id, year) { const k = stateOffset(fc, year); if (k < 0) return null; const s = fc.state.actors?.[id]; return s ? { k, at_war: s.at_war?.[k] ?? 0, intrastate: s.intrastate?.[k] ?? 0, intrastate_war: s.intrastate_war?.[k] ?? 0, occupied: s.occupied?.[k] ?? 0, cinc: s.cinc?.[k] ?? null, pol_share: s.pol_share?.[k] ?? null } : null; }
+export function actorStateAt(fc, id, year) { const k = stateOffset(fc, year); if (k < 0) return null; const s = fc.state.actors?.[id]; return s ? { k, at_war: s.at_war?.[k] ?? 0, intrastate: s.intrastate?.[k] ?? 0, intrastate_war: s.intrastate_war?.[k] ?? 0, occupied: s.occupied?.[k] ?? 0, cinc: s.cinc?.[k] ?? null, pol_share: s.pol_share?.[k] ?? null, wave_share: s.wave_share?.[k] ?? null, wave_attained: s.wave_attained?.[k] ?? null } : null; }
 /** P(this pair is at war) in a forecast year; 0 where the pair is below the file's threshold (meta.state.vars). */
 export function dyadWarAt(fc, a, b, year) { const k = stateOffset(fc, year); if (k < 0) return 0; const key = a < b ? `${a}|${b}` : `${b}|${a}`; return fc.state.dyads?.[key]?.[k] ?? 0; }
 /** A record's simulated status distribution at a forecast year: the modal word, its probability, and the whole mix. */

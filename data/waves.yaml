@@ -4,6 +4,19 @@
 # Historical waves exist so the diffusion rule can be tested on 150 years of catch-up rather than asserted for the current one.
 # Levels per actor per year: N none, I import (uses it, doesn't make it), S sovereign (makes it at scale).
 # Sources: Bairoch industrialisation levels; Mitchell International Historical Statistics; OWID energy; hand-coded first-sovereign years (estimate).
+#
+# operator / capability-waves (package 12) adds two hand-typed things to every wave, and one rule about them:
+#   `mass` / `mass_source`   how much of the wave's military value is production RATE rather than possession, in [0,1].
+#                            0 = a handful of units decide it (stealth), 1 = the war is the factory (munitions, drones).
+#                            An actor's contribution from a wave is attainment x (its share of world industrial
+#                            output)^mass, so mass is the coefficient the operator's question turns on and it is a
+#                            claim, not a measurement. src/engine/waves.js reads it; scripts/analysis/waves.mjs scores it.
+#   `sovereign_source`       a source per `sovereign_by` entry, keyed the same way. REQUIRED for every wave introduced
+#                            in 1900 or later (src/engine/waves.js DOCUMENTED_FROM); the pre-1900 waves are covered by
+#                            the blanket note above. A value beginning `estimate` is a source too — it says the date is
+#                            the model's own judgement and names what it was judged on.
+# The dates below are years of first SOVEREIGN PRODUCTION AT SCALE, not first test, first flight or first purchase.
+# Where the two differ the entry says so.
 
 waves:
   - id: steam_rail
@@ -13,6 +26,8 @@ waves:
     diffusion: { median_years_to_S: 25, spread: 15 }     # years from I to S for a follower at 1900-level income; fitted
     saturates: 1900           # every industrial state sovereign; stops discriminating
     retired: 1960             # displaced by diesel/electric traction as a *capability*; rail km as infrastructure lives on in corridors
+    mass: 0.8
+    mass_source: "estimate: locomotive and rail output is a throughput, and the wave's military value in 1870–1914 is the tonne-km a mobilisation timetable can move (Van Creveld, Supplying War, ch. 3), not the possession of a locomotive."
     sovereign_by: { GBR: 1830, USA: 1840, FRA: 1845, DEU: 1845, BEL: 1840, AUT: 1850, RUS: 1870, JPN: 1895, ITA: 1870, ESP: 1880, SWE: 1875, CAN: 1880, IND: 1900, CHN: 1930, BRA: 1900, TUR: 1930 }
     notes: "The reference wave: Britain's 15-year lead, German/American catch-up by 1850, Japan by 1895 after Meiji. Rail km is the infrastructure counterpart in corridors."
 
@@ -23,6 +38,8 @@ waves:
     diffusion: { median_years_to_S: 15, spread: 10 }
     saturates: 1910
     retired: 1930
+    mass: 0.3
+    mass_source: "estimate: a cable network's value is possession of the ROUTE, not the rate at which cable is made — one landing station is worth more than a second factory. The routing half is carried by the cable corridors in data/corridors.yaml."
     sovereign_by: { GBR: 1850, USA: 1850, FRA: 1855, DEU: 1855, RUS: 1865, JPN: 1880, ITA: 1865 }
     notes: "First ISR/comms chokepoint: British cable monopoly ~1900 is the Starlink of its day. The satellite/constellation wave is its descendant. `saturates` moved 1880 → 1910 on 2026-09-06: the technology was non-discriminating long before the ROUTING was, and routing concentration is a corridor property, not a diffusion one — it is now carried by the cable corridors in data/corridors.yaml (eastern_telegraph, all_red_pacific, german_atlantic_cables, spanish_colonial_cables), including the two cable cuts of 1898 and 1914."
 
@@ -33,6 +50,8 @@ waves:
     diffusion: { median_years_to_S: 20, spread: 10 }
     saturates: 1920
     retired: null
+    mass: 1.0
+    mass_source: "estimate: steel IS a production rate — it is the one wave where the capability and the output series are the same number (CoW NMC's `irst` is this wave's own indicator)."
     sovereign_by: { GBR: 1860, USA: 1870, DEU: 1870, FRA: 1875, BEL: 1875, RUS: 1890, JPN: 1905, ITA: 1905, CAN: 1910, IND: 1915, CHN: 1955, KOR: 1975, BRA: 1950, TUR: 1940, AUS: 1920 }
     notes: "Germany passes Britain in steel ~1893, the US ~1890: the classic 'catch-up then overtake' the model must reproduce."
 
@@ -43,6 +62,8 @@ waves:
     diffusion: { median_years_to_S: 20, spread: 12 }
     saturates: 1960
     retired: null
+    mass: 0.9
+    mass_source: "estimate: generation is a rate by definition (the panel measures it in TWh/yr) and the wartime value of a grid is the aluminium, nitrogen and machine tools it runs, all of them throughputs."
     sovereign_by: { USA: 1885, GBR: 1885, DEU: 1885, FRA: 1890, JPN: 1900, RUS: 1925, ITA: 1900, SWE: 1900, CAN: 1900, CHN: 1955, IND: 1950, KOR: 1965, BRA: 1950, TUR: 1950, AUS: 1920 }
 
   - id: oil_ice
@@ -52,6 +73,8 @@ waves:
     diffusion: { median_years_to_S: 25, spread: 12 }
     saturates: 1970
     retired: 2050              # the EV wave displaces it as a capability; refining stays as cap_refining until then
+    mass: 0.9
+    mass_source: "estimate: refining is throughput and the 1940s air war was fought over it (USSBS, Oil Division Final Report, 1947); possession of a refinery that cannot run is worth nothing."
     sovereign_by: { DEU: 1890, FRA: 1895, USA: 1900, GBR: 1900, ITA: 1910, JPN: 1930, RUS: 1930, SWE: 1930, CAN: 1920, KOR: 1975, CHN: 1960, IND: 1960, BRA: 1960, TUR: 1970, IRN: 1915, SAU: 1945, AUS: 1930 }
     notes: "Rentier-state creation wave. Iran 1908, Saudi 1938: the fiscal_breakeven variable is born here."
 
@@ -62,7 +85,26 @@ waves:
     diffusion: { median_years_to_S: 15, spread: 10 }
     saturates: 1950
     retired: 2040              # the autonomy wave ends manned air supremacy as a capability
+    mass: 0.7
+    mass_source: "estimate: airframe output decided 1939–45 (Overy, Why the Allies Won, ch. 6 — the production race, not the airframe, is the story), but a modern air force is a small fleet of expensive platforms, so this is short of the munitions waves."
     sovereign_by: { USA: 1910, FRA: 1910, GBR: 1912, DEU: 1912, ITA: 1913, RUS: 1915, JPN: 1925, SWE: 1940, CAN: 1940, CHN: 1960, IND: 1965, ISR: 1975, BRA: 1975, KOR: 2005, TUR: 2020, IRN: 2000 }
+    sovereign_source:
+      USA: "Wright Company incorporated 1909 and the Army's first production order 1909–10; series manufacture from 1910 (Crouch, The Bishop's Boys, 1989)."
+      FRA: "estimate: Voisin, Blériot and Farman in series production 1909–10, the largest aircraft industry in the world before 1914 (Morrow, The Great War in the Air, 1993)."
+      GBR: "estimate: Royal Aircraft Factory B.E.2 in production from 1912 (Morrow 1993)."
+      DEU: "estimate: Albatros and Rumpler in series production from 1912 (Morrow 1993)."
+      ITA: "estimate: Caproni founded 1908, military series orders from 1913 (Morrow 1993)."
+      RUS: "estimate: Russo-Balt Ilya Muromets in series production from 1914–15 (Morrow 1993)."
+      JPN: "estimate: Nakajima and Mitsubishi founded 1917–20; domestic-design series production from the mid-1920s."
+      SWE: "estimate: SAAB founded 1937, domestic series production from 1940."
+      CAN: "estimate: wartime aircraft production (Canadian Car and Foundry, Victory Aircraft) at scale from 1940."
+      CHN: "estimate: Shenyang J-5, a licence-built MiG-17, in series production from 1956–60; 1960 is the year domestic production continues past the Soviet split."
+      IND: "estimate: HAL HF-24 Marut, the first indigenous design, flew 1961 and entered service 1967; licence production from the mid-1960s."
+      ISR: "estimate: IAI Nesher in series production from 1971–75; Kfir from 1975."
+      BRA: "estimate: Embraer founded 1969, EMB-326/EMB-110 in series production from the mid-1970s."
+      KOR: "estimate: KAI T-50 first flight 2002, series production from 2005."
+      TUR: "estimate: TAI Hürkuş/Hürjet and the TF-X programme; 2020 is a judgement about domestic airframe design at scale and is the weakest date in this wave."
+      IRN: "estimate: HESA Azarakhsh/Saeqeh, reverse-engineered F-5 derivatives, from about 2000; small numbers."
 
   - id: radio_radar
     label: Radio, radar, electronics
@@ -71,7 +113,25 @@ waves:
     diffusion: { median_years_to_S: 15, spread: 10 }
     saturates: 1960
     retired: null
+    mass: 0.4
+    mass_source: "estimate: one set per platform rather than one per shell — the wave's value is coverage and quality, and the Battle of Britain was won by a network of 21 stations (Zimmerman, Britain's Shield, 2001), not by a production race."
     sovereign_by: { GBR: 1905, USA: 1905, DEU: 1905, FRA: 1910, JPN: 1930, RUS: 1935, ITA: 1930, SWE: 1945, NLD: 1935, CAN: 1945, ISR: 1970, CHN: 1965, IND: 1975, KOR: 1985, TWN: 1985 }
+    sovereign_source:
+      GBR: "Marconi's Wireless Telegraph Company manufacturing in Chelmsford from 1898; Admiralty contracts from 1903 (Hong, Wireless, 2001)."
+      USA: "estimate: De Forest and Fessenden manufacturing from 1902–07; the Navy's own sets from 1905."
+      DEU: "estimate: Telefunken founded 1903 (Siemens/AEG merger imposed by the state) and supplying the fleet from 1905."
+      FRA: "estimate: Compagnie Générale de TSF founded 1910."
+      JPN: "estimate: domestic naval radio manufacture from the 1920s; radar research from 1932, sets from 1941 — 1930 is the radio half."
+      RUS: "estimate: RUS-1 radar development from 1934, series sets 1939; radio manufacture earlier."
+      ITA: "estimate: domestic naval radio from the 1920s; EC-3 radar 1941."
+      SWE: "estimate: Ericsson and the wartime domestic radar programme from about 1945."
+      NLD: "estimate: Philips as a sovereign electronics producer through the 1930s."
+      CAN: "estimate: Research Enterprises Ltd, the wartime radar plant, 1940–45."
+      ISR: "estimate: Elta founded 1967; domestic radar from about 1970."
+      CHN: "estimate: domestic radar production at Nanjing (14th Research Institute) from the early 1960s."
+      IND: "estimate: Bharat Electronics founded 1954, domestic radar (INDRA line) from the 1970s."
+      KOR: "estimate: Samsung/LIG electronics as a defence supplier from the mid-1980s."
+      TWN: "estimate: Chungshan Institute electronics from the mid-1980s."
 
   - id: nuclear
     label: Nuclear fission (weapons and fuel cycle)
@@ -80,9 +140,47 @@ waves:
     diffusion: { median_years_to_S: 30, spread: 20 }
     saturates: null            # never saturates — deliberately restricted diffusion
     retired: null
+    mass: 0.15
+    mass_source: "estimate: the one wave where possession is nearly the whole of it — a second-strike arsenal is a stock, and no state has ever out-produced another into a nuclear advantage that mattered (Jervis, The Meaning of the Nuclear Revolution, 1989). Not zero, because throw-weight and fissile output did bound the arsenals of the 1960s."
     maps_to: [cap_nukes, cap_latency]
     sovereign_by: { USA: 1945, RUS: 1949, GBR: 1952, FRA: 1960, CHN: 1964, ISR: 1967, IND: 1974, ZAF: 1979, PAK: 1998, PRK: 2006 }
+    sovereign_source:
+      USA: "Trinity, 16 July 1945 (Rhodes, The Making of the Atomic Bomb, 1986)."
+      RUS: "RDS-1, 29 August 1949 (Holloway, Stalin and the Bomb, 1994)."
+      GBR: "Operation Hurricane, 3 October 1952 (Gowing, Independence and Deterrence, 1974)."
+      FRA: "Gerboise Bleue, 13 February 1960 (Norris, Burrows & Fieldhouse, Nuclear Weapons Databook V, 1994)."
+      CHN: "Test 596, 16 October 1964 (Lewis & Xue, China Builds the Bomb, 1988)."
+      ISR: "estimate: 1967 is the conventional dating of an assembled device from the Dimona programme; Israel has never tested or declared (Cohen, Israel and the Bomb, 1998)."
+      IND: "Smiling Buddha, 18 May 1974 (Perkovich, India's Nuclear Bomb, 1999); weaponisation dates to 1998."
+      ZAF: "estimate: first deliverable device 1979 per the post-1993 disclosure to the IAEA (Albright, Bulletin of the Atomic Scientists, 1994); the 1979 Vela event is disputed and is not the basis of this date."
+      PAK: "Chagai-I, 28 May 1998 (Khan, Eating Grass, 2012)."
+      PRK: "First test, 9 October 2006 (CTBTO seismic detection; Hecker, Daedalus 139(1), 2010)."
     notes: "The one wave where the model's diffusion rule is *fought* by the system (NPT, export controls, strikes). Test: does the latency→weapon hazard reproduce this list and not more?"
+
+  - id: ballistic_missiles
+    label: Ballistic missiles
+    introduced: 1944
+    first_sovereign: DEU
+    diffusion: { median_years_to_S: 25, spread: 15 }
+    saturates: null
+    retired: null
+    mass: 0.6
+    mass_source: "estimate: a missile war is decided by magazine depth — the 2022–24 exchanges emptied inventories faster than any participant could refill them — but the first salvo is a stock, so this sits below the munitions waves and above the platform ones."
+    sovereign_by: { DEU: 1944, RUS: 1950, USA: 1953, CHN: 1966, FRA: 1971, ISR: 1973, PRK: 1984, IRN: 1987, KOR: 1986, IND: 1994, PAK: 1998, TUR: 2017 }
+    sovereign_source:
+      DEU: "A-4/V-2 series production at Mittelwerk from 1944, ~5,200 built (Neufeld, The Rocket and the Reich, 1995)."
+      RUS: "R-1 accepted into service and in series production 1950 (Zaloga, The Kremlin's Nuclear Sword, 2002)."
+      USA: "Redstone, first flight 1953, series production from 1956 (Neufeld, The Development of Ballistic Missiles in the United States Air Force, 1990); 1953 is taken as the sovereign-production year."
+      CHN: "DF-2 first successful flight 1964, deployed 1966 (Lewis & Hua, International Security 17(2), 1992)."
+      FRA: "S2 IRBM deployed at Plateau d'Albion, 1971 (Norris et al., Nuclear Weapons Databook V, 1994)."
+      ISR: "estimate: Jericho I in service from about 1973, on French Dassault MD-620 technology transferred before the 1967 embargo; never declared."
+      PRK: "Hwasong-5, a reverse-engineered Scud-B, in series production from 1984–85 (Bermudez, A History of Ballistic Missile Development in the DPRK, CNS Occasional Paper 2, 1999)."
+      IRN: "estimate: Shahab-1 local assembly and then production from about 1987 with DPRK assistance (Bermudez 1999)."
+      KOR: "estimate: Hyunmoo-1 in service from about 1986, derived from the Nike Hercules airframe."
+      IND: "estimate: Prithvi-I first tested 1988 and inducted about 1994; the induction year is used."
+      PAK: "estimate: Hatf-III/Ghauri from 1998, on DPRK and Chinese transfers."
+      TUR: "estimate: Roketsan Bora/J-600T in service from about 2017."
+    notes: "Split out of the aviation and space waves by operator/capability-waves: an actor can be sovereign in ballistic missiles without being sovereign in orbital launch (the reverse is rare), and the two have very different mass."
 
   - id: semiconductors
     label: Semiconductors and computing
@@ -91,8 +189,22 @@ waves:
     diffusion: { median_years_to_S: 20, spread: 12 }
     saturates: null
     retired: null
+    mass: 0.8
+    mass_source: "estimate: wafer starts per month is the industry's own unit and the binding constraint in every shortage since 2020; the exception is the tool layer (one supplier of EUV), which is possession and is carried by cap_euv rather than by this coefficient."
     maps_to: [cap_logic, cap_memory, cap_euv, cap_chem, cap_packaging, cap_power_semis]
     sovereign_by: { USA: 1960, JPN: 1975, DEU: 1975, NLD: 1985, KOR: 1990, TWN: 1990, CHN: 2015, SGP: 1995, ISR: 1990, FRA: 1980, GBR: 1980 }
+    sovereign_source:
+      USA: "Planar process 1959, Fairchild and TI in volume production from 1960 (Berlin, The Man Behind the Microchip, 2005)."
+      JPN: "estimate: the VLSI Project 1976–80 and NEC/Hitachi/Toshiba DRAM volume from the mid-1970s (Anchordoguy, Computers Inc., 1989)."
+      DEU: "estimate: Siemens semiconductor production from the mid-1970s."
+      NLD: "estimate: ASML founded 1984 and Philips' fab base; the tool half, not the volume half."
+      KOR: "estimate: Samsung 64K DRAM 1984, volume competitiveness from about 1990 (Kim, Imitation to Innovation, 1997)."
+      TWN: "estimate: TSMC founded 1987, foundry at scale from about 1990 (Mathews & Cho, Tiger Technology, 2000)."
+      CHN: "estimate: SMIC at 28nm volume from about 2015; sovereign only at trailing nodes, which is why cap_euv is separate."
+      SGP: "estimate: Chartered Semiconductor from 1987, at scale from the mid-1990s."
+      ISR: "estimate: Intel Jerusalem/Kiryat Gat fabs and a domestic design base from about 1990."
+      FRA: "estimate: Thomson/SGS from about 1980."
+      GBR: "estimate: Inmos and Plessey from about 1980; the base is largely gone by 2000 and this wave has no retirement per actor."
     notes: "Sub-capabilities split off as the wave matured; the current cap_* entries are its leaves. Japan passed the US in DRAM 1986 and lost it to Korea by 1998: another overtake to reproduce."
 
   - id: space
@@ -102,8 +214,46 @@ waves:
     diffusion: { median_years_to_S: 25, spread: 15 }
     saturates: null
     retired: null
+    mass: 0.5
+    mass_source: "estimate: launch cadence is a rate and constellations made it more so after 2019, but a single reconnaissance satellite still buys most of the military value — the wave sits at the midpoint on purpose."
     maps_to: [cap_launch, cap_leo_isr, cap_pnt]
     sovereign_by: { RUS: 1957, USA: 1958, FRA: 1965, JPN: 1970, CHN: 1970, GBR: 1971, IND: 1980, ISR: 1988, IRN: 2009, KOR: 2013, PRK: 2012, NZL: 2018 }
+    sovereign_source:
+      RUS: "Sputnik 1, 4 October 1957 (Siddiqi, Challenge to Apollo, 2000)."
+      USA: "Explorer 1, 1 February 1958 (Siddiqi 2000)."
+      FRA: "Astérix on Diamant A, 26 November 1965."
+      JPN: "Ōsumi on Lambda-4S, 11 February 1970."
+      CHN: "Dong Fang Hong 1 on Long March 1, 24 April 1970."
+      GBR: "Prospero on Black Arrow, 28 October 1971; the programme was cancelled the same year and the capability lapsed — a case the model's `retired` field cannot yet express per actor."
+      IND: "Rohini on SLV-3, 18 July 1980."
+      ISR: "Ofek-1 on Shavit, 19 September 1988."
+      IRN: "Omid on Safir, 2 February 2009."
+      KOR: "estimate: Naro-1 (with a Russian first stage) 2013; fully sovereign only with Nuri in 2022."
+      PRK: "Kwangmyŏngsŏng-3 Unit 2 on Unha-3, 12 December 2012."
+      NZL: "estimate: Rocket Lab Electron from Māhia, January 2018 — a private, US-owned launcher on national territory, which is the weakest 'sovereign' in this wave."
+
+  - id: precision_strike
+    label: Precision-guided munitions
+    introduced: 1972
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 20, spread: 12 }
+    saturates: null
+    retired: null
+    mass: 0.75
+    mass_source: "estimate: this is the wave the operator's question is about. Guided munitions are consumed at a rate no peacetime line matches — the 1999, 2003 and 2022–24 campaigns each ran the leading producer's stocks down inside months — so the production share, not the inventory, is the capability."
+    sovereign_by: { USA: 1972, RUS: 1975, FRA: 1980, GBR: 1985, ISR: 1985, CHN: 1995, KOR: 2010, TUR: 2010, IND: 2012, IRN: 2015 }
+    sovereign_source:
+      USA: "Paveway I laser-guided bombs in volume use from 1972, Thanh Hoa bridge, 13 May 1972 (Werrell, Chasing the Silver Bullet, 2003)."
+      RUS: "estimate: KAB-500L in series production from about 1975."
+      FRA: "estimate: AS-30 Laser from about 1980 (Matra)."
+      GBR: "estimate: Paveway II assembly and Sea Eagle from about 1985."
+      ISR: "estimate: Popeye/AGM-142 from about 1985 (Rafael)."
+      CHN: "estimate: LT-2 laser-guided bomb and the YJ anti-ship line from about 1995."
+      KOR: "estimate: KGGB and domestic guidance kits from about 2010."
+      TUR: "estimate: Roketsan HGK/MAM guidance kits from about 2010."
+      IND: "estimate: Sudarshan guidance kit and the BrahMos line from about 2012."
+      IRN: "estimate: Qaem and Sadid guided munitions from about 2015; small production runs."
+    notes: "Split out of aviation by operator/capability-waves. Deliberately given a high mass: it is the wave on which a shrinking manufacturing base is supposed to lose to a larger one, and that is the claim test (b) grades."
 
   - id: internet
     label: Internet and mobile
@@ -112,7 +262,36 @@ waves:
     diffusion: { median_years_to_S: 10, spread: 5 }
     saturates: 2015
     retired: null
+    mass: 0.3
+    mass_source: "estimate: a network's military value is coverage and control, not the rate at which routers are made; the manufacturing half of it is already inside the semiconductor wave."
     sovereign_by: { USA: 1992, GBR: 1995, DEU: 1995, JPN: 1995, KOR: 2000, CHN: 2005, IND: 2010, ISR: 1998, SWE: 1996, FIN: 1996 }
+    sovereign_source:
+      USA: "estimate: commercial backbone from 1992 (the NSFNET acceptable-use change) — the wave's own first-sovereign year."
+      GBR: "estimate: commercial ISPs and a national backbone from about 1995."
+      DEU: "estimate: as GBR; DE-CIX founded 1995."
+      JPN: "estimate: commercial backbone from about 1995."
+      KOR: "estimate: national broadband build-out 1998–2000."
+      CHN: "estimate: domestic backbone and equipment (Huawei/ZTE) at scale from about 2005."
+      IND: "estimate: mobile data at scale from about 2010."
+      ISR: "estimate: domestic networking industry from the late 1990s."
+      SWE: "estimate: Ericsson and a national backbone from 1996."
+      FIN: "estimate: Nokia and a national backbone from 1996."
+
+  - id: stealth
+    label: Low-observable combat aircraft
+    introduced: 1981
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 30, spread: 15 }
+    saturates: null
+    retired: null
+    mass: 0.1
+    mass_source: "estimate: the low-mass pole of the whole layer, and the reason the mass coefficient exists. Fifty-nine F-117s flew the 1991 campaign; the capability is the airframe and the signature-management industrial art behind it, not the rate."
+    sovereign_by: { USA: 1981, CHN: 2017, RUS: 2020 }
+    sovereign_source:
+      USA: "F-117A first flight 18 June 1981, IOC October 1983 (Aronstein & Piccirillo, Have Blue and the F-117A, 1997)."
+      CHN: "estimate: J-20 first flight 2011, series deliveries to operational units from about 2017 (IISS Military Balance)."
+      RUS: "estimate: Su-57 first flight 2010, first series aircraft delivered to a regiment in 2020–21; production remains in single digits per year (IISS Military Balance)."
+    notes: "Three attainers in forty-three years — the wave the diffusion rule should find hardest, and the one whose mass coefficient most changes who the index calls strong."
 
   - id: solar_battery
     label: Solar PV, batteries, EVs
@@ -121,9 +300,37 @@ waves:
     diffusion: { median_years_to_S: 12, spread: 6 }
     saturates: 2045
     retired: null
+    mass: 0.95
+    mass_source: "estimate: cells and cells-per-year are the same sentence; there is no possession component at all beyond the tooling."
     maps_to: [cap_inverters, cap_rail_hvdc]
     sovereign_by: { JPN: 2005, DEU: 2008, CHN: 2010, KOR: 2012, USA: 2015 }
+    sovereign_source:
+      JPN: "estimate: Sharp/Kyocera led world PV cell output to about 2006 and Panasonic/Sanyo led lithium cells (IEA PVPS Trends reports)."
+      DEU: "estimate: Q-Cells and the 2004–08 EEG-driven build-out."
+      CHN: "estimate: majority of world PV cell output from about 2010 and of lithium cell output from about 2015 (IEA)."
+      KOR: "estimate: LG Chem and Samsung SDI at automotive cell scale from about 2012."
+      USA: "estimate: Tesla/Panasonic Gigafactory 1 from 2015–17."
     notes: "The wave the transcript's whole energy argument rides on. China's dominance here is the oil_ice wave's Standard Oil moment. ev_share is its diffusion variable."
+
+  - id: armed_drones
+    label: Armed uncrewed aircraft and loitering munitions
+    introduced: 2001
+    first_sovereign: USA
+    diffusion: { median_years_to_S: 12, spread: 8 }
+    saturates: null
+    retired: null
+    mass: 0.9
+    mass_source: "estimate: attritable by design — the 2022–24 war consumed uncrewed aircraft at 5-6 figures a month and the binding constraint was cell, motor and airframe output, not design. The high-mass pole opposite stealth."
+    sovereign_by: { USA: 2001, ISR: 2004, CHN: 2011, TUR: 2014, PAK: 2015, IRN: 2016, RUS: 2021, UKR: 2023 }
+    sovereign_source:
+      USA: "Armed MQ-1 Predator operational, October 2001 (Whittle, Predator, 2014)."
+      ISR: "estimate: armed UAV production from about 2004; Israel has never confirmed an armed-UAV programme, so this date is a judgement on export and reporting rather than a declaration."
+      CHN: "estimate: CH-3 and Wing Loong I in production and export from about 2011 (SIPRI arms-transfers database)."
+      TUR: "estimate: Bayraktar TB2 first armed flight 2015, series deliveries from 2014–16 (SIPRI)."
+      PAK: "estimate: Burraq declared operational 2015."
+      IRN: "estimate: Shahed-129 in series production from about 2016; the Shahed-136 loitering munition from 2021."
+      RUS: "estimate: Orion in series production from about 2021, after a decade of imports."
+      UKR: "estimate: domestic strike-UAV and interceptor production at scale from 2023; the clearest case in the file of an actor attaining a wave under war demand rather than industrial base."
 
   - id: autonomy_ai
     label: Autonomous systems and frontier AI
@@ -132,9 +339,36 @@ waves:
     diffusion: { median_years_to_S: 8, spread: 4 }
     saturates: null
     retired: null
+    mass: 0.5
+    mass_source: "estimate: two things at once — frontier compute is a stock of accelerators concentrated in two supply chains (low mass), autonomous munitions are a flow (high mass). The midpoint is a declared compromise, and the split is the reason cap_ai_compute and cap_strike are separate leaves."
     maps_to: [cap_ai_compute, cap_strike, cap_usv, cap_de]
-    sovereign_by: { USA: 2015, CHN: 2017, GBR: 2018, ISR: 2018, TUR: 2020, UKR: 2023, IRN: 2020, RUS: 2022 }
-    notes: "Commodity drones are this wave's cheap end; frontier compute its expensive end. They diffuse at very different speeds — hence separate cap_ entries."
+    sovereign_by: { USA: 2015, CHN: 2017, GBR: 2018, ISR: 2018, TUR: 2020, IRN: 2020, RUS: 2022, UKR: 2023 }
+    sovereign_source:
+      USA: "estimate: frontier training runs and domestic accelerator design from about 2015."
+      CHN: "estimate: domestic frontier labs and accelerator design (Huawei Ascend) from about 2017; fabrication is constrained, which is why this is not the same claim as the semiconductor wave."
+      GBR: "estimate: DeepMind-scale training from about 2018."
+      ISR: "estimate: autonomous strike and interception systems fielded from about 2018."
+      TUR: "estimate: autonomous loitering munitions (Kargu) fielded from about 2020."
+      IRN: "estimate: autonomous loitering munitions from about 2020."
+      RUS: "estimate: Lancet loitering munitions with terminal autonomy in series use from 2022."
+      UKR: "estimate: terminal-guidance and interceptor autonomy in series production from 2023."
+    notes: "Commodity drones are this wave's cheap end; frontier compute its expensive end. They diffuse at very different speeds — hence separate cap_ entries, and hence the armed_drones wave split out of it in package 12."
+
+  - id: hypersonics
+    label: Hypersonic glide and cruise weapons
+    introduced: 2019
+    first_sovereign: RUS
+    diffusion: { median_years_to_S: 12, spread: 8 }
+    saturates: null
+    retired: null
+    mass: 0.4
+    mass_source: "estimate: a small, expensive inventory today (tens of rounds), with the same magazine logic as ballistic missiles waiting behind it; below ballistic_missiles because no one has yet fought a war of attrition with them."
+    sovereign_by: { RUS: 2019, CHN: 2020, PRK: 2024 }
+    sovereign_source:
+      RUS: "estimate: Avangard declared on combat duty December 2019 (Russian MoD announcement; IISS Military Balance 2020). The claim is the state's own and has not been independently verified."
+      CHN: "estimate: DF-17 paraded 2019 and assessed as fielded from 2020 (IISS Military Balance 2020–21)."
+      PRK: "estimate: Hwasong-16B claimed as a hypersonic glide vehicle in 2024; state claim only, the weakest entry in the file."
+    notes: "The leading military spender is absent by 2024 on purpose: the US programmes (LRHW, CPS, HACM) had not entered series production. An index that cannot show a leader missing a wave is not measuring waves."
 
   - id: quantum
     label: Quantum computing and post-quantum transition
@@ -143,7 +377,10 @@ waves:
     diffusion: { median_years_to_S: 15, spread: 8 }
     saturates: null
     retired: null
+    mass: 0.2
+    mass_source: "estimate: a cryptanalytically relevant machine is a possession — one of them changes the world and a second adds little. Carried at 0.2 rather than 0 because the fabrication base behind it is not free."
     maps_to: [cap_quantum]
     sovereign_by: {}
+    sovereign_source: {}
     lifecycle: candidate       # no history; wired to hazards only via crqc
     notes: "The 'new factor' case. Enters as candidate; the crqc hazard is its only coupling until there's evidence."
