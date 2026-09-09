@@ -2,7 +2,9 @@
 
 One section per turn of the adversary → fixer → checker loop (`.claude/workflows/refine.js`, procedures in `agent/`). The file the loop compares against is `scores/backtest-1870-2010-h20-all.json` (as-of 1870…2010 step 10, +20y, 100 runs, all states, rolling-origin refit).
 
-**Baseline 2026-09-08 — after implementing the approved escalation packages** (`operator/occupancy`, package 11; package 12, `operator/capability-waves`, is approved and queued behind it, not in this tree) and after the five refinement turns committed since the 2026-09-07 baseline. Per-template detail, `auc_at_risk`, the occupancy score and the template × as-of rows that carry no fit are in [Baseline 2026-09-08](#baseline-2026-09-08) at the foot of this file. It replaces [Baseline 2026-09-07](#baseline-2026-09-07), which is kept in full there.
+**Baseline 2026-09-08 — after implementing every approved escalation package** (`operator/capability-waves`, package 12, is now in the tree; `operator/occupancy`, package 11, and the five refinement turns before it already were). Per-template detail, `auc_at_risk`, the occupancy score and the template × as-of rows that carry no fit are in [Baseline 2026-09-08](#baseline-2026-09-08) at the foot of this file. It replaces [Baseline 2026-09-08 (first)](#baseline-2026-09-08-first--after-operatoroccupancy-package-11), which is kept in full there.
+
+**Every cell of this table is identical to the one it replaces.** Package 12 ships its wave layer *off* the event path — the capability substitution it proposed was measured and rejected, so nothing the fifteen scored templates read changed — and the whole backtest file reproduces the committed one byte for byte once `meta.run` and the per-as-of `ms` are dropped. The table is a measurement re-taken, not a measurement moved. What package 12 adds to the baseline is one new number with no “before”: the `wave_share` capability rank in the occupancy block.
 
 | template | exp/obs | Brier skill | AUC |
 |---|---|---|---|
@@ -22,7 +24,27 @@ One section per turn of the adversary → fixer → checker loop (`.claude/workf
 | record_reopen | 2.43 | −0.30 | 0.72 |
 | leader_exit | 0.99 | −0.34 | 0.74 |
 
-Baseline before implementation, 2026-09-08 — the 2026-09-07 table this one replaces. Every template it lists is pooled over a **different set of as-of years** than the table above (the refinement turns since opened windows, added units and moved coverage: `chokepoint_status` was 36 units pooled over 1910–1940 and is now 210 over 1890–2010), so the two columns are not like-for-like and should not be differenced row by row. The section at the foot says which rows changed for a reason and which changed because the sample did.
+Baseline before implementation, 2026-09-08 — the [first 2026-09-08 baseline](#baseline-2026-09-08-first--after-operatoroccupancy-package-11), taken after package 11 and before package 12. It is pooled over the same as-of years, on the same fits, from the same 149 scored rows, and it is kept directly below so the claim above — that package 12 costs the event score nothing — can be checked by eye rather than taken on trust.
+
+| template | exp/obs | Brier skill | AUC |
+|---|---|---|---|
+| coup_attempt | 0.89 | +0.23 | 0.79 |
+| intrastate_onset | 0.98 | +0.23 | 0.79 |
+| mid_force | 0.82 | +0.11 | 0.81 |
+| intrastate_end | 0.90 | +0.11 | 0.72 |
+| contest_settle | 1.08 | +0.11 | 0.80 |
+| irregular_exit | 1.29 | +0.05 | 0.76 |
+| chokepoint_status | 1.17 | +0.04 | 0.64 |
+| corridor_status | 1.39 | +0.04 | 0.66 |
+| mid_war | 0.72 | +0.03 | 0.78 |
+| interstate_onset | 2.00 | −0.05 | 0.89 |
+| autocratic_closure | 0.72 | −0.06 | 0.65 |
+| democratic_deepening | 2.05 | −0.19 | 0.78 |
+| democratize_step | 0.81 | −0.20 | 0.54 |
+| record_reopen | 2.43 | −0.30 | 0.72 |
+| leader_exit | 0.99 | −0.34 | 0.74 |
+
+Baseline 2026-09-07 — the table the first 2026-09-08 baseline replaced. Every template it lists is pooled over a **different set of as-of years** than the two tables above (the refinement turns since opened windows, added units and moved coverage: `chokepoint_status` was 36 units pooled over 1910–1940 and is now 210 over 1890–2010), so the columns are not like-for-like and should not be differenced row by row. The section at the foot says which rows changed for a reason and which changed because the sample did.
 
 | template | exp/obs | Brier skill | AUC |
 |---|---|---|---|
@@ -518,7 +540,149 @@ The spell convention is the record layer's, not `lead: 1`: covariates are the st
 
 ## Baseline 2026-09-08
 
-The re-baseline after `operator/occupancy` (package 11) and the five refinement turns committed since
+The re-baseline after `operator/capability-waves` (package 12) and its checker's two fixes, taken on the same grid as
+[Baseline 2026-09-08 (first)](#baseline-2026-09-08-first--after-operatoroccupancy-package-11). Every approved
+escalation package is now in the tree; nothing is queued behind this one. The war-spell and coalition halves still
+ship **off** on their own guards (`duration` and `coalition` are both `candidate` in `meta.engine.mechanisms`), and
+package 12's capability *substitution* also ships off — it was measured, rejected by the event backtest, and recorded
+as `rejected` in `data/templates.yaml` rather than promoted. Produced with:
+
+```
+node scripts/build-panel.mjs && node scripts/build-events.mjs && node scripts/fit-hazards.mjs
+node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all
+node scripts/run-forward.mjs --runs 300 --horizon 40; node scripts/build-history-slice.mjs; node scripts/build-news.mjs; node scripts/build-world.mjs
+node scripts/build-scores-slice.mjs
+```
+
+`scores/backtest-1870-2010-h20-all.json`: 15 as-of years, **255** template × as-of cells (240 last time; `wave_attain`
+is a seventeenth template and contributes 15 unscorable cells), **149 scored rows**, **0 leaky**, 8 underpowered,
+106 rows with no score, 232 s of engine time.
+
+**Nothing in the event half of this baseline is a new measurement.** `data/panel.json`, `data/events.json` and
+`data/fits.json` rebuilt from scratch are identical to the copies committed at `c3b0f2f` once their `meta.built`
+stamps are dropped, and the backtest file this run produced is character-identical to the committed one once
+`meta.run` and `byAsOf[].ms` are dropped — `pooled`, `occupancy` and all fifteen `byAsOf` rows compare equal. The
+pooled table below is therefore the same table as the one it replaces, digit for digit, which is the claim package 12
+made about itself (its result (d): the layer on by default costs the backtest nothing) holding over the whole
+baseline. The one row that has no predecessor is the `wave_share` capability rank in the occupancy block.
+
+### Pooled across as-of years
+
+`exp/obs` is expected over observed count; `skill` is Brier skill against the sample base rate; `AUC@risk` is over the
+units the model can put mass on (`p > 0`), which is what the fitted coefficients actually rank — the backtest reports
+it **per as-of row, not pooled**, so the column is the `n_at_risk`-weighted mean of the per-as-of values that entered
+`pooled`.
+
+| template | n | exp | obs | exp/obs | Brier | base | skill | AUC | AUC@risk | n_at_risk | as-of years pooled |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| coup_attempt | 1103 | 259.4 | 292 | 0.89 | 0.151 | 0.195 | +0.23 | 0.79 | 0.76 | 926 | 1960–2010 |
+| intrastate_onset | 1103 | 342.4 | 349 | 0.98 | 0.168 | 0.216 | +0.23 | 0.79 | 0.80 | 1002 | 1960–2010 |
+| mid_force | 113394 | 1177.3 | 1440 | 0.82 | 0.0110 | 0.0125 | +0.11 | 0.81 | 0.80 | 9559 | 1870–2000 |
+| intrastate_end | 1103 | 260.7 | 291 | 0.90 | 0.173 | 0.194 | +0.11 | 0.72 | 0.75 | 845 | 1960–2010 |
+| contest_settle | 693 | 89.8 | 83 | 1.08 | 0.094 | 0.105 | +0.11 | 0.80 | 0.48 | 298 | 1910–2010 |
+| irregular_exit | 945 | 178.0 | 138 | 1.29 | 0.119 | 0.125 | +0.05 | 0.76 | 0.74 | 762 | 1970–2010 |
+| chokepoint_status | 210 | 117.7 | 101 | 1.17 | 0.240 | 0.250 | +0.04 | 0.64 | 0.64 | 210 | 1890–2010 |
+| corridor_status | 317 | 142.3 | 102 | 1.39 | 0.210 | 0.218 | +0.04 | 0.66 | 0.70 | 317 | 1900–2010 |
+| mid_war | 113394 | 440.9 | 614 | 0.72 | 0.0052 | 0.0054 | +0.03 | 0.78 | 0.74 | 7354 | 1870–2000 |
+| interstate_onset | 89190 | 127.9 | 64 | 2.00 | 0.0008 | 0.0007 | −0.05 | 0.89 | 0.76 | 3122 | 1970–2010 |
+| autocratic_closure | 1033 | 280.0 | 387 | 0.72 | 0.248 | 0.234 | −0.06 | 0.65 | 0.70 | 951 | 1870–2010 |
+| democratic_deepening | 132 | 39.0 | 19 | 2.05 | 0.146 | 0.123 | −0.19 | 0.78 | 0.74 | 126 | 1990–2010 |
+| democratize_step | 1241 | 491.1 | 610 | 0.81 | 0.299 | 0.250 | −0.20 | 0.54 | 0.51 | 1108 | 1870–2010 |
+| record_reopen | 432 | 182.4 | 75 | 2.43 | 0.186 | 0.143 | −0.30 | 0.72 | 0.79 | 432 | 1920–2010 |
+| leader_exit | 1103 | 921.1 | 930 | 0.99 | 0.177 | 0.132 | −0.34 | 0.74 | 0.80 | 1005 | 1960–2010 |
+
+Sixteen templates are simulated; seventeen appear in the file. The two that are in it and not in the table are
+`war_end` (fitted and deliberately unscored — in no row by its own candidate guard, not by its data) and, new here,
+`wave_attain`.
+
+**`wave_attain` is in the backtest file and cannot be scored by it**, and the file says so in every one of its 15
+cells: *"unit actor-wave-year: the label is the dated `sovereign_by` history in `data/waves.yaml`, not an event kind,
+so the event backtest cannot score it."* Its evidence is test (a) in `scripts/analysis/waves.mjs` — fit on the five
+pre-1900 waves, predict the 20th-century ones, Spearman 0.981 / 0.978 / 1.000 / 0.975 / 0.542 — and that test is not
+a rolling-origin backtest. A simulated template whose score lives outside this file is a gap in the baseline, not a
+pass; it is named here so the next adversary turn can attack it.
+
+**The 106 unscored cells, by reason** — 51 outside their label source's coverage, 26 with no fit at the as-of year,
+15 the wave unit, 14 the war-spell guard:
+
+- *outside coverage* (the horizon opens entirely outside the ground truth, so absence is not a non-event):
+  `coup_attempt`, `intrastate_onset`, `intrastate_end`, `leader_exit`, `irregular_exit`, `interstate_onset` at
+  1870–1940; `mid_force`, `mid_war`, `war_end` at 2010.
+- *no fit at as-of* (too few training events on labels ≤ as-of): `democratic_deepening` 1870–1960;
+  `record_reopen` 1870–1910; `contest_settle` 1870–1890; `chokepoint_status`, `corridor_status` 1870–1880;
+  `coup_attempt`, `intrastate_end`, `leader_exit`, `irregular_exit` 1950.
+- *wrong unit for this file*: `wave_attain` at all fifteen as-of years.
+- *candidate guard*: `war_end` at all fourteen as-of years whose horizon is inside its coverage.
+
+**The 8 underpowered rows** (scored and reported, kept out of `pooled` at events-per-covariate < 3): `corridor_status`
+1890 (1.67), `contest_settle` 1900 (1.67), `intrastate_onset` 1950 (1.63), `interstate_onset` 1950 (1.13),
+`irregular_exit` 1960 (2.17), `interstate_onset` 1960 (2.13), `democratic_deepening` 1970 (1.75) and 1980 (2.50).
+
+### Occupancy, pooled 1870–2010
+
+State each year against the panel and the dated record histories, per lead year k = 1…20 and pooled. `skill` is
+against the same base rate the event scores use. Identical to the first 2026-09-08 baseline in every row.
+
+| variable | n | exp/obs | Brier | base | skill |
+|---|---|---|---|---|---|
+| territory_unsettled | 14365 | 1.00 | 0.0678 | 0.2373 | +0.71 |
+| intrastate | 23506 | 1.09 | 0.1008 | 0.1244 | +0.19 |
+| at_war | 31429 | 0.65 | 0.0432 | 0.0443 | +0.02 |
+| dyad_at_war | 1683194 | 0.28 | 0.00107 | 0.00107 | +0.00 |
+| intrastate_war | 23506 | 0.31 | 0.0361 | 0.0359 | −0.01 |
+| record_impaired | 10621 | 1.58 | 0.0713 | 0.0680 | −0.05 |
+| occupied | 31678 | 0.88 | 0.0081 | 0.0045 | −0.79 |
+| record_status (7-class) | 10621 | — | 0.1847 | 0.5793 | +0.68 |
+| territory_status (11-class) | 14365 | — | 0.2123 | 0.5970 | +0.64 |
+
+Capability rank against CoW, mean Spearman over the as-of rows:
+
+| index | k=10 | k=20 | note |
+|---|---|---|---|
+| `cinc` | 0.945 (15 rows, 0.81–0.99) | 0.891 (14 rows, 0.73–0.99) | frozen at as-of; a floor, not a forecast |
+| `pol_share` | 0.950 (15 rows, 0.88–0.99) | **0.936** (14 rows, 0.86–0.97) | advanced by `stepPolarity` |
+| `wave_share` | 0.899 (15 rows, 0.77–1.00) | 0.817 (14 rows, 0.75–0.89) | **new**: advanced by `stepWaves` |
+
+**The wave share ranks the world worse than the two indices already in the block, and that is the honest reading of
+package 12's one new number.** It is simulated forward rather than frozen, so `cinc`'s 0.891 at k=20 is not a fair
+comparison — `cinc` is the as-of ranking held still, and holding still is a strong baseline over twenty years. The
+comparison that is like-for-like is against `pol_share`, the other index the engine advances: 0.899 against 0.950 at
+k=10 and 0.817 against 0.936 at k=20. The wave portfolio's forward ranking is the loosest of the three at both leads.
+This is consistent with, and independent of, the event-backtest evidence that rejected the capability substitution
+(`WAVE_CAPABILITY=1` takes mid_force AUC 0.810 → 0.773 and mid_war 0.780 → 0.688): the wave index is published as a
+forecast, and it is not yet good enough to be a decider.
+
+The hot-process line is unchanged: over the full 1870–2010 grid the simulated at-war occupancy exceeds the panel's at
+**0 of 20 lead years** for both `at_war` and `dyad_at_war`, pooled exp/obs 0.65 and 0.28 — the pre-1946 origins swamp
+the modern tail where the flat-in-lead problem lives, and the supercritical-war guard should keep reading the
+1955–1990 window rather than this headline.
+
+### What moved since the first 2026-09-08 baseline
+
+Nothing on the event score, by construction and by byte comparison. Four things that are not scores did move:
+
+- **`wave_attain`, `wave_share`, `wave_attained` and `industry_share` are in the panel, the fits and the published
+  ensembles** for the first time (19 waves, `industry_share` non-zero in 12,024 of 19,531 live actor-years,
+  `wave_share` on every one). The layer is scored nowhere in this file except the capability rank above.
+- **The checker's engine fix is in the published forecast, not in the backtest.** `stepWaves` read `at_war` after the
+  drift loop had cleared it, so a covariate fitted at +0.57 was 0 in every simulated year; fixed at `c3b0f2f` by
+  reading the war state the actor enters the year with. It changes no backtested number (nothing reads the wave share
+  by default and the draw order is untouched) and it does change `public/forecast.json`.
+- **`public/forecast.json` is 300 runs × 40 y (2026–2065), 2,988 KB, with the `state` block** — 195 actors, 1,206
+  dyads at ≥5%, and 195 actors / 500 dyads / 157 records in the state block. **This shortens the published horizon:
+  the copy committed at `c3b0f2f` was 300 × 100 (2026–2125, 7,617 KB), and the viewer's forecast control goes to
+  +100 years (`dd270c7`), so the control now runs six decades past the end of the forecast.** The command list this baseline was given specifies
+  `--horizon 40`; it was followed as given and the consequence is recorded here rather than quietly corrected. Re-run
+  with `--horizon 100` to restore the published length.
+- **`public/scores.json` was rebuilt** (`build-scores-slice.mjs` is the one command beyond the list, for the same
+  reason as the last two baselines) and is byte-identical to the committed copy apart from its `meta.run` stamp,
+  since its input is.
+
+## Baseline 2026-09-08 (first) — after operator/occupancy (package 11)
+
+Superseded by [Baseline 2026-09-08](#baseline-2026-09-08) above, whose event score reproduces this one byte for byte;
+kept because it is the last baseline taken before package 12 entered the tree. The re-baseline after
+`operator/occupancy` (package 11) and the five refinement turns committed since
 [Baseline 2026-09-07](#baseline-2026-09-07): `era-1870-1914-r2`, `era-1914-1945-r2`, `era-1945-1991-r2`,
 `era-1991-2026-r2` and `era-modern-2000-2025`. Package 12 (`operator/capability-waves`) is approved and **not** in
 this tree — it is queued behind package 11 and nothing below reflects it. The war-spell and coalition halves still
@@ -668,7 +832,7 @@ rate of 0.07%.
 
 ## Baseline 2026-09-07
 
-Superseded by [Baseline 2026-09-08](#baseline-2026-09-08) above; kept because the five `-r2` and `era-modern` turns are measured against it. The re-baseline after the operator packages implemented since [Baseline 2026-09-07 (first)](#baseline-2026-09-07-first--after-the-escalation-packages): phase-1 cleanup, `operator/modern-capability` (package 10), `operator/derived-polarity` (package 9), `operator/presence` (package 7) and `operator/termination` (package 8). The war-spell half of package 8 ships **off** on its own guard; `duration` and `coalition` are both `candidate` in `meta.engine.mechanisms`. Produced with:
+Superseded by [Baseline 2026-09-08 (first)](#baseline-2026-09-08-first--after-operatoroccupancy-package-11) above; kept because the five `-r2` and `era-modern` turns are measured against it. The re-baseline after the operator packages implemented since [Baseline 2026-09-07 (first)](#baseline-2026-09-07-first--after-the-escalation-packages): phase-1 cleanup, `operator/modern-capability` (package 10), `operator/derived-polarity` (package 9), `operator/presence` (package 7) and `operator/termination` (package 8). The war-spell half of package 8 ships **off** on its own guard; `duration` and `coalition` are both `candidate` in `meta.engine.mechanisms`. Produced with:
 
 ```
 node scripts/build-panel.mjs && node scripts/build-events.mjs && node scripts/fit-hazards.mjs

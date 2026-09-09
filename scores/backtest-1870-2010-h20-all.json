@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run": "2026-09-09T01:44:30.628Z",
+  "run": "2026-09-09T02:15:58.916Z",
   "from": 1870,
   "to": 2010,
   "step": 10,
@@ -24,7 +24,7 @@
    "actors": 55,
    "window_actors": 58,
    "dyad_actors": 58,
-   "ms": 3318,
+   "ms": 3336,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -2010,7 +2010,7 @@
    "actors": 54,
    "window_actors": 54,
    "dyad_actors": 54,
-   "ms": 3252,
+   "ms": 3313,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -3989,7 +3989,7 @@
    "actors": 50,
    "window_actors": 57,
    "dyad_actors": 57,
-   "ms": 4007,
+   "ms": 4050,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -6005,7 +6005,7 @@
    "actors": 49,
    "window_actors": 66,
    "dyad_actors": 66,
-   "ms": 5638,
+   "ms": 5667,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -8030,7 +8030,7 @@
    "actors": 55,
    "window_actors": 70,
    "dyad_actors": 70,
-   "ms": 6366,
+   "ms": 6334,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -10056,7 +10056,7 @@
    "actors": 61,
    "window_actors": 69,
    "dyad_actors": 69,
-   "ms": 7538,
+   "ms": 7553,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -12108,7 +12108,7 @@
    "actors": 65,
    "window_actors": 84,
    "dyad_actors": 84,
-   "ms": 7865,
+   "ms": 7919,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -14281,7 +14281,7 @@
    "actors": 63,
    "window_actors": 113,
    "dyad_actors": 113,
-   "ms": 9987,
+   "ms": 10130,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -16690,7 +16690,7 @@
    "actors": 80,
    "window_actors": 137,
    "dyad_actors": 137,
-   "ms": 14213,
+   "ms": 14508,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -19251,7 +19251,7 @@
    "actors": 110,
    "window_actors": 158,
    "dyad_actors": 158,
-   "ms": 20526,
+   "ms": 20614,
    "templates": {
     "leader_exit": {
      "n": 158,
@@ -21900,7 +21900,7 @@
    "actors": 136,
    "window_actors": 165,
    "dyad_actors": 165,
-   "ms": 24008,
+   "ms": 24312,
    "templates": {
     "leader_exit": {
      "n": 165,
@@ -24567,7 +24567,7 @@
    "actors": 156,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 27467,
+   "ms": 27708,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -27234,7 +27234,7 @@
    "actors": 161,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 30734,
+   "ms": 31187,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -29903,7 +29903,7 @@
    "actors": 191,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 36951,
+   "ms": 36003,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -32388,7 +32388,7 @@
    "actors": 194,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 29663,
+   "ms": 29507,
    "templates": {
     "leader_exit": {
      "n": 195,
