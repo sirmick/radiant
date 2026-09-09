@@ -210,7 +210,12 @@ function stepWaves(world, waveRng) {
       for (const h of holders[i]) { if (h !== id && world.allied.has(pairKey(id, h))) { access = 1; break; } }
       const feats = attainFeatures({
         wave: w, year: y, industryShare: ind, logGdpPc: a.cur.log_gdp_pc,
-        access, diffusion: diffusion[i], atWar: a.cur.at_war, greatPower: a.cur.great_power,
+        // `at_war` is the one covariate this step cannot read contemporaneously: stepWaves runs before the war-spell
+        // loop and the drift loop above has already cleared a.cur.at_war for every actor, so a.cur.at_war is 0 for
+        // everyone here, every year — the fit's +0.57 on it was dead in simulation (checker, 2026-09-08). The war
+        // state the actor ENTERS the year with is what is available at this point in the step, and it is what the
+        // panel row for the previous year carries, so the covariate is read off a.prev.
+        access, diffusion: diffusion[i], atWar: a.cur.at_war || a.prev?.at_war, greatPower: a.cur.great_power,
       });
       if (!feats) continue;
       const p = spellHazard(world, t, feats);

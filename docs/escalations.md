@@ -1536,6 +1536,8 @@ One arc threshold is worth stating because it is a finding rather than a style c
 
 **PASS** on the stated bars (at least as good pooled, better by ≥ 0.02 after 1945 — it is better by 0.095). The italic columns are the decomposition the package did not ask for and the finding it produces: **the raw industrial share alone scores 0.628 after 1945, above the wave portfolio built on it.** The wave index beats CINC comfortably and loses to its own input. That is the number the promotion decision below turns on.
 
+**Checker correction, 2026-09-08.** The italic columns are not measured on the same rows as the first two: `industry_share` is observed for 232 of the 322 post-1945 dispute-dyads and 457 of the 715 over 1900–2001, so “0.628 against 0.612” compares two samples. Recomputed on the rows where all three are observed the order reverses — 1946–2001 (n = 232): CINC 0.536, `industry_share` 0.628, `wave_share` **0.660**; 1946–2010 (n = 243): 0.528 / 0.634 / **0.663**; 1900–2001 (n = 452): 0.489 / 0.574 / **0.605**. Like for like the wave portfolio beats its own input, so the diagnosis “the mass and displacement weights add nothing over the industrial share” is not established by test (b). The rejection below still stands, because it rests on the event backtest — the model's promotion rule — and not on this decomposition; but a re-proposal should start from the matched numbers.
+
 *(c) Polarity* — the derived series recomputed with `wave_share` in place of `cinc` inside `projectionShares`, same λ and gap: longest bipolar 1950–1994 → 1952–1993 (2 y), longest unipolar 1995–2014 → 1997–2017 (3 y). **Worst boundary shift 3 y against a 5 y bar. PASS.**
 
 *(d) Backtest* — 1870–2010, +20 y, 100 runs, all states, three runs:

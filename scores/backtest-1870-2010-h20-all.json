@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run": "2026-09-09T00:05:25.035Z",
+  "run": "2026-09-09T01:44:30.628Z",
   "from": 1870,
   "to": 2010,
   "step": 10,
@@ -24,7 +24,7 @@
    "actors": 55,
    "window_actors": 58,
    "dyad_actors": 58,
-   "ms": 3274,
+   "ms": 3318,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -2010,7 +2010,7 @@
    "actors": 54,
    "window_actors": 54,
    "dyad_actors": 54,
-   "ms": 3296,
+   "ms": 3252,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -3989,7 +3989,7 @@
    "actors": 50,
    "window_actors": 57,
    "dyad_actors": 57,
-   "ms": 4012,
+   "ms": 4007,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -6005,7 +6005,7 @@
    "actors": 49,
    "window_actors": 66,
    "dyad_actors": 66,
-   "ms": 5634,
+   "ms": 5638,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -7742,7 +7742,7 @@
       },
       "k20": {
        "n": 61,
-       "spearman": 0.754,
+       "spearman": 0.755,
        "truth": "wave_share"
       }
      }
@@ -8030,7 +8030,7 @@
    "actors": 55,
    "window_actors": 70,
    "dyad_actors": 70,
-   "ms": 6304,
+   "ms": 6366,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -10056,7 +10056,7 @@
    "actors": 61,
    "window_actors": 69,
    "dyad_actors": 69,
-   "ms": 7525,
+   "ms": 7538,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -12108,7 +12108,7 @@
    "actors": 65,
    "window_actors": 84,
    "dyad_actors": 84,
-   "ms": 7869,
+   "ms": 7865,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -14281,7 +14281,7 @@
    "actors": 63,
    "window_actors": 113,
    "dyad_actors": 113,
-   "ms": 9930,
+   "ms": 9987,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -16392,7 +16392,7 @@
       },
       "k20": {
        "n": 110,
-       "spearman": 0.799,
+       "spearman": 0.8,
        "truth": "wave_share"
       }
      }
@@ -16690,7 +16690,7 @@
    "actors": 80,
    "window_actors": 137,
    "dyad_actors": 137,
-   "ms": 14241,
+   "ms": 14213,
    "templates": {
     "leader_exit": {
      "n": 0,
@@ -18939,7 +18939,7 @@
       },
       "k20": {
        "n": 136,
-       "spearman": 0.794,
+       "spearman": 0.795,
        "truth": "wave_share"
       }
      }
@@ -19251,7 +19251,7 @@
    "actors": 110,
    "window_actors": 158,
    "dyad_actors": 158,
-   "ms": 20499,
+   "ms": 20526,
    "templates": {
     "leader_exit": {
      "n": 158,
@@ -21900,7 +21900,7 @@
    "actors": 136,
    "window_actors": 165,
    "dyad_actors": 165,
-   "ms": 23857,
+   "ms": 24008,
    "templates": {
     "leader_exit": {
      "n": 165,
@@ -24277,7 +24277,7 @@
       },
       "k20": {
        "n": 161,
-       "spearman": 0.847,
+       "spearman": 0.846,
        "truth": "wave_share"
       }
      }
@@ -24567,7 +24567,7 @@
    "actors": 156,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 27059,
+   "ms": 27467,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -27234,7 +27234,7 @@
    "actors": 161,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 30766,
+   "ms": 30734,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -29903,7 +29903,7 @@
    "actors": 191,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 35266,
+   "ms": 36951,
    "templates": {
     "leader_exit": {
      "n": 195,
@@ -32388,7 +32388,7 @@
    "actors": 194,
    "window_actors": 195,
    "dyad_actors": 195,
-   "ms": 28985,
+   "ms": 29663,
    "templates": {
     "leader_exit": {
      "n": 195,
