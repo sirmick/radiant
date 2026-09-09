@@ -71,10 +71,10 @@ export function alliancesAt(al, year, hubOf) {
 }
 /** URL hash <-> view state: #y=1956&v=h_regime&a=EGY&l=territories,corridors */
 export function readHash() {
-  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); if (h.get('f')) o.asOf = +h.get('f'); if (h.get('h')) o.horizon = +h.get('h'); if (h.get('view')) o.view = h.get('view'); if (h.get('m')) o.mode = h.get('m'); if (h.get('to')) o.fcTo = +h.get('to'); return o; } catch { return {}; }
+  try { const h = new URLSearchParams(location.hash.slice(1)); const o = {}; if (h.get('y')) o.year = +h.get('y'); if (h.get('v')) o.varId = h.get('v'); if (h.get('a')) o.actor = h.get('a'); if (h.get('l') != null) o.layers = Object.fromEntries(h.get('l').split(',').filter(Boolean).map(x => { const [k, v] = x.split(':'); return [k, v ?? true]; })); if (h.get('t')) o.tab = h.get('t'); if (h.get('f')) o.asOf = +h.get('f'); if (h.get('h')) o.horizon = +h.get('h'); if (h.get('view')) o.view = h.get('view'); if (h.get('m')) o.mode = h.get('m'); if (h.get('to')) o.fcTo = +h.get('to'); if (h.get('fm')) o.fcMode = h.get('fm'); if (h.get('r')) o.run = +h.get('r'); return o; } catch { return {}; }
 }
-export function writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode, fcTo }) {
-  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (horizon) h.set('h', String(horizon)); if (view) h.set('view', view); if (mode && mode !== '2d') h.set('m', mode); if (fcTo && fcTo !== 40) h.set('to', String(fcTo)); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
+export function writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode, fcTo, fcMode, run }) {
+  try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (horizon) h.set('h', String(horizon)); if (view) h.set('view', view); if (mode && mode !== '2d') h.set('m', mode); if (fcTo && fcTo !== 40) h.set('to', String(fcTo)); if (fcMode && fcMode !== 'consensus') h.set('fm', fcMode); if (run) h.set('r', String(run)); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
 }
 /** Regime level for an actor at a year: history panel, else the forecast's modal regime. */
 export function regimeAt(history, forecast, id, year) {
@@ -135,7 +135,8 @@ export function historyAt(h, variable, year) {
  * for that year, `conf` = the modal share for a category, a slow fade with lead for a median; series the ensemble does not
  * carry stay at their last observation and fade. Nothing switches palette at the forecast start — the colour only washes.
  */
-export function seriesAt(h, fc, variable, year) {
+export function seriesAt(h, fc, variable, year, opts = {}) {
+  const mode = opts.mode ?? 'consensus', P = opts.paths ?? null, run = opts.run ?? 0;
   if (variable.industry) return industryAt(h, year);
   const out = {}; if (!h) return out;
   const y = Math.round(year); const i = y - h.meta.y0; if (i < 0) return out;
@@ -162,13 +163,22 @@ export function seriesAt(h, fc, variable, year) {
     const a = fc.actors[id] ?? {};
     const ha = h.actors[id]; const name = ha?.name ?? id;
     if (variable.gradient && a.regime?.[k]) { const d = a.regime[k]; const mean = d.reduce((t, p, l) => t + p * l, 0); const H = -d.reduce((t, p) => t + (p > 0 ? p * Math.log2(p) : 0), 0); out[id] = { value: mean, year, actor: id, name, forecast: true, conf: Math.max(0.15, 1 - H / 2), dist: d, mean: true }; continue; }
-    if (v === 'regime' && a.regime?.[k]) { const d = a.regime[k]; const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, conf: d[m], dist: d }; continue; }
+    // three ways to read a categorical forecast. sample: one run's actual state, flat, with the runs' agreement carried
+    // for the card; consensus: the modal state with hysteresis, washed by its share; odds: the probability the state
+    // differs from the as-of one (regime) or the probability of the conflict state, painted on a heat ramp.
+    const ps = mode === 'sample' && P ? pathActorAt(P, run, id, y) : null;
+    if (v === 'regime' && a.regime?.[k]) {
+      const d = a.regime[k];
+      if (ps && ps.regime != null) { out[id] = { value: ps.regime, year, actor: id, name, forecast: true, sample: true, conf: 1, agree: d[ps.regime], dist: d }; continue; }
+      if (mode === 'odds') { const r0 = a.regime0; const pChange = r0 == null ? null : 1 - (d[r0] ?? 0); out[id] = { value: pChange, year, actor: id, name, forecast: true, odds: true, conf: 1, dist: d }; continue; }
+      const m = modalHysteresis(a.regime, k); out[id] = { value: m, year, actor: id, name, forecast: true, conf: d[m], dist: d }; continue;
+    }
     // operator/occupancy: the state block carries the conflict and capability series across the seam, so Conflict and
     // Routes stop freezing at the last observation while Politics moves. The painted value is the MODAL state and the
     // wash is 1 − P(that state), which is what makes a 50/50 year read as grey rather than as a confident war.
     const st = fc.state?.actors?.[id];
-    if (st && v === 'at_war') { const p = st.at_war?.[k] ?? 0; const m = p >= 0.5 ? 1 : 0; out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p, conf: Math.max(p, 1 - p), dist: [1 - p, p] }; continue; }
-    if (st && v === 'intrastate') { const p1 = st.intrastate?.[k] ?? 0, p2 = st.intrastate_war?.[k] ?? 0; const d = [Math.max(0, 1 - p1), Math.max(0, p1 - p2), p2]; const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p: d[m], conf: d[m], dist: d }; continue; }
+    if (st && v === 'at_war') { const p = st.at_war?.[k] ?? 0; if (ps) { out[id] = { value: ps.at_war, year, actor: id, name, forecast: true, state: true, sample: true, p, conf: 1, agree: ps.at_war ? p : 1 - p, dist: [1 - p, p] }; continue; } if (mode === 'odds') { out[id] = { value: p, year, actor: id, name, forecast: true, state: true, odds: true, conf: 1, dist: [1 - p, p] }; continue; } const m = p >= 0.5 ? 1 : 0; out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p, conf: Math.max(p, 1 - p), dist: [1 - p, p] }; continue; }
+    if (st && v === 'intrastate') { const p1 = st.intrastate?.[k] ?? 0, p2 = st.intrastate_war?.[k] ?? 0; const d = [Math.max(0, 1 - p1), Math.max(0, p1 - p2), p2]; if (ps) { const lv = Math.min(2, ps.intrastate); out[id] = { value: lv, year, actor: id, name, forecast: true, state: true, sample: true, p: d[lv], conf: 1, agree: d[lv], dist: d }; continue; } if (mode === 'odds') { out[id] = { value: p1, year, actor: id, name, forecast: true, state: true, odds: true, conf: 1, dist: d }; continue; } const m = d.indexOf(Math.max(...d)); out[id] = { value: m, year, actor: id, name, forecast: true, state: true, p: d[m], conf: d[m], dist: d }; continue; }
     // operator/capability-waves (package 12): wave_share, wave_attained and industry_share join cinc and pol_share as
     // quantile series in the state block. Unlike cinc they are simulated — the band is a forecast, not a frozen value —
     // and `meta.state.vars[].simulated` is what the card reads to say so.
@@ -180,6 +190,58 @@ export function seriesAt(h, fc, variable, year) {
     out[id] = { value: val, year, actor: id, name, carried: true, observed: h.meta.y0 + j, stale: y - (h.meta.y0 + j), conf: fade(y - (h.meta.y0 + j)) };
   }
   return out;
+}
+/**
+ * Sample worlds: the first N runs of an ensemble kept whole (`<ensemble>-paths.json`, written by run-forward.mjs). A
+ * marginal map is a map of no run, so the viewer can paint one run's categorical states — the same kind of object as
+ * the historical panel — and flip between runs. Loaded on demand; `fc.paths.file` says where.
+ */
+const pathsCache = new Map();
+export function loadPaths(fc) {
+  const file = fc?.paths?.file; if (!file) return Promise.resolve(null);
+  if (!pathsCache.has(file)) pathsCache.set(file, fetch(`${import.meta.env.BASE_URL}${file}`).then(r => (r.ok ? r.json() : null)).catch(() => null));
+  return pathsCache.get(file);
+}
+const pathK = (P, year) => { if (!P) return -1; const k = Math.round(year) - P.meta.from; return k >= 0 && k < P.meta.horizon ? k : -1; };
+/** One run's actor state at a year: { regime, intrastate, at_war, occupied } or null. */
+export function pathActorAt(P, run, id, year) {
+  const k = pathK(P, year); if (k < 0) return null; const arr = P.runs[run % P.runs.length]?.actors?.[id]; if (!arr) return null;
+  const v = arr[k]; if (v == null) return null; const rg = v & 15;
+  return { k, regime: rg === 15 ? null : rg, intrastate: (v >> 4) & 3, at_war: (v >> 6) & 1, occupied: (v >> 7) & 1 };
+}
+export function pathDyadsAt(P, run, year) { const k = pathK(P, year); return k < 0 ? [] : P.runs[run % P.runs.length]?.dyads?.[k] ?? []; }
+export function pathRecordAt(P, run, recId, year) { const k = pathK(P, year); if (k < 0) return null; const arr = P.runs[run % P.runs.length]?.records?.[recId]; const i = arr?.[k]; return i == null || i < 0 ? null : P.vocab.s[i]; }
+export function pathEventsAt(P, run, year) { const k = pathK(P, year); if (k < 0) return []; return (P.runs[run % P.runs.length]?.events?.[k] ?? []).map(([ti, u]) => ({ t: P.vocab.t[ti], u })); }
+const NEWS_KIND = (t) => (t === 'coup_attempt' || t === 'irregular_exit' ? 'coup' : t === 'intrastate_onset' || t === 'intrastate_end' ? 'conflict' : t === 'leader_exit' ? 'leader' : t === 'mid_war' || t === 'war_end' || t === 'interstate_onset' ? 'war' : t === 'mid_force' ? 'dispute' : /chokepoint|corridor|record_reopen|weaponization/.test(t) ? 'corridor' : /contest|territory/.test(t) ? 'territory' : /wave/.test(t) ? 'capability' : 'regime');
+const TPL_LABEL = { war_end: 'War ends', mid_force: 'Militarized dispute, use of force', mid_war: 'Militarized dispute (war level)', wave_attain: 'Sovereign in a capability wave' };
+/**
+ * One sample world's events in a year, in the record's voice, each with the ensemble's odds beside it: P(first
+ * occurrence in this year) from the curves where the template has one, else the occupancy where it has that.
+ */
+export function sampleNews(fc, P, run, year, names = {}) {
+  const evs = pathEventsAt(P, run, year); if (!evs.length) return [];
+  const k = Math.round(year) - fc.meta.from; const inc = (curve) => (curve ? (curve[k] ?? 0) - (k > 0 ? curve[k - 1] ?? 0 : 0) : null);
+  const LABEL = { ...TPL_LABEL, ...Object.fromEntries(fc.meta.templates.map(t => [t.id, t.label])) };
+  const nm = (id) => names[id] ?? id;
+  const out = [];
+  for (const e of evs) {
+    const isPair = e.u.includes('|'); const kind = NEWS_KIND(e.t);
+    let p = null, a = [], c = null, tr = null, who;
+    if (isPair) { a = e.u.split('|'); p = inc(fc.dyads?.[e.u]?.[e.t]?.curve); who = a.map(nm).join(' – '); }
+    else if (fc.actors?.[e.u]) { a = [e.u]; p = inc(fc.actors[e.u].p?.[e.t]); who = nm(e.u); }
+    else { const isTerr = /contest|territory/.test(e.t); if (isTerr) tr = e.u; else c = e.u; p = inc(fc.records?.[e.t]?.[e.u]); who = e.u.replace(/_/g, ' '); }
+    out.push({ k: kind, y: year, a, c, tr, p, tpl: e.t, sample: true, t: `${who}: ${LABEL[e.t] ?? e.t.replace(/_/g, ' ')}` });
+  }
+  const order = { war: 0, coup: 1, conflict: 2, territory: 3, corridor: 4, regime: 5, dispute: 6, leader: 7, capability: 8 };
+  out.sort((x, y) => (order[x.k] ?? 9) - (order[y.k] ?? 9) || (y.p ?? 0) - (x.p ?? 0));
+  return out;
+}
+/** The modal category with hysteresis: keep the state the actor is in until another category clears 55%, and only
+ *  leave it once its own share drops under 45% — so a state near 50/50 does not flicker from year to year. */
+export function modalHysteresis(dists, k, enter = 0.55, leave = 0.45) {
+  let cur = null;
+  for (let i = 0; i <= k; i++) { const d = dists[i]; if (!d) continue; const m = d.indexOf(Math.max(...d)); if (cur == null) { cur = m; continue; } if (m !== cur && d[m] >= enter) cur = m; else if (d[cur] < leave && d[m] > d[cur]) cur = m; }
+  return cur;
 }
 /**
  * operator/occupancy (package 11): the ensemble's OCCUPANCY block — what state the world is in each forecast year,

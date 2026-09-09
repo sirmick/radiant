@@ -71,7 +71,7 @@ While a workflow runs, commit only your own paths (`git add <paths>`), never `gi
 
 ## Forecast length
 
-`node scripts/run-forward.mjs --runs 300 --horizon 100` builds the main ensemble a century long (`public/forecast.json`, ~4 MB); the viewer's **to** control offers +40…+100 years up to the loaded ensemble's horizon. Cost is linear in runs × years: 20 runs × 40 years take ~14 s on the dev machine including the fit, so 300 × 100 took 432 s (7 min). Past-as-of ensembles run 200 runs × 40 years:
+`node scripts/run-forward.mjs --runs 300 --horizon 100 --paths 12` builds the main ensemble a century long (`public/forecast.json`, ~8 MB, plus `forecast-paths.json` with twelve whole runs for the viewer's sample-world mode); the viewer's **to** control offers +40…+100 years up to the loaded ensemble's horizon. Cost is linear in runs × years: 20 runs × 40 years take ~14 s on the dev machine including the fit, so 300 × 100 took 432 s (7 min). Past-as-of ensembles run 200 runs × 40 years:
 
 ```
 for y in 1900 1930 1955 1975 1990 2005; do node scripts/run-forward.mjs --as-of $y --runs 200 --horizon 40; done

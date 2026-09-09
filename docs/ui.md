@@ -15,12 +15,12 @@ A view is a preset of fill variable + layers + field. One click each; the advanc
 
 | view | fill | field | vector layers |
 |---|---|---|---|
-| Politics (default) | regime gradient, one series across the seam (see below) | — | territories, flags · regime glyphs |
+| Politics (default) | regime (categorical), one series across the seam (see below) | — | territories, flags · regime glyphs |
 | Power | capability share | spheres of influence | great-power pacts, military presence |
 | Conflict | at war — the panel's flag to 2025, the ensemble's P(at war) after it | belligerents (heat) | territories, corridors, conflict outlines and arcs |
 | Routes | primary energy | routes (open green / contested red, weighted by how many states each is load-bearing for) | corridors and chokepoints, simulated status after the seam |
 | Industry | industrial base (share of world: steel → electricity → manufacturing value added) | industrial mass (heat) | industrial qualities roses, capability-wave marks |
-| Forecast | regime gradient, jumps the slider to 2036 if it is in the past | forecast hazard | flags · regime glyphs |
+| Forecast | regime, jumps the slider to 2036 if it is in the past | forecast hazard | flags · regime glyphs |
 
 ## Across the seam
 
@@ -40,6 +40,20 @@ A history variable is one series from 1870 to 2066; nothing switches palette at 
 Past-as-of ensembles carry the same block, so "forecast from 1955" paints P(at war) over what happened.
 
 **Industry** paints each state's share of world industrial output on a log ramp, using whichever series covers the year best: iron and steel (CoW NMC) to the 1960s, electricity generation (OWID) after, manufacturing value added (WDI) once the largest producers report it (late 1990s). A state is carried up to three years so a late reporter does not drop out of the total; the legend names the series in use. The roses switch to steel · electricity · R&D share · manufacturing · high-tech exports. The ⬢ marks are the sovereign producers of the newest capability wave that still discriminates (`data/waves.yaml`: introduced by the year, not yet saturated), bright when attained in the last five years; the hover card lists every wave a state holds. After the seam the field is still held still — the industrial *field* is a rasterisation of the last reported shares — but the painted variable is not: **Industry** and **Power** both paint `h_wave_share`, the wave-weighted capability share, which the state block simulates forward (`operator/capability-waves`, package 12). `h_cinc` and the raw industrial series stay in the variable picker for the comparison. The ⬢ hover text now carries the source of each attainment date.
+
+## Reading a forecast year: three modes
+
+The **read as** control on the timeline decides what a forecast year paints. History is categorical because the world is; a mean over 300 runs is a different kind of object, and a map of the modal state of every marginal is a map of no run at all (twenty states at 30% coup risk each show zero coups where the ensemble expects six). So:
+
+| mode | paints | when to use |
+|---|---|---|
+| **consensus** (default) | the most likely state of each thing, held until another category clears 55% and left only when its own share drops under 45% (hysteresis, no year-to-year flicker), washed to grey by disagreement; records at their modal status washed by probability; conflict arcs by P(at war) | the slow variables: regime, territory, capability |
+| **sample world** | one run of the ensemble, whole: flat category colours, the same conflict outlines, arcs and hatching as history, and News lists *that run's events* in the record's voice with the ensemble's odds beside each. **world N ▸** flips to another run; the hover card says how many runs agree | the rare events: coups, wars, closures — the only mode in which the Conflict view looks like 1942 rather than a heat map |
+| **odds** | probabilities on a heat ramp: P(regime changed since the seam), P(at war), P(internal conflict) | "where is the risk" |
+
+Sample worlds are the first twelve runs of each ensemble, kept whole by `scripts/run-forward.mjs --paths 12` in `<ensemble>-paths.json` (packed one byte per actor-year plus the pairs at war, every record's status and the fired events; ~4 MB for 12 × 100 years) and loaded only when the mode is chosen. The URL hash carries the mode (`fm=sample`) and the run (`r=3`), so a particular world is a link.
+
+The Politics default is the categorical regime again, flat colours through the seam; **Regime (gradient)** (V-Dem polyarchy on the category axis) stays in the picker as the continuous fact.
 
 ## Renderer
 

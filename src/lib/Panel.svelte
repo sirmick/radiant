@@ -1,11 +1,12 @@
 <script>
-  import { valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, actualWithin, flagEmoji, regimeAt, REGIME_GLYPH, REGIME_COL4, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
+  import { sampleNews, valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, actualWithin, flagEmoji, regimeAt, REGIME_GLYPH, REGIME_COL4, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
 
-  let { world, forecast, history, news, scores, selected, year, onSelect, onPickVariable, tab = $bindable('news') } = $props();
+  let { world, forecast, history, news, scores, selected, year, fcMode = 'consensus', run = 0, paths = null, onSelect, onPickVariable, tab = $bindable('news') } = $props();
   const hSpark = (v, w = 160, h = 34) => { if (!histActor?.[v]) return null; const ys = [], vs = []; histActor[v].forEach((x, i) => { if (x != null) { ys.push(history.meta.y0 + i); vs.push(x); } }); if (vs.length < 2) return null; const lo = Math.min(...vs), hi = Math.max(...vs); const sx = (yy) => 1 + (yy - history.meta.y0) / (history.meta.y1 - history.meta.y0) * (w - 2); const sy = (x) => (h - 2) - (hi === lo ? (h - 4) / 2 : (x - lo) / (hi - lo) * (h - 4)); let d = ''; let prev = null; ys.forEach((yy, i) => { d += (prev != null && yy === prev + 1 ? 'L' : 'M') + sx(yy).toFixed(1) + ',' + sy(vs[i]).toFixed(1); prev = yy; }); return { d, x: sx(Math.max(history.meta.y0, Math.min(history.meta.y1, Math.round(year)))), w, h, lo, hi }; };
   let newsKinds = $state(new Set(['war', 'nuclear', 'territory', 'corridor', 'alliance', 'coup', 'regime', 'conflict', 'dispute', 'leader', 'capability', 'economic']));
   const KIND_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', alliance: '#6cb4ff', coup: '#d95c4f', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3', capability: '#c07ae0', economic: '#d9a441' };
-  const yearNews = $derived.by(() => { const y = Math.round(year); if (forecast && y >= forecast.meta.from) return { mode: 'forecast', items: forecastNews(forecast, y) }; return { mode: 'history', items: news?.years?.[y] ?? [] }; });
+  const nameOf = $derived.by(() => { const m = {}; for (const [id, a] of Object.entries(history?.actors ?? {})) m[id] = a.name; for (const [id, a] of Object.entries(world.actors)) m[id] = a.name; return m; });
+  const yearNews = $derived.by(() => { const y = Math.round(year); if (forecast && y >= forecast.meta.from) { if (fcMode === 'sample' && paths) return { mode: 'sample', items: sampleNews(forecast, paths, run, y, nameOf) }; return { mode: 'forecast', items: forecastNews(forecast, y) }; } return { mode: 'history', items: news?.years?.[y] ?? [] }; });
   const shown = $derived(yearNews.items.filter(e => newsKinds.has(e.k)));
   const toggleKind = (k) => { const n = new Set(newsKinds); n.has(k) ? n.delete(k) : n.add(k); newsKinds = n; };
   const goto = (e) => { if (e.c) onSelect({ kind: 'corridor', id: e.c }); else if (e.tr) onSelect({ kind: 'territory', id: e.tr }); else if (e.a?.length) onSelect({ kind: 'actor', id: e.a[0] }); tab = 'detail'; };
@@ -45,7 +46,13 @@
   <div class="body">
     {#if tab === 'news'}
       <div class="kinds">{#each Object.keys(KIND_COL) as k}<button class="kind" class:on={newsKinds.has(k)} style="--c:{KIND_COL[k]}" onclick={() => toggleKind(k)}>{k}</button>{/each}</div>
-      {#if yearNews.mode === 'forecast'}
+      {#if yearNews.mode === 'sample'}
+        <div class="tiny muted" style="margin:6px 0">{year} in world {run + 1} of {paths.meta.n}: what happened in this run of the ensemble, in the record's voice. The percentage beside each is the whole ensemble's odds of it first happening this year — a 3% event that happened is a 3% event that happened.</div>
+        {#if !shown.length}<p class="muted">Nothing happened in this world this year for the selected kinds.</p>{/if}
+        {#each shown as e}
+          <div class="card clickable news" onclick={() => goto(e)}><span class="dot" style="background:{KIND_COL[e.k]}"></span><span class="mono pct muted">{e.p != null ? (e.p * 100).toFixed(0) + '%' : '—'}</span><span>{e.t}</span></div>
+        {/each}
+      {:else if yearNews.mode === 'forecast'}
         <div class="tiny muted" style="margin:6px 0">{year}: ensemble hazards — P(first occurrence in this year) from {forecast.meta.runs} runs, ranked by how far above the typical actor each one sits. Generic templates only. Not events; odds.</div>
         {#if !shown.length}<p class="muted">Nothing above 2% for the selected kinds.</p>{/if}
         {#each shown as e}

@@ -1,5 +1,5 @@
 // Forward run: fitted generic templates on every state's 2025 state, 2026→2065 -> public/forecast.json
-// Run: node scripts/run-forward.mjs [--runs 500] [--horizon 40] [--universe all|modeled] [--as-of 1955] [--out public/forecast-1955.json]
+// Run: node scripts/run-forward.mjs [--runs 500] [--horizon 40] [--paths 12] [--universe all|modeled] [--as-of 1955] [--out public/forecast-1955.json]
 // With --as-of before the panel's last year the coefficients are refit on labels <= as-of (scripts/lib/fit.mjs), so a past
 // forecast knows nothing after its own date. Every run also updates public/forecasts.json, the index the UI reads.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -10,7 +10,7 @@ import { loadWaves } from '../src/engine/waves.js';
 import { existsSync } from 'node:fs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
-const RUNS = +arg('runs', 500), H = +arg('horizon', 40), UNIVERSE = arg('universe', 'all');
+const RUNS = +arg('runs', 500), H = +arg('horizon', 40), UNIVERSE = arg('universe', 'all'), PATHS = +arg('paths', 12);
 const AS_OF = arg('as-of', null) != null ? +arg('as-of') : null;
 const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
 const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
@@ -46,7 +46,7 @@ if (asOf < panel.meta.y1) {   // honest past forecast: coefficients from labels 
 const OUT = arg('out', asOf === panel.meta.y1 ? 'public/forecast.json' : `public/forecast-${asOf}.json`);
 const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves });
 const t0 = Date.now();
-const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, track: true, state: true });
+const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, track: true, state: true, paths: Math.min(PATHS, RUNS) });
 const w0 = make(); const ids = Object.keys(w0.actors);
 const simulated = templates.filter(t => fits[t.id]?.status === 'fitted' && t.status !== 'monitored');
 // era-modern-2000-2025/data-2: what the run actually produced, not what was fitted. A template with no unit in the
@@ -110,6 +110,27 @@ out.meta.waves = {
   template: templates.find(t => t.id === 'wave_attain') ? 'wave_attain' : null,
   note: 'wave_share and wave_attained in state.actors are forecasts of the wave layer. `capability` says whether the dyadic capability ratio read the wave share (WAVE_CAPABILITY=1 / capability.status: active on the template) or CINC',
 };
+// sample worlds: the first PATHS runs kept whole (see runEnsemble). A marginal map is a map of no run — twenty states
+// at 30% each show zero coups where the ensemble expects six — so the viewer's 'sample world' mode paints one run's
+// categorical states and lists that run's events, and flips between runs. `paths.runs[r].actors[id][k]` is the packed
+// byte documented in the engine; `dyads[k]` the pairs at war; `records[id][k]` the status word; `events[k]` the fired
+// events as { t: template or kind, u: actor | record | 'A|B' }.
+// They go in their own file, loaded only when the viewer is asked for a sample world: templates and status words are
+// indexed through a vocabulary so twelve 100-year worlds stay a few MB.
+const PATHS_OUT = OUT.replace(/\.json$/, '-paths.json');
+{
+  const tv = [], ti = new Map(), sv = [], si = new Map();
+  const T = (t) => { if (!ti.has(t)) { ti.set(t, tv.length); tv.push(t); } return ti.get(t); };
+  const S = (w) => { if (!si.has(w)) { si.set(w, sv.length); sv.push(w); } return si.get(w); };
+  const runsOut = ens.paths.map(P => ({
+    actors: P.actors,
+    dyads: P.dyads,
+    records: Object.fromEntries(Object.entries(P.records).map(([id, arr]) => [id, arr.map(w => (w == null ? -1 : S(w)))])),
+    events: P.events.map(evs => evs.map(e => [T(e.t), e.u])),
+  }));
+  writeFileSync(PATHS_OUT, JSON.stringify({ meta: { asOf, from: asOf + 1, horizon: H, n: runsOut.length, seed: 2026, packing: 'actors[id][k]: regime bits 0-3 (15 = unknown) | intrastate << 4 | at_war << 6 | occupied << 7; records[id][k]: index into vocab.s (-1 = no state); events[k]: [index into vocab.t, unit]', built: out.meta.built }, vocab: { t: tv, s: sv }, runs: runsOut }));
+  out.paths = { n: runsOut.length, file: PATHS_OUT.replace(/^public\//, '') };
+}
 writeFileSync(OUT, JSON.stringify(out));
 // index of available ensembles for the UI
 const idxPath = 'public/forecasts.json'; const idx = existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : { ensembles: [] };

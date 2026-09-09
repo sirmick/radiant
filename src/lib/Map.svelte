@@ -4,9 +4,9 @@
   import { loadGeometry, buildOwnerGrid, makeProjection, unproject, visible } from './geo.js';
   import { drawScene } from './render.js';
   import { buildGrid, FIELDS, evaluateField } from './influence.js';
-  import { valueAt, forecastAt, seriesAt, industryAt, washed, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, actorStateAt, recordStateAt, stateOffset, stateVarMeta, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
+  import { valueAt, forecastAt, seriesAt, industryAt, washed, statusAt, colorScale, alliancesAt, regimeAt, flagEmoji, presenceAt, actorStateAt, recordStateAt, stateOffset, stateVarMeta, pathActorAt, pathDyadsAt, pathRecordAt, POWER_COLORS, STATUS_COLORS, REGIME_GLYPH, REGIME_COL4, REGIME_LABELS } from './data.js';
 
-  let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, mode = '2d', selected, onSelect } = $props();
+  let { world, geo, forecast, history, alliances, news, presence, variable, year, horizon = 10, layers, mode = '2d', fcMode = 'consensus', run = 0, paths = null, selected, onSelect } = $props();
 
   let width = $state(800), height = $state(600);
   let canvasEl = $state(null), mapEl = $state(null);
@@ -43,26 +43,32 @@
   // freezing at the panel's last row. Both helpers return a PROBABILITY — the panel's 0/1 is the degenerate case — so
   // the outlines and the belligerents field carry the ensemble's uncertainty rather than a threshold nobody can see.
   const actorState = (id) => (isForecastYear && forecast?.state ? actorStateAt(forecast, id, year) : null);
-  const atWarP = (id) => { if (inHist) { const a = history?.actors?.[id]; return a && (a.at_war?.[yi] ?? 0) > 0 ? 1 : 0; } return actorState(id)?.at_war ?? 0; };
+  // sample world: one run's categorical state, read the way the panel's is
+  const sampleOn = $derived(fcMode === 'sample' && !!paths && isForecastYear);
+  const sampleActor = (id) => (sampleOn ? pathActorAt(paths, run, id, year) : null);
+  const atWarP = (id) => { if (inHist) { const a = history?.actors?.[id]; return a && (a.at_war?.[yi] ?? 0) > 0 ? 1 : 0; } const ps = sampleActor(id); if (ps) return ps.at_war; return actorState(id)?.at_war ?? 0; };
   const atWar = (id) => atWarP(id) >= 0.5;
   // the belligerents field weights internal conflict 0.6 at level 1 and 1.0 at level 2; after the seam that is the
   // same weight in expectation over the runs (the engine only ever writes level 1, so the 1.0 term is the carried-in
   // spells — see meta.state in the ensemble file).
-  const intrastateW = (id) => { if (inHist) { const l = intrastateOf(id); return l >= 2 ? 1 : l > 0 ? 0.6 : 0; } const s = actorState(id); return s ? 0.6 * Math.max(0, s.intrastate - s.intrastate_war) + s.intrastate_war : 0; };
+  const intrastateW = (id) => { if (inHist) { const l = intrastateOf(id); return l >= 2 ? 1 : l > 0 ? 0.6 : 0; } const ps = sampleActor(id); if (ps) return ps.intrastate >= 2 ? 1 : ps.intrastate > 0 ? 0.6 : 0; const s = actorState(id); return s ? 0.6 * Math.max(0, s.intrastate - s.intrastate_war) + s.intrastate_war : 0; };
   // a corridor / chokepoint / territory record's status: its dated history up to the seam, the ensemble's modal
   // simulated status past it, with the modal probability carried so the paint can wash by it.
-  const recStatus = (rec) => { if (isForecastYear && forecast?.state) { const s = recordStateAt(forecast, rec.id, year); if (s) return { exists: true, status: s.status, controller: statusAt(rec, forecast.meta.from - 1).controller, p: s.p, dist: s.dist, entries: s.entries, forecast: true }; } return statusAt(rec, year); };
-  const recColor = (st) => { const c = STATUS_COLORS[st.status] ?? '#8b94a3'; return st.forecast ? washed(c, st.p) : c; };
+  const recStatus = (rec) => { if (sampleOn) { const w = pathRecordAt(paths, run, rec.id, year); if (w) { const d = recordStateAt(forecast, rec.id, year)?.dist; return { exists: true, status: w, controller: statusAt(rec, forecast.meta.from - 1).controller, p: d?.[w] ?? null, dist: d, forecast: true, sample: true }; } } if (isForecastYear && forecast?.state) { const s = recordStateAt(forecast, rec.id, year); if (s) return { exists: true, status: s.status, controller: statusAt(rec, forecast.meta.from - 1).controller, p: s.p, dist: s.dist, entries: s.entries, forecast: true }; } return statusAt(rec, year); };
+  const recColor = (st) => { const c = STATUS_COLORS[st.status] ?? '#8b94a3'; return st.forecast && !st.sample ? washed(c, st.p) : c; };
 
   // ---- fills
   const values = $derived.by(() => {
     const out = {}; if (!variable) return out;
     if (variable.kind === 'forecast') { for (const id of Object.keys(forecast?.actors ?? {})) out[id] = forecastAt(forecast, variable, id, year, variable.template ? horizon : 0); return out; }
-    if (variable.kind === 'history') return seriesAt(history, forecast, variable, year);
+    if (variable.kind === 'history') return seriesAt(history, forecast, variable, year, { mode: fcMode, run, paths });
     for (const [id, a] of Object.entries(world.actors)) out[id] = valueAt(a.vars[variable.id], year);
     return out;
   });
-  const scale = $derived(colorScale(variable, Object.values(values).map(v => v.value)));
+  // odds mode paints a probability on a heat ramp instead of the variable's own palette
+  const oddsOn = $derived(Object.values(values).some(c => c?.odds));
+  const oddsScale = (() => { const sc = d3.scaleLinear().domain([0, 0.5, 1]).range(['#2b313b', '#e8734f', '#ffd166']).clamp(true); return { color: v => (Number.isFinite(v) ? sc(v) : null), kind: 'numeric', domain: [0, 1], log: false, ticks: [0, 0.5, 1], scale: sc }; })();
+  const scale = $derived(oddsOn ? oddsScale : colorScale(variable, Object.values(values).map(v => v.value)));
   const fills = $derived.by(() => { const o = {}; for (const f of geom.countries) { const v = values[f.id]; if (v) { const c = washed(scale.color(v.value), v.conf); if (c) o[f.id] = c; } } return o; });
   const selectable = (id) => !!world.actors[id] || !!forecast?.actors?.[id] || !!history?.actors?.[id];
 
@@ -120,7 +126,8 @@
     if (layers.alliances) for (const e of allianceView.edges) { const mine = sel && (e.a === sel || e.b === sel); if (layers.alliances === 'major' && !mine && !(isGreat(e.a) || isGreat(e.b))) continue; if (!mine && !zoomedIn && layers.alliances !== 'all' && !isGreat(e.a) && !isGreat(e.b)) continue; const p = lonlat(e.a), q = lonlat(e.b); if (!p || !q) continue; out.push({ coords: [p, q], color: e.multilateral ? '#8ab4e8' : '#6cb4ff', alpha: mine ? 0.95 : e.multilateral ? 0.22 : 0.45, width: mine ? 1.6 : e.multilateral ? 0.6 : 0.9, dash: e.multilateral ? [3, 2] : null }); }
     // operator/occupancy: after the seam the arcs are the ensemble's dyadic war occupancy — P(this pair is at war in
     // this year) — since the news feed has nothing to draw there. Alpha and width are the probability.
-    if (layers.conflicts && isForecastYear && forecast?.state?.dyads) {
+    if (layers.conflicts && sampleOn) { for (const pair of pathDyadsAt(paths, run, year)) { const [a, b] = pair.split('|'); const q = lonlat(a), r = lonlat(b); if (!q || !r) continue; out.push({ coords: [q, r], color: '#ef6a5a', alpha: 0.85, width: 1.4, dash: null }); } }
+    else if (layers.conflicts && isForecastYear && forecast?.state?.dyads) {
       const k = stateOffset(forecast, year);
       const rows = [];
       // the floor is 0.01, not 0.05: the engine spreads its war mass thinly over pairs (the strongest pair-year in the
@@ -141,6 +148,7 @@
       const id = actorOfNe(f.id);
       if (inHist) { if (atWar(id)) o[f.id] = { c: '#ef6a5a', w: 1.4 }; else { const it = intrastateOf(id); if (it > 0) o[f.id] = { c: '#e8a04f', w: it >= 2 ? 1.2 : 0.8, d: true }; } continue; }
       const pw = atWarP(id), pi = intrastateW(id);
+      if (sampleOn) { if (pw >= 1) o[f.id] = { c: '#ef6a5a', w: 1.4 }; else if (pi > 0) o[f.id] = { c: '#e8a04f', w: pi >= 1 ? 1.2 : 0.8, d: true }; continue; }
       if (pw >= 0.05) o[f.id] = { c: washed('#ef6a5a', pw), w: 0.6 + 0.8 * pw };
       else if (pi >= 0.05) o[f.id] = { c: washed('#e8a04f', pi), w: 0.5 + 0.7 * pi, d: true };
     }
@@ -212,7 +220,7 @@
     const hosted = presenceNow.filter(r => r.host === id).map(r => `${r.actor} ${r.kind}${r.level >= 3 ? ' (major)' : ''}`);
     const lo = ha?.last_observed; const staleNote = lo && Math.round(year) > (history?.meta.y1 ?? 0) ? Object.entries(lo).filter(([k, y]) => ['cinc', 'regime', 'gdp_pc', 'population'].includes(k) && y != null && y < history.meta.y1 - 1).map(([k, y]) => `${k} as of ${y}`).join(' · ') : '';
     let hz = null; if (isForecastYear && forecast.actors[id]) { const tp = forecast.meta.templates.filter(t => t.unit === 'actor-year').map(t => [t.label ?? t.id, forecastAt(forecast, { template: t.id }, id, year, horizon).value]).filter(x => x[1] != null).sort((a, b) => b[1] - a[1]).slice(0, 3); hz = tp.map(([l, v]) => `${(v * 100).toFixed(0)}% ${l}`).join(' · '); }
-    const cell = values[hover.neId]; const rgNote = cell?.dist ? `in ${(Math.max(...cell.dist) * 100).toFixed(0)}% of runs` : cell?.stale > 0 && variable?.var === 'regime' ? `as of ${cell.observed}` : '';
+    const cell = values[hover.neId]; const rgNote = cell?.sample ? `in this world · ${(cell.agree * 100).toFixed(0)}% of runs agree` : cell?.odds ? `P(changed since ${forecast?.meta.from - 1}) ${(cell.value * 100).toFixed(0)}%` : cell?.dist ? `in ${(Math.max(...cell.dist) * 100).toFixed(0)}% of runs` : cell?.stale > 0 && variable?.var === 'regime' ? `as of ${cell.observed}` : '';
     const held = layers.waves ? wavesHeld(id, Math.round(year)) : []; const waveNote = held.length ? `${held.length} wave${held.length > 1 ? 's' : ''}: ${held.slice(-3).map(w => `${w.label} ${w.year}`).join(' · ')}` : '';
     const stateNote = cell?.state ? (cell.dist && variable?.display?.categorical
       ? `${variable.label}: ${cell.dist.map((p, i) => `${variable.display.categoricalLabels?.[i] ?? i} ${(p * 100).toFixed(0)}%`).filter((_, i) => cell.dist[i] >= 0.005).join(' · ')} over ${forecast?.meta.runs} runs`
@@ -225,6 +233,7 @@
   // ---- legend
   const presentStatuses = $derived.by(() => { const t = new Set(), c = new Set(); for (const x of territoriesScene) { const r = world.territories.find(w => w.id === x.id); if (r) t.add(recStatus(r).status); } for (const x of corridorsScene) { const r = world.corridors.find(w => w.id === x.id); if (r) c.add(recStatus(r).status); } return { t: [...t], c: [...c] }; });
   const presenceCounts = $derived.by(() => { if (!layers.presence) return []; const m = {}; for (const r of presenceNow) m[r.actor] = (m[r.actor] ?? 0) + 1; return Object.entries(m).sort((a, b) => b[1] - a[1]); });
+  const modeNote = $derived(!isForecastYear ? '' : sampleOn ? `world ${run + 1} of ${paths.meta.n}: one run of the ensemble, painted flat like the record · hover for how many runs agree · ` : fcMode === 'sample' ? 'loading sample worlds… · ' : fcMode === 'odds' ? 'odds: the probability on a heat ramp · ' : 'consensus: the most likely state, held until another clears 55%, washed to grey by disagreement · ');
   const catLabel = (c, i) => variable?.display?.categoricalLabels?.[i] ?? c;
 </script>
 
@@ -256,13 +265,13 @@
 
   <div class="legend">
     {#if variable}
-      <div class="lt">{variable.label}{variable.unit ? ` · ${variable.unit}` : ''}</div>
+      <div class="lt">{variable.label}{oddsOn ? (variable.var === 'regime' ? ' · P(regime changed since the seam)' : ' · P(this state)') : variable.unit ? ` · ${variable.unit}` : ''}</div>
       {#if scale.kind === 'categorical'}{#each scale.domain as c, i}<span class="sw"><i style="background:{scale.swatch(c)}"></i>{catLabel(c, i)}</span>{/each}
       {:else if scale.kind === 'numeric'}
         <div class="bar" style="background: linear-gradient(90deg, {d3.range(0, 1.01, 0.1).map(t => scale.scale(scale.log ? Math.exp(Math.log(scale.domain[0]) + t * (Math.log(scale.domain[1]) - Math.log(scale.domain[0]))) : scale.domain[0] + t * (scale.domain[1] - scale.domain[0]))).join(',')})"></div>
         <div class="ticks"><span>{d3.format('.3~s')(scale.domain[0])}</span><span>{d3.format('.3~s')(scale.domain[1])}</span></div>
       {/if}
-      <div class="muted small">{variable.kind === 'forecast' ? (isForecastYear ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs` : 'before the forecast start: last observed state') : variable.kind === 'history' ? (isForecastYear ? (variable.industry ? `after ${history.meta.y1}: the last reported shares held still (no industrial model yet) · ${Object.values(values).find(c => c.series)?.series ?? ''}` : variable.gradient ? `after ${history.meta.y1}: the ensemble mean on the same axis · colour washes to grey as the runs spread out` : variable.var === 'regime' ? `after ${history.meta.y1}: the most likely state in each of ${forecast?.meta.runs} runs · colour washes to grey where the runs disagree` : (Object.values(values)[0]?.state ? `after ${history.meta.y1}: the ensemble's occupancy — ${variable.display?.categorical ? 'the modal state, washed by 1 − P' : 'the median with the p10–p90 band on the hover card'}${stateVarMeta(forecast, variable.var)?.simulated === false ? ' · carried from the as-of year, not simulated' : ''}` : `after ${history.meta.y1}: ensemble median where the engine carries the series, else the last observation · colour washes to grey with staleness`)) : (variable.industry ? `${Object.values(values).find(c => c.series)?.series ?? 'no series covers this year'} · share of the total over the states reporting that year, each carried up to 3 y` : variable.gradient ? `V-Dem polyarchy placed on the category axis by the panel's category medians (estimate) · where only the category is known it is painted flat and washed` : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''} · a series that stopped early is carried forward and washes to grey`)) : 'modern snapshot'}</div>
+      <div class="muted small">{variable.kind === 'forecast' ? (isForecastYear ? `${variable.template ? `P(within the next ${horizon} y from ${Math.round(year)}, given not yet) · ` : ''}ensemble of ${forecast?.meta.runs} runs` : 'before the forecast start: last observed state') : variable.kind === 'history' ? (isForecastYear ? modeNote + (variable.industry ? `after ${history.meta.y1}: the last reported shares held still (no industrial model yet) · ${Object.values(values).find(c => c.series)?.series ?? ''}` : variable.gradient ? `after ${history.meta.y1}: the ensemble mean on the same axis · colour washes to grey as the runs spread out` : variable.var === 'regime' ? (sampleOn || oddsOn ? '' : `after ${history.meta.y1}: the most likely state in each of ${forecast?.meta.runs} runs · colour washes to grey where the runs disagree`) : (Object.values(values)[0]?.state ? (sampleOn || oddsOn ? '' : `after ${history.meta.y1}: the ensemble's occupancy — ${variable.display?.categorical ? 'the modal state, washed by 1 − P' : 'the median with the p10–p90 band on the hover card'}${stateVarMeta(forecast, variable.var)?.simulated === false ? ' · carried from the as-of year, not simulated' : ''}`) : `after ${history.meta.y1}: ensemble median where the engine carries the series, else the last observation · colour washes to grey with staleness`)) : (variable.industry ? `${Object.values(values).find(c => c.series)?.series ?? 'no series covers this year'} · share of the total over the states reporting that year, each carried up to 3 y` : variable.gradient ? `V-Dem polyarchy placed on the category axis by the panel's category medians (estimate) · where only the category is known it is painted flat and washed` : `historical panel · ${history?.meta.sources?.[variable.var] ?? ''} · a series that stopped early is carried forward and washes to grey`)) : 'modern snapshot'}</div>
     {/if}
     {#if fieldSpec}<div class="lt" style="margin-top:6px">{fieldSpec.label} <span class="muted">{fieldSpec.note}{layers.field === 'hazard' ? ` · blur ${fieldBlur.toFixed(0)} px` : ''}</span></div>
       {#if fieldSpec.paint === 'dominant'}{#each field?.groups ?? [] as g}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx, g)}"></i>{g}</span>{/each}{:else}<span class="sw"><i style="background:{fieldSpec.color(fieldCtx)}"></i>intensity</span>{/if}{/if}

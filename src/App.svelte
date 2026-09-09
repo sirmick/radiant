@@ -1,5 +1,5 @@
 <script>
-  import { loadWorld, loadEnsemble, forecastVariables, historyVariables, readHash, writeHash, forecastNews } from './lib/data.js';
+  import { loadWorld, loadEnsemble, loadPaths, forecastVariables, historyVariables, readHash, writeHash, forecastNews, sampleNews } from './lib/data.js';
   import Map from './lib/Map.svelte';
   import Panel from './lib/Panel.svelte';
 
@@ -8,11 +8,19 @@
   let asOf = $state(null);           // null = the current (2025) ensemble; a year = a past forecast made as of that year
   let ensemble = $state(null);       // the active ensemble object
   $effect(() => { if (!data) return; if (asOf == null) { ensemble = data.forecast; return; } const e = data.forecastIndex?.ensembles.find(x => x.asOf === asOf); if (!e) { ensemble = data.forecast; return; } loadEnsemble(e.file).then(f => { if (asOf === e.asOf) ensemble = f; }); });
-  let varId = $state('h_regime_gradient');
+  let varId = $state('h_regime');
   // auto-switch the regime view across the history/forecast boundary
   const fcFrom = $derived(ensemble?.meta.from ?? 2026);
   let year = $state(2035);
   let playing = $state(false);
+  // how a forecast year is read: consensus (modal state with hysteresis, washed by agreement), sample (one whole run,
+  // flat categories, flip between worlds), odds (probabilities on a heat ramp). Sample worlds load on demand.
+  let fcMode = $state('consensus');
+  let run = $state(0);
+  let paths = $state(null);
+  $effect(() => { const fc = ensemble; if (!fc || fcMode !== 'sample') return; loadPaths(fc).then(p => { if (fc === ensemble) paths = p; }); });
+  const pathsFor = $derived(fcMode === 'sample' && paths && ensemble && paths.meta.from === ensemble.meta.from ? paths : null);
+  const nameOf = $derived.by(() => { const m = {}; if (!data) return m; for (const [id, a] of Object.entries(data.history?.actors ?? {})) m[id] = a.name; for (const [id, a] of Object.entries(data.world.actors)) m[id] = a.name; return m; });
   let fcTo = $state(40);              // how far the timeline runs past the forecast start, capped by the loaded ensemble
   const FC_TO = [40, 50, 60, 80, 100];
   const Y0 = 1870;
@@ -29,28 +37,29 @@
   let view = $state('politics');
   let advanced = $state(false);
   const VIEWS = {
-    politics: { label: 'Politics', layers: { territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false }, variable: () => 'h_regime_gradient' },
+    politics: { label: 'Politics', layers: { territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false }, variable: () => 'h_regime' },
     power:    { label: 'Power',    layers: { territories: false, corridors: false, alliances: 'major', conflicts: false, presence: true, field: 'influence', labels: false, glyphs: false }, variable: () => 'h_wave_share' },
     conflict: { label: 'Conflict', layers: { territories: true, corridors: true, alliances: false, conflicts: true, presence: false, field: 'conflict', labels: false, glyphs: false }, variable: () => 'h_at_war' },
     routes:   { label: 'Routes',   layers: { territories: false, corridors: true, alliances: false, conflicts: false, presence: false, field: 'routes', labels: false, glyphs: false }, variable: () => 'h_energy_twh' },
     industry: { label: 'Industry', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'industry', labels: false, glyphs: 'industry', waves: true }, variable: () => 'h_wave_share' },
-    forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'h_regime_gradient', year: 2036 },
+    forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'h_regime', year: 2036 },
   };
   function applyView(v) { view = v; const V = VIEWS[v]; if (V.year && year < 2026) year = V.year; for (const k of Object.keys(V.layers)) layers[k] = V.layers[k]; const want = V.variable(year); if (mapVars.some(x => x.id === want)) varId = want; }
   let selected = $state(null);
 
-  const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; if (h.horizon) horizon = h.horizon; if (h.view && VIEWS[h.view]) view = h.view; if (h.mode) mode = h.mode; if (h.fcTo && FC_TO.includes(h.fcTo)) fcTo = h.fcTo; };
+  const applyHash = () => { const h = readHash(); if (h.year) year = h.year; if (h.varId) varId = h.varId; if (h.actor) selected = { kind: 'actor', id: h.actor }; if (h.layers) for (const k of Object.keys(layers)) layers[k] = h.layers[k] ?? false; if (h.tab) tab = h.tab; if (h.asOf != null) asOf = h.asOf; if (h.horizon) horizon = h.horizon; if (h.view && VIEWS[h.view]) view = h.view; if (h.mode) mode = h.mode; if (h.fcTo && FC_TO.includes(h.fcTo)) fcTo = h.fcTo; if (['consensus', 'sample', 'odds'].includes(h.fcMode)) fcMode = h.fcMode; if (h.run) run = h.run; };
   loadWorld().then(d => { data = d; applyHash(); }).catch(e => { error = String(e); });
   let tab = $state('news');
   const HL_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', coup: '#d95c4f', alliance: '#6cb4ff', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3' };
   const headlines = $derived.by(() => {
     if (!data) return []; const y = Math.round(year);
     const fc = ensemble ?? data.forecast;
+    if (fc && y >= fc.meta.from && y <= fc.meta.to && pathsFor) return sampleNews(fc, pathsFor, run, y, nameOf).slice(0, 3).map(e => ({ t: `${e.p != null ? (e.p * 100).toFixed(0) + '% · ' : ''}${e.t}`, col: HL_COL[e.k] ?? '#8b94a3' }));
     if (fc && y >= fc.meta.from && y <= fc.meta.to) { const seen = new Set(); const out = []; for (const e of forecastNews(fc, y, 60)) { if (seen.has(e.tpl)) continue; seen.add(e.tpl); out.push({ t: `${(e.p * 100).toFixed(0)}% ${e.t}`, col: HL_COL[e.k] ?? '#8b94a3' }); if (out.length === 3) break; } return out; }
     const items = (data.news?.years?.[y] ?? []).filter(e => !e.ongoing && ['war', 'nuclear', 'territory', 'corridor', 'coup', 'alliance'].includes(e.k));
     return items.slice(0, 3).map(e => ({ t: e.t.length > 90 ? e.t.slice(0, 88) + '…' : e.t, col: HL_COL[e.k] ?? '#8b94a3' }));
   });
-  $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode, fcTo }); });
+  $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode, fcTo, fcMode, run }); });
 
   const mapVars = $derived(data ? [...historyVariables(data.history), ...forecastVariables(ensemble ?? data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
   const groups = $derived(data ? [['history', 'History (panel 1870–2025)'], ['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
@@ -121,6 +130,10 @@
       <label class="asof" title="Window for forecast probabilities on the map: P(event within the next H years from the slider year, given it has not happened yet)">horizon
         <select bind:value={horizon}>{#each [1, 2, 5, 10, 20, 40] as h}<option value={h}>{h} y</option>{/each}</select>
       </label>
+      <label class="asof" title="consensus: the most likely state of each thing, washed to grey where the runs disagree · sample world: one run of the ensemble, flat categories, the same kind of world as the record · odds: probabilities on a heat ramp">read as
+        <select bind:value={fcMode}><option value="consensus">consensus</option><option value="sample">sample world</option><option value="odds">odds</option></select>
+      </label>
+      {#if fcMode === 'sample'}<button onclick={() => run = (run + 1) % (pathsFor?.meta.n ?? 12)} title="flip to another run of the ensemble">world {run + 1}{pathsFor ? ` of ${pathsFor.meta.n}` : ''} ▸</button>{/if}
       <label class="asof" title="How far past the forecast start the timeline runs (the loaded ensemble is {ensemble?.meta.horizon} years long)">to
         <select bind:value={fcTo}>{#each FC_TO as h}<option value={h} disabled={h > (ensemble?.meta.horizon ?? 40)}>+{h} y</option>{/each}</select>
       </label>
@@ -137,8 +150,8 @@
       {#if !headlines.length}<span class="muted tiny">no recorded headline events for {Math.round(year)}</span>{/if}
     </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {horizon} {mode} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
-      <Panel world={data.world} forecast={ensemble ?? data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
+      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {horizon} {mode} {layers} {selected} {fcMode} {run} paths={pathsFor} onSelect={(s) => { selected = s; tab = 'detail'; }} />
+      <Panel world={data.world} forecast={ensemble ?? data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} {fcMode} {run} paths={pathsFor} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
     </main>
   </div>
 {/if}

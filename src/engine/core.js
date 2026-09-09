@@ -1372,7 +1372,7 @@ function coalitionJoin(world, rng, warPairs, y) {
  * (docs/escalations.md package 11, test (d)); that is the reason it is a separate flag from `track` rather than more
  * work inside it, and the reason nothing here calls `rng`.
  */
-export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false, track = false, state = false } = {}) {
+export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false, track = false, state = false, paths = 0 } = {}) {
   const regimeHist = {};  // actor -> Uint32Array(horizon*4): counts of regime level per year offset
   const gdpRuns = {};     // actor -> Float32Array(runs*horizon)
   const infoRuns = {};
@@ -1392,8 +1392,15 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
   const dyadAny = {};
   const yearHist = {}; // `${kind}|${actor}` -> [count per year offset]
   const firstBy = {};  // first-occurrence histogram, for P(any within k years)
+  // sample worlds: the first `paths` runs are kept WHOLE — every actor's regime / conflict state, the pairs at war, every
+  // record's status and the events that fired, per year — so a viewer can show one categorical world (the same kind
+  // of object as the historical panel) instead of the marginals, and flip between worlds. Reading state consumes no
+  // random numbers, so `paths` cannot move the ensemble. Packed actor byte: regime in bits 0-3 (15 = unknown),
+  // intrastate level in bits 4-5, at_war bit 6, occupied bit 7.
+  const pathRuns = [];
   for (let r = 0; r < runs; r++) {
     const rng = mulberry32(seed * 7919 + r); const w = makeWorld();
+    const P = r < paths ? { actors: {}, dyads: [], records: {}, events: [] } : null; if (P) pathRuns.push(P);
     // the wave layer's own stream (operator/capability-waves): switching the layer on must perturb the event process
     // through the capability ratio and not through the random numbers, so its draws never come out of `rng`.
     const waveRng = mulberry32(seed * 104729 + r);
@@ -1434,6 +1441,13 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
           const rec = occRecord[entry.rec.id] ??= { n: new Uint32Array(horizon), kind: entry.rec.kind, status: {} };
           rec.n[k]++; (rec.status[s] ??= new Uint32Array(horizon))[k]++;
         }
+      }
+      if (P) {
+        const k = h - 1;
+        for (const [id, a] of Object.entries(w.actors)) { const rg = a.cur.regime == null ? 15 : Math.max(0, Math.min(3, Math.round(a.cur.regime))); (P.actors[id] ??= new Array(horizon).fill(15))[k] = rg | (Math.max(0, Math.min(3, a.cur.intrastate ?? 0)) << 4) | (a.cur.at_war ? 64 : 0) | (a.cur.occupied ? 128 : 0); }
+        P.dyads[k] = [...(w.atWarPairs ?? [])];
+        for (const entry of [...(w.corridors ?? []), ...(w.territories ?? [])]) { const st = entry.state?.status; if (st == null) continue; (P.records[entry.rec.id] ??= new Array(horizon).fill(null))[k] = st; }
+        P.events[k] = fired.map(e => ({ t: e.template ?? e.kind, u: e.actor ?? e.record ?? pairKey(e.a, e.b) }));
       }
       for (const e of fired) {
         const unit = e.actor ?? e.record;   // actor-year, corridor-year and chokepoint-year units all key the same way
@@ -1481,5 +1495,5 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
       }),
     }])),
   } : null;
-  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, expectedWithin, cumulative, firstBy, tracks, occupancy };
+  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, expectedWithin, cumulative, firstBy, tracks, occupancy, paths: pathRuns };
 }
