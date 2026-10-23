@@ -17,7 +17,7 @@ import { rawAt, liveAt } from '../../src/contract/read.js';
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const FROM = +arg('from', 1900), TO = +arg('to', 1990), STEP = +arg('step', 30), H = +arg('horizon', 30), RUNS = +arg('runs', 30);
 const REFIT = !process.argv.includes('--no-refit');
-const inp = loadEngineInputs({ carryPacts: false });
+const inp = loadEngineInputs();
 const VARS = ['world:polarity', 'world:hegemon', 'actor:live', 'actor:great_power', 'actor:nuclear', 'dyad:allied'];
 const fitter = REFIT ? createFitter({ ...inp }) : null;
 const record = recordFrames(worldArgs(inp, FROM + 1), { from: FROM + 1, to: Math.min(TO + H, inp.panel.meta.y1), vars: VARS });

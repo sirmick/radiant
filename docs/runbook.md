@@ -89,4 +89,4 @@ node scripts/build-scores-slice.mjs && npx vite build
 
 Every ensemble is a frame set (`docs/schema.md`, *Frames*); the viewer paints any year from whichever frame set answers for it.
 
-Size: the `state` block took `public/forecast.json` from 4.07 to 5.94 MB at 300 x 100 when it landed, and the three capability-wave series (`wave_share`, `wave_attained`, `industry_share`, `operator/capability-waves`) took it to 7.62 MB. The main run is 513 s on the dev machine.
+Size and time: the 2025 ensemble (300 x 100) takes ~25 min in the cloud container; the dyad hazard loop dominates. Past origins (200 x 40) take 1.5-7 min each.

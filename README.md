@@ -16,8 +16,8 @@ npm install
 ./scripts/fetch-raw.sh                 # public datasets into data/raw (gitignored, ~150 MB)
 npm run build:hist                     # panel -> events -> fits           (data/panel.json, events.json, fits.json)
 npm run backtest                       # rolling-origin backtest           (scores/)
-npm run forecast                       # 2026-2125 ensemble, 300 runs       (public/forecast.json, ~7 min)
-node scripts/build-geo.mjs && node scripts/build-world.mjs && npm run build:ui-data   # map data (public/*.json)
+npm run forecast                       # 2026-2125 ensemble, 300 runs       (public/frames/fc-2025.json, ~25 min)
+node scripts/build-geo.mjs && node scripts/build-world.mjs && npm run build:ui-data   # map data (public/*.json, public/frames/record.json)
 npm run dev
 ```
 
@@ -34,7 +34,12 @@ The full command reference is in [docs/runbook.md](docs/runbook.md).
 | Templates | `data/templates.yaml`, `data/fits.json` (built) | generic hazards (no country names): leader exit, irregular exit, coup, regime steps up/down, liberal erosion, civil-war onset, dispute, war, chokepoint and corridor status; fitted with era holdouts, candidates and rejections recorded |
 | Engine | `src/engine/core.js` | annual step: structural drift, actor hazards, dyad hazards (politically relevant dyads), corridor hazards, births/retirements, great-power dates, rivalry decay |
 | Scores | `scores/*.json` | rolling-origin backtests: coefficients refit on labels ≤ as-of, scored only inside each dataset's truth window |
-| Forecasts | `public/forecast*.json` | ensembles from 2025 and from past as-of years (1900, 1930, 1955, 1975, 1990, 2005) |
+| Frames | `public/frames/` | the record (engine replay) and forecast ensembles from 2025 and from past as-of years (1900, 1930, 1955, 1975, 1990, 2005), one contract (`docs/schema.md`, *Frames*) |
+
+## Status (2026-10-23)
+
+- **One contract** (`docs/plan-structure.md` A–B): the record (engine replay) and every forecast write the same frames; the viewer reads one `view` and never branches on past vs future; a backtest is a fork of the replay scored generically (`src/contract/score.js`).
+- **Structure unfrozen** (C1–C4): fitted growth process and moving capability shares, great-power entry/exit, the defence-pact graph and nuclear acquisition are simulated, each gated against the record's own change rates (`scripts/analysis/structure.mjs`, `scores/structure-*.json`). State births/deaths (C5) still come from the dated membership list.
 
 ## Status (2026-09-07)
 

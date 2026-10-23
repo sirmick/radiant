@@ -1,0 +1,96 @@
+{
+ "meta": {
+  "run": "2026-10-23T03:55:55.814Z",
+  "from": 1900,
+  "to": 1990,
+  "step": 30,
+  "horizon": 30,
+  "runs": 30,
+  "refit": true,
+  "env": null
+ },
+ "rates": {
+  "polarity": {
+   "simulated": 4.282,
+   "record": 4.31,
+   "ratio": 0.99,
+   "within_factor_2": true
+  },
+  "hegemon": {
+   "simulated": 1.724,
+   "record": 6.897,
+   "ratio": 0.25,
+   "within_factor_2": false
+  },
+  "gp_entry": {
+   "simulated": 1.408,
+   "record": 1.724,
+   "ratio": 0.82,
+   "within_factor_2": true
+  },
+  "gp_exit": {
+   "simulated": 1.264,
+   "record": 3.448,
+   "ratio": 0.37,
+   "within_factor_2": false
+  },
+  "nuclear": {
+   "simulated": 6.954,
+   "record": 7.759,
+   "ratio": 0.9,
+   "within_factor_2": true
+  },
+  "birth": {
+   "simulated": 125.862,
+   "record": 125.862,
+   "ratio": 1,
+   "within_factor_2": true
+  },
+  "death": {
+   "simulated": 18.103,
+   "record": 18.103,
+   "ratio": 1,
+   "within_factor_2": true
+  },
+  "pact_form": {
+   "simulated": 2174.339,
+   "record": 2337.931,
+   "ratio": 0.93,
+   "within_factor_2": true
+  },
+  "pact_end": {
+   "simulated": 1576.782,
+   "record": 936.207,
+   "ratio": 1.68,
+   "within_factor_2": true
+  }
+ },
+ "simulated": {
+  "world_years": 3480,
+  "actor_years": 405690,
+  "polarity": 149,
+  "hegemon": 60,
+  "gp_entry": 49,
+  "gp_exit": 44,
+  "nuclear": 242,
+  "birth": 4380,
+  "death": 630,
+  "pact_form": 75667,
+  "pact_end": 54872,
+  "pairs_years": 0
+ },
+ "record": {
+  "world_years": 116,
+  "actor_years": 13523,
+  "polarity": 5,
+  "hegemon": 8,
+  "gp_entry": 2,
+  "gp_exit": 4,
+  "nuclear": 9,
+  "birth": 146,
+  "death": 21,
+  "pact_form": 2712,
+  "pact_end": 1086,
+  "pairs_years": 0
+ }
+}

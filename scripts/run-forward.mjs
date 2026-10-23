@@ -33,10 +33,9 @@ const actors = loadActors(); const code = makeCodeMap(actors);
 const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 // alliances: the dated graph (scripts/lib/hist.mjs:loadPacts — CoW 3.03 to 2000, ATOP 5.1 to 2018, dated accessions
-// past it, then carried), plus a year-agnostic `*` entry per edge live in its last year so a forecast past the
-// graph's end still sees the pact.
+// past it, carried to 2026). No year-agnostic `*` entries: createWorld merged them into every as-of year, so a past
+// forecast started with the 2018 graph (see scripts/lib/inputs.mjs).
 const { pacts, meta: pactMeta } = loadPacts(code);
-{ const last = new Map(); for (const k of pacts) { const i = k.lastIndexOf('|'); const y = +k.slice(i + 1), e = k.slice(0, i); if (y >= pactMeta.atop_last) last.set(e, y); } for (const k of last.keys()) pacts.add(`${k}|*`); }
 
 const asOf = AS_OF ?? panel.meta.y1;   // default: the last panel year (2025)
 let fitSource = 'data/fits.json (full sample)';
@@ -68,7 +67,10 @@ for (const t of simulated) {
   const units = t.unit === 'territory-year' ? territories.map(r => r.id) : corridors.map(r => r.id);
   for (const id of units) { const c = ens.cumulative(`${t.id}|${id}`); if (c.some(x => x > 0)) (out.hazards.record[t.id] ??= {})[id] = c.map(r3); }
 }
-for (const [k, v] of Object.entries(ens.pAnyDyad)) { const kind = k.slice(0, k.indexOf('|')); const pair = k.slice(kind.length + 1); if (v >= 0.05) (out.hazards.dyad[pair] ??= {})[kind] = { pAny: r3(v), curve: ens.cumulative(k).map(r3) }; }
+// dyad hazards for the dyad TEMPLATES only: the structural events (pact_form, pact_end) are state changes the frames
+// already carry, and as hazards they would list every pair that formed a pact in any run
+const DYAD_KINDS = new Set(simulated.filter(t => t.unit === 'dyad-year').map(t => t.event));
+for (const [k, v] of Object.entries(ens.pAnyDyad)) { const kind = k.slice(0, k.indexOf('|')); if (!DYAD_KINDS.has(kind)) continue; const pair = k.slice(kind.length + 1); if (v >= 0.05) (out.hazards.dyad[pair] ??= {})[kind] = { pAny: r3(v), curve: ens.cumulative(k).map(r3) }; }
 // The dyadic at-war block is thresholded: at 300 runs x 100 years every pair that ever fires a war in any run would
 // carry a 100-number array, and the file is loaded by a browser. Every pair whose peak year reaches DYAD_MIN, topped up
 // to at least DYAD_FLOOR pairs by peak so the block is never empty at high run counts, capped at DYAD_CAP. A pair left
@@ -78,13 +80,21 @@ const ranked = Object.entries(out.dyads.at_war ?? {}).map(([k, c]) => [k, c, typ
 const nKeep = Math.min(DYAD_CAP, Math.max(DYAD_FLOOR, ranked.filter(x => x[2] >= DYAD_MIN).length));
 out.dyads.at_war = Object.fromEntries(ranked.slice(0, nKeep).map(([k, c]) => [k, c]));
 out.meta.dyads = { at_war: { threshold: DYAD_MIN, floor: DYAD_FLOOR, cap: DYAD_CAP, kept: Math.min(nKeep, ranked.length), dropped: Math.max(0, ranked.length - nKeep), lowest_kept_peak: ranked[Math.min(nKeep, ranked.length) - 1]?.[2] ?? null } };
+// the pact graph moves (C3), so every pair allied in any run of any year carries a series. Kept: pairs at or above
+// ALLY_MIN in some year — the viewer draws a pact at P >= 0.5, so a pair that never reaches it carries nothing it reads
+// — and their count goes into meta.dyads
+const ALLY_MIN = 0.5;
+{ const all = Object.entries(out.dyads.allied ?? {}); const keep = all.filter(([, c]) => (typeof c === 'number' ? c : Math.max(...c)) >= ALLY_MIN); out.dyads.allied = Object.fromEntries(keep); out.meta.dyads.allied = { threshold: ALLY_MIN, kept: keep.length, dropped: all.length - keep.length }; }
 out.meta.waves = { n: waves.length, capability: waveCapabilityOn(templates), template: templates.find(t => t.id === 'wave_attain') ? 'wave_attain' : null };
 mkdirSync('public/frames', { recursive: true });
 const OUT = arg('out', `public/frames/fc-${asOf}.json`);
 const PATHS_OUT = OUT.replace(/\.json$/, '-paths.json');
 // sample worlds: the first PATHS runs kept whole, each a frame set in the record's own shape (runs = 1), so a viewer
 // reads one world exactly the way it reads history. Their own file, loaded only when a sample world is asked for.
-writeFileSync(PATHS_OUT, JSON.stringify({ meta: { asOf, from: asOf + 1, years: H, n: ens.frames.paths.length, seed: 2026, built: out.meta.built }, runs: ens.frames.paths }));
+// a world's pact formations and dissolutions are left out of its event list: the graph is state the frames carry, and as
+// events they are hundreds a year once decolonisation multiplies the candidate pairs
+for (const P of ens.frames.paths) P.events = P.events.map(evs => evs.filter(e => e.k !== 'pact_form' && e.k !== 'pact_end'));
+writeFileSync(PATHS_OUT, JSON.stringify({ meta: { asOf, from: asOf + 1, years: H, n: ens.frames.paths.length, seed: 2026, built: out.meta.built, events_omitted: ['pact_form', 'pact_end'] }, runs: ens.frames.paths }));
 out.meta.paths = { n: ens.frames.paths.length, file: PATHS_OUT.replace(/^public\//, '') };
 const json = JSON.stringify(out);
 writeFileSync(OUT, json);

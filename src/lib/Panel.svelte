@@ -261,7 +261,7 @@
               {/each}
             </div>
           {/each}
-          <div class="tiny muted" style="margin-top:6px">Capability rank (Spearman of the ensemble's median share against CoW's): {#each Object.entries(scores.occupancy.capability_rank) as [k, r]}{k.replace('_', ' ')} {r.mean_spearman.toFixed(2)} · {/each}</div>
+          <div class="tiny muted" style="margin-top:6px">Capability rank (Spearman of the ensemble's median share against the record's own column): {#each Object.entries(scores.occupancy.capability_rank) as [k, r]}{k.replace('_', ' ')} {r.mean_spearman.toFixed(2)} · {/each}</div>
           {#each Object.entries(scores.occupancy.vars).filter(([, o]) => o.note) as [v, o]}<div class="tiny muted" style="margin-top:4px">* {v.replace(/_/g, ' ')}: {o.note}</div>{/each}
         {/if}
       {/if}

@@ -33,7 +33,7 @@ Append to `data/templates.yaml`: `id, label, unit (actor-year|dyad-year|corridor
 - Event: `data/history/events.yaml` — dated, with `source`. Wars need `sides`; corridor/chokepoint/territory events need an id that exists in the corresponding YAML (the build fails otherwise).
 - Corridor/territory: a record with geometry (`point`, `line`, `ne_ids`, or `sketch` + `geometry_source`), `transits`, `load_bearing_for` (estimate), and a dated `history`.
 - Presence: `data/presence.yaml` — `actor, host|sea:<area>, kind, level, from, to, geometry, source`.
-- Rebuild the slices (`npm run build:ui-data`, `build-alliance-slice`, `build-presence-slice`, `build-world`) to see it on the map.
+- Rebuild the slices (`npm run build:ui-data`, `build-presence-slice`, `build-world`) to see it on the map.
 
 ## Add an actor
 
@@ -45,7 +45,7 @@ Register in `src/lib/influence.js` `FIELDS`: `label`, `note`, `paint` (`dominant
 
 ## Add a viewer variable
 
-History: add it to `VARS` in `scripts/build-history-slice.mjs` (label, unit, format, categorical/log). Forecast: it appears automatically for every simulated template. Modern: add it to `data/variables.yaml` with `display.map`.
+History: add it to the registry, `src/contract/vars.js` (label, kind, display format; `forecast: 'carried'` for a display-only panel column) — the record, the ensembles, the viewer and the scorer all read it from there. Forecast: it appears automatically for every simulated template. Modern: add it to `data/variables.yaml` with `display.map`.
 
 ## Propose a mechanism the loop must decide on
 

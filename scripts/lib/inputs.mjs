@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { Y, loadActors, makeCodeMap, loadPacts } from './hist.mjs';
 import { loadWaves } from '../../src/engine/waves.js';
 
-export function loadEngineInputs({ carryPacts = true } = {}) {
+export function loadEngineInputs() {
   const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
   const { events } = JSON.parse(readFileSync('data/events.json', 'utf8'));
   const { fits } = JSON.parse(readFileSync('data/fits.json', 'utf8'));
@@ -18,8 +18,9 @@ export function loadEngineInputs({ carryPacts = true } = {}) {
   const actors = loadActors(); const code = makeCodeMap(actors);
   const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
   const { pacts, meta: pactMeta } = loadPacts(code);
-  // a forecast past the graph's last measured year still sees the pacts live in that year (run-forward's `*` entries)
-  if (carryPacts) { const last = new Map(); for (const k of pacts) { const i = k.lastIndexOf('|'); const y = +k.slice(i + 1), e = k.slice(0, i); if (y >= pactMeta.atop_last) last.set(e, y); } for (const k of last.keys()) pacts.add(`${k}|*`); }
+  // No year-agnostic `*` edges: loadPacts already carries the last measured graph to 2026, so every as-of year reads
+  // the graph in force at that year. The `*` entries scripts/run-forward.mjs used to add were merged into EVERY as-of
+  // year by alliedAt, so a forecast from 1955 started with the 2018 pact graph (1,816 pairs against the record's 402).
   return { panel, events, fits, templates, contiguity: contiguityFile.pairs, contiguityFrom: contiguityFile.meta?.years?.[0] ?? null, corridors, territories, presence, waves, successors, pacts, pactMeta, actors };
 }
 

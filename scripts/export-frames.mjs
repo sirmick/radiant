@@ -11,7 +11,7 @@ import { recordFrames } from '../src/engine/replay.js';
 import { updateIndex } from './lib/frames-index.mjs';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
-const inp = loadEngineInputs({ carryPacts: false });
+const inp = loadEngineInputs();
 const FROM = +arg('from', 1870), TO = +arg('to', inp.panel.meta.y1);
 const t0 = Date.now();
 // ISO2 (emoji flags) from the countrycode list; a historical entity draws on its modern successor's polygon (`map_to`)

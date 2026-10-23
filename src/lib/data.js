@@ -35,7 +35,7 @@ export function readHash() {
 export function writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode, fcTo, fcMode, run }) {
   try { const h = new URLSearchParams(); h.set('y', String(Math.round(year))); h.set('v', varId); if (asOf != null) h.set('f', String(asOf)); if (horizon) h.set('h', String(horizon)); if (view) h.set('view', view); if (mode && mode !== '2d') h.set('m', mode); if (fcTo && fcTo !== 40) h.set('to', String(fcTo)); if (fcMode && fcMode !== 'consensus') h.set('fm', fcMode); if (run) h.set('r', String(run)); if (selected?.kind === 'actor') h.set('a', selected.id); h.set('l', Object.entries(layers).filter(([, v]) => v).map(([k, v]) => (v === true ? k : `${k}:${v}`)).join(',')); if (tab) h.set('t', tab); history.replaceState(null, '', '#' + h.toString()); } catch { }
 }
-/** Pseudo-variables from the historical panel slice (public/history.json). */
+/** Regime on a continuous axis, and the industry composite: the two map variables that are not single registry columns. */
 // Regime as a gradient: V-Dem's polyarchy placed on the four-category axis by the panel's own category medians (estimate:
 // polyarchy 0.085 / 0.281 / 0.649 / 0.843 at RoW 0 / 1 / 2 / 3, n = 9,018 / 4,751 / 2,707 / 2,508 actor-years), so 'position'
 // 0..3 reads as the category axis; after the seam the ensemble mean of the level is the same quantity.

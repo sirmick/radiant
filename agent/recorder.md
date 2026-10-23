@@ -18,8 +18,8 @@ Institutional and wire feeds only: ISW/CTP, UCDP candidate events, ACLED weekly,
 ## Procedure
 1. Read the last recorder section of `docs/refine-log.md` to know the period's start.
 2. Sweep the allowlisted sources for the period; draft entries.
-3. `node scripts/build-events.mjs && node scripts/build-news.mjs && node scripts/build-world.mjs` must pass (unresolvable ids fail the build).
+3. `node scripts/build-events.mjs && node scripts/export-frames.mjs && node scripts/build-world.mjs` must pass (unresolvable ids fail the build).
 4. Append `## Recorder <period> — <date>` to `docs/refine-log.md`: entries added (with kinds and sources), pending items, stale series.
-5. Commit: `git add data/history/events.yaml data/corridors.yaml data/territories.yaml data/presence.yaml docs/refine-log.md docs/staleness.md public/news.json public/world.json && git -c user.name=mick -c user.email=sirmick@gmail.com commit -m "record(<period>): <n> events"`.
+5. Commit: `git add data/history/events.yaml data/corridors.yaml data/territories.yaml data/presence.yaml docs/refine-log.md docs/staleness.md public/frames/record.json public/world.json && git -c user.name=mick -c user.email=sirmick@gmail.com commit -m "record(<period>): <n> events"`.
 
 Return: the counts by kind, the pending list, the stale list, and the commit hash. The scorer (`scripts/score-snapshots.mjs`, to be written) then compares the period's events against the ensemble snapshots taken before them.

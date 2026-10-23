@@ -56,7 +56,7 @@ const base = await agent(
   `Working directory: /home/mick/radiant. All approved packages are implemented and committed. Produce the new baseline:
 1. node scripts/build-panel.mjs && node scripts/build-events.mjs && node scripts/fit-hazards.mjs
 2. node scripts/backtest.mjs --from 1870 --to 2010 --step 10 --horizon 20 --runs 100 --universe all   (this is the baseline file the refine loop compares against)
-3. node scripts/run-forward.mjs --runs 300 --horizon 40; node scripts/build-history-slice.mjs; node scripts/build-news.mjs; node scripts/build-world.mjs
+3. node scripts/run-forward.mjs --runs 300 --horizon 40 --paths 12; node scripts/export-frames.mjs; node scripts/build-world.mjs
 4. Replace the baseline table at the top of docs/refine-log.md with the new pooled numbers (keep the old table below it, labelled "baseline before implementation, ${DATE}"), and add a "Baseline ${DATE}" section listing per-template pooled exp/obs, skill, AUC and, where the backtest reports it, auc_at_risk.
 5. git add -A && git -c user.name=mick -c user.email=sirmick@gmail.com commit -m "baseline(${DATE}): after implementing approved escalations"
 Return the new pooled table as text and the commit hash.`,

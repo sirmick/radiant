@@ -63,14 +63,14 @@ One canvas, one scene description, two projections: `src/lib/geo.js` builds the 
 
 | layer | shows | source |
 |---|---|---|
-| country fill | the selected variable at the slider year: historical panel (regime, GDP, population, capability, steel, energy, information access, war flags…), forecast (expected regime, entropy, P(event)), or modern snapshot variables | `history.json`, `forecast*.json`, `world.json` |
-| territories | hatched polygons / ◇ points for contested territories, status and controller as of the year; after the seam the modal simulated status washed by its probability | `world.json` (dated `history`), `forecast*.json` `state.records` |
-| corridors | lines (rail/pipeline/HVDC, dotted cable) and ○ chokepoints, status as of the year; after the seam the modal simulated status washed by its probability | `world.json`, `forecast*.json` `state.records` |
-| conflicts | red outline at war, orange dashed internal conflict, arcs joining principal belligerents (dashed while ongoing); after the seam the outline and the arcs are the ensemble's occupancy, saturation = P | `history.json`, `news.json`, `forecast*.json` `state` |
+| country fill | the selected variable at the slider year: historical panel (regime, GDP, population, capability, steel, energy, information access, war flags…), forecast (expected regime, entropy, P(event)), or modern snapshot variables | `frames/` (record and ensembles), `world.json` |
+| territories | hatched polygons / ◇ points for contested territories, status and controller as of the year; after the seam the modal simulated status washed by its probability | `frames/` record status (the record and an ensemble alike) |
+| corridors | lines (rail/pipeline/HVDC, dotted cable) and ○ chokepoints, status as of the year; after the seam the modal simulated status washed by its probability | `frames/` record status |
+| conflicts | red outline at war, orange dashed internal conflict, arcs joining principal belligerents (dashed while ongoing); after the seam the outline and the arcs are the ensemble's occupancy, saturation = P | `frames/` (actor flags, dyad at-war pairs, events) |
 | military presence | ■ base · ◆ garrison · ⚓ fleet area · • advisors, coloured by power, sized by level; operator entries emphasised | `presence.json` |
-| alliances | defence pacts: *major* = pacts involving a great power (hub-and-spoke), *all* = every pact, off; the selected actor's pacts always highlighted; carried forward past 2000 and labelled | `alliances.json` |
-| flags · regime | emoji flag + government glyph (◆ closed autocracy ▲ electoral autocracy ● electoral democracy ★ liberal democracy) on a population bubble; count scales with zoom | `history.json` |
-| qualities | five-axis percentile glyph (regime, GDP/cap, capability, information access, urban) with a red ring when at war | `history.json` |
+| alliances | defence pacts: *major* = pacts involving a great power (hub-and-spoke), *all* = every pact, off; the selected actor's pacts always highlighted; after the seam the simulated graph (C3), drawn where P ≥ 0.5 | `frames/` dyad `allied` (moves after the seam: C3) |
+| flags · regime | emoji flag + government glyph (◆ closed autocracy ▲ electoral autocracy ● electoral democracy ★ liberal democracy) on a population bubble; count scales with zoom | `frames/` |
+| qualities | five-axis percentile glyph (regime, GDP/cap, capability, information access, urban) with a red ring when at war | `frames/` |
 | field | continuous overlays painted like weather, registry in `src/lib/influence.js`: *spheres of influence* (dominant power, opacity = margin), *belligerents* (heat), *routes* (open vs contested), *forecast hazard* (P(any modelled event within the horizon \| not yet) from the ensemble, painted as the excess over the median actor; dyad hazards sit between the pair; blur grows with distance from the forecast start and with the horizon) | all of the above |
 
 The **legend** shows only what is on the map: the variable's key with real category labels, the territory/corridor statuses present that year, and keys for the enabled overlays.

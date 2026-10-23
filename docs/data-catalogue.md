@@ -59,7 +59,7 @@ Natural Earth 50m admin-0 countries, 10m disputed areas, the CHN point-of-view c
 
 ## Built artefacts
 
-`data/panel.json`, `data/events.json`, `data/fits.json`, `data/contiguity.json` (model); `public/world.json`, `history.json`, `news.json`, `alliances.json`, `presence.json`, `scores.json`, `forecast*.json`, `forecasts.json`, `geo.topo.json` (viewer). All reproducible from the raw data and the YAML.
+`data/panel.json`, `data/events.json`, `data/fits.json`, `data/contiguity.json` (model); `public/world.json`, `presence.json`, `scores.json`, `geo.topo.json`, and `public/frames/` — the record and every forecast ensemble in one contract (viewer). All reproducible from the raw data and the YAML.
 
 ## Not yet fetched (deferred in the loop)
 
