@@ -1,12 +1,18 @@
 <script>
-  import { sampleNews, valueAt, fmt, sparkPath, forecastAt, statusAt, forecastNews, actualWithin, flagEmoji, regimeAt, REGIME_GLYPH, REGIME_COL4, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
+  import { valueAt, fmt, sparkPath, statusAt, flagEmoji, historyVariables, REGIME_GLYPH, REGIME_COL4, LEVEL_COLORS, REGIME_COLORS, NUCLEAR_COLORS, STATUS_COLORS, REGIME_LABELS } from './data.js';
+  import { viewNews, actualWithin } from './news.js';
+  import { rawAt, liveAt } from '../contract/read.js';
 
-  let { world, forecast, history, news, scores, selected, year, fcMode = 'consensus', run = 0, paths = null, onSelect, onPickVariable, tab = $bindable('news') } = $props();
-  const hSpark = (v, w = 160, h = 34) => { if (!histActor?.[v]) return null; const ys = [], vs = []; histActor[v].forEach((x, i) => { if (x != null) { ys.push(history.meta.y0 + i); vs.push(x); } }); if (vs.length < 2) return null; const lo = Math.min(...vs), hi = Math.max(...vs); const sx = (yy) => 1 + (yy - history.meta.y0) / (history.meta.y1 - history.meta.y0) * (w - 2); const sy = (x) => (h - 2) - (hi === lo ? (h - 4) / 2 : (x - lo) / (hi - lo) * (h - 4)); let d = ''; let prev = null; ys.forEach((yy, i) => { d += (prev != null && yy === prev + 1 ? 'L' : 'M') + sx(yy).toFixed(1) + ',' + sy(vs[i]).toFixed(1); prev = yy; }); return { d, x: sx(Math.max(history.meta.y0, Math.min(history.meta.y1, Math.round(year)))), w, h, lo, hi }; };
+  // `view` (src/lib/provider.js): the frame set that answers for the slider year. The record frame set is view.record.
+  let { world, view, scores, selected, year, onSelect, onPickVariable, tab = $bindable('news') } = $props();
+  const record = $derived(view.record);
+  const forecast = $derived(view.ensemble);
+  const run = $derived(view.run);
+  // a variable's record series as a sparkline, with the slider year marked
+  const hSpark = (v, w = 160, h = 34) => { if (!histId) return null; const R = record.meta; const ys = [], vs = []; for (let yy = R.from; yy <= R.to; yy++) { const x = rawAt(record, 'actor', histId, v, yy); if (x != null) { ys.push(yy); vs.push(x); } } if (vs.length < 2) return null; const lo = Math.min(...vs), hi = Math.max(...vs); const sx = (yy) => 1 + (yy - R.from) / (R.to - R.from) * (w - 2); const sy = (x) => (h - 2) - (hi === lo ? (h - 4) / 2 : (x - lo) / (hi - lo) * (h - 4)); let d = ''; let prev = null; ys.forEach((yy, i) => { d += (prev != null && yy === prev + 1 ? 'L' : 'M') + sx(yy).toFixed(1) + ',' + sy(vs[i]).toFixed(1); prev = yy; }); return { d, x: sx(Math.max(R.from, Math.min(R.to, Math.round(year)))), w, h, lo, hi }; };
   let newsKinds = $state(new Set(['war', 'nuclear', 'territory', 'corridor', 'alliance', 'coup', 'regime', 'conflict', 'dispute', 'leader', 'capability', 'economic']));
   const KIND_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', alliance: '#6cb4ff', coup: '#d95c4f', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3', capability: '#c07ae0', economic: '#d9a441' };
-  const nameOf = $derived.by(() => { const m = {}; for (const [id, a] of Object.entries(history?.actors ?? {})) m[id] = a.name; for (const [id, a] of Object.entries(world.actors)) m[id] = a.name; return m; });
-  const yearNews = $derived.by(() => { const y = Math.round(year); if (forecast && y >= forecast.meta.from) { if (fcMode === 'sample' && paths) return { mode: 'sample', items: sampleNews(forecast, paths, run, y, nameOf) }; return { mode: 'forecast', items: forecastNews(forecast, y) }; } return { mode: 'history', items: news?.years?.[y] ?? [] }; });
+  const yearNews = $derived(viewNews(view));
   const shown = $derived(yearNews.items.filter(e => newsKinds.has(e.k)));
   const toggleKind = (k) => { const n = new Set(newsKinds); n.has(k) ? n.delete(k) : n.add(k); newsKinds = n; };
   const goto = (e) => { if (e.c) onSelect({ kind: 'corridor', id: e.c }); else if (e.tr) onSelect({ kind: 'territory', id: e.tr }); else if (e.a?.length) onSelect({ kind: 'actor', id: e.a[0] }); tab = 'detail'; };
@@ -15,22 +21,27 @@
   const capVars = $derived(reg.variables.filter(v => v.id.startsWith('cap_')));
   const groups = $derived(Object.entries(reg.groups));
   const actor = $derived(selected?.kind === 'actor' ? world.actors[selected.id] : null);
-  const fcActor = $derived(selected?.kind === 'actor' ? forecast?.actors?.[selected.id] : null);
+  // the forecast block for the selected actor: its hazard curves and its regime distribution at the slider year
+  const fcActor = $derived.by(() => { if (selected?.kind !== 'actor' || !forecast) return null; const id = selected.id; const p = forecast.hazards?.actor?.[id]; if (!p && !forecast.actors?.[id]) return null; const yy = Math.max(forecast.meta.from, Math.round(year)); const k = Math.min(forecast.meta.years - 1, yy - forecast.meta.from); return { p: p ?? {}, regime: forecast.actors?.[id]?.regime?.[k] ?? null, gdp_pc: forecast.actors?.[id]?.gdp_pc?.[k] ?? null, regime0: view.regime0(id) }; });
   const fcOnly = $derived(!actor && !!fcActor);
   const REG_COL = ['#d95c4f', '#e8a04f', '#7fc4f0', '#4f9be8'];
-  const fcYearIdx = $derived(forecast ? Math.max(0, Math.min(forecast.meta.horizon - 1, Math.round(year) - forecast.meta.from)) : 0);
-  const FC_COLS = $derived([5, 10, 20, 40, 60, 100].filter(h => h <= (forecast?.meta.horizon ?? 40)));
+  const FC_COLS = $derived([5, 10, 20, 40, 60, 100].filter(h => h <= (forecast?.meta.years ?? 40)));
   const atYears = (curve, ys) => ys.map(y => (curve && curve[y - 1] != null ? curve[y - 1] : null));
-  const pastFc = $derived(forecast && history && forecast.meta.asOf < history.meta.y1);
-  const actualCell = (id, t) => { if (!pastFc) return null; const y = actualWithin(news, id, t, forecast.meta.asOf, Math.min(forecast.meta.horizon, history.meta.y1 - forecast.meta.asOf)); return y; };
+  const pastFc = $derived(forecast && forecast.meta.asOf < record.meta.to);
+  const actualCell = (id, t) => { if (!pastFc) return null; return actualWithin(record, t, id, forecast.meta.asOf, Math.min(forecast.meta.years, record.meta.to - forecast.meta.asOf)); };
   const territory = $derived(selected?.kind === 'territory' ? world.territories.find(t => t.id === selected.id) : null);
   const corridor = $derived(selected?.kind === 'corridor' ? world.corridors.find(c => c.id === selected.id) : null);
-  const actorName = (id) => world.actors[id]?.name ?? history?.actors?.[id]?.name ?? id;
+  const actorName = (id) => world.actors[id]?.name ?? view.name(id);
   const tState = $derived(territory ? statusAt(territory, year) : null);
   const cState = $derived(corridor ? statusAt(corridor, year) : null);
-  const histActor = $derived(selected?.kind === 'actor' ? history?.actors?.[selected.id] : null);
-  const hIdx = $derived(history ? Math.round(year) - history.meta.y0 : -1);
-  const hVal = (v) => (histActor && hIdx >= 0 ? histActor[v]?.[hIdx] : null);
+  // the record's view of the selected actor: every registry variable at the slider year (within the record)
+  const histId = $derived(selected?.kind === 'actor' && record.actors[selected.id] ? selected.id : null);
+  const histActor = $derived(histId ? view.entity(histId) : null);
+  const inRecord = $derived(Math.round(year) >= record.meta.from && Math.round(year) <= record.meta.to);
+  const liveInRecord = $derived(histId && inRecord ? liveAt(record, histId, Math.round(year)) > 0 : false);
+  const hVal = (v) => (histId && inRecord ? rawAt(record, 'actor', histId, v, Math.round(year)) : null);
+  const lastObserved = (v) => { if (!histId) return null; for (let yy = record.meta.to; yy >= record.meta.from; yy--) if (rawAt(record, 'actor', histId, v, yy) != null) return yy; return null; };
+  const histVars = $derived(historyVariables(record).filter(v => !v.gradient && !v.industry).map(v => [v.var, { label: v.label, unit: v.unit, ...v.display }]));
 
   const varsInGroup = (g) => reg.variables.filter(v => v.group === g && v.scope === 'actor' && !v.id.startsWith('cap_') && actor?.vars[v.id]);
   const pct = (x) => `${Math.round(x * 100)}%`;
@@ -47,7 +58,7 @@
     {#if tab === 'news'}
       <div class="kinds">{#each Object.keys(KIND_COL) as k}<button class="kind" class:on={newsKinds.has(k)} style="--c:{KIND_COL[k]}" onclick={() => toggleKind(k)}>{k}</button>{/each}</div>
       {#if yearNews.mode === 'sample'}
-        <div class="tiny muted" style="margin:6px 0">{year} in world {run + 1} of {paths.meta.n}: what happened in this run of the ensemble, in the record's voice. The percentage beside each is the whole ensemble's odds of it first happening this year — a 3% event that happened is a 3% event that happened.</div>
+        <div class="tiny muted" style="margin:6px 0">{year} in world {run + 1} of {forecast.meta.paths?.n}: what happened in this run of the ensemble, in the record's voice. The percentage beside each is the whole ensemble's odds of it first happening this year — a 3% event that happened is a 3% event that happened.</div>
         {#if !shown.length}<p class="muted">Nothing happened in this world this year for the selected kinds.</p>{/if}
         {#each shown as e}
           <div class="card clickable news" onclick={() => goto(e)}><span class="dot" style="background:{KIND_COL[e.k]}"></span><span class="mono pct muted">{e.p != null ? (e.p * 100).toFixed(0) + '%' : '—'}</span><span>{e.t}</span></div>
@@ -59,7 +70,7 @@
           <div class="card clickable news" onclick={() => goto(e)}><span class="dot" style="background:{KIND_COL[e.k]}"></span><span class="mono pct">{(e.p * 100).toFixed(0)}%</span><span>{e.t}<div class="tiny muted">{e.surprise.toFixed(1)}× the typical actor's odds this year</div></span></div>
         {/each}
       {:else}
-        <div class="tiny muted" style="margin:6px 0">{year}: {yearNews.items.length} recorded events{news ? '' : ' (news.json missing — run scripts/build-news.mjs)'}. Sources: REIGN, Powell–Thyne, V-Dem, UCDP, CoW, hand log.</div>
+        <div class="tiny muted" style="margin:6px 0">{year}: {yearNews.items.length} recorded events. Sources: REIGN, Powell–Thyne, V-Dem, UCDP, CoW, hand log.</div>
         {#if !shown.length}<p class="muted">No recorded events for the selected kinds. Coverage: leaders/coups 1950–2021, civil wars 1946–2024, disputes 1816–2001, regimes 1900–2025, hand events throughout.</p>{/if}
         {#each shown as e}
           <div class="card clickable news" onclick={() => goto(e)}><span class="dot" style="background:{KIND_COL[e.k]}"></span><span class="mono pct muted">{e.y != null ? (e.y % 1 ? 'Q' + (Math.floor((e.y % 1) * 4) + 1) : '') : ''}</span><span>{e.t}{#if e.n}<div class="tiny muted">{e.n}</div>{/if}<div class="tiny muted">{e.s}</div></span></div>
@@ -67,8 +78,8 @@
       {/if}
     {:else if tab === 'detail'}
       {#if actor}
-        {@const rg = regimeAt(history, forecast, actor.id, year)}
-        <h2>{flagEmoji(history?.actors?.[actor.id]?.iso2) ?? ''} {actor.name} <span class="mono muted">{actor.id}</span>{#if rg != null} <span style="color:{REGIME_COL4[rg]}" title={REGIME_LABELS[rg]}>{REGIME_GLYPH[rg]}</span>{/if}</h2>
+        {@const rg = view.regime(actor.id)}
+        <h2>{flagEmoji(view.entity(actor.id)?.iso2) ?? ''} {actor.name} <span class="mono muted">{actor.id}</span>{#if rg != null} <span style="color:{REGIME_COL4[rg]}" title={REGIME_LABELS[rg]}>{REGIME_GLYPH[rg]}</span>{/if}</h2>
         <div class="chips">
           <span class="chip" style="border-color:{REGIME_COLORS[actor.regime.type]}">{actor.regime.type.replace('_', ' ')}</span>
           <span class="chip" style="border-color:{NUCLEAR_COLORS[actor.nuclear.status]}">nuclear: {actor.nuclear.status}{actor.nuclear.warheads ? ` · ${actor.nuclear.warheads}` : ''}</span>
@@ -97,21 +108,22 @@
           <div class="kv">{#each Object.entries(actor.chokepoints) as [k, v]}<span><a href="#" onclick={(e) => { e.preventDefault(); onSelect({ kind: 'corridor', id: k }); }}>{k}</a></span><b>{pct(v)}</b>{/each}</div>
         {/if}
 
-        {#if histActor && hIdx >= 0 && hIdx <= history.meta.y1 - history.meta.y0}
-          <h3>Historical panel · {year}</h3>
-          {#if !histActor.live[hIdx]}<div class="tiny muted">not a system member in {year}</div>{/if}
+        {#if histId && inRecord}
+          <h3>The record · {year}</h3>
+          {#if !liveInRecord}<div class="tiny muted">not a system member in {year}</div>{/if}
           <table><tbody>
-            {#each Object.entries(history.vars) as [v, spec]}{@const x = hVal(v)}{@const sp = hSpark(v)}{#if x != null || sp}
-              <tr onclick={() => onPickVariable(`h_${v}`)} class="clickable"><td class="lbl">{spec.label}<div class="tiny muted">{spec.unit}{histActor.last_observed?.[v] != null && histActor.last_observed[v] < history.meta.y1 - 1 ? ` · last observed ${histActor.last_observed[v]}` : ''}</div></td><td class="val mono">{x == null ? '—' : v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</td><td class="spark">{#if sp}<svg width={sp.w} height={sp.h}><line x1={sp.x} x2={sp.x} y1="0" y2={sp.h} stroke="#6cb4ff" stroke-opacity="0.5" /><path d={sp.d} fill="none" stroke="#d7dce3" stroke-width="1" /></svg>{/if}</td></tr>
+            {#each histVars as [v, spec]}{@const x = hVal(v)}{@const sp = hSpark(v)}{#if x != null || sp}
+              {@const lo = lastObserved(v)}
+              <tr onclick={() => onPickVariable(`h_${v}`)} class="clickable"><td class="lbl">{spec.label}<div class="tiny muted">{spec.unit}{lo != null && lo < record.meta.to - 1 ? ` · last observed ${lo}` : ''}</div></td><td class="val mono">{x == null ? '—' : v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</td><td class="spark">{#if sp}<svg width={sp.w} height={sp.h}><line x1={sp.x} x2={sp.x} y1="0" y2={sp.h} stroke="#6cb4ff" stroke-opacity="0.5" /><path d={sp.d} fill="none" stroke="#d7dce3" stroke-width="1" /></svg>{/if}</td></tr>
             {/if}{/each}
           </tbody></table>
         {/if}
 
         {#if fcActor}
-          {@const d = fcActor.regime?.[fcYearIdx]}
+          {@const d = fcActor.regime}
           <h3>Forecast{pastFc ? ` made in ${forecast.meta.asOf}` : ''} · generic templates · {forecast.meta.runs} runs</h3>
           {#if d}
-            <div class="tiny muted">regime distribution in {Math.max(forecast.meta.from, Math.round(year))} ({forecast.meta.asOf}: {REGIME_LABELS[fcActor.regime0]}){#if pastFc && histActor && Math.round(year) <= history.meta.y1} · actual: <b>{REGIME_LABELS[histActor.regime?.[Math.round(year) - history.meta.y0]] ?? '—'}</b>{/if}</div>
+            <div class="tiny muted">regime distribution in {Math.max(forecast.meta.from, Math.round(year))} ({forecast.meta.asOf}: {REGIME_LABELS[fcActor.regime0]}){#if pastFc && histId && Math.round(year) <= record.meta.to} · actual: <b>{REGIME_LABELS[rawAt(record, 'actor', histId, 'regime', Math.max(forecast.meta.from, Math.round(year)))] ?? '—'}</b>{/if}</div>
             <div class="regbar">{#each d as p, l}{#if p > 0.005}<i style="width:{p * 100}%;background:{REG_COL[l]}" title="{REGIME_LABELS[l]} {(p * 100).toFixed(0)}%"></i>{/if}{/each}</div>
             <div class="tiny">{#each d as p, l}{#if p > 0.02}<span class="sw"><i style="background:{REG_COL[l]}"></i>{REGIME_LABELS[l]} {(p * 100).toFixed(0)}%</span>{/if}{/each}</div>
           {/if}
@@ -126,7 +138,7 @@
               </tr>
             {/each}
           </tbody></table>
-          {#if fcActor.gdp_pc?.[fcYearIdx]}<div class="tiny muted">GDP/cap {Math.max(forecast.meta.from, Math.round(year))}: {fcActor.gdp_pc[fcYearIdx].map(v => '$' + (v / 1000).toFixed(1) + 'k').join(' / ')} (10/50/90)</div>{/if}
+          {#if fcActor.gdp_pc}<div class="tiny muted">GDP/cap {Math.max(forecast.meta.from, Math.round(year))}: {fcActor.gdp_pc.map(v => '$' + (v / 1000).toFixed(1) + 'k').join(' / ')} (10/50/90)</div>{/if}
           <div class="tiny muted">{forecast.meta.engine}</div>
         {/if}
 
@@ -150,14 +162,14 @@
         {/each}
 
       {:else if fcOnly || (histActor && !actor)}
-        {@const d = fcActor?.regime?.[fcYearIdx]}
-        {@const rg2 = regimeAt(history, forecast, selected.id, year)}
+        {@const d = fcActor?.regime}
+        {@const rg2 = view.regime(selected.id)}
         <h2>{flagEmoji(histActor?.iso2) ?? ''} {histActor?.name ?? selected.id} <span class="mono muted">{selected.id}</span>{#if rg2 != null} <span style="color:{REGIME_COL4[rg2]}">{REGIME_GLYPH[rg2]}</span>{/if} <span class="muted tiny">fit-only state</span></h2>
-        {#if histActor && hIdx >= 0 && hIdx <= history.meta.y1 - history.meta.y0}
-          <h3>Historical panel · {year}</h3>
-          {#if !histActor.live[hIdx]}<div class="tiny muted">not a system member in {year}</div>{/if}
+        {#if histId && inRecord}
+          <h3>The record · {year}</h3>
+          {#if !liveInRecord}<div class="tiny muted">not a system member in {year}</div>{/if}
           <div class="kv">
-            {#each Object.entries(history.vars) as [v, spec]}{@const x = hVal(v)}{#if x != null}<span>{spec.label}</span><b class="mono">{v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</b>{/if}{/each}
+            {#each histVars as [v, spec]}{@const x = hVal(v)}{#if x != null}<span>{spec.label}</span><b class="mono">{v === 'regime' ? REGIME_LABELS[x] : fmt({ display: spec }, x)}</b>{/if}{/each}
           </div>
         {/if}
         {#if fcActor}

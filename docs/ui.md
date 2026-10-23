@@ -1,6 +1,6 @@
 # The viewer
 
-`npm run dev` (http://localhost:5173) or `npx vite preview` (http://localhost:4173). Bound to all interfaces. Everything is static: the app loads `public/*.json` and does the rest in the browser.
+`npm run dev` (http://localhost:5173) or `npx vite preview` (http://localhost:4173). Bound to all interfaces. Everything is static: the app loads `public/frames/` (the frame contract, `docs/schema.md` *Frames*) plus `world.json`, `geo.topo.json`, `presence.json` and `scores.json`, and does the rest in the browser. Every component reads one object, the **view** (`src/lib/provider.js:makeView`): the frame set that answers for the slider year — the record, a forecast ensemble, or one sample world of it — and one cell shape for every variable. No component branches on which provider it is reading; news for the record and for a sample world is told by the same formatter (`src/lib/news.js`).
 
 ## Layout
 

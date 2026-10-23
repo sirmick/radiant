@@ -1,13 +1,15 @@
 <script>
-  import { loadWorld, loadEnsemble, loadPaths, forecastVariables, historyVariables, readHash, writeHash, forecastNews, sampleNews } from './lib/data.js';
+  import { loadWorld, forecastVariables, historyVariables, readHash, writeHash } from './lib/data.js';
+  import { loadEnsemble, loadPaths, makeView } from './lib/provider.js';
+  import { viewNews } from './lib/news.js';
   import Map from './lib/Map.svelte';
   import Panel from './lib/Panel.svelte';
 
   let data = $state(null), error = $state(null);
   let horizon = $state(10);          // forecast window shown on the map: P(within the next H years)
-  let asOf = $state(null);           // null = the current (2025) ensemble; a year = a past forecast made as of that year
+  let asOf = $state(null);           // null = the latest-origin ensemble; a year = a past forecast made as of that year
   let ensemble = $state(null);       // the active ensemble object
-  $effect(() => { if (!data) return; if (asOf == null) { ensemble = data.forecast; return; } const e = data.forecastIndex?.ensembles.find(x => x.asOf === asOf); if (!e) { ensemble = data.forecast; return; } loadEnsemble(e.file).then(f => { if (asOf === e.asOf) ensemble = f; }); });
+  $effect(() => { if (!data) return; if (asOf == null) { ensemble = data.ensemble; return; } const e = data.index.ensembles.find(x => x.asOf === asOf); if (!e) { ensemble = data.ensemble; return; } loadEnsemble(e).then(f => { if (asOf === e.asOf) ensemble = f; }); });
   let varId = $state('h_regime');
   // auto-switch the regime view across the history/forecast boundary
   const fcFrom = $derived(ensemble?.meta.from ?? 2026);
@@ -20,11 +22,12 @@
   let paths = $state(null);
   $effect(() => { const fc = ensemble; if (!fc || fcMode !== 'sample') return; loadPaths(fc).then(p => { if (fc === ensemble) paths = p; }); });
   const pathsFor = $derived(fcMode === 'sample' && paths && ensemble && paths.meta.from === ensemble.meta.from ? paths : null);
-  const nameOf = $derived.by(() => { const m = {}; if (!data) return m; for (const [id, a] of Object.entries(data.history?.actors ?? {})) m[id] = a.name; for (const [id, a] of Object.entries(data.world.actors)) m[id] = a.name; return m; });
+  // the one data source every component reads: the frame set that answers for the slider year (src/lib/provider.js)
+  const wv = $derived(data ? makeView({ record: data.record, ensemble, paths: pathsFor, mode: fcMode, run, year }) : null);
   let fcTo = $state(40);              // how far the timeline runs past the forecast start, capped by the loaded ensemble
   const FC_TO = [40, 50, 60, 80, 100];
   const Y0 = 1870;
-  const Y1 = $derived(asOf == null ? Math.min(fcFrom + fcTo - 1, ensemble?.meta.to ?? 2066) : Math.max(data?.history?.meta.y1 ?? 2025, ensemble?.meta.to ?? 2066));
+  const Y1 = $derived(asOf == null ? Math.min(fcFrom + fcTo - 1, ensemble?.meta.to ?? 2066) : Math.max(data?.record?.meta.to ?? 2025, ensemble?.meta.to ?? 2066));
   const ERAS = $derived([{ y: 1870, label: '1870' }, { y: 1914, label: '1914' }, { y: 1945, label: '1945' }, { y: 1991, label: '1991' }, { y: 2026, label: 'now' }, { y: Y1, label: String(Y1) }]);
   $effect(() => { if (year > Y1) year = Y1; });
   $effect(() => {
@@ -52,16 +55,16 @@
   let tab = $state('news');
   const HL_COL = { war: '#ef6a5a', nuclear: '#ff3b3b', territory: '#e8a04f', corridor: '#4fc27a', coup: '#d95c4f', alliance: '#6cb4ff', regime: '#7fc4f0', conflict: '#e8a04f', dispute: '#8b94a3', leader: '#8b94a3' };
   const headlines = $derived.by(() => {
-    if (!data) return []; const y = Math.round(year);
-    const fc = ensemble ?? data.forecast;
-    if (fc && y >= fc.meta.from && y <= fc.meta.to && pathsFor) return sampleNews(fc, pathsFor, run, y, nameOf).slice(0, 3).map(e => ({ t: `${e.p != null ? (e.p * 100).toFixed(0) + '% · ' : ''}${e.t}`, col: HL_COL[e.k] ?? '#8b94a3' }));
-    if (fc && y >= fc.meta.from && y <= fc.meta.to) { const seen = new Set(); const out = []; for (const e of forecastNews(fc, y, 60)) { if (seen.has(e.tpl)) continue; seen.add(e.tpl); out.push({ t: `${(e.p * 100).toFixed(0)}% ${e.t}`, col: HL_COL[e.k] ?? '#8b94a3' }); if (out.length === 3) break; } return out; }
-    const items = (data.news?.years?.[y] ?? []).filter(e => !e.ongoing && ['war', 'nuclear', 'territory', 'corridor', 'coup', 'alliance'].includes(e.k));
+    if (!wv) return [];
+    const n = viewNews(wv);
+    if (n.mode === 'sample') return n.items.slice(0, 3).map(e => ({ t: `${e.p != null ? (e.p * 100).toFixed(0) + '% · ' : ''}${e.t}`, col: HL_COL[e.k] ?? '#8b94a3' }));
+    if (n.mode === 'forecast') { const seen = new Set(); const out = []; for (const e of n.items) { if (seen.has(e.tpl)) continue; seen.add(e.tpl); out.push({ t: `${(e.p * 100).toFixed(0)}% ${e.t}`, col: HL_COL[e.k] ?? '#8b94a3' }); if (out.length === 3) break; } return out; }
+    const items = n.items.filter(e => !e.ongoing && ['war', 'nuclear', 'territory', 'corridor', 'coup', 'alliance'].includes(e.k));
     return items.slice(0, 3).map(e => ({ t: e.t.length > 90 ? e.t.slice(0, 88) + '…' : e.t, col: HL_COL[e.k] ?? '#8b94a3' }));
   });
   $effect(() => { if (data) writeHash({ year, varId, selected, layers, tab, asOf, horizon, view, mode, fcTo, fcMode, run }); });
 
-  const mapVars = $derived(data ? [...historyVariables(data.history), ...forecastVariables(ensemble ?? data.forecast), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
+  const mapVars = $derived(data ? [...historyVariables(data.record), ...forecastVariables(ensemble), ...data.world.registry.variables.filter(v => v.display?.map && v.scope === 'actor')] : []);
   const groups = $derived(data ? [['history', 'History (panel 1870–2025)'], ['forecast', 'Forecast (ensemble)'], ...Object.entries(data.world.registry.groups)] : []);
   const variable = $derived(mapVars.find(v => v.id === varId) ?? mapVars[0]);
   const actorList = $derived(data ? Object.values(data.world.actors).sort((a, b) => a.name.localeCompare(b.name)) : []);
@@ -77,7 +80,7 @@
 <svelte:window onkeydown={onKey} onhashchange={applyHash} />
 
 {#if error}
-  <div class="center bad">Failed to load world.json — run <code>node scripts/build-world.mjs</code>. {error}</div>
+  <div class="center bad">Failed to load — run <code>node scripts/build-world.mjs</code>, <code>node scripts/export-frames.mjs</code> and <code>node scripts/run-forward.mjs</code>. {error}</div>
 {:else if !data}
   <div class="center muted">loading world…</div>
 {:else}
@@ -139,8 +142,8 @@
       </label>
       <label class="asof" title="Run the forecast as of a past year: coefficients refit on data up to that year, then compared with what happened">forecast from
         <select value={asOf ?? ''} onchange={(e) => { asOf = e.target.value === '' ? null : +e.target.value; if (asOf != null) year = Math.max(year, asOf + 1); }}>
-          <option value="">2025 (now)</option>
-          {#each (data.forecastIndex?.ensembles ?? []).filter(e => e.asOf < 2025) as e}<option value={e.asOf}>{e.asOf}</option>{/each}
+          <option value="">{data.latest?.asOf ?? 2025} (now)</option>
+          {#each data.index.ensembles.filter(e => e.asOf < (data.latest?.asOf ?? 2025)) as e}<option value={e.asOf}>{e.asOf}</option>{/each}
         </select>
       </label>
       <span class="muted tiny">{year < fcFrom ? 'history' : asOf != null ? `forecast made in ${asOf} vs what happened` : 'forecast ensemble'} · ← → step · space play</span>
@@ -150,8 +153,8 @@
       {#if !headlines.length}<span class="muted tiny">no recorded headline events for {Math.round(year)}</span>{/if}
     </div>
     <main>
-      <Map world={data.world} geo={data.geo} forecast={ensemble ?? data.forecast} history={data.history} alliances={data.alliances} news={data.news} presence={data.presence} {variable} {year} {horizon} {mode} {layers} {selected} {fcMode} {run} paths={pathsFor} onSelect={(s) => { selected = s; tab = 'detail'; }} />
-      <Panel world={data.world} forecast={ensemble ?? data.forecast} history={data.history} news={data.news} scores={data.scores} bind:tab {selected} {year} {fcMode} {run} paths={pathsFor} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
+      <Map world={data.world} geo={data.geo} view={wv} presence={data.presence} {variable} {year} {horizon} {mode} {layers} {selected} onSelect={(s) => { selected = s; tab = 'detail'; }} />
+      <Panel world={data.world} view={wv} scores={data.scores} bind:tab {selected} {year} onSelect={(s) => { selected = s; tab = 'detail'; }} onPickVariable={(id) => varId = id} />
     </main>
   </div>
 {/if}

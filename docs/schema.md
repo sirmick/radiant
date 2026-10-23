@@ -245,28 +245,55 @@ Corridors and territories carry `history: [{ year, status?, controller?, capacit
 
 A field is a continuous geographic overlay: `{ label, note, paint: 'dominant'|'heat', groups(ctx), sources(ctx) -> [{ group, polygonKey?, lonlat?, w, lambda }], color(ctx, group), threshold }`. Sources add `w` to every grid cell inside a polygon and/or `w·exp(−d/λ)` around a point. `dominant` paints each cell with its leading group at an opacity equal to the margin over the runner-up; `heat` paints one hue at an opacity proportional to intensity. Weights are `estimate` — fields are pictures of the data layers, not fitted quantities. Registered: `influence`, `conflict`.
 
-## Ensembles (`public/forecast*.json`, `public/forecasts.json`)
+## Frames — the one contract between the model and the viewer (2026-10-23, `docs/plan-structure.md` A–B)
 
-`run-forward.mjs` writes `{ meta: { asOf, from, to, runs, horizon, fit_source, templates, state }, actors: { id: { regime0, p: { template: cumulative P by year }, regime: [[p0,p1,p2,p3] per year], gdp_pc: [[q10,q50,q90]], info_access } }, dyads: { "A|B": { template: { pAny, curve } } }, records: { template: { record: curve } }, state: {...} }`. With `--as-of Y < 2025` the coefficients are refit on labels ≤ Y (`scripts/lib/fit.mjs`), and the index `forecasts.json` lists every ensemble for the viewer's *forecast from* menu.
+Every year of the world the viewer paints, and every year the backtest scores, is a **frame**: the same schema
+whether it is the record or a forecast. Two providers write it and nothing else is read.
 
-### The `state` block — occupancy (2026-09-08, `operator / occupancy`, package 11)
+| provider | written by | file |
+|---|---|---|
+| the record (an ensemble of one) | engine replay, `scripts/export-frames.mjs` | `public/frames/record.json` |
+| a forecast ensemble from origin Y | `scripts/run-forward.mjs --as-of Y` | `public/frames/fc-Y.json` |
+| its sample worlds (whole runs) | the same run | `public/frames/fc-Y-paths.json` |
+| what exists | both | `public/frames/index.json` |
 
-Everything above answers "when does this event first fire inside the horizon". `state` answers the other question — **what state is the world in each year** — and is what the map paints after the seam and what `scripts/backtest.mjs` grades under `occupancy`.
+**The registry** (`src/contract/vars.js`) declares every variable once: `entity` (actor | dyad | record | world),
+`kind` (binary | categorical | continuous), levels and labels, display format, the `coverage` window of its source,
+its `truth` column (`panel:<col>`), and `forecast` — `simulated` (the engine moves it), `frozen` (held at the origin;
+every reader says so) or `carried` (a display-only panel column the engine never touches; ensembles do not carry it and
+readers carry the record's last observation, washed by its age).
+
+**Observation** (`src/contract/frames.js`): `observe(world)` reads any engine world through the registry's readers,
+and `FrameBuilder` accumulates runs × years. The record is the world `createWorld({asOf: y})` builds for each year
+plus that year's dyadic war pairs and record statuses (`src/engine/replay.js:recordWorld`), observed in `strict` mode:
+a value the panel does not measure that year is `null`, not carried. Observation draws no random numbers.
+
+**Encoding** — one array per entity-variable, indexed by year offset `k` from `meta.from`:
 
 ```
-state.actors[id] = { live, at_war, intrastate, intrastate_war, occupied,   // P per year offset k (null = zero in every run)
-                     cinc: [[p10,p50,p90] per k], pol_share: [...],           // two capability shares...
-                     wave_share: [...], wave_attained: [...], industry_share: [...] }   // ...and the wave layer's three
-state.dyads["A|B"] = [P(the pair is at war during year k)]                 // only pairs whose peak year is >= meta.state threshold
-state.records[id]  = { kind, status: [{ word: P } per k] }                 // corridors, chokepoints and territories alike
+runs = 1 (record, sample world)   binary 0/1 · categorical level index (or word) · continuous number · null
+runs > 1 (ensemble)               binary P(1) · categorical [p_level] (or {word: p}) · continuous [p10, p50, p90]
+actors[id] = { live?: [...], <var>: [...] }      // live omitted = live every year; absent binary = 0
+dyads[var]["A|B"] = [...] | number                // a constant series may be one number (a frozen pact graph)
+records[id] = { kind, status: [...] }
+world = { polarity, n_poles, hegemon, dem_share }
+events[k] = [{ k: kind, u: unit, t?: template, ...the event's own fields }]   // runs = 1 only
 ```
 
-`k` is the 0-based offset from `meta.from`. `meta.state.vars` declares every series with a `simulated` flag and a note, because two of them are **not forecasts and must not be read as one**: `cinc` is CoW's index as the engine *carries* it (nothing in `stepYear` rewrites it, so the p10–p90 band is degenerate and the series is the as-of ranking held still — `pol_share`, which `src/engine/polarity.js` advances by each actor's own simulated growth, is the one that moves), and `occupied` is the as-of value held still because occupation is data in this model rather than a hazard. `intrastate_war` carries only the level-2 spells the world entered with: the onset template has no intensity, so the engine writes level 1 and never 2. `meta.state.vars` also carries the dyad threshold and how many pairs fell below it, so a missing pair is a stated omission rather than a silent zero.
+An ensemble adds `hazards` — `actor[id][template]`, `dyad["A|B"][kind] = {pAny, curve}`, `record[template][id]`:
+P(first occurrence within k years of the origin) — and `meta.templates`, `meta.dyads` (the at-war pair threshold:
+pairs whose peak is below `lowest_kept_peak` are omitted, not zero), `meta.paths`. A sample world is a frame set in
+the record's shape (`runs: 1`), so the viewer reads one forecast world exactly as it reads history.
 
-`wave_share`, `wave_attained` and `industry_share` joined the block on 2026-09-08 (`operator / capability-waves`, package 12) and are all `simulated: true`. `wave_share` is capability as a portfolio of dated technology waves (`src/engine/waves.js`) rather than CoW's six-indicator index; unlike `cinc` its p10–p90 band is genuinely wide, because the fitted `wave_attain` hazard makes an actor sovereign in a wave in some runs and not in others. `wave_attained` is the attainment half alone before any mass discount, and `industry_share` is the industrial mass the waves are weighted by, carried forward by each actor's own simulated output and population growth. `meta.waves` says how many waves the run carried and whether the wave share also **replaced** `cinc` in the dyadic capability ratio (`WAVE_CAPABILITY=1`, or `capability.status: active` on the `wave_attain` template) — publishing the series and letting it decide a war are two switches, and only the first is on by default.
+**Reading** (`src/contract/read.js`): `rawAt`, `distAt` (a distribution whatever the provider — the record's point is
+a one-hot vector or `[x, x, x]`), `liveAt`, `dyadsAt`, `eventsAt`. The viewer's `src/lib/provider.js:makeView` picks the
+frame set that answers for a year and returns one cell shape for every variable and read mode; `src/lib/news.js` tells
+the record's events and a sample world's in the same voice. **Scoring** (`src/contract/score.js`) grades a forecast
+frame set against the record's over the same years by kind — see `docs/system.md`.
 
-The block is produced by `runEnsemble(..., { state: true })` in `src/engine/core.js`. It reads the world after each `stepYear` and **consumes no random numbers**, so a run with it on is bit-identical to a run with it off — which is what lets the backtest turn it on permanently without moving a single event number.
-
+Retired by this contract: `public/history.json`, `news.json`, `alliances.json`, `forecast*.json`, `forecasts.json` and
+the scripts that built them (`build-history-slice`, `build-news`, `build-alliance-slice`); the ensemble's former
+`state` block is the ensemble frame set itself.
 
 ## Cleanup 2026-09-07
 

@@ -38,8 +38,8 @@ Every run also carries an **occupancy** score (`operator / occupancy`, 2026-09-0
 ## Forecast
 
 ```
-npm run forecast                                     # 2026–2065 from 2025, 300 runs  -> public/forecast.json
-node scripts/run-forward.mjs --as-of 1955 --runs 200 --horizon 30   # past forecast, coefficients refit on labels <= 1955 -> public/forecast-1955.json (+ index forecasts.json)
+npm run forecast                                     # from 2025, 300 runs x 100 y -> public/frames/fc-2025.json (+ -paths.json, index.json)
+node scripts/run-forward.mjs --as-of 1955 --runs 200 --horizon 40   # past forecast, coefficients refit on labels <= 1955 -> public/frames/fc-1955.json
 ```
 
 ## Viewer data
@@ -47,12 +47,21 @@ node scripts/run-forward.mjs --as-of 1955 --runs 200 --horizon 30   # past forec
 ```
 node scripts/build-geo.mjs          # Natural Earth -> data/geo/world.topo.json
 node scripts/build-world.mjs        # modern YAML + raw -> public/world.json (validates paths and sources)
-npm run build:ui-data               # = build-history-slice (public/history.json) + build-news (public/news.json)
-node scripts/build-alliance-slice.mjs    # public/alliances.json
+npm run build:ui-data               # = export-frames: the record by engine replay -> public/frames/record.json (~7 s)
 node scripts/build-presence-slice.mjs    # public/presence.json
 node scripts/build-scores-slice.mjs      # public/scores.json from the baseline backtest
 npm run dev  |  npx vite build && npx vite preview
 ```
+
+## Replay and the fork scorer
+
+```
+node scripts/analysis/replay-diff.mjs [--from 1816 --to 2025] [--json f]   # the record stepped through the engine's own rewrites; lists every transition it cannot reproduce
+```
+The backtest's occupancy block is the fork scorer: the record replayed once over the window (`src/engine/replay.js`),
+each origin's ensemble observed through the frame contract, graded by `src/contract/score.js`. Every registry variable
+both sides carry is scored — binary Brier, multi-class Brier plus cumulative thresholds, continuous rank / pinball /
+p10–p90 coverage — with no per-variable code.
 
 ## The loops (Claude Code workflows)
 
@@ -71,13 +80,13 @@ While a workflow runs, commit only your own paths (`git add <paths>`), never `gi
 
 ## Forecast length
 
-`node scripts/run-forward.mjs --runs 300 --horizon 100 --paths 12` builds the main ensemble a century long (`public/forecast.json`, ~8 MB, plus `forecast-paths.json` with twelve whole runs for the viewer's sample-world mode); the viewer's **to** control offers +40…+100 years up to the loaded ensemble's horizon. Cost is linear in runs × years: 20 runs × 40 years take ~14 s on the dev machine including the fit, so 300 × 100 took 432 s (7 min). Past-as-of ensembles run 200 runs × 40 years:
+`node scripts/run-forward.mjs --runs 300 --horizon 100 --paths 12` builds the main ensemble a century long (`public/frames/fc-2025.json`, plus `fc-2025-paths.json` with twelve whole runs, each a record-shaped frame set, for the viewer's sample-world mode); the viewer's **to** control offers +40…+100 years up to the loaded ensemble's horizon. Cost is linear in runs × years: 20 runs × 40 years take ~14 s on the dev machine including the fit, so 300 × 100 took 432 s (7 min). Past-as-of ensembles run 200 runs × 40 years:
 
 ```
 for y in 1900 1930 1955 1975 1990 2005; do node scripts/run-forward.mjs --as-of $y --runs 200 --horizon 40; done
 node scripts/build-scores-slice.mjs && npx vite build
 ```
 
-Every ensemble carries the `state` (occupancy) block described in `docs/schema.md`; it is what the Conflict and Routes views paint after the seam, so a rebuild that skips these leaves those views frozen at the last record.
+Every ensemble is a frame set (`docs/schema.md`, *Frames*); the viewer paints any year from whichever frame set answers for it.
 
 Size: the `state` block took `public/forecast.json` from 4.07 to 5.94 MB at 300 x 100 when it landed, and the three capability-wave series (`wave_share`, `wave_attained`, `industry_share`, `operator/capability-waves`) took it to 7.62 MB. The main run is 513 s on the dev machine.

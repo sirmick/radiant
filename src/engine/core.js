@@ -1201,7 +1201,13 @@ export function stepYear(world, rng, opts = {}) {
         const t = world.templates.find(t => t.id === kind); const ev = { kind: t.event, template: kind, actor: id, year: y };
         const rewrite = ev.kind === 'coup' ? 'coup' : (t.event_filter ? kind : ev.kind);
         if (!HANDLED.has(rewrite)) throw new Error(`stepYear: template '${kind}' fires but applyActorEvent has no rewrite for '${rewrite}'`);
+        const before = a.cur.regime;
         fired.push(ev); applyActorEvent(world, a, rewrite, rng);
+        // the event in the record's own shape (data/events.json), so a sample world's news reads like history: a regime
+        // step carries from/to, a coup whether it succeeded. Read off the state after the rewrite; no random numbers.
+        if (ev.kind === 'regime_change') { ev.from = before; ev.to = a.cur.regime; ev.direction = a.cur.regime > before ? 'democratize' : 'autocratize'; }
+        else if (ev.kind === 'coup') ev.success = a.cur.coup_success ? 1 : 0;
+        else if (kind === 'irregular_exit') ev.irregular = 1;
       }
     }
   }

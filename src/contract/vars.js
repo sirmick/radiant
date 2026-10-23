@@ -29,35 +29,56 @@ export const VARS = [
   // ---- actor
   { id: 'live', entity: 'actor', kind: 'binary', label: 'in the system', family: 'politics', forecast: 'simulated',
     read: () => 1, note: 'membership: read from the dated system membership inside the panel window; past it the universe stands as it is' },
-  { id: 'regime', entity: 'actor', kind: 'categorical', levels: REGIME_LEVELS, labels: REGIME_LABELS, label: 'Regime', family: 'politics', forecast: 'simulated',
+  { id: 'regime', entity: 'actor', display: { format: '.0f', unit: '0 closed … 3 liberal' }, kind: 'categorical', levels: REGIME_LEVELS, labels: REGIME_LABELS, label: 'Regime (V-Dem RoW)', family: 'politics', forecast: 'simulated',
     truth: 'panel:regime', coverage: [1816, 2025], read: (w, a) => lvl(a.cur.regime, 4) },
-  { id: 'polyarchy', entity: 'actor', kind: 'continuous', label: 'Polyarchy (V-Dem)', family: 'politics', forecast: 'simulated',
+  { id: 'polyarchy', entity: 'actor', display: { format: '.2f', unit: 'V-Dem' }, kind: 'continuous', label: 'Electoral democracy index', family: 'politics', forecast: 'simulated',
     truth: 'panel:polyarchy', coverage: [1900, 2025], read: (w, a) => a.cur.polyarchy ?? null, note: 'the engine moves it by ±0.1 on a regime step; between steps it is held' },
-  { id: 'at_war', entity: 'actor', kind: 'binary', label: 'At war', family: 'conflict', forecast: 'simulated',
+  { id: 'at_war', entity: 'actor', display: { format: '.0f', unit: 'flag' }, kind: 'binary', label: 'At war (interstate)', family: 'conflict', forecast: 'simulated',
     truth: 'panel:at_war', coverage: [1816, 2024], read: (w, a) => (a.cur.at_war ? 1 : 0) },
-  { id: 'intrastate', entity: 'actor', kind: 'categorical', levels: [0, 1, 2], labels: ['none', 'minor', 'war'], label: 'Internal armed conflict', family: 'conflict', forecast: 'simulated',
+  { id: 'intrastate', entity: 'actor', display: { format: '.0f', unit: 'UCDP intensity' }, kind: 'categorical', levels: [0, 1, 2], labels: ['none', 'minor', 'war'], label: 'Internal armed conflict', family: 'conflict', forecast: 'simulated',
     truth: 'panel:intrastate', coverage: [1946, 2024], read: (w, a) => lvl(a.cur.intrastate ?? 0, 3),
     note: 'the engine writes level 1 and never 2 (intrastate_onset has no intensity): level 2 forward is a carried as-of spell, not a forecast' },
-  { id: 'occupied', entity: 'actor', kind: 'binary', label: 'Occupied', family: 'conflict', forecast: 'frozen',
+  { id: 'occupied', entity: 'actor', display: { format: '.0f', unit: 'flag' }, kind: 'binary', label: 'Occupied', family: 'conflict', forecast: 'frozen',
     truth: 'panel:occupied', coverage: [1816, 2025], read: (w, a) => (a.cur.occupied ? 1 : 0), note: 'occupation is data, not a hazard: carried from as-of' },
-  { id: 'great_power', entity: 'actor', kind: 'binary', label: 'Great power', family: 'structure', forecast: 'frozen',
+  { id: 'great_power', entity: 'actor', display: { format: '.0f', unit: 'flag' }, kind: 'binary', label: 'Major power (CoW)', family: 'structure', forecast: 'frozen',
     truth: 'panel:great_power', coverage: [1816, 2025], read: (w, a) => (a.cur.great_power ? 1 : 0), note: 'frozen at as-of (docs/plan-structure.md C2)' },
-  { id: 'nuclear', entity: 'actor', kind: 'binary', label: 'Nuclear weapons', family: 'structure', forecast: 'frozen',
+  { id: 'nuclear', entity: 'actor', display: { format: '.0f', unit: 'flag' }, kind: 'binary', label: 'Nuclear weapons', family: 'structure', forecast: 'frozen',
     coverage: [1816, 2026], read: (w, a) => (w.nukes?.has(a.id) ? 1 : 0), note: 'world.nukes, frozen at as-of (docs/plan-structure.md C4)' },
-  { id: 'gdp_pc', entity: 'actor', kind: 'continuous', label: 'GDP per head', unit: '2011 int-$', log: true, family: 'economy', forecast: 'simulated', positive: true,
+  { id: 'gdp_pc', entity: 'actor', display: { format: '.3s', unit: '2011 intl $', log: true }, kind: 'continuous', label: 'GDP per capita (Maddison)', family: 'economy', forecast: 'simulated', positive: true,
     truth: 'panel:gdp_pc', coverage: [1820, 2022], read: (w, a) => a.cur.gdp_pc ?? null },
-  { id: 'info_access', entity: 'actor', kind: 'continuous', label: 'Information access', family: 'economy', forecast: 'simulated', positive: true,
+  { id: 'info_access', entity: 'actor', display: { format: '.0%', unit: '0–1' }, kind: 'continuous', label: 'Information access', family: 'economy', forecast: 'simulated', positive: true,
     truth: 'panel:info_access', coverage: [1960, 2024], read: (w, a) => a.cur.info_access ?? null },
-  { id: 'cinc', entity: 'actor', kind: 'continuous', label: 'Capability (CINC)', log: true, family: 'capability', forecast: 'frozen', positive: true,
+  { id: 'cinc', entity: 'actor', display: { format: '.2%', unit: 'share of world', log: true }, kind: 'continuous', label: 'Capability (CINC)', log: true, family: 'capability', forecast: 'frozen', positive: true,
     truth: 'panel:cinc', coverage: [1816, 2024], read: (w, a) => a.cur.cinc ?? null, note: 'nothing in the engine rewrites cinc: carried from as-of (docs/plan-structure.md C1)' },
-  { id: 'pol_share', entity: 'actor', kind: 'continuous', label: 'Projected capability share', log: true, family: 'capability', forecast: 'simulated', positive: true,
+  { id: 'pol_share', entity: 'actor', display: { format: '.2%', unit: 'share of world', log: true }, kind: 'continuous', label: 'Projected capability share', log: true, family: 'capability', forecast: 'simulated', positive: true,
     truth: 'panel:pol_share', coverage: [1816, 2024], read: (w, a) => a.cur.pol_share ?? null },
-  { id: 'wave_share', entity: 'actor', kind: 'continuous', label: 'Capability (wave share)', log: true, family: 'capability', forecast: 'simulated', positive: true,
+  { id: 'wave_share', entity: 'actor', display: { format: '.2%', unit: 'share of world', log: true }, kind: 'continuous', label: 'Capability (wave share)', log: true, family: 'capability', forecast: 'simulated', positive: true,
     truth: 'panel:wave_share', coverage: [1816, 2024], read: (w, a) => a.cur.wave_share ?? null },
-  { id: 'wave_attained', entity: 'actor', kind: 'continuous', label: 'Waves attained', family: 'capability', forecast: 'simulated', positive: true,
+  { id: 'wave_attained', entity: 'actor', display: { format: '.0%', unit: 'displacement-weighted share of live waves' }, kind: 'continuous', label: 'Waves attained', family: 'capability', forecast: 'simulated', positive: true,
     truth: 'panel:wave_attained', coverage: [1816, 2024], read: (w, a) => a.cur.wave_attained ?? null },
-  { id: 'industry_share', entity: 'actor', kind: 'continuous', label: 'Industrial share', log: true, family: 'capability', forecast: 'simulated', positive: true,
+  { id: 'industry_share', entity: 'actor', display: { format: '.2%', unit: 'share of world output', log: true }, kind: 'continuous', label: 'Industrial share', log: true, family: 'capability', forecast: 'simulated', positive: true,
     truth: 'panel:industry_share', coverage: [1816, 2024], read: (w, a) => a.cur.industry_share ?? null },
+  // population is moved by the engine deterministically (each actor's own trailing growth), so it is carried as a
+  // simulated series: the map sizes labels by it after the seam as well as before
+  { id: 'population', entity: 'actor', kind: 'continuous', label: 'Population', display: { format: '.3s', unit: 'persons', log: true }, family: 'economy', forecast: 'simulated', positive: true,
+    truth: 'panel:population', read: (w, a) => a.cur.population ?? null },
+  // ---- display-only panel columns: observed by the record, never simulated. A forecast frame set does not carry them
+  // (`forecast: 'carried'`); a reader past the record's end carries the last observation and says how stale it is.
+  ...[
+    ['libdem', 'Liberal democracy index', { format: '.2f', unit: 'V-Dem' }, 'politics'],
+    ['irst', 'Iron & steel production', { format: '.3s', unit: 'kt', log: true }, 'industry'],
+    ['energy_twh', 'Primary energy', { format: '.3s', unit: 'TWh', log: true }, 'industry'],
+    ['leader_age', 'Leader age', { format: '.0f', unit: 'years' }, 'politics'],
+    ['leader_tenure', 'Leader tenure', { format: '.1f', unit: 'years' }, 'politics'],
+    ['infant_mortality', 'Infant mortality', { format: '.0f', unit: 'per 1000' }, 'economy'],
+    ['urban_share', 'Urban share', { format: '.0f', unit: '%' }, 'economy'],
+    ['electricity_generation', 'Electricity generation', { format: '.3s', unit: 'TWh', log: true }, 'industry'],
+    ['renewables_share_elec', 'Renewables share of electricity', { format: '.0f', unit: '%' }, 'industry'],
+    ['manuf_va', 'Manufacturing value added', { format: '.3s', unit: 'current US$', log: true }, 'industry'],
+    ['hitech_exports', 'High-tech exports', { format: '.3s', unit: 'current US$', log: true }, 'industry'],
+    ['rd_gdp', 'R&D spending', { format: '.2f', unit: '% of GDP' }, 'industry'],
+    ['milex', 'Military expenditure (CoW)', { format: '.3s', unit: 'thousand US$', log: true }, 'capability'],
+  ].map(([id, label, display, family]) => ({ id, entity: 'actor', kind: 'continuous', label, display, family, forecast: 'carried', truth: `panel:${id}`, read: (w, a) => a.cur[id] ?? null })),
   // ---- dyad (sparse: a pair absent from a year is 0)
   { id: 'at_war', entity: 'dyad', kind: 'binary', label: 'Pair at war', family: 'conflict', forecast: 'simulated', coverage: [1816, 2010],
     note: 'truth: the merged dyadic war spells src/engine/termination.js:warSpells builds from data/events.json' },
@@ -75,6 +96,8 @@ export const VARS = [
 ];
 
 export const varKey = (v) => `${v.entity}:${v.id}`;
+/** The variables an ensemble carries: everything the engine moves or holds (display-only columns are carried by readers). */
+export const ENSEMBLE_VARS = () => VARS.filter(v => v.forecast !== 'carried').map(varKey);
 export const VAR = Object.fromEntries(VARS.map(v => [varKey(v), v]));
 export const varsOf = (entity) => VARS.filter(v => v.entity === entity);
 /** The registry as published in a frame file's meta: everything but the reader functions. */

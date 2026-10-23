@@ -25,7 +25,7 @@ export function covered(f, key, year) { const c = varMeta(f, key)?.coverage; ret
 export function rawAt(f, entity, id, v, year) {
   const k = offset(f, year); if (k < 0) return null;
   const key = `${entity}:${v}`; const vm = varMeta(f, key); if (!vm) return null;
-  if (entity === 'dyad') { const arr = f.dyads?.[v]?.[id]; return arr ? (arr[k] ?? 0) : (covered(f, key, year) ? 0 : null); }
+  if (entity === 'dyad') { const arr = f.dyads?.[v]?.[id]; return typeof arr === 'number' ? arr : arr ? (arr[k] ?? 0) : (covered(f, key, year) ? 0 : null); }
   const src = entity === 'actor' ? f.actors?.[id] : entity === 'record' ? f.records?.[id] : f.world;
   const arr = src?.[v];
   if (arr) return arr[k] ?? null;
@@ -65,5 +65,11 @@ export function idsOf(f, entity, v = null) {
   return ['_'];
 }
 
+/** The pairs carrying a dyad variable above `min` in a year, as [pair, value]. */
+export function dyadsAt(f, v, year, min = 0) {
+  const k = offset(f, year); if (k < 0) return [];
+  const out = []; for (const [pk, arr] of Object.entries(f.dyads?.[v] ?? {})) { const x = typeof arr === 'number' ? arr : arr[k] ?? 0; if (x > min) out.push([pk, x]); }
+  return out;
+}
 /** The events of a year (record and sample worlds; an ensemble carries none). */
 export const eventsAt = (f, year) => { const k = offset(f, year); return k < 0 ? [] : (f.events?.[k] ?? []); };

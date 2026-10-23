@@ -11,6 +11,7 @@
 //   runs = 1   binary 0/1 · categorical level index (or level word for an open vocabulary) · continuous number · null
 //   runs > 1   binary P(1) · categorical probability vector (or {word: p}) · continuous [p10, p50, p90] · null
 // A binary array that is zero everywhere is omitted: absent = 0 wherever the entity is live and the variable covered.
+// A dyad value that is the same in every year may be stored as one number instead of an array.
 import { VARS, varKey, varsOf, publishVars } from './vars.js';
 
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
@@ -44,9 +45,11 @@ export function observe(world, { strict = false } = {}) {
 }
 
 /** A fired engine event (or a recorded one) as a frame event: template-or-kind, unit. */
-// `k` is the event kind (the record's word for it: coup, regime_change, mid_war…), `t` the template that produced it
-// where a model did (a recorded event has none), `u` the unit: an actor id, a record id or a sorted pair `A|B`.
-export const frameEvent = (e) => { const o = { k: e.kind, u: e.actor ?? e.record ?? (e.a && e.b ? pairKey(e.a, e.b) : null) }; if (e.template && e.template !== e.kind) o.t = e.template; for (const f of ['direction', 'to', 'status', 'from', 'irregular', 'success', 'name']) if (e[f] != null) o[f] = e[f]; return o; };
+// A frame event is the event itself — a recorded one from data/events.json or one the engine fired, which carries the
+// same fields (src/engine/core.js:stepYear) — with two keys every reader can rely on: `k` the kind (coup,
+// regime_change, mid_war…) and `u` the unit (an actor id, a record id or a sorted pair `A|B`). `t` is the template that
+// produced it where a model did; a recorded event has none.
+export const frameEvent = (e) => { const { kind, template, ...rest } = e; const o = { k: kind, u: e.actor ?? e.record ?? e.id ?? (e.a && e.b ? pairKey(e.a, e.b) : null), ...rest }; if (template && template !== kind) o.t = template; return o; };
 
 export class FrameBuilder {
   /**
@@ -83,7 +86,7 @@ export class FrameBuilder {
     }
     if (this.has('record', 'status')) { const v = this.vars.find(x => x.entity === 'record'); for (const [id, s] of Object.entries(snap.records)) { this.#put(v, id, r, k, s); this.recordKinds[id] ??= snap.recordKinds?.[id] ?? null; } }
     for (const v of this.vars) if (v.entity === 'world') this.#put(v, '_', r, k, snap.world[v.id]);
-    if (this.keepEvents && this.runs === 1) for (const e of fired) { const fe = frameEvent(e); if (fe.u) this.events[k].push(fe); }
+    if (this.keepEvents && this.runs === 1) for (const e of fired) this.events[k].push(frameEvent(e));
   }
   #put(v, id, r, k, x) {
     if (x == null) return;
@@ -136,7 +139,8 @@ export class FrameBuilder {
     for (const [name, m] of Object.entries(this.dyad)) {
       if (!this.has('dyad', name)) continue;
       const o = (out.dyads[name] = {});
-      for (const [pk, c] of m) o[pk] = Array.from(c, x => (one ? (x ? 1 : 0) : r3(x / R)));
+      // a pair whose value is the same in every year is stored as that single number (a frozen pact graph is 1 everywhere)
+      for (const [pk, c] of m) { const arr = Array.from(c, x => (one ? (x ? 1 : 0) : r3(x / R))); o[pk] = arr.every(x => x === arr[0]) ? arr[0] : arr; }
     }
     return out;
   }

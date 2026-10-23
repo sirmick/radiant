@@ -17,6 +17,17 @@ data/*.yaml (modern)  ─▶ build-world.mjs ─▶ public/world.json      curre
 
 Everything is reproducible offline: `./scripts/fetch-raw.sh` (once), then `node scripts/build-panel.mjs && node scripts/build-events.mjs && node scripts/fit-hazards.mjs && node scripts/backtest.mjs`.
 
+## One contract, two providers (2026-10-23, `docs/plan-structure.md`)
+
+The record and every forecast are written through one frame contract (`docs/schema.md`, *Frames*). The record is an
+engine replay — the world `createWorld({asOf: y})` builds for each year, which is exactly the world a forecast from
+`y` starts in — so a **backtest is a fork**: replay to the origin, one branch keeps replaying, the other draws, and
+`src/contract/score.js` grades the second against the first for every registry variable both carry. The forecaster's
+start state cannot drift from the record's because it is the same construction. `scripts/analysis/replay-diff.mjs`
+steps the record through the engine's own state rewrites (`applyRecordedEvent`) and lists what they cannot
+reproduce: on 1816–2025, 39 two-level regime jumps (the engine steps one level), 31 regime changes with no recorded
+step, and 32 occupation-imposed changes (filtered by design).
+
 ## The honesty mechanisms
 
 **As-of dating.** `createWorld({asOf})` builds the world from the panel as it stood that year: state, the alliance graph and the border graph are all frozen at `asOf`, and actors are introduced and retired during the run from their dated system membership. Same code, different date = a backtest — **for the coefficients as well as the state, since 2026-09-07**: `backtest.mjs` refits every template at every as-of year on rows whose *label* year is at or before it (`--refit`, the default; `scripts/lib/fit.mjs` is the shared fitting layer, `--no-refit` restores the old full-sample behaviour for comparison). Every scored row carries `fit_split`, `fit_source` and `leaky`. Where a forecaster standing at the as-of date has too little history to fit a template at all, the row is reported with `n: 0` and the counts that failed and is kept out of `pooled` — an unfitted model is a miss, not a clean score. That is what the pre-1900 dyad rows turn out to be: at as-of 1870 and 1880 there is no fittable dyad-year sample (CShapes contiguity begins 1886), so the 0.79–0.82 `auc_at_risk` those rows used to report was a report on data the forecaster could not have had. Ground truth is scored only inside each dataset's coverage window (`COVERAGE` in `backtest.mjs`); absence past a dataset's end is not a non-event, and a template whose horizon falls outside its window is reported with `n: 0` and the window rather than dropped from the row — silence about a dead template reads as a clean score. Every actor-year row also carries `expected_count` / `observed_count` beside the any-event Brier (`era-1945-1991-r2 / statistics-6`): where the horizon base rate is past 0.5 the indicator score is saturated — `brier_base = p(1−p)` collapses and no calibrated model can earn skill — and the counts are what a doubling of the underlying rate shows up in. `leader_exit` is the one template over that line today, and it is flagged `saturated` in its own row.
