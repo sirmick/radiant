@@ -31,7 +31,11 @@ const { polygonOf } = loadPolygons(actors);
 const topoMap = JSON.parse(readFileSync('public/geo.topo.json', 'utf8'));
 const territories = feature(topoMap, topoMap.objects.countries).features;
 const cs = JSON.parse(readFileSync(SRC, 'utf8'));
-const csf = feature(cs, cs.objects[Object.keys(cs.objects)[0]]).features.map(f => ({ f, p: f.properties, bbox: turf.bbox(f), s: Date.parse(f.properties.start), e: Date.parse(f.properties.end) }));
+const csf = feature(cs, cs.objects[Object.keys(cs.objects)[0]]).features.map(f => ({ f, p: f.properties, bbox: turf.bbox(f), s: Date.parse(f.properties.start), e: Date.parse(f.properties.end), area: turf.area(f) }));
+// a territory under 1/RESOLVE of the feature its points fall in is below what the generalised map resolves (Hong Kong
+// and Macau inside China, San Marino and the Vatican inside Italy): it gets no holder rather than a false one. Every
+// recorded secession is far above it (Estonia 1/500 of the USSR, Singapore 1/470 of Malaysia, East Timor 1/127).
+const RESOLVE = 2000;
 
 const N_PTS = 15;
 const points = (f) => {
@@ -45,9 +49,9 @@ const points = (f) => {
 const inBox = ([x, y], b) => x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3];
 const idOf = (code, y) => { const a = gw(code, y); return a?.id ?? (typeof a === 'string' ? a : null); };
 
-const holders = {}; let unheld = 0, unmapped = new Map();
+const holders = {}; let unheld = 0, unmapped = new Map(); const unresolvedBy = {};
 for (const t of territories) {
-  const pts = points(t); const spans = [];
+  const pts = points(t); const spans = []; const tArea = turf.area(t); let unresolved = 0;
   for (let y = Y0; y <= Y1; y++) {
     const d = Date.UTC(y, 6, 1); const live = csf.filter(c => d >= c.s && d <= c.e);
     const votes = new Map();
@@ -58,12 +62,13 @@ for (const t of territories) {
       st = hit.p.status; const own = +(hit.p.owner ?? hit.p.gwcode);
       h = idOf(own, y); if (!h) { unmapped.set(own, (unmapped.get(own) ?? 0) + 1); }
       if (h && polygonKey(h, polygonOf) === t.id) h = 'self';
+      else if (st === 'independent' && hit.area > tArea * RESOLVE) { h = null; st = null; unresolved++; }
     } else unheld++;
     const last = spans[spans.length - 1];
     if (last && last[2] === h && last[3] === st && last[1] === y - 1) last[1] = y; else spans.push([y, y, h, st]);
   }
-  holders[t.id] = spans;
+  holders[t.id] = spans; if (unresolved) unresolvedBy[t.id] = unresolved;
 }
-const meta = { built: new Date().toISOString(), source: 'CShapes 2.0 (GW), via the CRAN cshapes package copy', years: [Y0, Y1], rule: 'feature in force on 1 July containing a point on the territory\'s largest part; holder = feature owner mapped to a model id; self = the territory the holder itself draws on', territories: territories.length, unheld_territory_years: unheld, unmapped_owner_codes: Object.fromEntries(unmapped) };
+const meta = { built: new Date().toISOString(), source: 'CShapes 2.0 (GW), via the CRAN cshapes package copy', years: [Y0, Y1], rule: 'feature in force on 1 July containing a point on the territory\'s largest part; holder = feature owner mapped to a model id; self = the territory the holder itself draws on', territories: territories.length, unheld_territory_years: unheld, unmapped_owner_codes: Object.fromEntries(unmapped), resolve_ratio: RESOLVE, unresolved_territory_years: unresolvedBy };
 writeFileSync('data/holders.json', JSON.stringify({ meta, holders }));
-console.log(`data/holders.json: ${territories.length} territories, ${unheld} unheld territory-years, unmapped owner codes ${JSON.stringify(meta.unmapped_owner_codes)}`);
+console.log(`data/holders.json: ${territories.length} territories, ${unheld} unheld territory-years, unresolved ${JSON.stringify(unresolvedBy)}, unmapped owner codes ${JSON.stringify(meta.unmapped_owner_codes)}`);

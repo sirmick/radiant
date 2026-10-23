@@ -1,0 +1,59 @@
+{
+ "meta": {
+  "W": 5,
+  "FROM": 1900,
+  "TO": 2014,
+  "features": [
+   "held",
+   "colonial",
+   "rise",
+   "atWar",
+   "recentBreak",
+   "recent",
+   "dem",
+   "great"
+  ]
+ },
+ "scores": {
+  "all": {
+   "n": 1773,
+   "events": 230,
+   "brier": 0.1021,
+   "brier_clim": 0.1149,
+   "skill": 0.112,
+   "logloss": 0.3667,
+   "auc": 0.669,
+   "exp_obs": 0.98
+  },
+  "1900-1944": {
+   "n": 733,
+   "events": 73,
+   "brier": 0.0871,
+   "brier_clim": 0.0933,
+   "skill": 0.066,
+   "logloss": 0.3062,
+   "auc": 0.714,
+   "exp_obs": 1.03
+  },
+  "1945-1979": {
+   "n": 611,
+   "events": 107,
+   "brier": 0.1148,
+   "brier_clim": 0.1487,
+   "skill": 0.228,
+   "logloss": 0.3932,
+   "auc": 0.732,
+   "exp_obs": 1.08
+  },
+  "1980-2014": {
+   "n": 429,
+   "events": 50,
+   "brier": 0.1094,
+   "brier_clim": 0.1037,
+   "skill": -0.055,
+   "logloss": 0.4321,
+   "auc": 0.417,
+   "exp_obs": 0.68
+  }
+ }
+}

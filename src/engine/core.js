@@ -9,7 +9,7 @@ import { fitGreatPower, gpHazard } from './greatpower.js';
 import { fitAlliances, allyHazard, candidate, adjacency, sharedAllies, edgesAt } from './alliances.js';
 import { fitNuclear, nukeHazard } from './nuclear.js';
 import { fitStations, closeHazard, openHazard } from './stations.js';
-import { fitMembership, birthHazard, deathHazard, breakupHazard, memberHazard, holderAt, isColonial, polygonKey, neighbours, localBirths, MEMBERSHIP, BREAKUP } from './membership.js';
+import { fitMembership, birthHazard, deathHazard, breakupHazard, memberHazard, holderAt, isColonial, polygonKey, neighbours, localBirths, MEMBERSHIP, BREAKUP, unitKey, unitHolder, holderStateWorld, firstLiveIndex } from './membership.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
 /** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
@@ -825,15 +825,16 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
  * state's territories pass to its absorber.
  */
 function breakupState(panel, holders, polygons, polygonOf, asOf) {
-  const Y0 = panel.meta.y0; const holder = new Map(); const breakYears = new Map(); const polyHist = new Map();
-  for (const p of polygons) { const o = holderAt(holders, p.id, asOf); if (o?.h && o.h !== 'self') holder.set(p.id, { h: o.h, colony: isColonial(o.status) }); }
+  const Y0 = panel.meta.y0; const holder = new Map(); const breakYears = new Map(); const polyHist = new Map(); const firstLive = firstLiveIndex(panel, polygonOf);
+  for (const p of polygons) { const o = holderAt(holders, p.id, asOf); if (o?.h && o.h !== 'self') holder.set(p.id, { h: o.h, colony: isColonial(o.status), prior: (firstLive.get(p.id) ?? Infinity) < asOf }); }
   const born = (id, y) => { const a = panel.actors[id]; return a?.live?.[y - Y0] && !a.live?.[y - Y0 - 1]; };
   const polyOwner = new Map(); for (const id of Object.keys(panel.actors)) polyOwner.set(polygonKey(id, polygonOf), [...(polyOwner.get(polygonKey(id, polygonOf)) ?? []), id]);
   for (let y = asOf - 4; y <= asOf; y++) for (const p of polygons) {
     const o = holderAt(holders, p.id, y - 1); if (!o?.h || o.h === 'self') continue;
     if ((polyOwner.get(p.id) ?? []).some(id => born(id, y))) { const l = breakYears.get(o.h) ?? breakYears.set(o.h, []).get(o.h); if (!l.includes(y)) l.push(y); }
   }
-  for (const [id, a] of Object.entries(panel.actors)) polyHist.set(id, Array.from({ length: BREAKUP.rise_years }, (_, k) => a.polyarchy?.[asOf - 1 - k - Y0] ?? null));
+  // index 0 is pushed by the first simulated year (the as-of value); these are asOf-1 .. asOf-R
+  for (const [id, a] of Object.entries(panel.actors)) polyHist.set(id, Object.fromEntries(['polyarchy', 'freexp'].map(v => [v, Array.from({ length: BREAKUP.rise_years }, (_, k) => a[v]?.[asOf - 1 - k - Y0] ?? null)])));
   return { holder, breakYears, polyHist };
 }
 
@@ -1245,24 +1246,28 @@ function stepMembership(world, y, rng) {
   const dem = world.pol?.demShare;
   const born = [];
   const held = new Map();   // C5 breakup: live holder -> [{ poly, colony }] over the unoccupied territories it holds
-  if (M.holder) for (const [id, a] of Object.entries(world.actors)) { const h = M.polyHist.get(id) ?? []; h.unshift(a.cur.polyarchy ?? null); h.length = BREAKUP.rise_years + 1; M.polyHist.set(id, h); }
+  if (M.holder) for (const [id, a] of Object.entries(world.actors)) { const h = M.polyHist.get(id) ?? { polyarchy: [], freexp: [] }; for (const v of ['polyarchy', 'freexp']) { (h[v] ??= []).unshift(a.cur[v] ?? null); h[v].length = BREAKUP.rise_years + 1; } M.polyHist.set(id, h); }
   for (const poly of M.polygons) {
     if (occupied.has(poly.id) || world.actors[poly.id]) continue;
     const ho = M.holder?.get(poly.id);
-    if (ho && world.actors[ho.h]) { (held.get(ho.h) ?? held.set(ho.h, []).get(ho.h)).push({ poly, colony: ho.colony }); continue; }
+    if (ho && world.actors[ho.h]) { const u = unitKey(ho.h, ho.colony); (held.get(u) ?? held.set(u, []).get(u)).push({ poly, colony: ho.colony, prior: ho.prior }); continue; }
     const p = birthHazard(M.fit, { recent, area: poly.area, local: localBirths(M.nb, M.bornAt, poly.id, y), dem }); if (p != null && rng() < p) born.push(poly.id);
   }
-  const broke = new Map();
-  for (const [h, list] of held) {
-    const a = world.actors[h]; const ph = M.polyHist.get(h) ?? []; const n = list.length;
-    const pB = breakupHazard(M.fit, { held: n, colonial: list.filter(x => x.colony).length / n, rise: ph[0] != null && ph[BREAKUP.rise_years] != null ? ph[0] - ph[BREAKUP.rise_years] : 0, atWar: (a.cur.at_war ?? 0) > 0, recentBreak: (M.breakYears.get(h) ?? []).some(b => b >= y - 5 && b < y), recent, dem, great: (a.cur.great_power ?? 0) > 0 });
+  const broke = new Map(); const heldN = new Map(); for (const [u, list] of held) heldN.set(unitHolder(u), (heldN.get(unitHolder(u)) ?? 0) + list.length);
+  for (const [u, list] of held) {
+    const h = unitHolder(u); const a = world.actors[h]; const n = list.length;
+    const pB = breakupHazard(M.fit, holderStateWorld(a, list, { hist: M.polyHist.get(h), breakYears: M.breakYears, recent, dem, y }));
     if (pB == null || !(rng() < pB)) continue;
     // members, conditional on the breakup; a breakup is at least one, so an all-miss draw takes one in proportion to q
-    const q = list.map(x => memberHazard(M.fit, { colony: x.colony, area: x.poly.area, held: n }) ?? 0);
-    let go = list.filter((x, k) => rng() < q[k]);
-    if (!go.length) { const tot = q.reduce((s, v) => s + v, 0); let u = rng() * tot; go = [list.find((x, k) => (u -= q[k]) <= 0) ?? list[0]]; }
+    const q = list.map(x => memberHazard(M.fit, { colony: x.colony, area: x.poly.area, held: n, prior: x.prior }) ?? 0);
+    // beta-binomial (M.fit.member.rho): one shared draw z ~ Beta with the members' mean share m and concentration
+    // 1/rho - 1, each member at q_k * z / m — the same marginal q_k, correlated within the breakup
+    const rho = M.fit.member?.rho ?? 0; const m = q.reduce((a, b) => a + b, 0) / n;
+    const z = rho > 0 && m > 0 && m < 1 ? drawBeta(rng, m * (1 / rho - 1), (1 - m) * (1 / rho - 1)) : m;
+    let go = list.filter((x, k) => rng() < Math.min(1, m > 0 ? (q[k] * z) / m : 0));
+    if (!go.length) { const tot = q.reduce((s, v) => s + v, 0); let r = rng() * tot; go = [list.find((x, k) => (r -= q[k]) <= 0) ?? list[0]]; }
     for (const x of go) born.push(x.poly.id);
-    broke.set(h, go.length / n); (M.breakYears.get(h) ?? M.breakYears.set(h, []).get(h)).push(y);
+    broke.set(h, (broke.get(h) ?? 0) + go.length / heldN.get(h)); const l = M.breakYears.get(h) ?? M.breakYears.set(h, []).get(h); if (!l.includes(y)) l.push(y);
   }
   const deaths = [];
   for (const [id, a] of Object.entries(world.actors)) { const p = deathHazard(M.fit, { cinc: a.cur.cinc, atWar: (a.cur.at_war ?? 0) > 0, great: (a.cur.great_power ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0 }); if (p != null && rng() < p) deaths.push(id); }
@@ -1271,7 +1276,7 @@ function stepMembership(world, y, rng) {
     const by = nb.sort((p, q) => (world.actors[q].cur.cinc ?? 0) - (world.actors[p].cur.cinc ?? 0))[0] ?? null;
     retireActor(world, id, by); out.push({ kind: 'state_death', actor: id, absorbed_by: by, year: y });
     // its territories, and its own, pass to the absorber (or to no one): a territory absorbed can secede again
-    if (M.holder) { for (const [p, o] of M.holder) if (o.h === id) { if (by) o.h = by; else M.holder.delete(p); } const own = polygonKey(id, M.polygonOf); if (by && !born.includes(own)) M.holder.set(own, { h: by, colony: false }); }
+    if (M.holder) { for (const [p, o] of M.holder) if (o.h === id) { if (by) o.h = by; else M.holder.delete(p); } const own = polygonKey(id, M.polygonOf); if (by && !born.includes(own)) M.holder.set(own, { h: by, colony: false, prior: true }); }
   }
   for (const id of born) {
     introduceActor(world, id, y); M.births.push(y); (M.bornAt.get(id) ?? M.bornAt.set(id, []).get(id)).push(y); M.holder?.delete(id);
@@ -1280,6 +1285,14 @@ function stepMembership(world, y, rng) {
     out.push({ kind: 'state_birth', actor: id, year: y });
   }
   return out;
+}
+
+/** Beta(a, b) from two gamma draws (Marsaglia-Tsang; the a < 1 boost), on the given uniform stream. */
+function drawBeta(rng, a, b) { const x = drawGamma(rng, a), y = drawGamma(rng, b); return x + y > 0 ? x / (x + y) : 0.5; }
+function drawGamma(rng, k) {
+  if (k < 1) return drawGamma(rng, k + 1) * Math.pow(Math.max(1e-12, rng()), 1 / k);
+  const d = k - 1 / 3, c = 1 / Math.sqrt(9 * d);
+  for (;;) { let x, v; do { const u1 = Math.max(1e-12, rng()), u2 = rng(); x = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2); v = 1 + c * x; } while (v <= 0); v = v * v * v; const u = rng(); if (u < 1 - 0.0331 * x ** 4 || Math.log(Math.max(1e-12, u)) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v; }
 }
 
 /** C1: capability shares follow total output growth, renormalised to last year's total over the same actors. */

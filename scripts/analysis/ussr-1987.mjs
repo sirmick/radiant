@@ -12,10 +12,11 @@ const REP = ['EST', 'LVA', 'LTU', 'UKR', 'BLR', 'GEO', 'ARM', 'AZE', 'KAZ', 'UZB
 const pct = (x) => (100 * x).toFixed(1).padStart(5) + '%';
 for (const f of process.argv.slice(2)) {
   const runs = JSON.parse(readFileSync(f)).runs; const N = runs.length;
-  let b1 = 0, b3 = 0, r1 = 0, r10 = 0, rusUp = 0, b3GivenRus = 0, rus = 0, both = 0, ddrGone = 0; const nBloc = [];
+  let b1 = 0, b3 = 0, r1 = 0, r10 = 0, r1L = 0, r10L = 0, rusUp = 0, b3GivenRus = 0, rus = 0, both = 0, ddrGone = 0; const nBloc = [];
   for (const r of runs) {
     const ev = r.events.flat(); const by = (y) => ev.filter(e => e.year <= y);
     const blocUp = new Set(by(1991).filter(e => e.k === 'regime_change' && e.direction === 'democratize' && BLOC.includes(e.actor)).map(e => e.actor)).size;
+    const reps97 = new Set(by(1997).filter(e => e.k === 'state_birth' && REP.includes(e.actor)).map(e => e.actor)).size; if (reps97 >= 1) r1L++; if (reps97 >= 10) r10L++;
     const reps = new Set(by(1992).filter(e => e.k === 'state_birth' && REP.includes(e.actor)).map(e => e.actor)).size;
     const ru = by(1990).some(e => e.k === 'regime_change' && e.direction === 'democratize' && e.actor === 'RUS');
     nBloc.push(blocUp); if (blocUp >= 1) b1++; if (blocUp >= 3) b3++; if (reps >= 1) r1++; if (reps >= 10) r10++;
@@ -26,6 +27,7 @@ for (const f of process.argv.slice(2)) {
   console.log(`  Warsaw Pact members democratising by 1991   ≥1 ${pct(b1 / N)}   ≥3 ${pct(b3 / N)}   mean ${(nBloc.reduce((a, b) => a + b, 0) / N).toFixed(2)} of 6   [record: 6 of 6]`);
   console.log(`  USSR democratises by 1990                   ${pct(rus / N)}   → P(≥3 bloc | USSR moved) ${rus ? pct(b3GivenRus / rus) : '  n/a'}`);
   console.log(`  Soviet republics independent by 1992        ≥1 ${pct(r1 / N)}   ≥10 ${pct(r10 / N)}   [record: 12 of 14 in the panel]`);
+  console.log(`  ... by 1997                                ≥1 ${pct(r1L / N)}   ≥10 ${pct(r10L / N)}`);
   console.log(`  East Germany gone by 1991                   ${pct(ddrGone / N)}   [record: yes, 1990]`);
   console.log(`  bloc ≥3 AND a republic independent          ${pct(both / N)}`);
 }
