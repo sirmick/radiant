@@ -39,7 +39,9 @@ export function observe(world, { strict = false, vars = null } = {}) {
     actors[id] = o;
   }
   // the pact graph is only copied when it is asked for: it is the largest object in the world and is frozen in a run
-  const dyads = { at_war: new Set(world.atWarPairs ?? []), allied: !want || want.has('dyad:allied') ? (strict ? new Set(world.allied ?? []) : world.allied ?? new Set()) : new Set() };
+  // C6: land stations active this year, as patron-host pairs (sorted keys; the patron is the great power)
+  const presence = new Set(); if (!want || want.has('dyad:presence')) for (const r of world.stations ?? []) if (world.actors[r.host] && world.actors[r.actor] && r.from <= y && (r.to == null || y < r.to)) presence.add(pairKey(r.actor, r.host));   // both sides states: a station on a colony is not a state-to-state tie
+  const dyads = { presence, at_war: new Set(world.atWarPairs ?? []), allied: !want || want.has('dyad:allied') ? (strict ? new Set(world.allied ?? []) : world.allied ?? new Set()) : new Set() };
   const records = {};
   const recordKinds = {};
   for (const e of [...(world.corridors ?? []), ...(world.territories ?? [])]) if (e.state?.status != null) { records[e.rec.id] = e.state.status; recordKinds[e.rec.id] = e.rec.kind ?? 'territory'; }
@@ -71,7 +73,7 @@ export class FrameBuilder {
     this.word = new Map();               // `${var}|${id}` -> Map(word -> Uint32Array(H))
     this.cont = new Map();               // `${var}|${id}` -> Float32Array(runs * H), NaN = absent
     this.seen = new Map();               // `${var}|${id}` -> Uint32Array(H): runs in which a non-null value was seen
-    this.dyad = { at_war: new Map(), allied: new Map() };
+    this.dyad = { at_war: new Map(), allied: new Map(), presence: new Map() };
     this.events = Array.from({ length: years }, () => []);
     this.recordKinds = {};
   }
@@ -83,7 +85,7 @@ export class FrameBuilder {
       (this.actorLive.get(id) ?? this.actorLive.set(id, new Uint32Array(H)).get(id))[k]++;
       for (const v of this.vars) if (v.entity === 'actor') this.#put(v, id, r, k, o[v.id]);
     }
-    for (const name of ['at_war', 'allied']) {
+    for (const name of ['at_war', 'allied', 'presence']) {
       if (!this.has('dyad', name)) continue;
       const m = this.dyad[name];
       for (const pk of snap.dyads[name] ?? []) (m.get(pk) ?? m.set(pk, new Uint32Array(H)).get(pk))[k]++;

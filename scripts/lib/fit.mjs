@@ -399,7 +399,16 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
     const stats = {}; const cols = encode(t, rows, stats);
     const design = (rs) => rs.map(r => [1, ...cols.map(c => c.get(r))]);
     const X = design(rows), yv = rows.map(r => r.y), prior = [0, ...cols.map(c => c.prior)];
-    const beta = fitLogistic(X, yv, prior);
+    // D2 (docs/plan-structure.md): the prior's strength, chosen per template and per fit (the default since 2026-10-23;
+    // FIT_LAMBDA=fixed is the old lambda = 2) by an inner holdout INSIDE the training sample — the last quarter of its own
+    // label years — on held-out log-likelihood, so a data-rich template can leave its prior and a sparse one leans on it.
+    const lambda = t.lambda != null ? t.lambda : LAMBDA_CV ? selectLambda(rows, design, prior, t) : 2.0;   // a template may pin it (`lambda:` in data/templates.yaml)
+    // D1: coefficients that drift. With FIT_DECAY=cv every row is weighted by 0.5^(age / half-life), age counted from the
+    // sample's own last label year, and the half-life is chosen by the same inner holdout (∞ = the pooled fit). A
+    // discounted fit is a time-varying coefficient estimated the only way a forecaster at as-of can: from the past.
+    const halfLife = DECAY_CV ? selectHalfLife(rows, design, prior, lambda) : Infinity;
+    const weights = Number.isFinite(halfLife) ? decayWeights(rows, halfLife) : null;
+    const beta = fitLogistic(X, yv, prior, lambda, 50, weights);
     const pIn = predict(X, beta);
     // era holdout: split at the window midpoint (or 1946 if inside the window)
     const [w0, w1] = t.window; const split = splitOverride ?? t.holdout_split ?? (w0 < 1946 && w1 > 1960 ? 1946 : Math.round((w0 + w1) / 2));
@@ -407,7 +416,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
     if (holdout) {
       const trainR = rows.filter(r => r.year < split), testR = rows.filter(r => r.year >= split);
       if (trainR.filter(r => r.y).length >= 5 && testR.filter(r => r.y).length >= 5) {
-        const bH = fitLogistic(design(trainR), trainR.map(r => r.y), prior); const pH = predict(design(testR), bH); const yH = testR.map(r => r.y);
+        const bH = fitLogistic(design(trainR), trainR.map(r => r.y), prior, lambda); const pH = predict(design(testR), bH); const yH = testR.map(r => r.y);
         hold = { split, n_train: trainR.length, n_test: testR.length, auc: auc(pH, yH), brier: brier(pH, yH), base_rate_test: mean(yH) };
       }
     }
@@ -479,7 +488,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
       trained_through: maxYear ?? Math.max(...years), train_years: [Math.min(...years), Math.max(...years)],
       intercept: beta[0], coefs: Object.fromEntries(cols.map((c, j) => [c.name, { value: beta[j + 1], prior: c.prior }])), stats,
       auc_in: auc(pIn, yv), brier_in: brier(pIn, yv), calibration: calibration(pIn, yv), holdout: hold,
-      fitted: new Date().toISOString().slice(0, 10), source: `fit on data/panel.json + data/events.json, MAP logistic, prior sd ${Math.sqrt(1 / 2).toFixed(2)}`,
+      lambda, half_life: Number.isFinite(halfLife) ? halfLife : null, fitted: new Date().toISOString().slice(0, 10), source: `fit on data/panel.json + data/events.json, MAP logistic, prior sd ${Math.sqrt(1 / lambda).toFixed(2)}${LAMBDA_CV ? ' (λ by inner holdout)' : ''}`,
     };
     const top = cols.map((c, j) => `${c.name} ${beta[j + 1] >= 0 ? '+' : ''}${beta[j + 1].toFixed(2)}`).join('  ');
     let line = `${t.id.padEnd(24)} n=${rows.length}${clusters != null ? ` clusters=${clusters}` : ''} ev=${evn} rate=${(evn / rows.length * 100).toFixed(2)}%  AUC in=${fit.auc_in?.toFixed(3)} hold=${hold?.auc?.toFixed(3) ?? '—'}(≥${split})\n${''.padEnd(24)} ${top}`;
@@ -502,17 +511,52 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
 }
 
 // ---------------------------------------------------------------- MAP logistic regression (IRLS), Gaussian prior on slopes
-export function fitLogistic(X, y, prior, lambda = 2.0, iters = 50) {
+// D2 promoted 2026-10-23 on the 1870-2010 backtest (40 runs): 11 of 15 pooled templates up, mean skill -0.0286 -> -0.0207.
+// FIT_LAMBDA=fixed restores lambda = 2 everywhere.
+const LAMBDA_CV = (typeof process !== 'undefined' && process.env?.FIT_LAMBDA) !== 'fixed';
+export const LAMBDA_GRID = [0.125, 0.5, 2, 8, 32];
+/** D2: the λ with the best held-out log-likelihood on the last quarter of the sample's own label years. */
+function selectLambda(rows, design, prior, t) {
+  const years = rows.map(r => r.year).sort((a, b) => a - b); const cut = years[Math.floor(years.length * 0.75)];
+  const tr = rows.filter(r => r.year < cut), te = rows.filter(r => r.year >= cut);
+  if (tr.filter(r => r.y).length < 5 || te.filter(r => r.y).length < 3) return 2.0;
+  const Xtr = design(tr), ytr = tr.map(r => r.y), Xte = design(te), yte = te.map(r => r.y);
+  let best = 2.0, bestLL = -Infinity;
+  for (const lam of LAMBDA_GRID) {
+    const b = fitLogistic(Xtr, ytr, prior, lam); const p = predict(Xte, b);
+    let ll = 0; for (let i = 0; i < p.length; i++) { const q = Math.min(1 - 1e-9, Math.max(1e-9, p[i])); ll += yte[i] ? Math.log(q) : Math.log(1 - q); }
+    if (ll > bestLL) { bestLL = ll; best = lam; }
+  }
+  return best;
+}
+const DECAY_CV = (typeof process !== 'undefined' && process.env?.FIT_DECAY) === 'cv';
+export const HALF_LIFE_GRID = [Infinity, 80, 40, 20];
+const decayWeights = (rows, hl, ref = Math.max(...rows.map(r => r.year))) => rows.map(r => Math.pow(0.5, (ref - r.year) / hl));
+/** D1: the half-life with the best held-out log-likelihood on the last quarter of the sample's own label years. */
+function selectHalfLife(rows, design, prior, lambda) {
+  const years = rows.map(r => r.year).sort((a, b) => a - b); const cut = years[Math.floor(years.length * 0.75)];
+  const tr = rows.filter(r => r.year < cut), te = rows.filter(r => r.year >= cut);
+  if (tr.filter(r => r.y).length < 5 || te.filter(r => r.y).length < 3) return Infinity;
+  const Xtr = design(tr), ytr = tr.map(r => r.y), Xte = design(te), yte = te.map(r => r.y);
+  let best = Infinity, bestLL = -Infinity;
+  for (const hl of HALF_LIFE_GRID) {
+    const b = fitLogistic(Xtr, ytr, prior, lambda, 50, Number.isFinite(hl) ? decayWeights(tr, hl) : null); const p = predict(Xte, b);
+    let ll = 0; for (let i = 0; i < p.length; i++) { const q = Math.min(1 - 1e-9, Math.max(1e-9, p[i])); ll += yte[i] ? Math.log(q) : Math.log(1 - q); }
+    if (ll > bestLL) { bestLL = ll; best = hl; }
+  }
+  return best;
+}
+export function fitLogistic(X, y, prior, lambda = 2.0, iters = 50, w = null) {
   const n = X.length, p = X[0].length; let beta = new Array(p).fill(0);
-  const base = Math.min(0.999, Math.max(0.001, y.reduce((a, b) => a + b, 0) / n)); beta[0] = Math.log(base / (1 - base));
-  const obj = (b) => { let ll = 0; for (let i = 0; i < n; i++) { let eta = 0; for (let j = 0; j < p; j++) eta += X[i][j] * b[j]; ll += y[i] * eta - Math.log1p(Math.exp(eta)); } for (let j = 1; j < p; j++) ll -= lambda / 2 * (b[j] - prior[j]) ** 2; return ll; };
+  const base = Math.min(0.999, Math.max(0.001, y.reduce((a, b) => a + b, 0) / n)); beta[0] = Math.log(base / (1 - base));   // the starting intercept; weights move it during the fit
+  const obj = (b) => { let ll = 0; for (let i = 0; i < n; i++) { let eta = 0; for (let j = 0; j < p; j++) eta += X[i][j] * b[j]; ll += (w ? w[i] : 1) * (y[i] * eta - Math.log1p(Math.exp(eta))); } for (let j = 1; j < p; j++) ll -= lambda / 2 * (b[j] - prior[j]) ** 2; return ll; };
   let cur = obj(beta);
   for (let it = 0; it < iters; it++) {
     const H = Array.from({ length: p }, () => new Array(p).fill(0)), g = new Array(p).fill(0);
     for (let i = 0; i < n; i++) {
       const xi = X[i]; let eta = 0; for (let j = 0; j < p; j++) eta += xi[j] * beta[j];
-      const mu = 1 / (1 + Math.exp(-eta)), w = Math.max(1e-6, mu * (1 - mu));
-      for (let j = 0; j < p; j++) { g[j] += xi[j] * (y[i] - mu); for (let k = 0; k <= j; k++) H[j][k] += w * xi[j] * xi[k]; }
+      const mu = 1 / (1 + Math.exp(-eta)), wi = w ? w[i] : 1, hw = wi * Math.max(1e-6, mu * (1 - mu));
+      for (let j = 0; j < p; j++) { g[j] += wi * xi[j] * (y[i] - mu); for (let k = 0; k <= j; k++) H[j][k] += hw * xi[j] * xi[k]; }
     }
     for (let j = 1; j < p; j++) { g[j] -= lambda * (beta[j] - prior[j]); H[j][j] += lambda; }
     H[0][0] += 1e-6;

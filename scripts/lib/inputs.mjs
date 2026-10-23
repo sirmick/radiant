@@ -4,6 +4,8 @@
 import { readFileSync } from 'node:fs';
 import { Y, loadActors, makeCodeMap, loadPacts } from './hist.mjs';
 import { loadWaves } from '../../src/engine/waves.js';
+import { feature } from 'topojson-client';
+import { geoArea } from 'd3';
 
 export function loadEngineInputs() {
   const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
@@ -21,11 +23,20 @@ export function loadEngineInputs() {
   // No year-agnostic `*` edges: loadPacts already carries the last measured graph to 2026, so every as-of year reads
   // the graph in force at that year. The `*` entries scripts/run-forward.mjs used to add were merged into EVERY as-of
   // year by alliedAt, so a forecast from 1955 started with the 2018 pact graph (1,816 pairs against the record's 402).
-  return { panel, events, fits, templates, contiguity: contiguityFile.pairs, contiguityFrom: contiguityFile.meta?.years?.[0] ?? null, corridors, territories, presence, waves, successors, pacts, pactMeta, actors };
+  const { polygons, polygonOf } = loadPolygons(actors);
+  return { polygons, polygonOf, panel, events, fits, templates, contiguity: contiguityFile.pairs, contiguityFrom: contiguityFile.meta?.years?.[0] ?? null, corridors, territories, presence, waves, successors, pacts, pactMeta, actors };
+}
+
+/** C5: the map's territories (today's admin-0 polygons, with their area) and the polygon each historical entity draws on. */
+export function loadPolygons(actors) {
+  const topo = JSON.parse(readFileSync('public/geo.topo.json', 'utf8'));
+  const polygons = feature(topo, topo.objects.countries).features.map(f => ({ id: f.id, area: geoArea(f), name: (f.properties?.name ?? '').replace(/\u0000/g, '') }));
+  const polygonOf = Object.fromEntries([...actors.values()].filter(a => a.owid && a.owid !== a.id).map(a => [a.id, a.owid]));
+  return { polygons, polygonOf };
 }
 
 /** The createWorld argument object for an as-of year, from loadEngineInputs() and an optional fits override. */
 export function worldArgs(inp, asOf, { fits = inp.fits, universe = 'all' } = {}) {
-  const { panel, events, templates, pacts, contiguity, contiguityFrom, presence, corridors, territories, successors, waves } = inp;
-  return { panel, events, fits, templates, asOf, pacts, contiguity, universe, presence, corridors, territories, successors, contiguityFrom, waves };
+  const { panel, events, templates, pacts, contiguity, contiguityFrom, presence, corridors, territories, successors, waves, polygons, polygonOf } = inp;
+  return { panel, events, fits, templates, asOf, pacts, contiguity, universe, presence, corridors, territories, successors, contiguityFrom, waves, polygons, polygonOf };
 }

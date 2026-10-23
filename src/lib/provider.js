@@ -139,6 +139,8 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   const dyadWar = (min = 0) => (model ? dyadsAt(sample ?? model, 'at_war', y, min) : inRec ? dyadsAt(record, 'at_war', y, min) : []);
   /** Defence-pact pairs in force (the pact graph is frozen at the origin inside a forecast). */
   const allied = () => (model ? dyadsAt(model, 'allied', y, 0.5) : dyadsAt(record, 'allied', recY, 0.5)).map(([pk]) => pk.split('|'));
+  /** C6: patron-host station pairs at the year — P >= 0.5 in an ensemble (sample worlds do not carry them), 1 in the record. */
+  const presencePairs = () => (model ? dyadsAt(model, 'presence', y, 0.5) : inRec ? dyadsAt(record, 'presence', y, 0.5) : []).map(([pk, p]) => [pk, p]);
   /** A record's status at the year: the record's word, or the ensemble's distribution / one world's word. */
   function recordStatus(id) {
     if (model) {
@@ -164,7 +166,7 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   return {
     year: y, record, ensemble, model, sample, inRec, isForecast: !!model, lead, asOf, mode, run,
     liveIds, live: (id) => liveSet.has(id), neKey, name, entity: (id) => ent[id] ?? null,
-    cell, cells, gradient, industry, carry, atWarP, intrastateW, intrastateLevel, regime, number, great, dyadWar, allied, recordStatus, events, hazard, hazards: hz,
+    cell, cells, gradient, industry, carry, presencePairs, atWarP, intrastateW, intrastateLevel, regime, number, great, dyadWar, allied, recordStatus, events, hazard, hazards: hz,
     regime0: (id) => (asOf == null ? null : carry('regime', id, asOf)[0]),
     pop: (id) => number('population', id), cap: (id) => number('cinc', id),
     varMeta: (key) => varMeta(record, key) ?? varMeta(ensemble ?? {}, key),

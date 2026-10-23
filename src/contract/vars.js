@@ -84,6 +84,8 @@ export const VARS = [
     note: 'truth: the merged dyadic war spells src/engine/termination.js:warSpells builds from data/events.json' },
   { id: 'allied', entity: 'dyad', kind: 'binary', label: 'Defence pact', family: 'structure', forecast: 'simulated', coverage: [1816, 2026],
     note: 'the dated pact graph (scripts/lib/hist.mjs:loadPacts) at as-of, moved by fitted formation / dissolution hazards (src/engine/alliances.js, C3)' },
+  { id: 'presence', entity: 'dyad', kind: 'binary', label: 'Military presence', family: 'structure', forecast: 'simulated', coverage: [1870, 2026],
+    note: 'a great-power station of either side on the other (data/presence.yaml at as-of, then fitted open / close hazards: src/engine/stations.js, C6); the key is the sorted pair, the patron is the great power' },
   // ---- record (corridors, chokepoints, territories)
   { id: 'status', entity: 'record', kind: 'categorical', levels: null, label: 'Status', family: 'records', forecast: 'simulated', coverage: [1869, 2025],
     note: 'open vocabulary: the status words of data/corridors.yaml and data/territories.yaml; control transfer is not simulated' },

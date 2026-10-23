@@ -43,7 +43,7 @@ export const activeAt = (rec, y) => y >= rec.from && (rec.to == null || y < rec.
  * Index the records once: per host a per-power level series, plus the flat list for the geometric (guarantor) query.
  * `years` is the span the series cover; outside `PRESENCE.covers` every accessor returns null.
  */
-export function presenceIndex(records, { y0 = 1816, y1 = 2026 } = {}) {
+export function presenceIndex(records, { y0 = 1816, y1 = 2026, simulated = false } = {}) {
   const n = y1 - y0 + 1;
   const byHost = new Map();          // host -> Map(power -> Int8Array[n])  (the MAX level, the host-level ordinal)
   const recordsByHost = new Map();   // host -> [record]                    (the raw stations, for the guarantor sums)
@@ -58,7 +58,7 @@ export function presenceIndex(records, { y0 = 1816, y1 = 2026 } = {}) {
   }
   const powers = [...new Set(records.map(r => r.actor))].sort();
   return {
-    y0, y1, byHost, recordsByHost, powers, records,
+    y0, y1, byHost, recordsByHost, powers, records, simulated,
     // the powers that carry their own panel column: enough distinct land hosts for the column to vary across actors
     columnPowers: powers.filter(p => (hostsOf.get(p)?.size ?? 0) >= PRESENCE.min_hosts),
     hostCount: Object.fromEntries(powers.map(p => [p, hostsOf.get(p)?.size ?? 0])),
@@ -66,6 +66,8 @@ export function presenceIndex(records, { y0 = 1816, y1 = 2026 } = {}) {
 }
 
 export const covered = (y) => y >= PRESENCE.covers[0] && y <= PRESENCE.covers[1];
+// a simulated index (C6, src/engine/stations.js) covers every year it was built for: its stations are the run's own
+const cov = (index, y) => !!index?.simulated || covered(y);
 const at = (index, host, power, y) => {
   const h = index.byHost.get(host); if (!h) return 0;
   const arr = h.get(power); if (!arr) return 0;
@@ -73,10 +75,10 @@ const at = (index, host, power, y) => {
 };
 
 /** Level of one power's presence on one host (0 = none), null outside the layer's coverage. */
-export function powerLevel(index, host, power, y) { return covered(y) ? at(index, host, power, y) : null; }
+export function powerLevel(index, host, power, y) { return cov(index, y) ? at(index, host, power, y) : null; }
 /** Max level of any power's presence on one host (0 = none), null outside coverage. */
 export function hostLevel(index, host, y) {
-  if (!covered(y)) return null;
+  if (!cov(index, y)) return null;
   const h = index.byHost.get(host); if (!h) return 0;
   let m = 0; for (const [p] of h) { const v = at(index, host, p, y); if (v > m) m = v; }
   return m;
@@ -87,7 +89,7 @@ export function hostLevel(index, host, y) {
  * and the host's max would hide it.
  */
 export function lastFall(index, host, y, back = PRESENCE.window) {
-  if (!covered(y)) return null;
+  if (!cov(index, y)) return null;
   const h = index.byHost.get(host); if (!h) return null;
   let best = null;
   for (const [p] of h) for (let yy = y; yy >= y - back; yy--) {
@@ -98,14 +100,14 @@ export function lastFall(index, host, y, back = PRESENCE.window) {
 }
 /** The powers holding a station of at least `min` on this host. */
 export function patronsAt(index, host, y, min = PRESENCE.patron_min) {
-  const out = []; if (!covered(y)) return out;
+  const out = []; if (!cov(index, y)) return out;
   const h = index.byHost.get(host); if (!h) return out;
   for (const [p] of h) if (at(index, host, p, y) >= min) out.push(p);
   return out.sort();
 }
 /** host -> [powers with a station of at least `min`], for one year — built once per year by the callers. */
 export function patronMap(index, y, min = PRESENCE.patron_min) {
-  const m = new Map(); if (!covered(y)) return m;
+  const m = new Map(); if (!cov(index, y)) return m;
   for (const [host] of index.byHost) { if (SEA(host)) continue; const ps = patronsAt(index, host, y, min); if (ps.length) m.set(host, ps); }
   return m;
 }
@@ -175,13 +177,13 @@ function guarantorRecords(index, rec, hosts) {
  * the record's own transit state leaves and the fleet 1,400 km away does not, so the maximum never falls.
  */
 export function guarantorLevels(index, rec, hosts, y) {
-  const m = new Map(); if (!covered(y)) return m;
+  const m = new Map(); if (!cov(index, y)) return m;
   for (const p of guarantorRecords(index, rec, hosts)) if (activeAt(p, y)) m.set(p.actor, (m.get(p.actor) ?? 0) + p.level);
   return m;
 }
 /** The strongest guarantor's weight (0 = none), null outside the layer's coverage. */
 export function guarantorLevel(index, rec, hosts, y) {
-  if (!covered(y)) return null;
+  if (!cov(index, y)) return null;
   let m = 0; for (const [, v] of guarantorLevels(index, rec, hosts, y)) if (v > m) m = v;
   return m;
 }
@@ -195,11 +197,11 @@ export function guarantorLevel(index, rec, hosts, y) {
  * per year would make a successor-state renaming read as a withdrawal.
  */
 export function guarantorFall(index, rec, hosts, y, back = PRESENCE.window) {
-  if (!covered(y)) return null;
+  if (!cov(index, y)) return null;
   let best = null, prev = guarantorLevels(index, rec, hosts, y - back - 1);
   for (let yy = y - back; yy <= y; yy++) {
     const cur = guarantorLevels(index, rec, hosts, yy);
-    if (covered(yy - 1)) for (const [p, v] of prev) if ((cur.get(p) ?? 0) < v) { best = yy; break; }
+    if (cov(index, yy - 1)) for (const [p, v] of prev) if ((cur.get(p) ?? 0) < v) { best = yy; break; }
     prev = cur;
   }
   return best;

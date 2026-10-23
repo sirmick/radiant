@@ -8,6 +8,8 @@ import { GROWTH_PROCESS, trailingMean, drawGrowth } from './growth.js';
 import { fitGreatPower, gpHazard } from './greatpower.js';
 import { fitAlliances, allyHazard, candidate, adjacency, sharedAllies, edgesAt } from './alliances.js';
 import { fitNuclear, nukeHazard } from './nuclear.js';
+import { fitStations, closeHazard, openHazard } from './stations.js';
+import { fitMembership, birthHazard, deathHazard, polygonKey, neighbours, localBirths, MEMBERSHIP } from './membership.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
 /** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
@@ -146,6 +148,14 @@ const NO_GP_DYNAMICS = ABLATE.includes('great_power');
 const NO_ALLY_DYNAMICS = ABLATE.includes('alliances');
 // C4: nuclear acquisition as a fitted hazard (src/engine/nuclear.js); ENGINE_ABLATE=nuclear freezes world.nukes at as-of
 const NO_NUKE_DYNAMICS = ABLATE.includes('nuclear');
+// C5: state births / deaths as fitted hazards over territories (src/engine/membership.js). A CANDIDATE, off unless
+// MEMBERSHIP_HAZARD=1: it removes the existence leak but fails its own gate on births (0.35x the record — the 1960 and
+// 1991 waves are bursts no per-territory hazard fitted before them predicts), and on the 1950-1990 backtest it costs
+// leader_exit 0.59 and democratic_deepening 0.24 of skill (docs/plan-structure.md, C5). Off = the dated membership list.
+// C6: military presence as fitted station open/close hazards (src/engine/stations.js); ENGINE_ABLATE=presence freezes
+// the layer at as-of
+const NO_STATIONS = ABLATE.includes('presence');
+const NO_MEMBERSHIP = ABLATE.includes('membership') || !((typeof process !== 'undefined' && process.env?.MEMBERSHIP_HAZARD) === '1');
 /** Whether the wave share REPLACES cinc in the dyadic capability ratio. Declared in the data, forced by the env.
  *  Exported so a publisher can stamp the answer into its output without building a world to ask. */
 export const waveCapabilityOn = (templates) => {
@@ -672,7 +682,7 @@ function applyPresence(world, a) {
  * Contiguity 3.2 and covers 1816, so the stand-in no longer fires anywhere in the modelled window; the guard stays
  * because the floor is a property of data/contiguity.json's own meta, not of this code.
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [] }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [], polygons = null, polygonOf = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -739,6 +749,10 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   let pres = null;
   if (presence) { if (!presence.__index) Object.defineProperty(presence, '__index', { value: presenceIndex(presence, { y0: Y0, y1: Math.max(panel.meta.y1, PRESENCE.covers[1]) }), enumerable: false }); pres = presence.__index; }
   if (pres) for (const [id, a] of Object.entries(actors)) a.presenceFall = lastFall(pres, id, asOf);
+  // C6: the world's own station list — every record opened by as-of, with an end after as-of not yet known — so a run
+  // can close and open stations. Observed by the frame contract in both the record and a forecast.
+  const stations = presence ? presence.filter(r => r.from <= asOf).map(r => ({ ...r, to: r.to != null && r.to <= asOf ? r.to : null })) : [];
+  const stationFit = presence && !NO_STATIONS ? fitStations({ panel, presence, alliedAt: (yy) => (pacts?.size ? edgesAt(pacts, yy) : new Set()), contiguity: contiguity ?? {} }, asOf) : null;
   return {
     year: asOf, asOf, actors, dyadRecent, nukes, entryPrior,
     // the derived world state (polarity, hegemon, era flags) and the fitted information wave — package 9
@@ -770,12 +784,15 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // the military-presence layer (operator/presence), frozen at as-of like the alliance graph. `patrons` is the
     // host -> patron-power map the dyadic term reads; the per-actor `presenceFall` is the year that actor last lost a
     // station, so `presence_change` can age out of its window during the horizon instead of firing for all of it.
-    presence: pres, patrons: pres ? patronMap(pres, asOf) : new Map(),
+    presence: stationFit ? presenceIndex(stations, { y0: Y0, y1: asOf + 201, simulated: true }) : pres, patrons: pres ? patronMap(pres, asOf) : new Map(),
+    stations, stationFit,
     allied: NO_ALLY_DYNAMICS ? allied : new Set(allied), contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     // `predecessors` is the successor map inverted, so a state entering the horizon can be seeded from the state it
     // succeeds instead of from the world median; `retiredState` keeps the last state of an actor stepLifecycle has
     // already removed, for a successor that enters a year or more after its predecessor leaves.
-    lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {}, predecessors: invertMap(successors ?? {}), retiredState: new Map() },
+    lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {}, predecessors: invertMap(successors ?? {}), retiredState: new Map(), contiguity: contiguity ?? {} },
+    // C5: drawn membership — the territory pool, the fitted hazards, and the birth years the wave term counts
+    membership: NO_MEMBERSHIP || !polygons?.length ? null : { fit: fitMembership({ panel, polygons, polygonOf, contiguity: contiguity ?? {} }, asOf), polygons, polygonOf: polygonOf ?? {}, births: birthYears(panel, asOf), nb: neighbours(contiguity ?? {}), bornAt: bornAtMap(panel, polygonOf ?? {}, asOf) },
     fits, templates, log: [],
     // capability waves (operator/capability-waves): attainment is the dated sovereign_by history up to as-of and the
     // fitted wave_attain hazard after it; `capability` says whether the share it produces replaces cinc in the ratio
@@ -792,6 +809,18 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
   };
 }
 
+/** The years states entered the system in the five years to asOf (the wave term's memory at the origin). */
+function birthYears(panel, asOf) {
+  const Y0 = panel.meta.y0; const out = [];
+  for (let y = asOf - MEMBERSHIP.wave_years + 1; y <= asOf; y++) { const i = y - Y0; if (i < 1) continue; for (const a of Object.values(panel.actors)) if (a.live?.[i] && !a.live?.[i - 1]) out.push(y); }
+  return out;
+}
+/** polygon -> [years a state appeared on it], up to asOf (the local wave term's memory at the origin). */
+function bornAtMap(panel, polygonOf, asOf) {
+  const Y0 = panel.meta.y0; const m = new Map();
+  for (const [id, a] of Object.entries(panel.actors)) for (let y = Math.max(Y0 + 1, asOf - MEMBERSHIP.wave_years + 1); y <= asOf; y++) { const i = y - Y0; if (a.live?.[i] && !a.live?.[i - 1]) { const p = polygonKey(id, polygonOf); (m.get(p) ?? m.set(p, []).get(p)).push(y); } }
+  return m;
+}
 /** id -> [ids that name it as their successor] — the successor map read backwards. */
 function invertMap(successors) {
   const out = {};
@@ -973,12 +1002,12 @@ export function worldLook(world) {
     gdpGrowthPrev: (id) => world.actors[id]?.prev.gdp_growth ?? null,
     allied: (a, b) => world.allied.has(pairKey(a, b)),
     contiguous: (a, b) => world.contiguous.has(pairKey(a, b)),
-    hostPresence: (id) => (world.presence ? hostLevel(world.presence, id, world.asOf) : null),
+    hostPresence: (id) => (world.presence ? hostLevel(world.presence, id, world.stationFit ? world.year : world.asOf) : null),
     patron: (a, b) => patronFeatures({ patrons: world.patrons ?? new Map(), allied: (p, h) => world.allied.has(pairKey(p, h)), major: (id) => (world.actors[id]?.cur.great_power ?? 0) > 0, a, b }),
     // the presence layer is frozen at as-of, like the alliance and border graphs: where great-power forces will sit
     // in year t of the horizon is an outcome, not knowledge the forecaster holds. The level and the last fall are
     // therefore read at as-of; corridorFeatures ages the fall against the simulated year.
-    guarantor: world.presence ? (rec, T) => ({ level: guarantorLevel(world.presence, rec, T, world.asOf), fall: guarantorFall(world.presence, rec, T, world.asOf) }) : null,
+    guarantor: world.presence ? (rec, T) => { const yy = world.stationFit ? world.year : world.asOf; return { level: guarantorLevel(world.presence, rec, T, yy), fall: guarantorFall(world.presence, rec, T, yy) }; } : null,
   };
 }
 /** The dampener for one pair, with the year's record index built once per step. */
@@ -1090,55 +1119,104 @@ export function applyRecordedEvent(world, a, e, rng) {
 // every template the engine simulates must have a rewrite above; checked once per world at the first step
 const HANDLED = new Set(['irregular_exit', 'leader_exit', 'coup', 'autocratization_onset', 'autocratize_step', 'democratization_onset', 'democratize_step', 'autocratic_closure', 'liberal_erosion', 'democratic_deepening', 'intrastate_onset']);
 
+/**
+ * Bring an actor into a world in year `y`. Its state is the panel as it stood at as-of (an observation of the year it
+ * appears is not knowledge the forecaster holds); nulls are seeded from its predecessor where the successor map names
+ * one, then from the world's dated entry prior, and flags a state that did not exist cannot have are structural zeros.
+ * An id the panel does not carry at all (a territory that never was a state — C5) enters from the entry prior alone.
+ */
+function introduceActor(world, id, y) {
+  const lc = world.lifecycle; const { panel, events } = lc;
+  const vars = panel.actors[id] ?? {};
+  const a = buildActorState({ panel, events, id, vars, at: Math.min(y, world.asOf), asOf: world.asOf });
+  a.imputed = [];
+  // seed from the predecessor before the world median: a state that succeeds another inherits its capability
+  // scaled by the population share it takes with it, and its income and regime outright. Both the successor map
+  // and the predecessor's own state are as-of knowledge, so this adds nothing the forecaster does not hold — where
+  // there is no predecessor the world median (and, for cinc, its 25th percentile) still stands in.
+  const preds = (lc.predecessors?.[id] ?? []).map(pid => world.actors[pid] ?? lc.retiredState?.get(pid)).filter(Boolean);
+  const pred = preds.sort((p, q) => (q.cur.cinc ?? 0) - (p.cur.cinc ?? 0))[0] ?? null;
+  if (pred) {
+    const share = a.cur.population != null && pred.cur.population ? Math.min(1, a.cur.population / pred.cur.population) : null;
+    for (const v of ['cinc', 'gdp_pc', 'log_gdp_pc', 'regime', 'polyarchy', 'gdp_growth']) {
+      if (a.cur[v] != null || pred.cur[v] == null) continue;
+      a.cur[v] = v === 'cinc' ? pred.cur[v] * (share ?? 0.5) : pred.cur[v];
+      a.prev[v] = a.cur[v]; a.imputed.push(`${v}<-${pred.id}`);
+    }
+  }
+  for (const [v, x] of Object.entries(world.entryPrior ?? {})) if (x != null && a.cur[v] == null) { a.cur[v] = x; a.prev[v] = x; a.imputed.push(v); }
+  if (a.cur.gdp_pc != null && a.cur.log_gdp_pc == null) a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc);
+  // flags and ties an actor that does not yet exist cannot have: a structural zero, not a missing value
+  for (const v of ['at_war', 'intrastate', 'mid_force', 'mid_war', 'coup_attempt', 'coup_success', 'interstate_ucdp', 'pact_usa', 'pact_rus', 'defence_pacts', 'sp_client_any', 'sp_client_one', 'great_game', 'aid_conditionality']) { a.cur[v] ??= 0; a.prev[v] ??= 0; }
+  // a territory that was never a state (C5) has no panel row at all: it is not a great power and not occupied
+  if (!world.lifecycle.panel.actors[id]) for (const v of ['great_power', 'occupied']) { a.cur[v] ??= 0; a.prev[v] ??= 0; }
+  world.actors[id] = a;
+  return a;
+}
+/** Take an actor out of a world; `succId` (if live) inherits its border edges, its rivalry memory and its recent flags. */
+function retireActor(world, id, succId = null) {
+  const lc = world.lifecycle; const a = world.actors[id]; if (!a) return;
+  lc.retiredState?.set(id, a);
+  const succ = succId && world.actors[succId];
+  if (succ) {   // the successor inherits the rivalry memory: the dispute history is the state's, not the name's
+    // and the border graph: the frozen as-of snapshot has no edge for a state that did not exist at as-of, so
+    // without this a successor is non-contiguous with everyone and every non-major pair it is in sits at hazard 0
+    // (era-1870-1914-r2/statistics-8). Edges are only ever added, so the at-risk set cannot silently shrink.
+    for (const k of [...world.contiguous]) { const [p, q] = k.split('|'); if (p !== id && q !== id) continue; const other = p === id ? q : p; if (other === succ.id) continue; world.contiguous.add(pairKey(succ.id, other)); }
+    for (const [k, yr] of [...world.dyadRecent]) { const [p, q] = k.split('|'); if (p !== id && q !== id) continue; const other = p === id ? q : p; if (other === succ.id) continue; const nk = pairKey(succ.id, other); world.dyadRecent.set(nk, Math.max(world.dyadRecent.get(nk) ?? -1e9, yr)); world.dyadRecent.delete(k); }
+    for (const v of Object.keys(succ.recent)) succ.recent[v] = succ.recent[v].map((x, j) => (x || a.recent[v]?.[j] ? 1 : 0));
+  } else for (const k of [...world.dyadRecent.keys()]) { const [p, q] = k.split('|'); if (p === id || q === id) world.dyadRecent.delete(k); }
+  // the pact graph (C3) loses the departed state's edges
+  if (world.allyFit) for (const k of [...world.allied]) { const [p, q] = k.split('|'); if (p === id || q === id) { world.allied.delete(k); world.pactSince?.delete(k); } }
+  delete world.actors[id];
+}
+
 /** Introduce actors whose system membership starts this year and retire those whose membership ends. */
-function stepLifecycle(world, y) {
-  const lc = world.lifecycle; if (!lc) return;
-  const { panel, events, ids, Y0, successors } = lc; const i = y - Y0;
-  if (y > panel.meta.y1 || i < 0) return;   // past the panel's last year there are no dated membership facts: the universe stands as it is (a forward run is not a retirement)
+function stepLifecycle(world, y, rng = null) {
+  const lc = world.lifecycle; if (!lc) return [];
+  // C5: inside a forecast, membership is drawn (src/engine/membership.js) rather than read from the dated list
+  if (world.membership && rng && y > world.asOf) return stepMembership(world, y, rng);
+  const { panel, ids, Y0, successors } = lc; const i = y - Y0;
+  if (y > panel.meta.y1 || i < 0) return [];   // past the panel's last year there are no dated membership facts: the universe stands as it is (a forward run is not a retirement)
   for (const id of ids) {
     const vars = panel.actors[id]; const alive = vars.live?.[i] === 1; const present = world.actors[id] != null;
     // as-of dating: an actor introduced inside the horizon enters with its state as last observed at asOf, not with the
     // panel row of the year it appears (which is an observation the forecaster cannot have). Where the panel has nothing
     // for it at asOf its covariates are null and it simply carries no hazard — an honest miss, not a seeded truth.
-    if (alive && !present) {
-      const a = buildActorState({ panel, events, id, vars, at: Math.min(y, world.asOf), asOf: world.asOf });
-      a.imputed = [];
-      // seed from the predecessor before the world median: a state that succeeds another inherits its capability
-      // scaled by the population share it takes with it, and its income and regime outright. Both the successor map
-      // and the predecessor's own state are as-of knowledge, so this adds nothing the forecaster does not hold — where
-      // there is no predecessor the world median (and, for cinc, its 25th percentile) still stands in.
-      const preds = (lc.predecessors?.[id] ?? []).map(pid => world.actors[pid] ?? lc.retiredState?.get(pid)).filter(Boolean);
-      const pred = preds.sort((p, q) => (q.cur.cinc ?? 0) - (p.cur.cinc ?? 0))[0] ?? null;
-      if (pred) {
-        const share = a.cur.population != null && pred.cur.population ? Math.min(1, a.cur.population / pred.cur.population) : null;
-        for (const v of ['cinc', 'gdp_pc', 'log_gdp_pc', 'regime', 'polyarchy', 'gdp_growth']) {
-          if (a.cur[v] != null || pred.cur[v] == null) continue;
-          a.cur[v] = v === 'cinc' ? pred.cur[v] * (share ?? 0.5) : pred.cur[v];
-          a.prev[v] = a.cur[v]; a.imputed.push(`${v}<-${pred.id}`);
-        }
-      }
-      for (const [v, x] of Object.entries(world.entryPrior ?? {})) if (x != null && a.cur[v] == null) { a.cur[v] = x; a.prev[v] = x; a.imputed.push(v); }
-      if (a.cur.gdp_pc != null && a.cur.log_gdp_pc == null) a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc);
-      // flags and ties an actor that does not yet exist cannot have: a structural zero, not a missing value
-      for (const v of ['at_war', 'intrastate', 'mid_force', 'mid_war', 'coup_attempt', 'coup_success', 'interstate_ucdp', 'pact_usa', 'pact_rus', 'defence_pacts', 'sp_client_any', 'sp_client_one', 'great_game', 'aid_conditionality']) { a.cur[v] ??= 0; a.prev[v] ??= 0; }
-      world.actors[id] = a;
-    }
+    if (alive && !present) introduceActor(world, id, y);
   }
   for (const id of ids) {
     const vars = panel.actors[id]; const alive = vars.live?.[i] === 1; const a = world.actors[id];
     if (alive || !a) continue;
-    lc.retiredState?.set(id, a);
-    const succ = successors[id] && world.actors[successors[id]];
-    if (succ) {   // the successor inherits the rivalry memory: the dispute history is the state's, not the name's
-      // and the border graph: the frozen as-of snapshot has no edge for a state that did not exist at as-of, so
-      // without this a successor is non-contiguous with everyone and every non-major pair it is in sits at hazard 0
-      // (era-1870-1914-r2/statistics-8). Edges are only ever added, so the at-risk set cannot silently shrink.
-      for (const k of [...world.contiguous]) { const [p, q] = k.split('|'); if (p !== id && q !== id) continue; const other = p === id ? q : p; if (other === succ.id) continue; world.contiguous.add(pairKey(succ.id, other)); }
-      for (const [k, yr] of [...world.dyadRecent]) { const [p, q] = k.split('|'); if (p !== id && q !== id) continue; const other = p === id ? q : p; if (other === succ.id) continue; const nk = pairKey(succ.id, other); world.dyadRecent.set(nk, Math.max(world.dyadRecent.get(nk) ?? -1e9, yr)); world.dyadRecent.delete(k); }
-      for (const v of Object.keys(succ.recent)) succ.recent[v] = succ.recent[v].map((x, j) => (x || a.recent[v]?.[j] ? 1 : 0));
-    } else for (const k of [...world.dyadRecent.keys()]) { const [p, q] = k.split('|'); if (p === id || q === id) world.dyadRecent.delete(k); }
-    delete world.actors[id];
+    retireActor(world, id, successors[id] && world.actors[successors[id]] ? successors[id] : null);
   }
+  return [];
+}
+
+/**
+ * C5: one year of drawn membership. Births over the territories no live state occupies, deaths over the live states;
+ * a dead state is absorbed by its strongest contiguous neighbour (which inherits its rivalries), or by no one.
+ */
+function stepMembership(world, y, rng) {
+  const M = world.membership; const out = [];
+  const occupied = new Set(Object.keys(world.actors).map(id => polygonKey(id, M.polygonOf)));
+  const recent = M.births.filter(b => b >= y - MEMBERSHIP.wave_years && b < y).length;
+  const born = [];
+  for (const poly of M.polygons) { if (occupied.has(poly.id) || world.actors[poly.id]) continue; const p = birthHazard(M.fit, { recent, area: poly.area, local: localBirths(M.nb, M.bornAt, poly.id, y), dem: world.pol?.demShare }); if (p != null && rng() < p) born.push(poly.id); }
+  const deaths = [];
+  for (const [id, a] of Object.entries(world.actors)) { const p = deathHazard(M.fit, { cinc: a.cur.cinc, atWar: (a.cur.at_war ?? 0) > 0, great: (a.cur.great_power ?? 0) > 0, dem: world.pol?.demShare }); if (p != null && rng() < p) deaths.push(id); }
+  for (const id of deaths) {
+    const nb = [...world.contiguous].map(k => k.split('|')).filter(([p, q]) => (p === id || q === id)).map(([p, q]) => (p === id ? q : p)).filter(o => world.actors[o] && !deaths.includes(o));
+    const by = nb.sort((p, q) => (world.actors[q].cur.cinc ?? 0) - (world.actors[p].cur.cinc ?? 0))[0] ?? null;
+    retireActor(world, id, by); out.push({ kind: 'state_death', actor: id, absorbed_by: by, year: y });
+  }
+  for (const id of born) {
+    introduceActor(world, id, y); M.births.push(y); (M.bornAt.get(id) ?? M.bornAt.set(id, []).get(id)).push(y);
+    // borders are geography: a new state takes every edge the contiguity source has ever recorded for its territory
+    for (const k of Object.keys(world.lifecycle.contiguity ?? {})) { const [p, q] = k.split('|'); const other = p === id ? q : q === id ? p : null; if (other && world.actors[other]) world.contiguous.add(k); }
+    out.push({ kind: 'state_birth', actor: id, year: y });
+  }
+  return out;
 }
 
 /** C1: capability shares follow total output growth, renormalised to last year's total over the same actors. */
@@ -1190,6 +1268,31 @@ function stepAlliances(world, ids, rng) {
   return out;
 }
 
+/** C6: one year of the station layer — closures over active stations, openings over patron x host pairs. */
+function stepStations(world, ids, rng) {
+  const y = world.year, A = world.actors, out = []; const fit = world.stationFit;
+  const SEA = (h) => typeof h === 'string' && h.startsWith('sea:');
+  const active = world.stations.filter(r => r.from <= y - 1 && (r.to == null || r.to > y - 1));
+  let changed = false;
+  for (const r of active) {
+    if (!SEA(r.host) && !A[r.host]) { r.to = y; changed = true; continue; }   // the host is gone: so is the station
+    const p = closeHazard(fit, { patronGreat: (A[r.actor]?.prev.great_power ?? 0) > 0, allied: !SEA(r.host) && world.allied.has(pairKey(r.actor, r.host)), hostWar: !SEA(r.host) && (A[r.host]?.prev.at_war ?? 0) > 0, age: y - 1 - r.from, level: r.level, sea: SEA(r.host) });
+    if (p != null && rng() < p) { r.to = y; changed = true; if (A[r.host]) A[r.host].presenceFall = y; out.push({ kind: 'station_close', actor: r.actor, host: r.host, a: r.actor, b: r.host, name: r.name, year: y }); }
+  }
+  const has = new Set(active.filter(r => r.to == null && !SEA(r.host)).map(r => `${r.actor}>${r.host}`)); const hosting = new Set(active.filter(r => r.to == null && !SEA(r.host)).map(r => r.host));
+  const holders = new Set(active.filter(r => r.to == null).map(r => r.actor));
+  for (const p of ids) {
+    const P = A[p]; if (!P || !((P.prev.great_power ?? 0) > 0 || holders.has(p))) continue;
+    for (const h of ids) {
+      if (h === p || !A[h] || has.has(`${p}>${h}`)) continue;
+      const q = openHazard(fit, { allied: world.allied.has(pairKey(p, h)), contiguous: world.contiguous.has(pairKey(p, h)), hostWar: (A[h].prev.at_war ?? 0) > 0, patronWar: (P.prev.at_war ?? 0) > 0, capP: P.prev.cinc, capH: A[h].prev.cinc, hosting: hosting.has(h) });
+      if (q != null && rng() < q) { world.stations.push({ actor: p, host: h, name: 'simulated station', kind: 'base', level: 1, from: y, to: null, geometry: null, simulated: true }); changed = true; out.push({ kind: 'station_open', actor: p, host: h, a: p, b: h, year: y }); }
+    }
+  }
+  if (changed) { world.presence = presenceIndex(world.stations, { y0: world.presence.y0, y1: world.presence.y1, simulated: true }); world.patrons = patronMap(world.presence, y); }
+  return out;
+}
+
 /** C4: nuclear acquisition — one draw per live non-nuclear actor on the year's state. */
 function stepNuclear(world, ids, rng) {
   const out = []; const nukes = [...world.nukes];
@@ -1204,7 +1307,7 @@ function stepNuclear(world, ids, rng) {
 /** One annual step: lifecycle, structural drift, then hazards. */
 export function stepYear(world, rng, opts = {}) {
   world.year += 1; const y = world.year; const fired = [];
-  stepLifecycle(world, y);
+  fired.push(...stepLifecycle(world, y, opts.memRng));
   const ids = Object.keys(world.actors);
   // snapshot prev, structural drift
   for (const id of ids) {
@@ -1255,6 +1358,7 @@ export function stepYear(world, rng, opts = {}) {
   if (world.gpFit && opts.growthRng) fired.push(...stepGreatPower(world, ids, opts.growthRng));
   if (world.allyFit && opts.allyRng) fired.push(...stepAlliances(world, ids, opts.allyRng));
   if (world.nukeFit && opts.nukeRng) fired.push(...stepNuclear(world, ids, opts.nukeRng));
+  if (world.stationFit && opts.stationRng) fired.push(...stepStations(world, ids, opts.stationRng));
   stepWaves(world, opts.waveRng ?? rng);
   // the derived world state, after the drift (it reads this year's growth) and before any hazard reads an era term
   stepPolarity(world);
@@ -1529,9 +1633,11 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     const growthRng = mulberry32(seed * 15485863 + r);   // C1/C2: the structural draws' own stream
     const allyRng = mulberry32(seed * 32452843 + r);     // C3: the pact graph's, so it moves nothing else's draws
     const nukeRng = mulberry32(seed * 49979687 + r);     // C4
+    const memRng = mulberry32(seed * 67867967 + r);      // C5
+    const stationRng = mulberry32(seed * 86028121 + r);  // C6
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
-      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng, allyRng, nukeRng });
+      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng, allyRng, nukeRng, memRng, stationRng });
       if (fb) { const snap = observe(w, { vars: obsKeys }); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }

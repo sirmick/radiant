@@ -100,7 +100,19 @@
   });
 
   // ---- presence, powers, fields
-  const presenceNow = $derived(presenceAt(presence, year));
+  // military presence: the dated stations in the record; after the seam the frame set's patron-host pairs (C6) — a
+  // station active at the origin is drawn while its pair is still present in at least half the runs, and a pair the
+  // runs opened is drawn at the host as a simulated station
+  const presenceNow = $derived.by(() => {
+    if (!isForecastYear) return presenceAt(presence, year);
+    const origin = view.ensemble.meta.from - 1; const pairs = new Map(view.presencePairs());
+    const key = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+    const kept = presenceAt(presence, origin).filter(r => String(r.host).startsWith('sea:') || pairs.has(key(r.actor, r.host)));
+    const shown = new Set(kept.map(r => key(r.actor, r.host)));
+    const fresh = [];
+    for (const [pk, p] of pairs) { if (shown.has(pk)) continue; const [a, b] = pk.split('|'); const patron = isGreat(a) && !isGreat(b) ? a : isGreat(b) && !isGreat(a) ? b : (capOf(a) >= capOf(b) ? a : b); const host = patron === a ? b : a; const ll = lonlat(host); if (!ll) continue; fresh.push({ actor: patron, host, kind: 'base', level: 1, from: null, name: `simulated station (${(p * 100).toFixed(0)}% of runs)`, geometry: ll, operator: false, simulated: true }); }
+    return [...kept, ...fresh];
+  });
   const powersNow = $derived.by(() => {
     const cands = Object.keys(POWER_COLORS).filter(id => view.live(id));
     return cands.filter(id => isGreat(id) || presenceNow.some(r => r.actor === id)).map(id => ({
@@ -168,7 +180,7 @@
   const ranks = $derived.by(() => { const out = {}; if (isForecastYear) return out; for (const [v] of AXES) { const vals = []; for (const id of view.liveIds) { const x = view.cell(v, id); if (x?.value != null && !x.stale) vals.push([id, x.value]); } vals.sort((p, q) => p[1] - q[1]); const n = vals.length; vals.forEach(([id, x], i) => { (out[id] ??= {})[v] = v === 'regime' ? x / 3 : n > 1 ? i / (n - 1) : 0.5; }); } return out; });
   const marks = $derived.by(() => {
     const out = [];
-    if (layers.presence) for (const r of presenceNow) { if (!zoomedIn && r.level < 2 && !(selected?.kind === 'actor' && (r.actor === selected.id || r.host === selected.id))) continue; out.push({ lonlat: r.geometry, kind: r.kind, color: POWER_COLORS[r.actor] ?? '#8b94a3', size: r.kind === 'fleet' ? (r.level === 3 ? 26 : r.level === 2 ? 18 : 12) / Math.sqrt(zoomK) : (r.level === 3 ? 7 : r.level === 2 ? 5 : 3.5), emphasis: r.operator, title: `${r.actor} ${r.kind}: ${r.name} · since ${r.from}` }); }
+    if (layers.presence) for (const r of presenceNow) { if (!zoomedIn && r.level < 2 && !(selected?.kind === 'actor' && (r.actor === selected.id || r.host === selected.id))) continue; out.push({ lonlat: r.geometry, kind: r.kind, color: POWER_COLORS[r.actor] ?? '#8b94a3', size: r.kind === 'fleet' ? (r.level === 3 ? 26 : r.level === 2 ? 18 : 12) / Math.sqrt(zoomK) : (r.level === 3 ? 7 : r.level === 2 ? 5 : 3.5), emphasis: r.operator, title: `${r.actor} ${r.kind}: ${r.name}${r.from ? ` · since ${r.from}` : ''}` }); }
     if (layers.waves && waveNow) for (const [id, yr] of Object.entries(waveNow.sovereign_by ?? {})) { if (yr > Math.round(year)) continue; const ll = lonlat(id); if (!ll) continue; out.push({ lonlat: ll, kind: 'wave', size: 5, color: '#ffd166', dx: 9, dy: -9, recent: Math.round(year) - yr <= 5, title: `${view.name(id)}: sovereign in ${waveNow.label} since ${yr}${waveNow.sovereign_source?.[id] ? ` — ${waveNow.sovereign_source[id]}` : ''}` }); }
     if (layers.glyphs) for (const id of featured) { const ll = lonlat(id), q = ranks[id]; if (!ll || !q) continue; const r = 8; const pts = AXES.map(([v], i) => { const ang = -Math.PI / 2 + (i / AXES.length) * 2 * Math.PI; const rr = r * (0.15 + 0.85 * (q[v] ?? 0)); return [Math.cos(ang) * rr, Math.sin(ang) * rr]; }); out.push({ lonlat: ll, kind: 'rose', size: r, stroke: atWar(id) ? '#ef6a5a' : '#3a4250', strokeWidth: atWar(id) ? 1.4 : 0.5, pathD: 'M' + pts.map(p => p.join(',')).join('L') + 'Z' }); }
     return out;

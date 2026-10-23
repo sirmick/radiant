@@ -133,7 +133,29 @@ by the backtest, and published in frames. Order matters — later steps read ear
   1.77x, nuclear acquisitions 0.93x of the record; polarity 1.03x, great-power entry 0.70x. Still out: great-power exit
   0.18x and top-pole change 0.28x. Backtest cost: allied-pair occupancy skill 0.63 -> 0.44 (a frozen graph is a strong
   persistence forecast), corridor_status -0.10; mid_war +0.04.
-- **C5 (births/deaths) — open, needs a decision**: see the open questions below.
+- **C5 — built, a candidate (off; `MEMBERSHIP_HAZARD=1`), 2026-10-23.** Births are drawn over TERRITORIES — every
+  map polygon no live state occupies (a colony, a Soviet republic before 1991, Greenland today) — on world and
+  neighbourhood birth waves, area and the democratic share; deaths over live states on capability, war, great-power
+  status and the democratic share (`src/engine/membership.js`). It removes the existence leak, but fails its gate on
+  births (0.35x: the 1960 and 1991 waves are bursts no hazard fitted before them predicts; the fit's own in-sample
+  expectation misses them too), deaths 1.31x. Backtest 1950-1990: leader_exit -0.59, democratic_deepening -0.24 of
+  skill (the decolonisation cohort is no longer handed to the forecaster). Not promoted by the rule.
+- **C6 — done 2026-10-23.** Station open / close hazards over the dated presence layer (`src/engine/stations.js`), the
+  presence index rebuilt as the run moves and read at the simulated year; a dyad `presence` variable carries it into
+  the frames, and the viewer draws it after the seam. Gate: openings 0.62x, closures 0.56x of the record (between
+  states that exist in both years); presence occupancy exp/obs 1.01, skill 0.55. Backtest 1950-1990: 8 of 15 up, 7
+  down; the cost is record_reopen (-0.22 on ~15 events), which reads the guarantor term and was already out of
+  calibration (exp/obs 3.65).
+- **D2 — promoted 2026-10-23.** λ per template by an inner holdout inside the training years: on 1870-2010 (40 runs)
+  11 of 15 pooled templates up, mean skill -0.0286 -> -0.0207. `wave_attain` pinned at λ = 2 (its unit is not in the
+  event backtest, and the inner choice doubled its era-holdout Brier). `FIT_LAMBDA=fixed` restores λ = 2.
+- **D1 — built, opt-in (`FIT_DECAY=cv`).** Recency-weighted likelihood, half-life by inner holdout (mostly 20 y):
+  9 of 15 up, mean -0.0286 -> -0.0265, at-war occupancy skill 0.021 -> 0.004. Not promoted.
+- **D5 — done.** `scripts/analysis/benchmark.mjs` (`scores/benchmark-glm-vs-boosted.json`): boosted depth-2 trees on
+  the same rows and era split beat the penalised logistic out of sample on no template except `wave_attain` — the
+  linear form is not what limits the model; out-of-era, strong priors (λ = 32) generalise best, which is the drift
+  D1 addresses.
+- **D3 (within-year dependence) and D4 (duration splines)** — open.
 
 ## Phase D — fitter upgrades (after C, same gate)
 
@@ -173,10 +195,9 @@ regressions are recorded in `docs/refine-log.md` with the numbers and accepted.
 
 ## Open questions
 
-- C5: honest state births need either a dependent-territory layer (decolonisation: colonies that are not actors yet)
-  or a secession hazard that creates a state the map has no polygon for. Which, and how a forecast world draws one, is
-  an operator decision. Until then births and deaths in a forecast still come from the dated membership list — the
-  existence leak — and forward from the panel's last year there are none.
+- C5: what would close the birth gap is a dissolution mechanism (a state's death releasing its constituent
+  territories at once — the 1991 case) and a colonial-ownership layer (whose empire a territory belongs to — the 1960
+  case). Neither is in the data yet.
 
 - Replay of continuous variables: overwrite from the panel every observed year (exact, but hides drift-model error) or
   replay drift and report the residual (diagnostic). Plan: overwrite, and report the residual in `replay-diff`.

@@ -6,6 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { ENSEMBLE_VARS } from '../src/contract/vars.js';
 import { updateIndex } from './lib/frames-index.mjs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
+import { loadPolygons } from './lib/inputs.mjs';
 import { createWorld, runEnsemble, waveCapabilityOn } from '../src/engine/core.js';
 import { createFitter, loadFitInputs } from './lib/fit.mjs';
 import { loadWaves } from '../src/engine/waves.js';
@@ -30,6 +31,7 @@ const corridors = Y('data/corridors.yaml');
 const territories = Y('data/territories.yaml');
 const waves = loadWaves(Y('data/waves.yaml')).waves;   // operator/capability-waves (package 12)
 const actors = loadActors(); const code = makeCodeMap(actors);
+const { polygons, polygonOf } = loadPolygons(actors);   // C5: the territory pool births are drawn over
 const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 // alliances: the dated graph (scripts/lib/hist.mjs:loadPacts — CoW 3.03 to 2000, ATOP 5.1 to 2018, dated accessions
@@ -44,7 +46,7 @@ if (asOf < panel.meta.y1) {   // honest past forecast: coefficients from labels 
   fits = fitter.fitAll({ maxYear: asOf, holdout: false, ablation: false }).fits;
   fitSource = `refit on labels ≤ ${asOf}`;
 }
-const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves });
+const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves, polygons, polygonOf });
 const t0 = Date.now();
 const PATH_VARS = ['actor:live', 'actor:regime', 'actor:at_war', 'actor:intrastate', 'actor:occupied', 'actor:great_power', 'dyad:at_war', 'record:status', 'world:polarity', 'world:hegemon'];
 const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, frames: { from: asOf + 1, pathVars: PATH_VARS, meta: { source: `fc-${asOf}`, kind: 'ensemble', asOf } }, framePaths: Math.min(PATHS, RUNS), frameVars: ENSEMBLE_VARS() });
@@ -98,7 +100,8 @@ writeFileSync(PATHS_OUT, JSON.stringify({ meta: { asOf, from: asOf + 1, years: H
 out.meta.paths = { n: ens.frames.paths.length, file: PATHS_OUT.replace(/^public\//, '') };
 const json = JSON.stringify(out);
 writeFileSync(OUT, json);
-updateIndex({ ensemble: { asOf, file: OUT.replace(/^public\//, ''), paths: out.meta.paths.file, from: asOf + 1, to: asOf + H, runs: RUNS, horizon: H, fit_source: fitSource, built: out.meta.built } });
+// only a published ensemble is registered: a test run written elsewhere with --out must not replace the origin's entry
+if (OUT.startsWith('public/frames/')) updateIndex({ ensemble: { asOf, file: OUT.replace(/^public\//, ''), paths: out.meta.paths.file, from: asOf + 1, to: asOf + H, runs: RUNS, horizon: H, fit_source: fitSource, built: out.meta.built } });
 console.log(`${OUT}: ${ids.length} actors, ${Object.keys(out.hazards.dyad).length} dyads ≥5%, ${RUNS} runs × ${H}y in ${((Date.now() - t0) / 1000).toFixed(0)}s, ${(json.length / 1024).toFixed(0)} KB; ${out.meta.dyads.at_war.kept} war pairs kept`);
 // headline table
 const row = (id) => { const p = out.hazards.actor[id] ?? {}; const at = (t, k) => p[t] ? (p[t][k - 1] * 100).toFixed(0) + '%' : '—'; const rg = out.actors[id]?.regime?.[19]; return `${id.padEnd(5)} regime ${w0.actors[id].cur.regime}  coup10y ${at('coup_attempt', 10).padStart(4)}  irregular10y ${at('irregular_exit', 10).padStart(4)}  civilwar10y ${at('intrastate_onset', 10).padStart(4)}  democratize10y ${at('democratize_step', 10).padStart(4)}  close10y ${at('autocratic_closure', 10).padStart(4)}  regime+20 [${(rg ?? []).map(x => (x * 100).toFixed(0)).join(' ')}]`; };
