@@ -42,8 +42,8 @@ export const VARS = [
     truth: 'panel:occupied', coverage: [1816, 2025], read: (w, a) => (a.cur.occupied ? 1 : 0), note: 'occupation is data, not a hazard: carried from as-of' },
   { id: 'great_power', entity: 'actor', display: { format: '.0f', unit: 'flag' }, kind: 'binary', label: 'Major power (CoW)', family: 'structure', forecast: 'simulated',
     truth: 'panel:great_power', coverage: [1816, 2025], read: (w, a) => (a.cur.great_power ? 1 : 0), note: 'fitted entry/exit transitions on the moved capability share (src/engine/greatpower.js, C2)' },
-  { id: 'nuclear', entity: 'actor', display: { format: '.0f', unit: 'flag' }, kind: 'binary', label: 'Nuclear weapons', family: 'structure', forecast: 'frozen',
-    coverage: [1816, 2026], read: (w, a) => (w.nukes?.has(a.id) ? 1 : 0), note: 'world.nukes, frozen at as-of (docs/plan-structure.md C4)' },
+  { id: 'nuclear', entity: 'actor', display: { format: '.0f', unit: 'flag' }, kind: 'binary', label: 'Nuclear weapons', family: 'structure', forecast: 'simulated',
+    coverage: [1816, 2026], read: (w, a) => (w.nukes?.has(a.id) ? 1 : 0), note: 'world.nukes at as-of, then the fitted acquisition hazard (src/engine/nuclear.js, C4); disarmament is not modelled' },
   { id: 'gdp_pc', entity: 'actor', display: { format: '.3s', unit: '2011 intl $', log: true }, kind: 'continuous', label: 'GDP per capita (Maddison)', family: 'economy', forecast: 'simulated', positive: true,
     truth: 'panel:gdp_pc', coverage: [1820, 2022], read: (w, a) => a.cur.gdp_pc ?? null },
   { id: 'info_access', entity: 'actor', display: { format: '.0%', unit: '0–1' }, kind: 'continuous', label: 'Information access', family: 'economy', forecast: 'simulated', positive: true,
@@ -82,8 +82,8 @@ export const VARS = [
   // ---- dyad (sparse: a pair absent from a year is 0)
   { id: 'at_war', entity: 'dyad', kind: 'binary', label: 'Pair at war', family: 'conflict', forecast: 'simulated', coverage: [1816, 2010],
     note: 'truth: the merged dyadic war spells src/engine/termination.js:warSpells builds from data/events.json' },
-  { id: 'allied', entity: 'dyad', kind: 'binary', label: 'Defence pact', family: 'structure', forecast: 'frozen', coverage: [1816, 2026],
-    note: 'the dated pact graph (scripts/lib/hist.mjs:loadPacts), frozen at as-of (docs/plan-structure.md C3)' },
+  { id: 'allied', entity: 'dyad', kind: 'binary', label: 'Defence pact', family: 'structure', forecast: 'simulated', coverage: [1816, 2026],
+    note: 'the dated pact graph (scripts/lib/hist.mjs:loadPacts) at as-of, moved by fitted formation / dissolution hazards (src/engine/alliances.js, C3)' },
   // ---- record (corridors, chokepoints, territories)
   { id: 'status', entity: 'record', kind: 'categorical', levels: null, label: 'Status', family: 'records', forecast: 'simulated', coverage: [1869, 2025],
     note: 'open vocabulary: the status words of data/corridors.yaml and data/territories.yaml; control transfer is not simulated' },

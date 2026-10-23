@@ -126,6 +126,15 @@ by the backtest, and published in frames. Order matters — later steps read ear
   Event scores: 10 of 15 pooled templates improve, 5 fall (intrastate_onset skill 0.15 → 0.11, democratic_deepening
   0.41 → 0.34) — accepted under the gate.
 
+- **C3 + C4 — done 2026-10-23.** Pact formation / dissolution hazards fitted on the dated graph at as-of
+  (`src/engine/alliances.js`; covariates incl. shared allies and a degree-saturation brake — without the brake triadic
+  closure densified the graph 2.3x), nuclear acquisition fitted at as-of on ten weapon events with literature-centred
+  priors (`src/engine/nuclear.js`). Each draws from its own random stream. Gate: pact formations 0.96x, dissolutions
+  1.77x, nuclear acquisitions 0.93x of the record; polarity 1.03x, great-power entry 0.70x. Still out: great-power exit
+  0.18x and top-pole change 0.28x. Backtest cost: allied-pair occupancy skill 0.63 -> 0.44 (a frozen graph is a strong
+  persistence forecast), corridor_status -0.10; mid_war +0.04.
+- **C5 (births/deaths) — open, needs a decision**: see the open questions below.
+
 ## Phase D — fitter upgrades (after C, same gate)
 
 1. **Time-varying coefficients**: era-pooled (hierarchical shrinkage of per-era β toward a common β) in place of
@@ -163,6 +172,11 @@ regressions are recorded in `docs/refine-log.md` with the numbers and accepted.
   `docs/escalations.md` (close engine-8 and engine-2 when C2 lands)
 
 ## Open questions
+
+- C5: honest state births need either a dependent-territory layer (decolonisation: colonies that are not actors yet)
+  or a secession hazard that creates a state the map has no polygon for. Which, and how a forecast world draws one, is
+  an operator decision. Until then births and deaths in a forecast still come from the dated membership list — the
+  existence leak — and forward from the panel's last year there are none.
 
 - Replay of continuous variables: overwrite from the panel every observed year (exact, but hides drift-model error) or
   replay drift and report the residual (diagnostic). Plan: overwrite, and report the residual in `replay-diff`.

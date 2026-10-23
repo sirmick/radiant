@@ -6,6 +6,8 @@
 import { observe, FrameBuilder } from '../contract/frames.js';
 import { GROWTH_PROCESS, trailingMean, drawGrowth } from './growth.js';
 import { fitGreatPower, gpHazard } from './greatpower.js';
+import { fitAlliances, allyHazard, candidate, adjacency, sharedAllies, edgesAt } from './alliances.js';
+import { fitNuclear, nukeHazard } from './nuclear.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
 /** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
@@ -140,6 +142,10 @@ const NO_WAVES = ABLATE.includes('waves');
 const NO_GROWTH_PROCESS = ABLATE.includes('growth_process');
 const NO_CINC_DYNAMICS = ABLATE.includes('cinc_dynamics');
 const NO_GP_DYNAMICS = ABLATE.includes('great_power');
+// C3: the defence-pact graph as fitted formation/dissolution hazards (src/engine/alliances.js); ENGINE_ABLATE=alliances freezes it at as-of
+const NO_ALLY_DYNAMICS = ABLATE.includes('alliances');
+// C4: nuclear acquisition as a fitted hazard (src/engine/nuclear.js); ENGINE_ABLATE=nuclear freezes world.nukes at as-of
+const NO_NUKE_DYNAMICS = ABLATE.includes('nuclear');
 /** Whether the wave share REPLACES cinc in the dyadic capability ratio. Declared in the data, forced by the env.
  *  Exported so a publisher can stamp the answer into its output without building a world to ask. */
 export const waveCapabilityOn = (templates) => {
@@ -765,7 +771,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // host -> patron-power map the dyadic term reads; the per-actor `presenceFall` is the year that actor last lost a
     // station, so `presence_change` can age out of its window during the horizon instead of firing for all of it.
     presence: pres, patrons: pres ? patronMap(pres, asOf) : new Map(),
-    allied, contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
+    allied: NO_ALLY_DYNAMICS ? allied : new Set(allied), contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     // `predecessors` is the successor map inverted, so a state entering the horizon can be seeded from the state it
     // succeeds instead of from the world median; `retiredState` keeps the last state of an actor stepLifecycle has
     // already removed, for a successor that enters a year or more after its predecessor leaves.
@@ -778,6 +784,11 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     growthMean: trailingMean(panel, asOf, GROWTH_MEAN),
     // C2: the great-power transitions, fitted on the panel's CoW column with labels at or before as-of
     gpFit: NO_GP_DYNAMICS ? null : fitGreatPower(panel, asOf),
+    // C3: the pact hazards, fitted on the dated graph with labels at or before as-of, and each live pact's age
+    allyFit: NO_ALLY_DYNAMICS || !pacts?.size ? null : fitAlliances({ panel, pacts, contiguity: contiguity ?? {} }, asOf),
+    pactSince: NO_ALLY_DYNAMICS || !pacts?.size ? null : pactAges(pacts, allied, asOf),
+    // C4: the acquisition hazard, fitted on weapon events at or before as-of (the event list is already truncated)
+    nukeFit: NO_NUKE_DYNAMICS ? null : fitNuclear({ panel, events, contiguity: contiguity ?? {}, alliedAt: (yy) => (pacts?.size ? edgesAt(pacts, yy) : new Set()) }, asOf),
   };
 }
 
@@ -1152,6 +1163,44 @@ function stepGreatPower(world, ids, rng) {
   return out;
 }
 
+/** Years each pact in force at asOf has run, read back through the dated graph. */
+function pactAges(pacts, allied, asOf) {
+  const m = new Map();
+  for (const k of allied) { let y = asOf; while (y > asOf - 200 && edgesAt(pacts, y - 1).has(k)) y--; m.set(k, asOf - y); }
+  return m;
+}
+/** C3: one year of the pact graph — dissolutions over allied pairs, formations over candidate pairs. */
+function stepAlliances(world, ids, rng) {
+  const out = []; const y = world.year; const A = world.actors;
+  const live = ids.filter(id => A[id]); const liveSet = new Set(live);
+  const adj = adjacency([...world.allied].filter(k => { const i = k.indexOf('|'); return liveSet.has(k.slice(0, i)) && liveSet.has(k.slice(i + 1)); }));
+  const shared = sharedAllies(adj);
+  const st = (a, b, k) => ({ contiguous: world.contiguous.has(k), gpA: (A[a].prev.great_power ?? 0) > 0, gpB: (A[b].prev.great_power ?? 0) > 0, regA: A[a].prev.regime, regB: A[b].prev.regime, capA: A[a].prev.cinc, capB: A[b].prev.cinc, shared: shared.get(k) ?? 0, age: world.pactSince?.get(k) ?? 0, degA: adj.get(a)?.size ?? 0, degB: adj.get(b)?.size ?? 0 });
+  const ends = [], forms = [];
+  for (const k of world.allied) { const i = k.indexOf('|'); const a = k.slice(0, i), b = k.slice(i + 1); if (!liveSet.has(a) || !liveSet.has(b)) continue; const p = allyHazard(world.allyFit, 'end', st(a, b, k)); if (p != null && rng() < p) ends.push([k, a, b]); }
+  for (let i = 0; i < live.length; i++) for (let j = i + 1; j < live.length; j++) {
+    const k = pairKey(live[i], live[j]); if (world.allied.has(k)) continue;
+    const s = st(live[i], live[j], k); if (!candidate(s)) continue;
+    const p = allyHazard(world.allyFit, 'form', s); if (p != null && rng() < p) forms.push([k, live[i], live[j]]);
+  }
+  for (const [k, a, b] of ends) { world.allied.delete(k); world.pactSince.delete(k); out.push({ kind: 'pact_end', a, b, year: y }); }
+  for (const [k, a, b] of forms) { world.allied.add(k); world.pactSince.set(k, 0); out.push({ kind: 'pact_form', a, b, year: y }); }
+  for (const k of world.allied) world.pactSince.set(k, (world.pactSince.get(k) ?? 0) + 1);
+  if ((ends.length || forms.length) && world.coalition) world.allyOf = allyAdjacency(world.allied);
+  return out;
+}
+
+/** C4: nuclear acquisition — one draw per live non-nuclear actor on the year's state. */
+function stepNuclear(world, ids, rng) {
+  const out = []; const nukes = [...world.nukes];
+  for (const id of ids) {
+    const a = world.actors[id]; if (!a || world.nukes.has(id)) continue;
+    const s = { cinc: a.cur.cinc, gdp: a.cur.gdp_pc, great: (a.cur.great_power ?? 0) > 0, neighbour: nukes.some(n => world.contiguous.has(pairKey(id, n))), ally: nukes.some(n => world.allied.has(pairKey(id, n))) };
+    const p = nukeHazard(world.nukeFit, s); if (p != null && rng() < p) { world.nukes.add(id); out.push({ kind: 'nuclear', actor: id, status: 'weapon', year: world.year }); }
+  }
+  return out;
+}
+
 /** One annual step: lifecycle, structural drift, then hazards. */
 export function stepYear(world, rng, opts = {}) {
   world.year += 1; const y = world.year; const fired = [];
@@ -1204,6 +1253,8 @@ export function stepYear(world, rng, opts = {}) {
   // fitted transitions on the moved shares. Both before any hazard reads a capability ratio or the major-power flag.
   if (!NO_CINC_DYNAMICS && opts.growthRng) stepCinc(world, ids);
   if (world.gpFit && opts.growthRng) fired.push(...stepGreatPower(world, ids, opts.growthRng));
+  if (world.allyFit && opts.allyRng) fired.push(...stepAlliances(world, ids, opts.allyRng));
+  if (world.nukeFit && opts.nukeRng) fired.push(...stepNuclear(world, ids, opts.nukeRng));
   stepWaves(world, opts.waveRng ?? rng);
   // the derived world state, after the drift (it reads this year's growth) and before any hazard reads an era term
   stepPolarity(world);
@@ -1476,9 +1527,11 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     // through the capability ratio and not through the random numbers, so its draws never come out of `rng`.
     const waveRng = mulberry32(seed * 104729 + r);
     const growthRng = mulberry32(seed * 15485863 + r);   // C1/C2: the structural draws' own stream
+    const allyRng = mulberry32(seed * 32452843 + r);     // C3: the pact graph's, so it moves nothing else's draws
+    const nukeRng = mulberry32(seed * 49979687 + r);     // C4
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
-      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng });
+      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng, allyRng, nukeRng });
       if (fb) { const snap = observe(w, { vars: obsKeys }); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }

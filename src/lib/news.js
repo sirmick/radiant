@@ -28,6 +28,8 @@ export function newsItem(e, name, y) {
     case 'capability': return { k: 'capability', y: e.year, a: [e.actor, e.target].filter(Boolean), t: `${nm(e.actor)} ${e.event}${e.target ? ` ${nm(e.target)}` : ''} in ${e.wave}`, s, n: e.notes };
     case 'wave_attain': return { k: 'capability', y: e.year, a: [e.actor], t: `${nm(e.actor)}: sovereign in ${slug(e.wave)}`, s };
     case 'alliance': return { k: 'alliance', y: e.year, a: e.members ?? [], t: `Alliance: ${slug(e.id)}${e.members ? ` — ${e.members.map(nm).join(', ')}` : ''}`, s, n: e.notes };
+    case 'pact_form': return { k: 'alliance', y: e.year, a: [e.a, e.b], t: `${nm(e.a)} – ${nm(e.b)}: defence pact`, s };
+    case 'pact_end': return { k: 'alliance', y: e.year, a: [e.a, e.b], t: `${nm(e.a)} – ${nm(e.b)}: defence pact ends`, s };
     case 'great_power_entry': return { k: 'alliance', y: e.year, a: [e.actor], t: `${nm(e.actor)}: becomes a great power`, s };
     case 'great_power_exit': return { k: 'alliance', y: e.year, a: [e.actor], t: `${nm(e.actor)}: ceases to be a great power`, s };
     case 'economic': return { k: 'economic', y: e.year, a: [], t: slug(e.id), s, n: e.notes };
