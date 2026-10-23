@@ -208,6 +208,21 @@ by the backtest, and published in frames. Order matters — later steps read ear
   against state death: +0.26 (not protective in the record). External-support data (UCDP ESD) is not reachable.
 - **Birth pool** excludes territories with no permanent population (`data/uninhabited.yaml`) or under 10,000 people
   (World Bank, via the `datasets/population` mirror): the first 50-year run made Antarctica a state in 35% of worlds.
+- **Trade — promoted 2026-10-23 (`data/trade.json`, `src/engine/trade.js`).** CoW dyadic trade v3.0 (1870-2009, via the
+  `dyadr` package's copy) as the weak-link dependence min(s_ij, s_ji), s = the pair's trade over each side's total.
+  On mid_force: -0.10 candidate / -0.14 fitted, holdout AUC 0.871 -> 0.873, exp/obs 1.03 -> 0.99; on mid_war -0.22 /
+  -0.25, 0.858 -> 0.871. Held at as-of in a run (trade is not simulated). No effect on interstate_onset (candidate).
+- **Unions — the EU as an institution, 2026-10-23 (`data/unions.yaml`, `src/engine/unions.js`).** Dated membership
+  (1958 founders, every accession, the 2020 exit). In a run membership is state: enlargement ROUNDS (P on years since
+  the last round: +0.98, 7 rounds) and joiners given a round (democracy +2.09, bordering a member +0.89, 20 joiners),
+  over the candidate pool visible at as-of; exit at a rate each run draws from Gamma(0.5 + 1, 1,023 member-years) —
+  one recorded exit, so the forecast carries that uncertainty instead of a point rate. `joint_union` on the dyad
+  hazards: identified at a 1990 split (training 1958-89), -0.84 on mid_force and -0.53 on mid_war as candidates;
+  fitted on the full sample -2.58 / -0.94. The fitter's candidate ablation took its split from the first candidate
+  that declared one (1946), which is why every post-war institution read "unidentified" before.
+  Backtest 1870-2010 (100 runs), trade + unions against Archigos + war outcomes: 9 up, 8 down, mean -0.0361 -> -0.0256
+  (record_reopen +0.10, chokepoint +0.03, corridor +0.03; mid_force/mid_war exp/obs 0.81 -> 0.68 / 0.71 -> 0.58).
+  The 50-year run: a war between two members by 2050 40% -> 13%.
 - **C6 — done 2026-10-23.** Station open / close hazards over the dated presence layer (`src/engine/stations.js`), the
   presence index rebuilt as the run moves and read at the simulated year; a dyad `presence` variable carries it into
   the frames, and the viewer draws it after the seam. Gate: openings 0.62x, closures 0.56x of the record (between

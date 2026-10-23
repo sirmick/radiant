@@ -53,6 +53,26 @@ console.log(`  members autocratic at the year, mean over runs: ${YEARS.map(y => 
 const autoTop = (y) => EU.map(id => [id, runs.filter(r => { for (let k = 0; k <= K(y); k++) if ((reg(r, id, k) ?? 9) <= 1) return true; return false; }).length / N]).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id, p]) => `${id} ${pct(p).trim()}`).join('  ');
 console.log(`  most likely to turn autocratic by ${YEARS[YEARS.length - 1]}: ${autoTop(YEARS[YEARS.length - 1])}`);
 
+// the union itself (src/engine/unions.js simulates membership: exits at the run's drawn rate, enlargement rounds)
+{
+  const exits = (r, y) => evs(r, y).filter(e => e.k === 'union_exit' && e.union === 'eu');
+  const joins = (r, y) => evs(r, y).filter(e => e.k === 'union_join' && e.union === 'eu');
+  const size = (r, y) => EU.filter(id => live(r, id, K(y))).length - new Set(exits(r, y).map(e => e.actor)).size + new Set(joins(r, y).map(e => e.actor)).size;
+  if (runs.some(r => r.events.flat().some(e => e.union === 'eu'))) {
+    console.log(`  -- the union (simulated membership) --`);
+    line('>= 1 member leaves', (r, y) => exits(r, y).length >= 1);
+    line('>= 3 members leave', (r, y) => new Set(exits(r, y).map(e => e.actor)).size >= 3);
+    line('a founding member leaves (BEL FRA DEU ITA LUX NLD)', (r, y) => exits(r, y).some(e => ['BEL', 'FRA', 'DEU', 'ITA', 'LUX', 'NLD'].includes(e.actor)));
+    line('fewer than 20 members', (r, y) => size(r, y) < 20);
+    line('UNION BREAKUP: half the 2025 members gone (left or ceased)', (r, y) => size(r, y) - new Set(joins(r, y).map(e => e.actor)).size <= 13);
+    console.log(`  members, mean over runs: ${YEARS.map(y => `${y}: ${(runs.reduce((a, r) => a + size(r, y), 0) / N).toFixed(1)}`).join('   ')}`);
+    const jm = new Map(); for (const r of runs) for (const e of joins(r, YEARS[YEARS.length - 1])) jm.set(e.actor, (jm.get(e.actor) ?? 0) + 1);
+    console.log(`  most likely joiners by ${YEARS[YEARS.length - 1]}: ${[...jm].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, n]) => `${id} ${pct(n / N).trim()}`).join('  ')}`);
+    const xm = new Map(); for (const r of runs) for (const e of exits(r, YEARS[YEARS.length - 1])) xm.set(e.actor, (xm.get(e.actor) ?? 0) + 1);
+    console.log(`  exits by member (any, by ${YEARS[YEARS.length - 1]}): ${[...xm].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([id, n]) => `${id} ${pct(n / N).trim()}`).join('  ')}   (n = 1 recorded exit: who leaves is not identified, only how often)`);
+  }
+}
+
 console.log(`\nUS: P(by year)`);
 const usIntra = (lvl) => (r, y) => { const a = r.actors.USA?.intrastate; if (!a) return false; for (let k = 0; k <= K(y); k++) if ((at(a, k) ?? 0) >= lvl) return true; return false; };
 line('internal armed conflict (any intensity)', usIntra(1));

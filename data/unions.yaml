@@ -1,0 +1,39 @@
+# Supranational unions — dated membership, the as-of record (docs/plan-structure.md, "unions").
+# A union here is a treaty order deeper than a defence pact: a single market, common institutions, pooled law. The model
+# reads membership as state (src/engine/unions.js): who is in at as-of, entry and exit as fitted hazards in a run, and
+# joint membership as a dyad covariate. members: [id, from, to?] (to = the year the state left; absent = still in).
+# Dates are entry into force. Sources: the accession treaties; Treaty on European Union art. 49 (entry) and art. 50 (exit).
+unions:
+  - id: eu
+    name: European Union (EEC 1958, EC 1967/1993, EU 1993)
+    founded: 1958
+    members:
+      - [BEL, 1958]
+      - [FRA, 1958]
+      - [DEU, 1958]          # West Germany; the GDR's territory joins with unification, 3 Oct 1990
+      - [ITA, 1958]
+      - [LUX, 1958]
+      - [NLD, 1958]
+      - [DNK, 1973]
+      - [IRL, 1973]
+      - [GBR, 1973, 2020]    # withdrawal 31 Jan 2020 (art. 50, notified 29 Mar 2017)
+      - [GRC, 1981]
+      - [PRT, 1986]
+      - [ESP, 1986]
+      - [AUT, 1995]
+      - [FIN, 1995]
+      - [SWE, 1995]
+      - [CYP, 2004]
+      - [CZE, 2004]
+      - [EST, 2004]
+      - [HUN, 2004]
+      - [LVA, 2004]
+      - [LTU, 2004]
+      - [MLT, 2004]
+      - [POL, 2004]
+      - [SVK, 2004]
+      - [SVN, 2004]
+      - [BGR, 2007]
+      - [ROU, 2007]
+      - [HRV, 2013]
+    notes: "Norway signed accession treaties in 1972 and 1994 and rejected both by referendum; Greenland (a territory) left the EC in 1985. Neither is a member-state exit."

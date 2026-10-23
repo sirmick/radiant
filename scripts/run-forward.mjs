@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { ENSEMBLE_VARS } from '../src/contract/vars.js';
 import { updateIndex } from './lib/frames-index.mjs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
-import { loadPolygons, loadHolders, loadWarOutcomes, loadIgo } from './lib/inputs.mjs';
+import { loadPolygons, loadHolders, loadWarOutcomes, loadIgo, loadTrade, loadUnions } from './lib/inputs.mjs';
 import { createWorld, runEnsemble, waveCapabilityOn } from '../src/engine/core.js';
 import { createFitter, loadFitInputs } from './lib/fit.mjs';
 import { loadWaves } from '../src/engine/waves.js';
@@ -35,6 +35,8 @@ const { polygons, polygonOf } = loadPolygons(actors);   // C5: the territory poo
 const holders = loadHolders();                          // C5 breakup: who holds each territory
 const warOutcomes = loadWarOutcomes();                  // who loses a simulated war
 const igo = loadIgo();                                  // shared IGO memberships per pair
+const trade = loadTrade();                              // bilateral trade dependence per pair
+const unions = loadUnions();                            // supranational unions (data/unions.yaml)
 const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 // alliances: the dated graph (scripts/lib/hist.mjs:loadPacts — CoW 3.03 to 2000, ATOP 5.1 to 2018, dated accessions
@@ -49,7 +51,7 @@ if (asOf < panel.meta.y1) {   // honest past forecast: coefficients from labels 
   fits = fitter.fitAll({ maxYear: asOf, holdout: false, ablation: false }).fits;
   fitSource = `refit on labels ≤ ${asOf}`;
 }
-const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves, polygons, polygonOf, holders, warOutcomes, igo });
+const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves, polygons, polygonOf, holders, warOutcomes, igo, trade, unions });
 const t0 = Date.now();
 const PATH_VARS = ['actor:live', 'actor:regime', 'actor:at_war', 'actor:intrastate', 'actor:occupied', 'actor:great_power', 'dyad:at_war', 'record:status', 'world:polarity', 'world:hegemon'];
 const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, frames: { from: asOf + 1, pathVars: PATH_VARS, meta: { source: `fc-${asOf}`, kind: 'ensemble', asOf } }, framePaths: Math.min(PATHS, RUNS), frameVars: ENSEMBLE_VARS() });
