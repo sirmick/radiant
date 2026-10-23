@@ -13,6 +13,8 @@ export function newsItem(e, name, y) {
     case 'leader_exit': return { k: 'leader', y: e.year, a: [e.actor], t: `${nm(e.actor)}: leader leaves office${e.irregular ? ' (irregular)' : ''}${e.tenure_years ? ` after ${e.tenure_years}y` : ''}`, s };
     case 'coup': return { k: 'coup', y: e.year, a: [e.actor], t: `${nm(e.actor)}: coup ${e.success ? 'succeeds' : 'attempt fails'}`, s };
     case 'regime_change': return { k: 'regime', y: e.year, a: [e.actor], t: e.from != null && e.to != null ? `${nm(e.actor)}: ${REG[e.from]} → ${REG[e.to]}` : `${nm(e.actor)}: regime ${slug(e.t ?? e.direction)}`, s };
+    case 'opening': return { k: 'regime', y: e.year, a: [e.actor], t: `${nm(e.actor)}: opening — freedom of expression rises${e.size ? ` (+${e.size})` : ''}`, s };
+    case 'closing': return { k: 'regime', y: e.year, a: [e.actor], t: `${nm(e.actor)}: crackdown — freedom of expression falls${e.size ? ` (−${e.size})` : ''}`, s };
     case 'autocratization_onset': return { k: 'regime', y: e.year, a: [e.actor], t: `${nm(e.actor)}: autocratization episode begins`, s };
     case 'democratization_onset': return { k: 'regime', y: e.year, a: [e.actor], t: `${nm(e.actor)}: democratization episode begins`, s };
     case 'intrastate_onset': return { k: 'conflict', y: e.year, a: [e.actor], t: `${nm(e.actor)}: internal armed conflict${e.territory ? ` over ${e.territory}` : ''}${e.intensity === 2 ? ' (war)' : ''}`, s };

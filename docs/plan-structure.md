@@ -160,6 +160,37 @@ by the backtest, and published in frames. Order matters — later steps read ear
   like 1989-91: no bloc patron had liberalised and taken its clients with it, and the integral states that broke up
   before (Russia 1917-18, Austria-Hungary) lost some of their parts, not all. With the dated membership list
   (C5 off) the breakup is "predicted" at 100% — a leak, which is what C5 removes.
+- **Breakup scoring — 2026-10-23 (`scripts/analysis/breakup.mjs`, `scores/breakup-5y*.json`).** For every origin
+  1900-2014 and every state holding territories, P(at least one becomes a state within 5 / 10 years), hazards refit on
+  labels <= origin, covariates frozen at the origin, scored against climatology. What moved it:
+  - the unit is a holder's colonies OR its integral territory, never both (a remnant of islands and a federation of
+    nations do not come apart for the same reasons);
+  - the world-births wave and the democratic share act on colonies only; the centre's 3-year rise in freedom of
+    expression (V-Dem `v2x_freexp_altinf` — glasnost) on integral territory only;
+  - territories the generalised map cannot resolve (Hong Kong, Macau, San Marino, the Vatican) have no holder — they
+    were making "China" and "Italy" integral holders.
+  5-year skill 0.113 -> 0.199, AUC 0.668 -> 0.743; 1980-2014 AUC 0.39 -> 0.63. Watchlist: from 1987 the USSR ranks
+  first (18% in 5 y, 33% in 10 y), from 1990 Czechoslovakia 11%, from 2000 Indonesia 61% (East Timor); the leading
+  false positives are Sudan (2011) and Serbia (2006), both near misses. Tested and not adopted: prior statehood,
+  freedom gap, corruption, growth, held-area share, war defeat (CoW outcomes), ethnic fractionalisation (CREG/HIEF).
+  Members are drawn beta-binomial, the within-breakup correlation by zero-truncated ML (rho 0.10 at 1987).
+- **Opening / closing — trial templates, 2026-10-23.** `opening` (freedom of expression up >= 0.05 in a year, in an
+  autocracy) and `closing` (down >= 0.05), events from `scripts/build-vdem-extra.mjs`; the engine moves `freexp` by the
+  mean step on record. Opening is mostly contingency (holdout AUC 0.43 >= 1990) with momentum (+0.49 on a recent
+  opening); closing follows openings (+0.37: Czechoslovakia 1969, Poland 1981).
+- **Regional waves — 2026-10-23.** Fitted hazards under-state how events cluster in a V-Dem region-year. Gamma frailty
+  by moments over region-years (`fit.frailty`): opening theta 2.27, closing 0.79, democratize_step 0.52, leader_exit
+  0.07, coups 0. The engine draws one latent N(0,1) shock per region and year, AR(1) with the opening template's latent
+  coefficient (0.78), shared by every actor-year template (multiplier exp(sigma u - sigma^2/2), sigma^2 = ln(1+theta)),
+  and starts it from the wave visible at as-of (gamma posterior on the region's openings in the last three years).
+  `FRAILTY=0` turns it off. From 1987 Eastern Europe starts raised (+0.53); from 2009 the Middle East starts quiet
+  (-1.23), which is what a wave model should say before a spark.
+- **Case studies.** `scripts/analysis/ussr-1987.mjs`, `scripts/analysis/cluster.mjs` (joint outcomes per run; dispersion
+  = run variance over the independent variance). From 1987, C5 + breakup + openings + waves: P(>=1 Soviet republic a
+  state by 1992) 15%, by 1997 23%; >=10 by 1997 0.5-1.5%; >=1 Warsaw Pact democratisation by 1991 ~40%, >=3 ~1%. From
+  2009 for the Middle East's 17 autocracies, 2011-12: leader exits mean 3.5 (record 4), P(>=4) 48%; >=2 civil-war onsets
+  25% (record 2); >=4 openings 2.5% (record 4). Data note: REIGN codes Ben Ali's flight and Gaddafi's death as regular
+  exits — `irregular_exit` undercounts uprisings; Archigos (peacesciencer) codes them properly.
 - **C6 — done 2026-10-23.** Station open / close hazards over the dated presence layer (`src/engine/stations.js`), the
   presence index rebuilt as the run moves and read at the simulated year; a dyad `presence` variable carries it into
   the frames, and the viewer draws it after the seam. Gate: openings 0.62x, closures 0.56x of the record (between

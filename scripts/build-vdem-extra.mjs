@@ -12,6 +12,10 @@
 //   civlib   v2x_civlib          civil liberties
 //   rule     v2x_rule            rule of law
 //   repress  -v2csreprss         civil-society repression (sign flipped: higher = more repression; a latent scale, ~-4..4)
+//   region_pol  e_regionpol      V-Dem's politico-geographic region (1 E. Europe & C. Asia, 2 Latin America, 3 MENA,
+//                                4 Sub-Saharan Africa, 5 W. Europe & N. America, 6 E. Asia, 7 SE Asia, 8 S. Asia, 9 Pacific,
+//                                10 Caribbean): the contagion neighbourhood is V-Dem's, not one drawn here
+//   mobil    v2cagenmob          mass mobilisation: frequency and size of protest (latent, ~-3..3)
 //
 // Also writes two derived event kinds into data/events.json (replacing any earlier copies of them):
 //   opening   freexp rises by >= OPEN_STEP in one year while the regime is an autocracy (RoW 0-1) — liberalisation from
@@ -22,7 +26,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { loadActors, makeCodeMap } from './lib/hist.mjs';
 
 const OPEN_STEP = 0.05;
-const COLS = { freexp: 'v2x_freexp_altinf', corr: 'v2x_corr', civlib: 'v2x_civlib', rule: 'v2x_rule', repress: 'v2csreprss' };
+const COLS = { freexp: 'v2x_freexp_altinf', corr: 'v2x_corr', civlib: 'v2x_civlib', rule: 'v2x_rule', repress: 'v2csreprss', region_pol: 'e_regionpol', mobil: 'v2cagenmob' };
 const panel = JSON.parse(readFileSync('data/panel.json', 'utf8'));
 const Y0 = panel.meta.y0, N = panel.years.length;
 const cow = makeCodeMap(loadActors(), 'cow');

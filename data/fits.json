@@ -1,11 +1,18 @@
 {
  "meta": {
-  "built": "2026-10-23T10:37:27.137Z"
+  "built": "2026-10-23T15:32:42.057Z"
  },
  "fits": {
   "leader_exit": {
    "ablation": null,
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0.0685,
+    "rho_resid": 0.183,
+    "rho": 0.724,
+    "groups": 657
+   },
    "unit": "actor-year",
    "event": "leader_exit",
    "n": 9762,
@@ -202,6 +209,13 @@
     }
    ],
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0,
+    "rho_resid": 0.07,
+    "rho": 0,
+    "groups": 657
+   },
    "unit": "actor-year",
    "event": "leader_exit",
    "n": 9409,
@@ -523,6 +537,13 @@
     }
    ],
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0,
+    "rho_resid": 0.119,
+    "rho": 0,
+    "groups": 667
+   },
    "unit": "actor-year",
    "event": "coup",
    "n": 9427,
@@ -733,6 +754,13 @@
     }
    ],
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0.5172,
+    "rho_resid": 0.261,
+    "rho": 0.95,
+    "groups": 1417
+   },
    "unit": "actor-year",
    "event": "regime_change",
    "n": 9949,
@@ -861,6 +889,286 @@
    "fitted": "2026-10-23",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
+  "opening": {
+   "ablation": null,
+   "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 2.2677,
+    "rho_resid": 0.342,
+    "rho": 0.783,
+    "groups": 1413
+   },
+   "unit": "actor-year",
+   "event": "opening",
+   "n": 9579,
+   "events": 525,
+   "base_rate": 0.0548073911681804,
+   "window": [
+    1816,
+    2024
+   ],
+   "degenerate": [],
+   "epv": 75,
+   "trained_through": 2025,
+   "train_years": [
+    1822,
+    2025
+   ],
+   "intercept": -3.0066514936244673,
+   "coefs": {
+    "z(freexp)": {
+     "value": -0.03548086026298127,
+     "prior": 0
+    },
+    "win5(opening_recent)": {
+     "value": 0.493960936026435,
+     "prior": 0.5
+    },
+    "win5(leader_exit_recent)": {
+     "value": 0.1405202122631336,
+     "prior": 0.3
+    },
+    "z(gdp_growth)": {
+     "value": -0.21128121866041893,
+     "prior": -0.2
+    },
+    "lag1(at_war)": {
+     "value": 0.07583240684543795,
+     "prior": 0
+    },
+    "z(log_gdp_pc)": {
+     "value": 0.0650083822272834,
+     "prior": 0.2
+    },
+    "z(info_access)": {
+     "value": 0.013549192672226667,
+     "prior": 0.2
+    }
+   },
+   "stats": {
+    "freexp": {
+     "mean": 0.38742478338031155,
+     "sd": 0.2554786537257995
+    },
+    "gdp_growth": {
+     "mean": 0.01594489429118032,
+     "sd": 0.07009782892374739
+    },
+    "log_gdp_pc": {
+     "mean": 7.976168862982952,
+     "sd": 0.9282105973288373
+    },
+    "info_access": {
+     "mean": 0.15776979537115512,
+     "sd": 0.28999834194362856
+    }
+   },
+   "auc_in": 0.5873093712855144,
+   "brier_in": 0.05151794071989021,
+   "calibration": [
+    {
+     "pred": 0.036455975115120574,
+     "obs": 0.034482758620689655,
+     "n": 957
+    },
+    {
+     "pred": 0.04288368828192216,
+     "obs": 0.04175365344467641,
+     "n": 958
+    },
+    {
+     "pred": 0.04500918122397602,
+     "obs": 0.0407098121085595,
+     "n": 958
+    },
+    {
+     "pred": 0.046706777604608854,
+     "obs": 0.04279749478079332,
+     "n": 958
+    },
+    {
+     "pred": 0.04828162514634699,
+     "obs": 0.05219206680584551,
+     "n": 958
+    },
+    {
+     "pred": 0.050667352100818644,
+     "obs": 0.04592901878914405,
+     "n": 958
+    },
+    {
+     "pred": 0.053966715218914364,
+     "obs": 0.06576200417536535,
+     "n": 958
+    },
+    {
+     "pred": 0.05942970748542363,
+     "obs": 0.05741127348643006,
+     "n": 958
+    },
+    {
+     "pred": 0.07039055035160789,
+     "obs": 0.07515657620041753,
+     "n": 958
+    },
+    {
+     "pred": 0.0942631831925077,
+     "obs": 0.0918580375782881,
+     "n": 958
+    }
+   ],
+   "holdout": {
+    "split": 1990,
+    "n_train": 6690,
+    "n_test": 2889,
+    "auc": 0.42928253730722865,
+    "brier": 0.07563314975455242,
+    "base_rate_test": 0.07476635514018691
+   },
+   "lambda": 32,
+   "half_life": null,
+   "fitted": "2026-10-23",
+   "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
+  },
+  "closing": {
+   "ablation": null,
+   "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0.7941,
+    "rho_resid": 0.333,
+    "rho": 0.95,
+    "groups": 720
+   },
+   "unit": "actor-year",
+   "event": "closing",
+   "n": 10650,
+   "events": 376,
+   "base_rate": 0.03530516431924883,
+   "window": [
+    1816,
+    2024
+   ],
+   "degenerate": [],
+   "epv": 47,
+   "trained_through": 2025,
+   "train_years": [
+    1948,
+    2025
+   ],
+   "intercept": -3.5747599701327584,
+   "coefs": {
+    "regime=1": {
+     "value": 0.38470041213325445,
+     "prior": 0.3
+    },
+    "regime=2": {
+     "value": 0.0635600641032468,
+     "prior": 0
+    },
+    "regime=3": {
+     "value": -0.9845834406368459,
+     "prior": -0.5
+    },
+    "z(freexp)": {
+     "value": 0.31264580054819935,
+     "prior": 0.3
+    },
+    "win5(opening_recent)": {
+     "value": 0.3660382051382965,
+     "prior": 0.3
+    },
+    "win5(coup_attempt)": {
+     "value": 0.3271853637112165,
+     "prior": 0.5
+    },
+    "lag1(intrastate)": {
+     "value": 0.493732761325806,
+     "prior": 0.3
+    },
+    "z(gdp_growth)": {
+     "value": -0.13655620171413943,
+     "prior": -0.2
+    }
+   },
+   "stats": {
+    "freexp": {
+     "mean": 0.5492825352112658,
+     "sd": 0.33164495060311777
+    },
+    "gdp_growth": {
+     "mean": 0.02250025546272808,
+     "sd": 0.06457633755557672
+    }
+   },
+   "auc_in": 0.6915126595123406,
+   "brier_in": 0.03361733312933266,
+   "calibration": [
+    {
+     "pred": 0.013868953106455468,
+     "obs": 0.014084507042253521,
+     "n": 1065
+    },
+    {
+     "pred": 0.015447884751942823,
+     "obs": 0.0009389671361502347,
+     "n": 1065
+    },
+    {
+     "pred": 0.01777584653189057,
+     "obs": 0.007511737089201878,
+     "n": 1065
+    },
+    {
+     "pred": 0.023337252657595457,
+     "obs": 0.018779342723004695,
+     "n": 1065
+    },
+    {
+     "pred": 0.029445250970326665,
+     "obs": 0.03568075117370892,
+     "n": 1065
+    },
+    {
+     "pred": 0.03445840326118248,
+     "obs": 0.04507042253521127,
+     "n": 1065
+    },
+    {
+     "pred": 0.03868412534162902,
+     "obs": 0.03943661971830986,
+     "n": 1065
+    },
+    {
+     "pred": 0.04428701523412215,
+     "obs": 0.051643192488262914,
+     "n": 1065
+    },
+    {
+     "pred": 0.0547493054454915,
+     "obs": 0.0647887323943662,
+     "n": 1065
+    },
+    {
+     "pred": 0.0809976058918522,
+     "obs": 0.07511737089201878,
+     "n": 1065
+    }
+   ],
+   "holdout": {
+    "split": 1990,
+    "n_train": 4731,
+    "n_test": 5919,
+    "auc": 0.6448837691191932,
+    "brier": 0.03708595779698937,
+    "base_rate_test": 0.038688967731035646
+   },
+   "lambda": 32,
+   "half_life": null,
+   "fitted": "2026-10-23",
+   "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
+  },
   "democratic_deepening": {
    "ablation": [
     {
@@ -923,6 +1231,13 @@
     }
    ],
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0.1275,
+    "rho_resid": 0.046,
+    "rho": 0.95,
+    "groups": 615
+   },
    "unit": "actor-year",
    "event": "regime_change",
    "n": 2415,
@@ -1165,6 +1480,13 @@
     }
    ],
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0.1477,
+    "rho_resid": 0.109,
+    "rho": 0.807,
+    "groups": 1094
+   },
    "unit": "actor-year",
    "event": "regime_change",
    "n": 9877,
@@ -1393,6 +1715,13 @@
     }
    ],
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0.105,
+    "rho_resid": 0.099,
+    "rho": 0.856,
+    "groups": 718
+   },
    "unit": "actor-year",
    "event": "intrastate_onset",
    "n": 10487,
@@ -1603,6 +1932,7 @@
     }
    ],
    "status": "fitted",
+   "frailty": null,
    "unit": "dyad-year",
    "event": "mid_force",
    "n": 94287,
@@ -1809,6 +2139,7 @@
     }
    ],
    "status": "fitted",
+   "frailty": null,
    "unit": "dyad-year",
    "event": "mid_war",
    "n": 94287,
@@ -1947,6 +2278,7 @@
   "interstate_onset": {
    "ablation": null,
    "status": "fitted",
+   "frailty": null,
    "unit": "dyad-year",
    "event": "interstate_onset",
    "n": 83391,
@@ -2187,6 +2519,7 @@
     }
    ],
    "status": "fitted",
+   "frailty": null,
    "unit": "war-year",
    "event": "war_end",
    "n": 1021,
@@ -2301,6 +2634,13 @@
   "intrastate_end": {
    "ablation": null,
    "status": "fitted",
+   "frailty": {
+    "by": "region_pol",
+    "theta": 0,
+    "rho_resid": 0.158,
+    "rho": 0,
+    "groups": 460
+   },
    "unit": "actor-year",
    "event": "intrastate_end",
    "n": 1683,
@@ -2432,6 +2772,7 @@
   "record_reopen": {
    "ablation": null,
    "status": "fitted",
+   "frailty": null,
    "unit": "record-year",
    "event": "record_reopen",
    "n": 395,
@@ -2623,6 +2964,7 @@
     }
    ],
    "status": "fitted",
+   "frailty": null,
    "unit": "territory-year",
    "event": "territory_settle",
    "n": 3749,
@@ -2730,6 +3072,7 @@
   "wave_attain": {
    "ablation": null,
    "status": "fitted",
+   "frailty": null,
    "unit": "actor-wave-year",
    "event": "wave_attain",
    "n": 65879,
@@ -2928,6 +3271,7 @@
     }
    ],
    "status": "fitted",
+   "frailty": null,
    "unit": "chokepoint-year",
    "event": "chokepoint",
    "n": 2423,
@@ -3072,6 +3416,7 @@
     }
    ],
    "status": "fitted",
+   "frailty": null,
    "unit": "corridor-year",
    "event": "corridor",
    "n": 3704,

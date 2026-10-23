@@ -116,6 +116,43 @@ templates:
     sources: ["Gleditsch & Ward 2006", "V-Dem RoW via OWID"]
     lifecycle: { phase: active, promoted: 2026-09-06, reason: "category-step target beats ERT episodes on holdout: AUC 0.47→0.77; engine uses this for regime dynamics" }
 
+  - id: opening
+    lead: 1
+    label: Liberalisation from above — freedom of expression rises >= 0.05 in a year (autocracies)
+    unit: actor-year
+    event: opening                     # scripts/build-vdem-extra.mjs, from V-Dem v16 v2x_freexp_altinf: the thaw, the Prague Spring, Spain 1976, glasnost 1987, Taiwan 1987
+    window: [1816, 2024]
+    holdout_split: 1990
+    sample: { regime_max: 1, exclude_flag: occupied }
+    covariates:
+      - { var: freexp, transform: z, prior: 0 }
+      - { var: opening_recent, transform: win5, prior: 0.5 }     # an opening runs over years (USSR 1987, 1989, 1990)
+      - { var: leader_exit_recent, transform: win5, prior: 0.3, default_outside: { window: [1946, 2021], value: 0, source: "REIGN leader exits start 1950; pre-1946 this is an imputed 0, not an observation" } }
+      - { var: gdp_growth, transform: z, prior: -0.2 }          # stagnation pushes reform
+      - { var: at_war, transform: lag1, prior: 0 }
+      - { var: log_gdp_pc, transform: z, prior: 0.2 }
+      - { var: info_access, transform: z, prior: 0.2 }
+    sources: ["V-Dem v16", "O'Donnell & Schmitter 1986 (transitions from above)"]
+    lifecycle: { phase: trial, added: 2026-10-23, reason: "the trigger of the breakup chain (docs/plan-structure.md, opening): in a run, the centre's freedom of expression must be able to move, or the opening it starts from fades out of the 3-year rise by year 3" }
+
+  - id: closing
+    lead: 1
+    label: Crackdown — freedom of expression falls >= 0.05 in a year
+    unit: actor-year
+    event: closing
+    window: [1816, 2024]
+    holdout_split: 1990
+    sample: { exclude_flag: occupied }
+    covariates:
+      - { var: regime, transform: cat, prior: { 0: 0, 1: 0.3, 2: 0, 3: -0.5 } }
+      - { var: freexp, transform: z, prior: 0.3 }               # more to lose
+      - { var: opening_recent, transform: win5, prior: 0.3 }     # the reaction to an opening (Czechoslovakia 1969, Poland 1981)
+      - { var: coup_attempt, transform: win5, prior: 0.5 }
+      - { var: intrastate, transform: lag1, prior: 0.3 }
+      - { var: gdp_growth, transform: z, prior: -0.2 }
+    sources: ["V-Dem v16"]
+    lifecycle: { phase: trial, added: 2026-10-23, reason: "the other branch after an opening: a crackdown instead of a cascade" }
+
   - id: democratic_deepening
     lead: 1
     label: Electoral democracy deepens to liberal democracy (2→3)

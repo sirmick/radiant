@@ -76,12 +76,15 @@ export const BREAKUP = { rise_years: 3, growth_years: 5 };
 //   prior       share of held territories that were states before and lost it (subjugated: the Baltics, Poland 1918)
 //   growth      5-year mean output growth (x20; missing = the world mean 0.02)
 //   heldShare   held territories' area over held + own
+//   defeat      lost an inter-state war in the last three years (CoW outcome; Austria-Hungary 1918, Pakistan 1971)
+//   ethfrac     ethnic fractionalisation (CREG, 1945+; HIEF where CREG is missing; before 1945 missing = 0.4) (x3)
 const BFEAT = {
   held: (s) => Math.log1p(s.held ?? 0), colonial: (s) => s.colonial ?? 0, rise: (s) => Math.max(0, s.rise ?? 0) * 10,
   atWar: (s) => (s.atWar ? 1 : 0), recentBreak: (s) => (s.recentBreak ? 1 : 0), recent: (s) => Math.log1p(s.recent ?? 0),
   dem: (s) => (s.dem ?? 0.3) * 3, great: (s) => (s.great ? 1 : 0), open: (s) => Math.max(0, s.open ?? 0) * 5,
   freexp: (s) => s.freexp ?? 0.3, corr: (s) => s.corr ?? 0.5, gap: (s) => Math.max(0, s.gap ?? 0) * 3, prior: (s) => s.prior ?? 0,
   growth: (s) => (s.growth ?? 0.02) * 20, heldShare: (s) => s.heldShare ?? 0,
+  defeat: (s) => (s.defeat ? 1 : 0), ethfrac: (s) => (s.ethfrac ?? 0.4) * 3,
 };
 // The default, chosen by scripts/analysis/breakup.mjs (5-year windows, origins 1900-2014, hazards refit at each origin):
 // the world-births wave and the democratic share act on colonies only, the centre's opening on integral territory only.
@@ -123,6 +126,7 @@ export function holderStatePanel(h, i, list, ctx) {
     great: (at('great_power', i - 1) ?? 0) > 0, open: f1 != null && f0 != null ? f1 - f0 : 0, freexp: f1, corr: at('corr', i - 1),
     gap, prior: list.filter(x => x.prior).length / list.length, growth: g.length ? g.reduce((s, x) => s + x, 0) / g.length : null,
     heldShare: hA + oA > 0 ? hA / (hA + oA) : 0,
+    defeat: [1, 2, 3].some(k => (at('war_defeat', i - k) ?? 0) > 0), ethfrac: at('ethfrac', i - 1) ?? at('efindex', i - 1),
   };
 }
 /**
@@ -136,6 +140,8 @@ export function holderStateWorld(a, list, { hist, breakYears, recent, dem, y }) 
     atWar: (a.cur.at_war ?? 0) > 0, recentBreak: (breakYears.get(a.id) ?? []).some(b => b >= y - 5 && b < y), recent, dem,
     great: (a.cur.great_power ?? 0) > 0, freexp: a.cur.freexp ?? null, corr: a.cur.corr ?? null,
     prior: list.filter(x => x.prior).length / list.length, growth: a.cur.gdp_growth ?? null,
+    // a defeat is read from the as-of record for the years it still covers; the engine does not draw war outcomes yet
+    defeat: (a.defeatUntil ?? -Infinity) >= y, ethfrac: a.cur.ethfrac ?? a.cur.efindex ?? null,
   };
 }
 /** contiguous(h, y): the actors contiguous with h in year y, from the dated contiguity pairs. */

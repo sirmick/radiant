@@ -99,6 +99,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
   const derived = {
     milper_share: (a, y) => { const m = pv(a, 'milper', y), p = pv(a, 'tpop', y); return m != null && p ? (m * 1e3) / p : null; },
     leader_exit_recent: (a, y) => win5ev('leader_exit', a, y),
+    opening_recent: (a, y) => win5ev('opening', a, y),
     regime_change: (a, y) => (hasEvent('regime_change', a, y) ? 1 : 0),
     // operator/termination: years the actor's internal-conflict spell has already run when year y opens. Counted back
     // over the panel's own `intrastate` column, which is the flag the engine sets and clears, so the duration fitted
@@ -436,6 +437,26 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
       }
     }
     const evn = yv.reduce((a, b) => a + b, 0);
+    // regional frailty (docs/plan-structure.md, "waves"): how much more an actor-year template's events cluster within a
+    // region-year (V-Dem's politico-geographic regions) than the fitted, independent hazards say. Gamma frailty on the
+    // rate, by moments over region-years: theta = sum[(O - E)^2 - V] / sum E^2, V = sum p(1 - p) (0 = no clustering).
+    // The engine draws one shared multiplier per region and year with this variance (src/engine/core.js:regionShocks).
+    let frailty = null;
+    if (t.unit === 'actor-year') {
+      const g = new Map();
+      rows.forEach((r, k) => { const reg = pv(r.unit, 'region_pol', r.year); if (reg == null) return; const key = `${reg}|${labelYear(t, r)}`; const o = g.get(key) ?? g.set(key, { O: 0, E: 0, V: 0 }).get(key); o.O += r.y; o.E += pIn[k]; o.V += pIn[k] * (1 - pIn[k]); });
+      let num = 0, den = 0; for (const o of g.values()) { num += (o.O - o.E) ** 2 - o.V; den += o.E ** 2; }
+      const theta = den > 0 ? Math.max(0, num / den) : 0;
+      // persistence: the lag-1 correlation of a region's standardised residual (O - E) / sqrt(V + theta E^2) — a wave runs
+      // over years; with rho > 0 the engine's shock is AR(1) and starts from the residual observed at as-of
+      const z = new Map(); for (const [key, o] of g) z.set(key, (o.O - o.E) / Math.sqrt(Math.max(1e-9, o.V + theta * o.E ** 2)));
+      let sxy = 0, sxx = 0, syy = 0, n = 0; for (const [key, a] of z) { const [reg, yr] = key.split('|'); const b = z.get(`${reg}|${+yr + 1}`); if (b == null) continue; sxy += a * b; sxx += a * a; syy += b * b; n++; }
+      // the latent shock's own AR(1) coefficient: Cov(O_t - E_t, O_t+1 - E_t+1) = rho theta E_t E_t+1 under the shared
+      // multiplicative shock (the counting noise is independent across years, so it drops out of the cross term)
+      let cxy = 0, cee = 0; for (const [key, a] of g) { const [reg, yr] = key.split('|'); const b = g.get(`${reg}|${+yr + 1}`); if (!b) continue; cxy += (a.O - a.E) * (b.O - b.E); cee += a.E * b.E; }
+      const rhoU = theta > 0 && cee > 0 ? Math.min(0.95, Math.max(0, cxy / (theta * cee))) : 0;
+      frailty = { by: 'region_pol', theta: +theta.toFixed(4), rho_resid: n > 10 ? +(sxy / Math.sqrt(sxx * syy)).toFixed(3) : 0, rho: +rhoU.toFixed(3), groups: g.size };
+    }
     // ---- ablation: candidates fitted one at a time and all together, scored on the same era holdout
     let ablationOut = null;
     if (ablation && t.candidates?.length) {
@@ -497,7 +518,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
     }
     const fit = {
       ablation: ablationOut,
-      status: 'fitted', unit: t.unit, event: t.event, n: rows.length, events: evn, base_rate: evn / rows.length, window: t.window,
+      status: 'fitted', frailty, unit: t.unit, event: t.event, n: rows.length, events: evn, base_rate: evn / rows.length, window: t.window,
       degenerate, epv: evn / Math.max(1, cols.length - degenerate.length),
       ...(clusters != null ? { cluster: t.cluster, n_clusters: clusters, epv_clusters: clusters / Math.max(1, cols.length - degenerate.length) } : {}),
       trained_through: maxYear ?? Math.max(...years), train_years: [Math.min(...years), Math.max(...years)],

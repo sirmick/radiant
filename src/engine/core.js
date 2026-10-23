@@ -160,6 +160,7 @@ const NO_STATIONS = ABLATE.includes('presence');
 const COUPLING_ON = (typeof process !== 'undefined' && process.env?.COUPLING) !== '0';
 const COUP_SUCCESS = 0.5;
 const NO_BREAKUP = ABLATE.includes('breakup');
+const NO_FRAILTY = ABLATE.includes('frailty') || (typeof process !== 'undefined' && process.env?.FRAILTY === '0');
 // diagnostic only (a leak by construction): fit the membership hazards through this year instead of as-of, to tell a
 // fit/simulation mismatch from a regime shift the training years cannot see
 const MEMBERSHIP_FIT_YEAR = typeof process !== 'undefined' && process.env?.MEMBERSHIP_FIT_YEAR ? +process.env.MEMBERSHIP_FIT_YEAR : null;
@@ -553,6 +554,7 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
   const recent = {};
   for (const v of ['coup_attempt', 'intrastate', 'mid_force', 'at_war', 'regime_up']) { recent[v] = []; for (let k = 1; k <= 5; k++) { const x = pv(v, at - k); recent[v].push(x != null && x > 0 ? 1 : 0); } }
   recent.leader_exit = []; for (let k = 1; k <= 5; k++) recent.leader_exit.push(events.some(e => e.kind === 'leader_exit' && e.actor === id && Math.floor(e.year) === at - k) ? 1 : 0);
+  recent.opening = []; for (let k = 1; k <= 5; k++) recent.opening.push(events.some(e => e.kind === 'opening' && e.actor === id && Math.floor(e.year) === at - k) ? 1 : 0);
   const prev = build(at - 1);
   if (cur.gdp_growth == null && g.length) { cur.gdp_growth = g.reduce((a, b) => a + b, 0) / g.length; stale.gdp_growth = null; carry.gdp_growth = 'trailing_mean'; }
   // operator/termination: the first year of the internal-conflict run the actor is in at `at`, so a spell already
@@ -808,6 +810,10 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     waves: initWaves({ waves, actors, asOf, templates }),
     // C1: the world's trailing mean growth at the origin, the centre of every actor's growth process
     growthMean: trailingMean(panel, asOf, GROWTH_MEAN),
+    // regional waves: the shared shock's persistence and its state at as-of (see frailtyInit)
+    ...frailtyInit(panel, events, fits, asOf),
+    // the mean freedom-of-expression step of an opening / a closing on record up to as-of (V-Dem; the events are truncated)
+    openStep: Object.fromEntries(['opening', 'closing'].map(k => { const xs = events.filter(e => e.kind === k && e.size != null).map(e => e.size); return [k, xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0.1]; })),
     // C2: the great-power transitions, fitted on the panel's CoW column with labels at or before as-of
     gpFit: NO_GP_DYNAMICS ? null : fitGreatPower(panel, asOf),
     // C3: the pact hazards, fitted on the dated graph with labels at or before as-of, and each live pact's age
@@ -836,6 +842,34 @@ function breakupState(panel, holders, polygons, polygonOf, asOf) {
   // index 0 is pushed by the first simulated year (the as-of value); these are asOf-1 .. asOf-R
   for (const [id, a] of Object.entries(panel.actors)) polyHist.set(id, Object.fromEntries(['polyarchy', 'freexp'].map(v => [v, Array.from({ length: BREAKUP.rise_years }, (_, k) => a[v]?.[asOf - 1 - k - Y0] ?? null)])));
   return { holder, breakYears, polyHist };
+}
+
+/**
+ * Regional waves at the origin. The reference template is the one with the strongest fitted clustering (`opening`);
+ * its latent AR(1) coefficient is the shared shock's. The shock's state at as-of per region is the posterior of a gamma
+ * frailty on the region's openings in the last three years (weights rho^k) against the expected count — autocracies in
+ * the region times the record's opening rate per autocracy-year up to as-of — mapped to the lognormal scale. A region
+ * in the middle of a wave (Eastern Europe 1987-89, the Middle East 2011) starts high; a quiet one starts near 0.
+ */
+function frailtyInit(panel, events, fits, asOf) {
+  // the reference is the opening template (the trigger the waves are made of) where it is fitted, else the most clustered
+  const cands = Object.entries(fits ?? {}).filter(([, f]) => f?.frailty?.theta > 0);
+  const ref = cands.find(([k]) => k === 'opening') ?? cands.sort((a, b) => b[1].frailty.theta - a[1].frailty.theta)[0];
+  if (!ref || NO_FRAILTY) return { frailRho: 0, frailInit: [] };
+  const [refId, f] = ref; const theta = f.frailty.theta, rho = f.frailty.rho ?? 0, sg = Math.sqrt(Math.log(1 + theta));
+  const kind = f.event ?? refId; const Y0 = panel.meta.y0;
+  const autoc = (id, y) => { const a = panel.actors[id]; return a?.live?.[y - Y0] === 1 && (a.regime?.[y - Y0] ?? 9) <= 1; };
+  let ev = 0, ay = 0; for (const [id] of Object.entries(panel.actors)) for (let y = Math.max(Y0, asOf - 60); y <= asOf; y++) if (autoc(id, y)) ay++;
+  const evs = events.filter(e => e.kind === kind && e.year <= asOf);
+  for (const e of evs) if (e.year > asOf - 60) ev++;
+  const rate = ay ? ev / ay : 0.05; const init = [];
+  for (let r = 1; r <= 10; r++) {
+    let O = 0, E = 0;
+    for (let k = 0; k < 3; k++) { const y = asOf - k, w = rho ** k; const ids = Object.keys(panel.actors).filter(id => panel.actors[id].region_pol?.[y - Y0] === r && autoc(id, y - 1)); E += w * ids.length * rate; O += w * evs.filter(e => Math.floor(e.year) === y && ids.includes(e.actor)).length; }
+    const zbar = (1 / theta + O) / (1 / theta + E);
+    init.push([r, Math.max(-2.5, Math.min(2.5, (Math.log(zbar) + sg * sg / 2) / sg))]);
+  }
+  return { frailRho: rho, frailInit: init };
 }
 
 /** The years states entered the system in the five years to asOf (the wave term's memory at the origin). */
@@ -923,6 +957,7 @@ function featureActor(world, a, c) {
   const derived = {
     milper_share: (s) => (s.milper != null && s.tpop ? (s.milper * 1e3) / s.tpop : null),
     leader_exit_recent: () => (a.recent.leader_exit.some(x => x) ? 1 : 0),
+    opening_recent: () => (a.recent.opening?.some(x => x) ? 1 : 0),
     regime_change: () => (a.fired.regime_change ? 1 : 0),
     ally_up_recent: () => (world.upAllies?.has(a.id) ? 1 : 0),   // bloc contagion: set by stepYear from the year's pact graph
   };
@@ -1139,6 +1174,10 @@ function applyActorEvent(world, a, kind, rng) {
       if (NO_TERM.intrastate) a.conflictLeft = 1 + Math.floor(rng() * 6);
       a.cur.gdp_pc *= 0.97; break;
     }
+    // opening / closing: freedom of expression moves by the mean step observed up to as-of (world.openStep), and the
+    // opening is remembered for opening_recent (the next step of a thaw, or the crackdown that answers it)
+    case 'opening': a.cur.freexp = Math.min(1, (a.cur.freexp ?? 0.3) + (world.openStep?.opening ?? 0.1)); if (a.recent.opening) a.recent.opening[0] = 1; break;
+    case 'closing': a.cur.freexp = Math.max(0, (a.cur.freexp ?? 0.3) - (world.openStep?.closing ?? 0.1)); break;
     default: throw new Error(`applyActorEvent: no state rewrite for '${kind}' — a simulated template must change state`);
   }
 }
@@ -1159,7 +1198,7 @@ export function applyRecordedEvent(world, a, e, rng) {
   return rewrite;
 }
 // every template the engine simulates must have a rewrite above; checked once per world at the first step
-const HANDLED = new Set(['irregular_exit', 'leader_exit', 'coup', 'autocratization_onset', 'autocratize_step', 'democratization_onset', 'democratize_step', 'autocratic_closure', 'liberal_erosion', 'democratic_deepening', 'intrastate_onset']);
+const HANDLED = new Set(['irregular_exit', 'leader_exit', 'coup', 'autocratization_onset', 'autocratize_step', 'democratization_onset', 'democratize_step', 'autocratic_closure', 'liberal_erosion', 'democratic_deepening', 'intrastate_onset', 'opening', 'closing']);
 
 /**
  * Bring an actor into a world in year `y`. Its state is the panel as it stood at as-of (an observation of the year it
@@ -1464,10 +1503,23 @@ export function stepYear(world, rng, opts = {}) {
   // bloc contagion (ally_up_recent): the actors with a pact partner that moved up a regime category in the last two
   // years — recent.regime_up[0] is last year, [1] the year before, the panel's regime_up at the row year and the one before
   { const up = (id) => { const r = world.actors[id]?.recent?.regime_up; return !!(r && (r[0] || r[1])); }; const s = new Set(); for (const k of world.allied ?? []) { const i = k.indexOf('|'); const p = k.slice(0, i), q = k.slice(i + 1); if (up(q)) s.add(p); if (up(p)) s.add(q); } world.upAllies = s; }
+  // regional waves (docs/plan-structure.md): one latent shock u ~ N(0, 1) per V-Dem region and year, shared by every
+  // actor-year template; template k's hazard rate is multiplied by exp(sigma_k u - sigma_k^2 / 2) — mean 1, variance
+  // theta_k, the clustering its fit measured over region-years (fit.frailty). The shocks come from a stream of their
+  // own, so the main stream draws exactly as before; FRAILTY=0 turns them off.
+  // The shock is AR(1) — a wave runs over years — with the reference template's latent coefficient (the one whose waves
+  // are strongest, `opening`: fit.frailty.rho), and it STARTS from the wave observed at as-of (world.frailInit).
+  world.frailSigma ??= NO_FRAILTY ? {} : Object.fromEntries(Object.entries(world.fits).filter(([, f]) => f?.frailty?.theta > 0).map(([k, f]) => [k, Math.sqrt(Math.log(1 + f.frailty.theta))]));
+  let shocks = null;
+  if (opts.frailRng && Object.keys(world.frailSigma).length) {
+    const rho = world.frailRho ?? 0; shocks = world.frailU ??= new Map(world.frailInit ?? []);
+    for (let r = 1; r <= 10; r++) { const u1 = Math.max(1e-12, opts.frailRng()), u2 = opts.frailRng(); const e = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2); shocks.set(r, rho * (shocks.get(r) ?? 0) + Math.sqrt(1 - rho * rho) * e); }
+  }
   const nest = world.subsetNesting ??= subsetNesting(world.templates);
   const CP = world.coupling;
   for (const id of ids) {
     const a = world.actors[id]; const hz = actorHazards(world, a);
+    if (shocks) { const u = shocks.get(a.cur.region_pol); if (u != null) for (const k of Object.keys(hz)) { const sg = world.frailSigma?.[k]; if (sg) hz[k] = 1 - Math.pow(1 - Math.min(hz[k], 0.999), Math.exp(sg * u - (sg * sg) / 2)); } }
     // D3: with coupling on the coup is drawn first, because what follows a coup in the same year is not independent of it
     const order = Object.entries(hz).sort((x, z) => (CP ? (x[0] === 'coup_attempt' ? -1 : 0) - (z[0] === 'coup_attempt' ? -1 : 0) : 0) || (nest.has(x[0]) ? 1 : 0) - (nest.has(z[0]) ? 1 : 0));
     const firedHere = new Set();
@@ -1732,9 +1784,10 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     const nukeRng = mulberry32(seed * 49979687 + r);     // C4
     const memRng = mulberry32(seed * 67867967 + r);      // C5
     const stationRng = mulberry32(seed * 86028121 + r);  // C6
+    const frailRng = mulberry32(seed * 49979687 + r);    // regional waves
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
-      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng, allyRng, nukeRng, memRng, stationRng });
+      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng, allyRng, nukeRng, memRng, stationRng, frailRng });
       if (fb) { const snap = observe(w, { vars: obsKeys }); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
