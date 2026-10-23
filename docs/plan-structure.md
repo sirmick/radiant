@@ -191,6 +191,23 @@ by the backtest, and published in frames. Order matters — later steps read ear
   2009 for the Middle East's 17 autocracies, 2011-12: leader exits mean 3.5 (record 4), P(>=4) 48%; >=2 civil-war onsets
   25% (record 2); >=4 openings 2.5% (record 4). Data note: REIGN codes Ben Ali's flight and Gaddafi's death as regular
   exits — `irregular_exit` undercounts uprisings; Archigos (peacesciencer) codes them properly.
+- **Leader exits re-coded from Archigos — 2026-10-23 (`scripts/build-archigos.mjs`).** REIGN marks only coup removals
+  irregular; Archigos 4.1 codes the manner (Ben Ali and Mubarak: popular protest; Gaddafi: rebels with foreign support).
+  1,798 of 2,117 exits matched; 134 become irregular, 31 regular; 35 flagged foreign-supported (`foreign_support`,
+  `exit_manner`; the REIGN flag kept as `irregular_reign`). irregular_exit holdout AUC 0.757 -> 0.787.
+- **War outcomes — 2026-10-23 (`src/engine/waroutcome.js`, `data/war_outcomes.json`).** P(a belligerent loses) on the log
+  ratio of its side's capability (with co-belligerents) to the other's, fitted on CoW wars ended by as-of; the
+  capability slope falls from -1.27 (fit to 1900) to -0.38 (to 2010) — the weak side wins more after 1945. A simulated
+  war's end draws a loser (own stream), who carries `war_defeat`; great-power exit reads it (+1.3 on 4 recorded exits,
+  fit on a defeat in t or t-1, applied the year after in a run). Gate: gp_exit 0.31x -> 0.28x — unchanged, the exits
+  before 1946 are too few for the 1900/1930 origins to learn. As a candidate on leader_exit / irregular_exit /
+  democratize_step: no holdout gain, not adopted. Backtest with Archigos + outcomes: 11 up, 6 down, mean -0.0372 -> -0.0361.
+- **Tested, not adopted — 2026-10-23.** Shared IGO memberships (CoW IGO v3, `data/igo.json`) as a dyadic pacifier:
+  log(igo) +0.05 on mid_force, +0.10 on mid_war, -0.07 on interstate_onset (no gain); a hinge above 70 shared IGOs
+  (deep integration) cannot be identified by the fitter's pre-1946 ablation split. A great-power ally as protection
+  against state death: +0.26 (not protective in the record). External-support data (UCDP ESD) is not reachable.
+- **Birth pool** excludes territories with no permanent population (`data/uninhabited.yaml`) or under 10,000 people
+  (World Bank, via the `datasets/population` mirror): the first 50-year run made Antarctica a state in 35% of worlds.
 - **C6 — done 2026-10-23.** Station open / close hazards over the dated presence layer (`src/engine/stations.js`), the
   presence index rebuilt as the run moves and read at the simulated year; a dyad `presence` variable carries it into
   the frames, and the viewer draws it after the seam. Gate: openings 0.62x, closures 0.56x of the record (between

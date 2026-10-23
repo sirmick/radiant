@@ -155,7 +155,9 @@ export function firstLiveIndex(panel, polygonOf) {
   for (const [id, a] of Object.entries(panel.actors)) { const i = a.live?.findIndex(x => x === 1) ?? -1; if (i < 0) continue; const p = polygonKey(id, polygonOf); m.set(p, Math.min(m.get(p) ?? Infinity, Y0 + i)); }
   return m;
 }
-const deathBX = (s) => [...deathX(s), s.broke ? 1 : 0, s.shareBorn ?? 0];
+// gpAlly: a defence pact with a great power in t-1 — protection against absorption (a small NATO member was being
+// absorbed by its large neighbour in 8% of runs by 2035 without it)
+const deathBX = (s) => [...deathX(s), s.broke ? 1 : 0, s.shareBorn ?? 0];   // gpAlly tested 2026-10-23: +0.26, not protective — not in the vector
 
 /** The holder of a territory in year y from data/holders.json spans: { h, status } (h 'self', a model id, or null). */
 export function holderAt(holders, poly, y) {
@@ -173,8 +175,8 @@ export const isColonial = (status) => COLONIAL.has(status);
  * `polygonOf` = actor id -> polygon id for entities that draw on another's polygon; `holders` = data/holders.json's
  * spans (optional: without it every territory takes the single-stage birth hazard, the first C5 build).
  */
-export function fitMembership({ panel, polygons, polygonOf = {}, contiguity = {}, holders = null }, maxYear) {
-  const memo = (fitMembership.__memo ??= new Map()); const key = `${maxYear}|${polygons.length}|${holders ? 1 : 0}|${BREAKUP_ON.join(',')}|${BREAKUP_SPLIT}`; if (memo.has(key)) return memo.get(key);
+export function fitMembership({ panel, polygons, polygonOf = {}, contiguity = {}, holders = null, alliedAt = null }, maxYear) {
+  const memo = (fitMembership.__memo ??= new Map()); const key = `${maxYear}|${polygons.length}|${holders ? 1 : 0}|${BREAKUP_ON.join(',')}|${BREAKUP_SPLIT}|${alliedAt ? 1 : 0}`; if (memo.has(key)) return memo.get(key);
   const Y0 = panel.meta.y0;
   const B = { X: [], y: [] }, D = { X: [], y: [] }, K = { X: [], y: [] }, C = { X: [], y: [] }; const births = []; const nb = neighbours(contiguity); const bornAt = new Map();
   const breakYears = new Map();   // holder -> years it broke up
@@ -215,9 +217,11 @@ export function fitMembership({ panel, polygons, polygonOf = {}, contiguity = {}
     // count every birth for the wave term, including states whose polygon is not on today's map
     for (const [id, a] of Object.entries(panel.actors)) if (a.live?.[i] && !a.live?.[i - 1]) births.push(t);
     const cincs = liveBefore.map(([, a]) => a.cinc?.[i - 1]).filter(x => x != null);
+    const edges = alliedAt ? alliedAt(t - 1) : null; const gps = liveBefore.filter(([, a]) => (a.great_power?.[i - 1] ?? 0) > 0).map(([id]) => id);
+    const gpAllied = (id) => !!edges && gps.some(g => g !== id && edges.has(id < g ? `${id}|${g}` : `${g}|${id}`));
     for (const [id, a] of liveBefore) {
       const died = !liveNow.has(id) && !bornPolys.has(polygonKey(id, polygonOf)) ? 1 : 0;   // a rename is not a death
-      const s = { cinc: a.cinc?.[i - 1] ?? (cincs.length ? Math.min(...cincs) : 1e-5), atWar: (a.at_war?.[i - 1] ?? 0) > 0, great: (a.great_power?.[i - 1] ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0 };
+      const s = { cinc: a.cinc?.[i - 1] ?? (cincs.length ? Math.min(...cincs) : 1e-5), atWar: (a.at_war?.[i - 1] ?? 0) > 0, great: (a.great_power?.[i - 1] ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0, gpAlly: gpAllied(id) };
       D.X.push(holders ? deathBX(s) : deathX(s)); D.y.push(died);
     }
   }

@@ -7,6 +7,7 @@
 // a z-score whose mean came from the full sample is the same leak in a smaller coat.
 //
 // Nothing here knows about country names; it reads data/panel.json, data/events.json and data/templates.yaml only.
+import { igoIndex } from '../../src/engine/igo.js';
 import { readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './hist.mjs';
 import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked,
@@ -34,10 +35,12 @@ export function loadFitInputs() {
   const actors = loadActors(); const code = makeCodeMap(actors);
   const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
   const { pacts } = loadPacts(code);   // era-1991-2026-r2/data-7: CoW 3.03 + ATOP 5.1 + the dated accessions past it
-  return { panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence, waves };
+  let igo = null; try { igo = JSON.parse(readFileSync('data/igo.json', 'utf8')); } catch {}
+  return { panel, events, templates, contiguity, contiguityFrom, pacts, corridors, territories, successors, presence, waves, igo };
 }
 
-export function createFitter({ panel, events, templates, contiguity, contiguityFrom = null, pacts, corridors = [], territories = [], successors = {}, presence = null, waves = [] }) {
+export function createFitter({ panel, events, templates, contiguity, contiguityFrom = null, pacts, corridors = [], territories = [], successors = {}, presence = null, waves = [], igo = null }) {
+  const igoAt = igoIndex(igo);
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
@@ -318,6 +321,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
         const feats = {
           contiguous,
           allied: pacts.has(`${pairKey(a, b)}|${y}`) ? 1 : 0,
+          igo: igoAt(pairKey(a, b), y),   // shared IGO memberships (CoW IGO v3; src/engine/igo.js)
           joint_democracy: pv(a, 'regime', y) >= 2 && pv(b, 'regime', y) >= 2 ? 1 : 0,
           cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),
           major_power_any: (pv(a, 'great_power', y) || pv(b, 'great_power', y)) ? 1 : 0,

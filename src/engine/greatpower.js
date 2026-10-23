@@ -4,6 +4,7 @@
 // forecaster's as-of year (so a run from 1900 knows nothing of 1918):
 //   entry  P(major power in t | not in t-1)   on log capability share in t-1 and its rank among live states
 //   exit   P(not in t | major power in t-1)   on the same, plus being at war in t-1 (1917, 1918, 1940, 1943, 1945)
+//          and having lost a war in t-1 (CoW outcomes, panel `war_defeat`; the engine draws it, src/engine/waroutcome.js)
 // The capability share is CINC, which the engine now moves (C1), so a state can grow into the club or fall out of it.
 // The fit is a small penalised logistic (Gaussian prior sd 1 on the slopes), pure JS so it runs in the browser too.
 // Nothing here names a country.
@@ -11,8 +12,9 @@
 const sigmoid = (x) => 1 / (1 + Math.exp(-x));
 export const GP = { prior_sd: 1, min_events: 3, rank_cap: 12 };
 
-/** Feature vector for one actor-year: [1, log cinc share, min(rank, cap) / cap, at war]. */
-const feats = (cinc, rank, atWar) => [1, Math.log(Math.max(cinc, 1e-6)), Math.min(rank, GP.rank_cap) / GP.rank_cap, atWar ? 1 : 0];
+/** Feature vector for one actor-year: [1, log cinc share, min(rank, cap) / cap, at war, lost a war]. */
+const feats = (cinc, rank, atWar, defeat = false) => [1, Math.log(Math.max(cinc, 1e-6)), Math.min(rank, GP.rank_cap) / GP.rank_cap, atWar ? 1 : 0, defeat ? 1 : 0];
+const NO_DEFEAT = typeof process !== 'undefined' && (process.env?.ENGINE_ABLATE ?? '').split(',').includes('war_outcome');
 
 function fitLogit(X, y, cols) {
   const p = cols.length; let b = new Array(p).fill(0);
@@ -42,10 +44,12 @@ export function fitGreatPower(panel, maxYear) {
     const i = y - Y0; const live = [];
     for (const [id, a] of Object.entries(panel.actors)) if (a.live?.[i - 1] && a.live?.[i] && a.cinc?.[i - 1] != null && a.great_power?.[i - 1] != null && a.great_power?.[i] != null) live.push([id, a, a.cinc[i - 1]]);
     live.sort((p, q) => q[2] - p[2]);
-    live.forEach(([, a, c], r) => { const was = a.great_power[i - 1] > 0, is = a.great_power[i] > 0; const x = feats(c, r + 1, (a.at_war?.[i - 1] ?? 0) > 0); if (was) { rows.exit.X.push(x); rows.exit.y.push(is ? 0 : 1); } else { rows.entry.X.push(x); rows.entry.y.push(is ? 1 : 0); } });
+    live.forEach(([, a, c], r) => { const was = a.great_power[i - 1] > 0, is = a.great_power[i] > 0; // CoW drops the status in the defeat's own year (1945), so the fit reads a defeat in t or t-1; the engine draws the
+      // defeat at the war's end, after this year's transitions, so in a run it acts the year after — a stated lag
+      const x = feats(c, r + 1, (a.at_war?.[i - 1] ?? 0) > 0, (a.war_defeat?.[i] ?? 0) > 0 || (a.war_defeat?.[i - 1] ?? 0) > 0); if (was) { rows.exit.X.push(x); rows.exit.y.push(is ? 0 : 1); } else { rows.entry.X.push(x); rows.entry.y.push(is ? 1 : 0); } });
   }
   const out = { trained_through: last };
-  for (const [k, cols] of [['entry', [0, 1, 2]], ['exit', [0, 1, 2, 3]]]) {
+  for (const [k, cols] of [['entry', [0, 1, 2]], ['exit', NO_DEFEAT ? [0, 1, 2, 3] : [0, 1, 2, 3, 4]]]) {
     const ev = rows[k].y.reduce((s, v) => s + v, 0);
     out[k] = ev < GP.min_events ? { status: 'unfitted', events: ev, n: rows[k].y.length } : { status: 'fitted', cols, beta: fitLogit(rows[k].X, rows[k].y, cols), events: ev, n: rows[k].y.length };
   }
@@ -53,8 +57,8 @@ export function fitGreatPower(panel, maxYear) {
 }
 
 /** The transition probability for one actor this year (null where the direction is unfitted). */
-export function gpHazard(fit, wasGreat, cinc, rank, atWar) {
+export function gpHazard(fit, wasGreat, cinc, rank, atWar, defeat = false) {
   const f = wasGreat ? fit?.exit : fit?.entry; if (!f || f.status !== 'fitted' || cinc == null) return null;
-  const x = feats(cinc, rank, atWar); let eta = 0; f.cols.forEach((c, j) => { eta += f.beta[j] * x[c]; });
+  const x = feats(cinc, rank, atWar, defeat); let eta = 0; f.cols.forEach((c, j) => { eta += f.beta[j] * x[c]; });
   return sigmoid(eta);
 }

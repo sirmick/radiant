@@ -1,10 +1,52 @@
 {
  "meta": {
-  "built": "2026-10-23T15:32:42.057Z"
+  "built": "2026-10-23T17:29:00.530Z"
  },
  "fits": {
   "leader_exit": {
-   "ablation": null,
+   "ablation": [
+    {
+     "variant": "base",
+     "split": 1986,
+     "n": 9762,
+     "events": 1671,
+     "auc_holdout": 0.625081642849046,
+     "brier_holdout": 0.14175456651378232,
+     "exp_obs_holdout": 1.07805044873548,
+     "coefs": {},
+     "coefs_insample": {}
+    },
+    {
+     "variant": "war_defeat",
+     "split": 1986,
+     "n": 9762,
+     "events": 1671,
+     "auc_holdout": 0.625081642849046,
+     "brier_holdout": 0.14175594270901307,
+     "exp_obs_holdout": 1.078020047172415,
+     "coefs": {
+      "war_defeat": 0.03018435483263226
+     },
+     "coefs_insample": {
+      "war_defeat": -0.007838612938701379
+     }
+    },
+    {
+     "variant": "all",
+     "split": 1986,
+     "n": 9762,
+     "events": 1671,
+     "auc_holdout": 0.625081642849046,
+     "brier_holdout": 0.14175594270901307,
+     "exp_obs_holdout": 1.078020047172415,
+     "coefs": {
+      "war_defeat": 0.03018435483263226
+     },
+     "coefs_insample": {
+      "war_defeat": -0.007838612938701379
+     }
+    }
+   ],
    "status": "fitted",
    "frailty": {
     "by": "region_pol",
@@ -150,18 +192,33 @@
      "variant": "base",
      "split": 1986,
      "n": 9409,
-     "events": 178,
-     "auc_holdout": 0.7505200347086023,
-     "brier_holdout": 0.0098672774417482,
-     "exp_obs_holdout": 1.4894991970843459,
+     "events": 266,
+     "auc_holdout": 0.7802644263875499,
+     "brier_holdout": 0.01738285360057918,
+     "exp_obs_holdout": 1.3757201583870833,
      "coefs": {},
      "coefs_insample": {}
+    },
+    {
+     "variant": "war_defeat",
+     "split": 1986,
+     "n": 9409,
+     "events": 266,
+     "auc_holdout": 0.7803595202025171,
+     "brier_holdout": 0.017381739751187883,
+     "exp_obs_holdout": 1.3764668916834257,
+     "coefs": {
+      "war_defeat": -0.11109010999497904
+     },
+     "coefs_insample": {
+      "war_defeat": -0.24737622664504208
+     }
     },
     {
      "variant": "anticoup_norm",
      "split": 1986,
      "n": 9409,
-     "events": 178,
+     "events": 266,
      "degenerate_in_train": [
       "anticoup_norm"
      ],
@@ -171,37 +228,37 @@
      "variant": "milper_share",
      "split": 1986,
      "n": 9258,
-     "events": 175,
-     "auc_holdout": 0.7559555336965295,
-     "brier_holdout": 0.009737250991951408,
-     "exp_obs_holdout": 1.5315348618736537,
+     "events": 259,
+     "auc_holdout": 0.7765747330960854,
+     "brier_holdout": 0.016810843783829285,
+     "exp_obs_holdout": 1.4482695011462432,
      "coefs": {
-      "z(milper_share)": -0.20415825049104283
+      "z(milper_share)": -0.12509668133672386
      },
      "coefs_insample": {
-      "z(milper_share)": -0.23228067281349293
+      "z(milper_share)": -0.1467734043910491
      }
     },
     {
      "variant": "year_trend",
      "split": 1986,
      "n": 9409,
-     "events": 178,
-     "auc_holdout": 0.7505646091121967,
-     "brier_holdout": 0.009855873017108179,
-     "exp_obs_holdout": 1.4644932354998188,
+     "events": 266,
+     "auc_holdout": 0.7794544894117955,
+     "brier_holdout": 0.017421536838137453,
+     "exp_obs_holdout": 1.4365760199483892,
      "coefs": {
-      "z(year)": -0.01366264377132795
+      "z(year)": 0.03563191017270345
      },
      "coefs_insample": {
-      "z(year)": -0.4192184271216617
+      "z(year)": -0.2630627886245885
      }
     },
     {
      "variant": "all",
      "split": 1986,
      "n": 9258,
-     "events": 175,
+     "events": 259,
      "degenerate_in_train": [
       "anticoup_norm"
      ],
@@ -212,74 +269,74 @@
    "frailty": {
     "by": "region_pol",
     "theta": 0,
-    "rho_resid": 0.07,
+    "rho_resid": -0.016,
     "rho": 0,
     "groups": 657
    },
    "unit": "actor-year",
    "event": "leader_exit",
    "n": 9409,
-   "events": 178,
-   "base_rate": 0.01891805717929642,
+   "events": 266,
+   "base_rate": 0.02827080454883622,
    "window": [
     1950,
     2021
    ],
    "degenerate": [],
-   "epv": 14.833333333333334,
+   "epv": 22.166666666666668,
    "trained_through": 2021,
    "train_years": [
     1951,
     2021
    ],
-   "intercept": -4.61385637973724,
+   "intercept": -4.022604956133602,
    "coefs": {
     "regime=1": {
-     "value": 0.1846942504757215,
+     "value": 0.031069458671880823,
      "prior": 0.2
     },
     "regime=2": {
-     "value": -0.7281237762226006,
+     "value": -0.7585801166167182,
      "prior": -0.8
     },
     "regime=3": {
-     "value": -1.8644780629097606,
+     "value": -1.8484780373339522,
      "prior": -1.8
     },
     "log(leader_tenure)": {
-     "value": -0.13548855688096187,
+     "value": -0.10412183653859901,
      "prior": -0.3
     },
     "z(leader_age)": {
-     "value": 0.08376124198426436,
+     "value": 0.13112318112440666,
      "prior": 0.1
     },
     "lag1(at_war)": {
-     "value": 0.4074990351826603,
+     "value": 0.40511464864646524,
      "prior": 0.6
     },
     "z(gdp_growth)": {
-     "value": -0.07531687911927033,
+     "value": -0.11382109170933927,
      "prior": -0.3
     },
     "z(log_gdp_pc)": {
-     "value": -0.39954138275871626,
+     "value": -0.38498933811721375,
      "prior": -0.4
     },
     "win5(coup_attempt)": {
-     "value": 0.9610872285735907,
+     "value": 0.8843558512206897,
      "prior": 0.8
     },
     "leader_irregular_entry": {
-     "value": 0.2381177968410053,
+     "value": 0.15504664895278727,
      "prior": 0.5
     },
     "great_game": {
-     "value": 0.45838393799281196,
+     "value": 0.36400291606826723,
      "prior": 0.3
     },
     "z(info_access)": {
-     "value": -0.42535764422744554,
+     "value": -0.43089553273418496,
      "prior": -0.5
     }
    },
@@ -304,57 +361,57 @@
      "sd": 0.4061322803991471
     }
    },
-   "auc_in": 0.8003521353913717,
-   "brier_in": 0.018062880818313743,
+   "auc_in": 0.7848207963855828,
+   "brier_in": 0.026522635515248957,
    "calibration": [
     {
-     "pred": 0.0005109126340282098,
-     "obs": 0,
+     "pred": 0.0009155961506334743,
+     "obs": 0.002127659574468085,
      "n": 940
     },
     {
-     "pred": 0.0012657199899694025,
-     "obs": 0.0010626992561105207,
+     "pred": 0.0021732833302043368,
+     "obs": 0,
      "n": 941
     },
     {
-     "pred": 0.0029009740199566203,
-     "obs": 0.003188097768331562,
+     "pred": 0.004898926854589378,
+     "obs": 0.005313496280552604,
      "n": 941
     },
     {
-     "pred": 0.00547077789178462,
-     "obs": 0.008501594048884165,
+     "pred": 0.009068311771601749,
+     "obs": 0.011689691817215728,
      "n": 941
     },
     {
-     "pred": 0.009142396755673526,
-     "obs": 0.006376195536663124,
+     "pred": 0.015051863411628221,
+     "obs": 0.012752391073326248,
      "n": 941
     },
     {
-     "pred": 0.013425709709986357,
-     "obs": 0.010626992561105207,
+     "pred": 0.021813211443284932,
+     "obs": 0.024442082890541977,
      "n": 941
     },
     {
-     "pred": 0.019430685766585493,
-     "obs": 0.01700318809776833,
+     "pred": 0.030853763151719532,
+     "obs": 0.023379383634431455,
      "n": 941
     },
     {
-     "pred": 0.02630508167680725,
-     "obs": 0.02975557917109458,
+     "pred": 0.040430144859920275,
+     "obs": 0.04782146652497343,
      "n": 941
     },
     {
-     "pred": 0.03636726033385027,
-     "obs": 0.03719447396386823,
+     "pred": 0.05422254271809999,
+     "obs": 0.05844845908607864,
      "n": 941
     },
     {
-     "pred": 0.07434149175551409,
-     "obs": 0.07545164718384698,
+     "pred": 0.10325133143706461,
+     "obs": 0.09670563230605739,
      "n": 941
     }
    ],
@@ -362,9 +419,9 @@
     "split": 1986,
     "n_train": 3549,
     "n_test": 5860,
-    "auc": 0.756686160539172,
-    "brier": 0.009830168847658593,
-    "base_rate_test": 0.009897610921501706
+    "auc": 0.7869078770469763,
+    "brier": 0.017303168530846718,
+    "base_rate_test": 0.01808873720136519
    },
    "lambda": 32,
    "half_life": null,
@@ -706,6 +763,21 @@
      "coefs_insample": {}
     },
     {
+     "variant": "war_defeat",
+     "split": 2005,
+     "n": 9949,
+     "events": 382,
+     "auc_holdout": 0.5917892957313559,
+     "brier_holdout": 0.04025724995026507,
+     "exp_obs_holdout": 0.9770178493554615,
+     "coefs": {
+      "war_defeat": 0.2741948599101711
+     },
+     "coefs_insample": {
+      "war_defeat": 0.2780415014860971
+     }
+    },
+    {
      "variant": "patron_regime",
      "split": 2005,
      "n": 9949,
@@ -740,16 +812,18 @@
      "split": 2005,
      "n": 9949,
      "events": 382,
-     "auc_holdout": 0.5886099050985515,
-     "brier_holdout": 0.04026087459826419,
-     "exp_obs_holdout": 0.9828579138373847,
+     "auc_holdout": 0.5888404349329542,
+     "brier_holdout": 0.04026089165478517,
+     "exp_obs_holdout": 0.9819371127680188,
      "coefs": {
-      "patron_regime": 0.21884109481272784,
-      "hegemon_x_client": 0.17917254174208574
+      "war_defeat": 0.2745327367451901,
+      "patron_regime": 0.21932822864100587,
+      "hegemon_x_client": 0.17895370958456863
      },
      "coefs_insample": {
-      "patron_regime": 0.14828643092476623,
-      "hegemon_x_client": 0.14546309496785642
+      "war_defeat": 0.278364917011749,
+      "patron_regime": 0.14870270825814869,
+      "hegemon_x_client": 0.14531739979117578
      }
     }
    ],

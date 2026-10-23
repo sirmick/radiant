@@ -1,0 +1,10 @@
+# Map territories with no permanent population (CIA World Factbook, "People and Society"): never at risk of becoming a
+# state, so they are not in the C5 birth pool (src/engine/membership.js). The rest of the pool is filtered by the
+# World Bank's latest population (data/raw/hist/wb_population.csv, >= 10,000) where it lists the territory.
+- { id: ATA, note: "Antarctica: research stations only" }
+- { id: ATF, note: "French Southern and Antarctic Lands: research staff only" }
+- { id: HMD, note: "Heard and McDonald Islands: uninhabited" }
+- { id: SGS, note: "South Georgia and South Sandwich Islands: no permanent population" }
+- { id: IOT, note: "British Indian Ocean Territory: military personnel only since the 1970s removals" }
+- { id: AUS-2, note: "Ashmore and Cartier Islands: uninhabited" }
+- { id: AUS-3, note: "Coral Sea Islands: no permanent population" }

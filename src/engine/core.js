@@ -9,6 +9,8 @@ import { fitGreatPower, gpHazard } from './greatpower.js';
 import { fitAlliances, allyHazard, candidate, adjacency, sharedAllies, edgesAt } from './alliances.js';
 import { fitNuclear, nukeHazard } from './nuclear.js';
 import { fitStations, closeHazard, openHazard } from './stations.js';
+import { fitWarOutcome, loseProb } from './waroutcome.js';
+import { igoIndex } from './igo.js';
 import { fitMembership, birthHazard, deathHazard, breakupHazard, memberHazard, holderAt, isColonial, polygonKey, neighbours, localBirths, MEMBERSHIP, BREAKUP, unitKey, unitHolder, holderStateWorld, firstLiveIndex } from './membership.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
@@ -160,6 +162,7 @@ const NO_STATIONS = ABLATE.includes('presence');
 const COUPLING_ON = (typeof process !== 'undefined' && process.env?.COUPLING) !== '0';
 const COUP_SUCCESS = 0.5;
 const NO_BREAKUP = ABLATE.includes('breakup');
+const NO_WAR_OUTCOME = ABLATE.includes('war_outcome');
 const NO_FRAILTY = ABLATE.includes('frailty') || (typeof process !== 'undefined' && process.env?.FRAILTY === '0');
 // diagnostic only (a leak by construction): fit the membership hazards through this year instead of as-of, to tell a
 // fit/simulation mismatch from a regime shift the training years cannot see
@@ -540,7 +543,7 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
   // number as if it were current.
   const stale = {}, carry = {};
   const lastKnown = (v, y) => { const arr = vars[v]; for (let i = y - Y0; i >= Math.max(0, y - Y0 - 30); i--) if (arr[i] != null) return [arr[i], Y0 + i]; return [null, null]; };
-  const FLAG = new Set(['coup_attempt', 'coup_success', 'mid_force', 'mid_war', 'regime_up', 'regime_down', 'interstate_ucdp']);
+  const FLAG = new Set(['coup_attempt', 'coup_success', 'mid_force', 'mid_war', 'regime_up', 'regime_down', 'interstate_ucdp', 'war_defeat']);
   const note = (y, v, yr, how) => { if (y !== asOf) return; stale[v] = yr == null ? null : y - yr; carry[v] = how; };
   // `introduced` is the panel's own first year for a column (data/panel.json meta): below it there is nothing to carry
   // forward, so the 30-year scan is skipped. Same result, and it keeps the modern columns (2000+) free on a 1870 world.
@@ -692,7 +695,7 @@ function applyPresence(world, a) {
  * Contiguity 3.2 and covers 1816, so the stand-in no longer fires anywhere in the modelled window; the guard stays
  * because the floor is a property of data/contiguity.json's own meta, not of this code.
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [], polygons = null, polygonOf = null, holders = null }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [], polygons = null, polygonOf = null, holders = null, warOutcomes = null, igo = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -803,13 +806,17 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // already removed, for a successor that enters a year or more after its predecessor leaves.
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {}, predecessors: invertMap(successors ?? {}), retiredState: new Map(), contiguity: contiguity ?? {} },
     // C5: drawn membership — the territory pool, the fitted hazards, and the birth years the wave term counts
-    membership: NO_MEMBERSHIP || !polygons?.length ? null : { fit: fitMembership({ panel, polygons, polygonOf, contiguity: contiguity ?? {}, holders: NO_BREAKUP ? null : holders }, MEMBERSHIP_FIT_YEAR ?? asOf), polygons, polygonOf: polygonOf ?? {}, births: birthYears(panel, asOf), nb: neighbours(contiguity ?? {}), bornAt: bornAtMap(panel, polygonOf ?? {}, asOf), ...(holders && !NO_BREAKUP ? breakupState(panel, holders, polygons, polygonOf ?? {}, asOf) : {}) },
+    membership: NO_MEMBERSHIP || !polygons?.length ? null : { fit: fitMembership({ panel, polygons, polygonOf, contiguity: contiguity ?? {}, holders: NO_BREAKUP ? null : holders, alliedAt: pacts?.size ? (yy) => edgesAt(pacts, yy) : null }, MEMBERSHIP_FIT_YEAR ?? asOf), polygons, polygonOf: polygonOf ?? {}, births: birthYears(panel, asOf), nb: neighbours(contiguity ?? {}), bornAt: bornAtMap(panel, polygonOf ?? {}, asOf), ...(holders && !NO_BREAKUP ? breakupState(panel, holders, polygons, polygonOf ?? {}, asOf) : {}) },
     fits, templates, log: [],
     // capability waves (operator/capability-waves): attainment is the dated sovereign_by history up to as-of and the
     // fitted wave_attain hazard after it; `capability` says whether the share it produces replaces cinc in the ratio
     waves: initWaves({ waves, actors, asOf, templates }),
     // C1: the world's trailing mean growth at the origin, the centre of every actor's growth process
     growthMean: trailingMean(panel, asOf, GROWTH_MEAN),
+    // war outcomes: who loses a simulated war (src/engine/waroutcome.js), fitted on wars ended by as-of
+    warFit: NO_WAR_OUTCOME ? null : fitWarOutcome(panel, warOutcomes, asOf),
+    // shared IGO memberships per pair, held at as-of (institutions are not simulated)
+    igoAt: igoIndex(igo),
     // regional waves: the shared shock's persistence and its state at as-of (see frailtyInit)
     ...frailtyInit(panel, events, fits, asOf),
     // the mean freedom-of-expression step of an opening / a closing on record up to as-of (V-Dem; the events are truncated)
@@ -1034,6 +1041,7 @@ export function dyadHazards(world, a, b) {
   const feats = {
     contiguous,
     allied: world.allied.has(k) ? 1 : 0,
+    igo: world.igoAt ? world.igoAt(k, world.asOf) : 0,
     joint_democracy: a.cur.regime >= 2 && b.cur.regime >= 2 ? 1 : 0,
     cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),
     major_power_any: (a.cur.great_power || b.cur.great_power) ? 1 : 0,
@@ -1309,7 +1317,8 @@ function stepMembership(world, y, rng) {
     broke.set(h, (broke.get(h) ?? 0) + go.length / heldN.get(h)); const l = M.breakYears.get(h) ?? M.breakYears.set(h, []).get(h); if (!l.includes(y)) l.push(y);
   }
   const deaths = [];
-  for (const [id, a] of Object.entries(world.actors)) { const p = deathHazard(M.fit, { cinc: a.cur.cinc, atWar: (a.cur.at_war ?? 0) > 0, great: (a.cur.great_power ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0 }); if (p != null && rng() < p) deaths.push(id); }
+  for (const [id, a] of Object.entries(world.actors)) { const gpAlly = Object.keys(world.actors).some(g => g !== id && (world.actors[g].cur.great_power ?? 0) > 0 && world.allied.has(pairKey(id, g)));
+    const p = deathHazard(M.fit, { cinc: a.cur.cinc, atWar: (a.cur.at_war ?? 0) > 0, great: (a.cur.great_power ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0, gpAlly }); if (p != null && rng() < p) deaths.push(id); }
   for (const id of deaths) {
     const nb = [...world.contiguous].map(k => k.split('|')).filter(([p, q]) => (p === id || q === id)).map(([p, q]) => (p === id ? q : p)).filter(o => world.actors[o] && !deaths.includes(o));
     const by = nb.sort((p, q) => (world.actors[q].cur.cinc ?? 0) - (world.actors[p].cur.cinc ?? 0))[0] ?? null;
@@ -1350,7 +1359,7 @@ function stepGreatPower(world, ids, rng) {
   const out = [];
   ranked.forEach((a, r) => {
     const was = a.cur.great_power > 0;
-    const p = gpHazard(world.gpFit, was, a.cur.cinc, r + 1, a.prev.at_war > 0); if (p == null) return;
+    const p = gpHazard(world.gpFit, was, a.cur.cinc, r + 1, a.prev.at_war > 0, (a.prev.war_defeat ?? 0) > 0); if (p == null) return;
     if (rng() < p) { a.cur.great_power = was ? 0 : 1; out.push({ kind: was ? 'great_power_exit' : 'great_power_entry', actor: a.id, year: world.year }); }
   });
   return out;
@@ -1451,7 +1460,7 @@ export function stepYear(world, rng, opts = {}) {
     // 19th-century run holds at the panel's floor instead of drifting up at a typed 0.03/yr.
     if (a.cur.info_access != null) a.cur.info_access = infoDiffuse(Math.max(0.02, a.cur.info_access), y, world.pol?.infoWave ?? INFO_WAVE);
     // clear annual flags; decay conflicts
-    a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0; a.cur.regime_up = 0; a.cur.regime_down = 0;
+    a.cur.coup_attempt = 0; a.cur.coup_success = 0; a.cur.at_war = 0; a.cur.mid_force = 0; a.cur.mid_war = 0; a.cur.regime_up = 0; a.cur.regime_down = 0; a.cur.war_defeat = 0;
     // internal conflict: the spell ends at the START of the year after the one its termination hazard fired in, so the
     // year it ended still reads as a conflict year — which is what the panel's own `intrastate` column does and what
     // the fit's label means. With the mechanism ablated off this is the old countdown from a typed uniform draw.
@@ -1493,7 +1502,17 @@ export function stepYear(world, rng, opts = {}) {
     A.cur.at_war = 1; B.cur.at_war = 1; atWarPairs.add(k);
     const p = warEndHazard(world, A.id, B.id, y - sp.y0, sp.coalition);
     const u = rng();
-    if (p == null || u < p) { world.warSpells.delete(k); fired.push({ kind: 'war_end', a: A.id, b: B.id, year: y, start: sp.y0, duration: y - sp.y0 + 1 }); }
+    if (p == null || u < p) {
+      world.warSpells.delete(k); const ev = { kind: 'war_end', a: A.id, b: B.id, year: y, start: sp.y0, duration: y - sp.y0 + 1 };
+      // the outcome, from a stream of its own: each side's capability is the state's plus its allies' at war with the
+      // same enemy; the loser carries war_defeat for the year (great-power exit reads it next year)
+      if (world.warFit && opts.warRng) {
+        const side = (X, Z) => { let c = X.cur.cinc ?? 0; for (const [k2] of world.warSpells) { const j = k2.indexOf('|'); const p1 = k2.slice(0, j), p2 = k2.slice(j + 1); const o = p1 === Z.id ? p2 : p2 === Z.id ? p1 : null; if (o && o !== X.id && world.allied.has(pairKey(o, X.id))) c += world.actors[o]?.cur.cinc ?? 0; } return c; };
+        const loseA = loseProb(world.warFit, side(A, B), side(B, A)); const L = opts.warRng() < loseA ? A : B;
+        L.cur.war_defeat = 1; L.defeatUntil = y + 3; ev.loser = L.id;
+      }
+      fired.push(ev);
+    }
   }
   // actor hazards. A template whose labels are a subset of another's is drawn INSIDE its parent, not beside it
   // (era-1945-1991-r2/engine-4): the parent is drawn first, and the child at P(child | parent) = p_child / max(p_parent,
@@ -1779,6 +1798,7 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     // the wave layer's own stream (operator/capability-waves): switching the layer on must perturb the event process
     // through the capability ratio and not through the random numbers, so its draws never come out of `rng`.
     const waveRng = mulberry32(seed * 104729 + r);
+    const warRng = mulberry32(seed * 15485863 + r);     // war outcomes
     const growthRng = mulberry32(seed * 15485863 + r);   // C1/C2: the structural draws' own stream
     const allyRng = mulberry32(seed * 32452843 + r);     // C3: the pact graph's, so it moves nothing else's draws
     const nukeRng = mulberry32(seed * 49979687 + r);     // C4
@@ -1787,7 +1807,7 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     const frailRng = mulberry32(seed * 49979687 + r);    // regional waves
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
-      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng, allyRng, nukeRng, memRng, stationRng, frailRng });
+      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng, allyRng, nukeRng, memRng, stationRng, frailRng, warRng });
       if (fb) { const snap = observe(w, { vars: obsKeys }); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
