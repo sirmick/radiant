@@ -64,6 +64,26 @@ Acceptance: the viewer driven by the new files paints every view at 1870, 1942, 
 (`scripts/shot2.mjs` before/after, pixel diff below a threshold, differences listed and explained). Load size no
 larger than today's ~8 MB on first paint.
 
+### A4. Fork-and-score backtest
+
+A backtest is two providers forked from one state: replay to `asOf`, then one branch keeps replaying the record and
+the other forecasts N runs with coefficients refit on labels ≤ `asOf` (`--refit`, as today). One generic scorer
+compares the two frame sets over every variable in the registry, per lead year and pooled over origins
+(1870…2010, step 10):
+
+| kind | score |
+|---|---|
+| categorical / binary | Brier, log score, base-rate skill |
+| continuous | CRPS, p10–p90 coverage |
+| events | first occurrence within H (today's event score) |
+| structure | simulated vs observed rates (see *Gate*) |
+
+The forecaster's start state **is** the replay state at `asOf` — `createWorld(asOf)` built from the panel becomes a
+check on it, not a second construction. Scored only inside each source's truth window (`COVERAGE`). Known leaks it does
+not remove: structure still frozen until phase C (state existence above all), and data vintage (the panel is today's
+revision of the past). `scripts/backtest.mjs`'s bespoke per-template scoring is replaced by the scorer once its
+numbers reproduce the current `scores/backtest-1870-2010-h20-all.json` pooled rows.
+
 ## Phase B — the viewer on providers
 
 `src/lib/provider.js`: `frame(source, year, {family, mode, run})` → `{entityId: value}`. Static-file implementation
