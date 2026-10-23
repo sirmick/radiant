@@ -1,6 +1,6 @@
 {
  "meta": {
-  "run": "2026-10-23T03:55:55.814Z",
+  "run": "2026-10-23T10:41:22.882Z",
   "from": 1900,
   "to": 1990,
   "step": 30,
@@ -11,33 +11,33 @@
  },
  "rates": {
   "polarity": {
-   "simulated": 4.282,
+   "simulated": 4.339,
    "record": 4.31,
-   "ratio": 0.99,
+   "ratio": 1.01,
    "within_factor_2": true
   },
   "hegemon": {
-   "simulated": 1.724,
+   "simulated": 1.638,
    "record": 6.897,
-   "ratio": 0.25,
+   "ratio": 0.24,
    "within_factor_2": false
   },
   "gp_entry": {
-   "simulated": 1.408,
+   "simulated": 1.437,
    "record": 1.724,
-   "ratio": 0.82,
+   "ratio": 0.83,
    "within_factor_2": true
   },
   "gp_exit": {
-   "simulated": 1.264,
+   "simulated": 1.236,
    "record": 3.448,
-   "ratio": 0.37,
+   "ratio": 0.36,
    "within_factor_2": false
   },
   "nuclear": {
-   "simulated": 6.954,
+   "simulated": 7.155,
    "record": 7.759,
-   "ratio": 0.9,
+   "ratio": 0.92,
    "within_factor_2": true
   },
   "birth": {
@@ -53,30 +53,44 @@
    "within_factor_2": true
   },
   "pact_form": {
-   "simulated": 2174.339,
+   "simulated": 2137.989,
    "record": 2337.931,
-   "ratio": 0.93,
+   "ratio": 0.91,
    "within_factor_2": true
   },
   "pact_end": {
-   "simulated": 1576.782,
+   "simulated": 1588.218,
    "record": 936.207,
-   "ratio": 1.68,
+   "ratio": 1.7,
+   "within_factor_2": true
+  },
+  "station_open": {
+   "simulated": 40.144,
+   "record": 56.897,
+   "ratio": 0.71,
+   "within_factor_2": true
+  },
+  "station_close": {
+   "simulated": 20.92,
+   "record": 35.345,
+   "ratio": 0.59,
    "within_factor_2": true
   }
  },
  "simulated": {
   "world_years": 3480,
   "actor_years": 405690,
-  "polarity": 149,
-  "hegemon": 60,
-  "gp_entry": 49,
-  "gp_exit": 44,
-  "nuclear": 242,
+  "polarity": 151,
+  "hegemon": 57,
+  "gp_entry": 50,
+  "gp_exit": 43,
+  "nuclear": 249,
   "birth": 4380,
   "death": 630,
-  "pact_form": 75667,
-  "pact_end": 54872,
+  "pact_form": 74402,
+  "pact_end": 55270,
+  "station_open": 1397,
+  "station_close": 728,
   "pairs_years": 0
  },
  "record": {
@@ -91,6 +105,8 @@
   "death": 21,
   "pact_form": 2712,
   "pact_end": 1086,
+  "station_open": 66,
+  "station_close": 41,
   "pairs_years": 0
  }
 }

@@ -86,6 +86,7 @@ out.meta.dyads = { at_war: { threshold: DYAD_MIN, floor: DYAD_FLOOR, cap: DYAD_C
 // ALLY_MIN in some year — the viewer draws a pact at P >= 0.5, so a pair that never reaches it carries nothing it reads
 // — and their count goes into meta.dyads
 const ALLY_MIN = 0.5;
+for (const name of ['presence']) { const all = Object.entries(out.dyads[name] ?? {}); const keep = all.filter(([, c]) => (typeof c === 'number' ? c : Math.max(...c)) >= ALLY_MIN); out.dyads[name] = Object.fromEntries(keep); out.meta.dyads[name] = { threshold: ALLY_MIN, kept: keep.length, dropped: all.length - keep.length }; }
 { const all = Object.entries(out.dyads.allied ?? {}); const keep = all.filter(([, c]) => (typeof c === 'number' ? c : Math.max(...c)) >= ALLY_MIN); out.dyads.allied = Object.fromEntries(keep); out.meta.dyads.allied = { threshold: ALLY_MIN, kept: keep.length, dropped: all.length - keep.length }; }
 out.meta.waves = { n: waves.length, capability: waveCapabilityOn(templates), template: templates.find(t => t.id === 'wave_attain') ? 'wave_attain' : null };
 mkdirSync('public/frames', { recursive: true });
