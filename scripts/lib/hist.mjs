@@ -170,7 +170,10 @@ export function loadPacts(codeMap = null) {
   const pacts = new Set();
   const COW_LAST = 2000;
   let nCow = 0, nAtop = 0, nHand = 0, atopLast = COW_LAST;
-  for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) {
+  // CoW 3.03 is only reachable from correlatesofwar.org / Dataverse; where it has not been fetched ATOP covers the
+  // whole span instead and `meta.cow_missing` says so (a different coding of the same pacts, not the same edge set).
+  const cowMissing = !existsSync('data/raw/hist/alliance_v303_dyadic.csv');
+  if (!cowMissing) for (const r of readCsv('data/raw/hist/alliance_v303_dyadic.csv')) {
     if (r.sstype !== '1') continue;
     const y = +r.year; if (y > COW_LAST) continue;
     const a = code(r.ccode1, y), b = code(r.ccode2, y);
@@ -178,7 +181,7 @@ export function loadPacts(codeMap = null) {
   }
   try {
     for (const r of readCsv('data/raw/hist/atop_alliance_5.1.csv')) {
-      const y = +r.year; if (y <= COW_LAST) continue;
+      const y = +r.year; if (y <= COW_LAST && !cowMissing) continue;
       if (+r.atop_defense !== 1) continue;
       atopLast = Math.max(atopLast, y);
       const a = code(r.ccode1, y), b = code(r.ccode2, y);
@@ -201,6 +204,6 @@ export function loadPacts(codeMap = null) {
       for (let y = y0; y <= lastYear; y++) { pacts.add(`${pairKey(a, b)}|${y}`); nHand++; }
     }
   }
-  return { pacts, meta: { cow_last: COW_LAST, atop_last: atopLast, stale_from: atopLast + 1, n_cow: nCow, n_atop: nAtop, n_hand: nHand, n_carried: nCarried,
-    source: `CoW Formal Alliances 3.03 dyadic sstype 1 (1816-${COW_LAST}), ATOP 5.1 atop_defense (${COW_LAST + 1}-${atopLast}, scripts/fetch-atop.mjs), the ${atopLast} edge set carried forward past it, and dated \`kind: pact\` rows in data/history/events.yaml for the accessions after ${atopLast}` } };
+  return { pacts, meta: { cow_missing: cowMissing, cow_last: COW_LAST, atop_last: atopLast, stale_from: atopLast + 1, n_cow: nCow, n_atop: nAtop, n_hand: nHand, n_carried: nCarried,
+    source: cowMissing ? `ATOP 5.1 atop_defense (1816-${atopLast}; CoW 3.03 not fetched), the ${atopLast} edge set carried forward past it, and dated \`kind: pact\` rows in data/history/events.yaml for the accessions after ${atopLast}` : `CoW Formal Alliances 3.03 dyadic sstype 1 (1816-${COW_LAST}), ATOP 5.1 atop_defense (${COW_LAST + 1}-${atopLast}, scripts/fetch-atop.mjs), the ${atopLast} edge set carried forward past it, and dated \`kind: pact\` rows in data/history/events.yaml for the accessions after ${atopLast}` } };
 }

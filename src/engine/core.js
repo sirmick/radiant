@@ -3,6 +3,7 @@
 // events fire per actor-year / dyad-year and rewrite state; a thin structural layer drifts the slow variables.
 // No country names anywhere in this file.
 
+import { observe, FrameBuilder } from '../contract/frames.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
 /** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
@@ -1046,6 +1047,22 @@ function applyActorEvent(world, a, kind, rng) {
     default: throw new Error(`applyActorEvent: no state rewrite for '${kind}' — a simulated template must change state`);
   }
 }
+/**
+ * A RECORDED event applied through the engine's own state rewrites (docs/plan-structure.md A2) — the transition half of
+ * engine replay. src/engine/replay.js steps the record one year, applies that year's observed events here, and diffs
+ * the result against the next year's panel row: every disagreement is a transition the engine cannot represent (a
+ * two-level regime jump) or a record that contradicts itself (a regime step with no regime change). Returns the
+ * rewrite applied, or null for a kind the engine has no actor rewrite for.
+ */
+export function applyRecordedEvent(world, a, e, rng) {
+  const rewrite = e.kind === 'regime_change' ? (e.direction === 'democratize' ? 'democratize_step' : 'autocratize_step')
+    : e.kind === 'leader_exit' ? (e.irregular ? 'irregular_exit' : 'leader_exit')
+    : e.kind === 'intrastate_onset' ? 'intrastate_onset'
+    : e.kind === 'coup' ? 'coup' : null;
+  if (!rewrite) return null;
+  applyActorEvent(world, a, rewrite, rng);
+  return rewrite;
+}
 // every template the engine simulates must have a rewrite above; checked once per world at the first step
 const HANDLED = new Set(['irregular_exit', 'leader_exit', 'coup', 'autocratization_onset', 'autocratize_step', 'democratization_onset', 'democratize_step', 'autocratic_closure', 'liberal_erosion', 'democratic_deepening', 'intrastate_onset']);
 
@@ -1372,7 +1389,12 @@ function coalitionJoin(world, rng, warPairs, y) {
  * (docs/escalations.md package 11, test (d)); that is the reason it is a separate flag from `track` rather than more
  * work inside it, and the reason nothing here calls `rng`.
  */
-export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false, track = false, state = false, paths = 0 } = {}) {
+export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, skipDyads = false, track = false, state = false, paths = 0, frames = null, framePaths = 0, frameVars = null } = {}) {
+  // the frame contract (docs/plan-structure.md A3): every run observed through src/contract/frames.js — the same
+  // observer the record is built with — into one ensemble frame set, plus the first `framePaths` runs kept whole as
+  // record-shaped frame sets (a sample world reads exactly like history). Observation draws no random numbers.
+  const fb = frames ? new FrameBuilder({ from: frames.from, years: horizon, runs, vars: frameVars }) : null;
+  const pathFb = fb ? Array.from({ length: Math.min(framePaths, runs) }, () => new FrameBuilder({ from: frames.from, years: horizon, runs: 1, vars: frames.pathVars ?? frameVars })) : [];
   const regimeHist = {};  // actor -> Uint32Array(horizon*4): counts of regime level per year offset
   const gdpRuns = {};     // actor -> Float32Array(runs*horizon)
   const infoRuns = {};
@@ -1407,6 +1429,7 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
       const fired = stepYear(w, rng, { skipDyads, waveRng });
+      if (fb) { const snap = observe(w); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
         if (a.cur.gdp_pc != null) (gdpRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.gdp_pc;
@@ -1495,5 +1518,6 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
       }),
     }])),
   } : null;
-  return { runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, expectedWithin, cumulative, firstBy, tracks, occupancy, paths: pathRuns };
+  const frameSet = fb ? { ensemble: fb.build(frames.meta ?? {}), paths: pathFb.map((b, i) => b.build({ ...(frames.meta ?? {}), run: i, kind: 'sample' })) } : null;
+  return { frames: frameSet, runs, horizon, pAny: norm(anyBy), expected: norm(countBy), pAnyDyad: norm(dyadAny), yearHist, pAnyWithin, expectedWithin, cumulative, firstBy, tracks, occupancy, paths: pathRuns };
 }

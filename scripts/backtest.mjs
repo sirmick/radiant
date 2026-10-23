@@ -13,7 +13,9 @@ import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
 import { createFitter } from './lib/fit.mjs';
 import { loadWaves, WAVE_UNIT } from '../src/engine/waves.js';
 import { createWorld, runEnsemble, CORRIDOR_UNIT, corridorFirstYear, corridorLastYear, corridorTransitionYears, corridorStateAt } from '../src/engine/core.js';
-import { IMPAIRED, RESOLVED, SPELL_UNITS, territoryFirstYear, territoryStateAt, endYears, warSpells } from '../src/engine/termination.js';
+import { IMPAIRED, RESOLVED, SPELL_UNITS, territoryFirstYear, territoryStateAt, endYears } from '../src/engine/termination.js';
+import { recordFrames } from '../src/engine/replay.js';
+import { scoreFork, pool, report } from '../src/contract/score.js';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const FROM = +arg('from', 1870), TO = +arg('to', 2000), STEP = +arg('step', 10), H = +arg('horizon', 20), RUNS = +arg('runs', 200);
@@ -175,44 +177,12 @@ const OCC_NOTE = {
   dyad_at_war: 'truth is the merged dyadic war spells src/engine/termination.js:warSpells builds from data/events.json, the same construction the war_end fit labels rows with.',
   record_status: 'multi-class Brier over the record\'s status words: sum_c (p_c - 1{c = actual})^2, against the marginal status distribution of the scored rows as the reference forecast.',
 };
-/** Running Brier accumulator: one bucket per (variable, lead year) plus the pooled bucket. */
-function occAcc() { return { n: 0, brier: 0, p: 0, obs: 0 }; }
-function occAdd(a, p, y) { a.n++; a.brier += (p - y) ** 2; a.p += p; a.obs += y; }
-function occStat(a, extra = {}) {
-  if (!a.n) return { n: 0, ...extra };
-  const brier = a.brier / a.n, base = a.obs / a.n, bb = base * (1 - base);
-  return { n: a.n, expected: +a.p.toFixed(2), observed: a.obs, exp_obs: a.obs ? +(a.p / a.obs).toFixed(3) : null, brier: +brier.toFixed(5), base_rate: +base.toFixed(5), brier_base: +bb.toFixed(5), skill: bb > 0 ? +(1 - brier / bb).toFixed(4) : null, ...extra };
-}
-/**
- * Multi-class Brier over record-status rows: sum_c (p_c - 1{c = actual})^2 averaged over rows, against the marginal
- * status distribution of those same rows as the reference forecast (its expected score is sum_c q_c (1 - q_c)).
- */
-function mcBrier(rows, horizon) {
-  if (!rows.length) return { n: 0 };
-  const cnt = {}; for (const r of rows) cnt[r.actual] = (cnt[r.actual] ?? 0) + 1;
-  const q = Object.fromEntries(Object.entries(cnt).map(([c, n]) => [c, n / rows.length]));
-  const cats = new Set(Object.keys(q)); for (const r of rows) for (const c of Object.keys(r.dist)) cats.add(c);
-  let s = 0; for (const r of rows) for (const c of cats) s += ((r.dist[c] ?? 0) - (c === r.actual ? 1 : 0)) ** 2;
-  const brier = s / rows.length, base = [...cats].reduce((t, c) => t + (q[c] ?? 0) * (1 - (q[c] ?? 0)), 0);
-  const byLead = []; for (let k = 1; k <= horizon; k++) { const rs = rows.filter(r => r.k === k); if (!rs.length) continue; let ss = 0; for (const r of rs) for (const c of cats) ss += ((r.dist[c] ?? 0) - (c === r.actual ? 1 : 0)) ** 2; byLead.push({ k, n: rs.length, brier: +(ss / rs.length).toFixed(5) }); }
-  return { n: rows.length, brier: +brier.toFixed(5), brier_base: +base.toFixed(5), skill: base > 0 ? +(1 - brier / base).toFixed(4) : null, classes: cats.size, marginal: Object.fromEntries(Object.entries(q).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([c, v]) => [c, +v.toFixed(3)])), by_lead: byLead, note: OCC_NOTE.record_status };
-}
-/** Spearman rank correlation over [[x, y]] pairs; null under 5 pairs. */
-function spearman(pairs) {
-  if (pairs.length < 5) return null;
-  const rank = (get) => { const idx = pairs.map((_, i) => i).sort((a, b) => get(pairs[a]) - get(pairs[b])); const r = new Array(pairs.length); for (let i = 0; i < idx.length;) { let j = i; while (j < idx.length && get(pairs[idx[j]]) === get(pairs[idx[i]])) j++; const avg = (i + j - 1) / 2; for (let k = i; k < j; k++) r[idx[k]] = avg; i = j; } return r; };
-  const rx = rank(p => p[0]), ry = rank(p => p[1]); const n = pairs.length;
-  const mx = rx.reduce((s, x) => s + x, 0) / n, my = ry.reduce((s, x) => s + x, 0) / n;
-  let sxy = 0, sxx = 0, syy = 0;
-  for (let i = 0; i < n; i++) { const a = rx[i] - mx, b = ry[i] - my; sxy += a * b; sxx += a * a; syy += b * b; }
-  return sxx && syy ? +(sxy / Math.sqrt(sxx * syy)).toFixed(3) : null;
-}
-// the dyadic war spells the occupancy score grades against: pair -> set of years the pair was at war
-const warYears = new Map();
-for (const [k, spans] of warSpells(events)) { const s = new Set(); for (const sp of spans) for (let y = sp.y0; y <= sp.y1; y++) s.add(y); warYears.set(k, s); }
+// The occupancy score is the fork scorer (docs/plan-structure.md A4): the record, replayed by the engine over the
+// whole scored window once (src/engine/replay.js), and each origin's ensemble, both written through the frame contract
+// (src/contract/frames.js), graded by src/contract/score.js. Neither side is read from anywhere else.
+const RECORD = recordFrames({ panel, events, fits, templates, pacts, contiguity, universe: 'all', successors, contiguityFrom, corridors, territories, presence, waves }, { from: FROM + 1, to: Math.min(TO + H, panel.meta.y1) });
 
-const results = []; const pooled = {}; const occPooled = {}; const occRank = { cinc: {}, pol_share: {}, wave_share: {} };
-const occMcRows = { record_status_multiclass: [], territory_status_multiclass: [] };   // pooled multi-class rows across as-of years
+const results = []; const pooled = {}; const occRaw = {}; const occRank = {};
 console.log(`backtest: as-of ${FROM}..${TO} step ${STEP}, horizon ${H}y, ${RUNS} runs, universe=${UNIVERSE}${skipDyads ? ', dyads off' : ''}, coefficients=${REFIT ? 'refit per as-of year' : 'full-sample (leaky)'}`);
 console.log(`alliance graph: ${pactMeta.source}; measured through ${pactMeta.atop_last}, carried from ${pactMeta.stale_from}\n`);
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
@@ -222,7 +192,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const t0 = Date.now();
   // `state: true` adds the occupancy tracking. It reads the world after each step and consumes no random numbers, so
   // every event number below is bit-identical to a run without it (docs/escalations.md package 11, test (d)).
-  const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads, state: true });
+  const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads, state: true, frames: { from: asOf + 1, meta: { source: `fc-${asOf}`, asOf } } });
   const real = realized(asOf, horizon);
   const w0 = make(); const ids = Object.keys(w0.actors);
   // every actor the engine can hold during the horizon, including ones born inside it (the engine introduces and retires
@@ -401,76 +371,27 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
     row.templates[t.id] = rec;
     if (!rec.underpowered) (pooled[t.id] ??= []).push(...pairs.map(([p, y, u]) => [p, y, u, asOf]));
   }
-  // ---- occupancy: what state the world is in each year, scored against the panel and the record layer.
+  // ---- occupancy: what state the world is in each year — the forecast's frames against the record's, generically.
   {
-    const occ = ens.occupancy; const acc = {};
-    const bump = (v, k, p, y) => { const a = acc[v] ??= { lead: Array.from({ length: horizon }, occAcc), all: occAcc() }; occAdd(a.lead[k - 1], p, y); occAdd(a.all, p, y); const g = occPooled[v] ??= { lead: Array.from({ length: H }, occAcc), all: occAcc() }; occAdd(g.lead[k - 1], p, y); occAdd(g.all, p, y); };
-    const inWin = (v, y) => { const w = OCC_COVERAGE[v]; return !w || (y >= w[0] && y <= w[1]); };
-    // actor state. The truth column is the panel's own; a year the panel does not observe for that actor is not scored
-    // (absence is not a non-event), and an actor the ensemble never instantiated is scored at p = 0 rather than dropped.
-    const ACTOR_VARS = { at_war: [(x) => (x > 0 ? 1 : 0), 'at_war'], intrastate: [(x) => (x >= 1 ? 1 : 0), 'intrastate'], intrastate_war: [(x) => (x >= 2 ? 1 : 0), 'intrastate'], occupied: [(x) => (x > 0 ? 1 : 0), 'occupied'] };
-    for (const [v, [truth, col]] of Object.entries(ACTOR_VARS)) for (let k = 1; k <= horizon; k++) {
-      const y = asOf + k; if (!inWin(v, y)) continue;
-      for (const id of windowIds) {
-        if (!liveAt(id, y)) continue;
-        const raw = panel.actors[id]?.[col]?.[y - Y0]; if (raw == null) continue;
-        bump(v, k, occ.actors[id]?.[v]?.[k - 1] ?? 0, truth(raw));
-      }
-    }
-    // dyadic war-years, over the same pair set the event score uses
-    if (!skipDyads) for (let k = 1; k <= horizon; k++) {
-      const y = asOf + k; if (!inWin('dyad_at_war', y)) continue;
-      for (let i = 0; i < dyadIds.length; i++) { if (!liveAt(dyadIds[i], y)) continue; for (let j = i + 1; j < dyadIds.length; j++) { if (!liveAt(dyadIds[j], y)) continue; const pk = pairKey(dyadIds[i], dyadIds[j]); bump('dyad_at_war', k, occ.dyads[pk]?.[k - 1] ?? 0, warYears.get(pk)?.has(y) ? 1 : 0); } }
-    }
-    // record status. Corridors and chokepoints are scored twice: as a binary "impaired" (the quantity a reader of the
-    // map cares about) and as the full multi-class distribution. Territories the same way with `settled` as the
-    // resolved class. A record whose own history has ended (retired) stops being a unit, as in the event score.
-    const terrIds = new Set(territories.map(r => r.id));
-    const truthOf = new Map();
-    for (const r of corridors) truthOf.set(r.id, (y) => (y > corridorLastYear(r, Infinity) ? null : corridorStateAt(r, y)?.status ?? null));
-    for (const r of territories) truthOf.set(r.id, (y) => territoryStateAt(r, y)?.status ?? null);
-    const recRows = [], terrRows = [];
-    for (const [rid, rec] of Object.entries(occ.records)) {
-      const t = truthOf.get(rid); if (!t) continue;
-      const isTerr = terrIds.has(rid); const wv = isTerr ? 'territory_unsettled' : 'record_status';
-      for (let k = 1; k <= horizon; k++) {
-        const y = asOf + k; if (!inWin(wv, y)) continue;
-        const dist = rec.status[k - 1]; if (!dist) continue;
-        const actual = t(y); if (actual == null) continue;
-        (isTerr ? terrRows : recRows).push({ k, dist, actual });
-        occMcRows[isTerr ? 'territory_status_multiclass' : 'record_status_multiclass'].push({ k, dist, actual });
-        if (isTerr) bump('territory_unsettled', k, 1 - (dist.settled ?? 0), RESOLVED.has(actual) ? 0 : 1);
-        else bump('record_impaired', k, [...IMPAIRED].reduce((s, c) => s + (dist[c] ?? 0), 0), IMPAIRED.has(actual) ? 1 : 0);
-      }
-    }
-    const mc = (rows) => mcBrier(rows, horizon);
-    // capability: does the ensemble's median share rank the world the way CoW does ten and twenty years out
-    // operator/capability-waves: each simulated capability series is graded against ITS OWN observed panel column —
-    // `cinc` and the projection-weighted share against CoW's index (pol_share is a reweighting of it), the wave share
-    // against the wave share the panel computes from the observed sovereign_by dates. Grading the wave index against
-    // CINC would score it on how well it reproduces the index it was built to replace.
-    const CAP_TRUTH = { cinc: 'cinc', pol_share: 'cinc', wave_share: 'wave_share' };
-    const capRank = {};
-    for (const [v, truthVar] of Object.entries(CAP_TRUTH)) for (const k of [10, 20]) {
-      if (k > horizon) continue; const y = asOf + k;
-      const ps = [];
-      for (const id of windowIds) { if (!liveAt(id, y)) continue; const truth = panel.actors[id]?.[truthVar]?.[y - Y0]; const q = occ.actors[id]?.[v]?.[k - 1]; if (truth == null || !q) continue; ps.push([q[1], truth]); }
-      const rho = spearman(ps); (capRank[v] ??= {})[`k${k}`] = { n: ps.length, spearman: rho, truth: truthVar };
-      if (rho != null) ((occRank[v] ??= {})[`k${k}`] ??= []).push(rho);
-    }
-    const vars = {};
-    for (const [v, a] of Object.entries(acc)) vars[v] = { ...occStat(a.all, { coverage: OCC_COVERAGE[v] ?? null, note: OCC_NOTE[v] }), by_lead: a.lead.map((x, i) => occStat(x, { k: i + 1 })).filter(x => x.n) };
-    vars.record_status_multiclass = mc(recRows); vars.territory_status_multiclass = mc(terrRows);
+    const sc = scoreFork(RECORD, ens.frames.ensemble, { horizon, actorIds: windowIds });
+    if (skipDyads) for (const k of Object.keys(sc.binary)) if (k.startsWith('dyad_')) delete sc.binary[k];
+    pool(occRaw, sc);
+    const rep = report(sc, { notes: OCC_NOTE, coverage: OCC_COVERAGE });
     // the hot-process diagnosis the package asks for by name: the lead years where the simulated war occupancy exceeds
     // the panel's, stated rather than left to be read out of the table.
     const hot = {};
     for (const v of ['at_war', 'dyad_at_war']) {
-      const a = acc[v]; if (!a) continue;
-      const leads = a.lead.map((x, i) => ({ k: i + 1, exp: x.n ? x.p / x.n : null, obs: x.n ? x.obs / x.n : null })).filter(x => x.exp != null);
+      const s = rep.vars[v]; if (!s?.by_lead) continue;
+      const leads = s.by_lead.map(x => ({ k: x.k, exp: x.expected / x.n, obs: x.observed / x.n }));
       const over = leads.filter(x => x.exp > x.obs);
       hot[v] = { leads_over: over.map(x => x.k), first_lead_over: over[0]?.k ?? null, worst: over.length ? over.reduce((b, x) => ((x.exp - x.obs) > (b.exp - b.obs) ? x : b)) : null, ratio_by_lead: leads.map(x => ({ k: x.k, exp_rate: +x.exp.toFixed(5), obs_rate: +x.obs.toFixed(5), ratio: x.obs ? +(x.exp / x.obs).toFixed(2) : null })) };
     }
-    row.occupancy = { vars, capability_rank: capRank, hot };
+    // capability: does the ensemble's median share rank the world the way the record does ten and twenty years out.
+    // Each series is graded against ITS OWN record column (the registry's `truth`), so pol_share is now ranked against
+    // the panel's pol_share rather than CoW's CINC as it was before the fork scorer.
+    const capRank = {};
+    for (const v of ['cinc', 'pol_share', 'wave_share']) { const r = rep.continuous[v]?.rank ?? {}; capRank[v] = r; for (const [k, x] of Object.entries(r)) if (x.spearman != null) ((occRank[v] ??= {})[k] ??= []).push(x.spearman); }
+    row.occupancy = { vars: rep.vars, continuous: rep.continuous, capability_rank: capRank, hot };
   }
   results.push(row);
   console.log(`as-of ${asOf} (+${horizon}y, ${ids.length} actors, ${(row.ms / 1000).toFixed(1)}s)`);
@@ -574,17 +495,14 @@ for (const [id, pairs] of Object.entries(pooled)) {
 }
 // ---- pooled occupancy across as-of years
 console.log('\npooled occupancy (state each year, all as-of rows):');
-const occSummary = { vars: {}, capability_rank: {}, coverage: OCC_COVERAGE, notes: OCC_NOTE };
-for (const [v, g] of Object.entries(occPooled)) {
-  occSummary.vars[v] = { ...occStat(g.all, { coverage: OCC_COVERAGE[v] ?? null, note: OCC_NOTE[v] }), by_lead: g.lead.map((x, i) => occStat(x, { k: i + 1 })).filter(x => x.n) };
-  const s = occSummary.vars[v];
-  console.log(`   ${v.padEnd(24)} n=${String(s.n).padStart(8)}  exp/obs=${fmt(s.exp_obs)}  brier=${fmt(s.brier, 4)} (base ${s.brier_base.toFixed(4)}, skill ${fmt(s.skill)})  rate=${s.base_rate.toFixed(4)}`);
+const occRep = report(occRaw, { notes: OCC_NOTE, coverage: OCC_COVERAGE });
+const occSummary = { vars: occRep.vars, continuous: occRep.continuous, capability_rank: {}, coverage: OCC_COVERAGE, notes: OCC_NOTE, scorer: 'src/contract/score.js over src/contract/frames.js (record by src/engine/replay.js)' };
+for (const [v, s] of Object.entries(occSummary.vars)) {
+  if (!s.n) continue;
+  if (s.classes) console.log(`   ${v.padEnd(28)} n=${String(s.n).padStart(8)}  ${' '.repeat(14)}brier=${fmt(s.brier, 4)} (base ${s.brier_base.toFixed(4)}, skill ${fmt(s.skill)})  ${s.classes} classes`);
+  else console.log(`   ${v.padEnd(28)} n=${String(s.n).padStart(8)}  exp/obs=${fmt(s.exp_obs)}  brier=${fmt(s.brier, 4)} (base ${s.brier_base.toFixed(4)}, skill ${fmt(s.skill)})  rate=${s.base_rate.toFixed(4)}`);
 }
-for (const [v, rows] of Object.entries(occMcRows)) {
-  occSummary.vars[v] = mcBrier(rows, H);
-  const s = occSummary.vars[v]; if (!s.n) continue;
-  console.log(`   ${v.padEnd(24)} n=${String(s.n).padStart(8)}  ${' '.repeat(14)}brier=${fmt(s.brier, 4)} (base ${s.brier_base.toFixed(4)}, skill ${fmt(s.skill)})  ${s.classes} classes`);
-}
+for (const [v, c] of Object.entries(occSummary.continuous)) console.log(`   ${v.padEnd(28)} n=${String(c.n).padStart(8)}  p10-p90 coverage=${fmt(c.coverage_p10_p90)}  pinball/scale=${fmt(c.pinball_rel, 3)}  ${Object.entries(c.rank).map(([k, x]) => `${k} rho=${x.spearman ?? '—'}`).join(' ')}`);
 for (const [v, ks] of Object.entries(occRank)) for (const [k, rs] of Object.entries(ks)) {
   occSummary.capability_rank[`${v}_${k}`] = { as_of_rows: rs.length, mean_spearman: +(rs.reduce((a, b) => a + b, 0) / rs.length).toFixed(3), min: Math.min(...rs), max: Math.max(...rs) };
   const x = occSummary.capability_rank[`${v}_${k}`];
