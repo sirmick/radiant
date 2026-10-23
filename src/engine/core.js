@@ -1320,7 +1320,9 @@ function stepMembership(world, y, rng) {
   for (const [id, a] of Object.entries(world.actors)) { const gpAlly = Object.keys(world.actors).some(g => g !== id && (world.actors[g].cur.great_power ?? 0) > 0 && world.allied.has(pairKey(id, g)));
     const p = deathHazard(M.fit, { cinc: a.cur.cinc, atWar: (a.cur.at_war ?? 0) > 0, great: (a.cur.great_power ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0, gpAlly }); if (p != null && rng() < p) deaths.push(id); }
   for (const id of deaths) {
-    const nb = [...world.contiguous].map(k => k.split('|')).filter(([p, q]) => (p === id || q === id)).map(([p, q]) => (p === id ? q : p)).filter(o => world.actors[o] && !deaths.includes(o));
+    // the absorber is a GEOGRAPHIC neighbour (a pair the contiguity source has recorded), not one of the edges a run
+    // has inherited through earlier absorptions: chained inheritance had Croatia absorbed by China in a 2025 run
+    const nb = [...(M.nb.get(id) ?? [])].filter(o => world.actors[o] && !deaths.includes(o));
     const by = nb.sort((p, q) => (world.actors[q].cur.cinc ?? 0) - (world.actors[p].cur.cinc ?? 0))[0] ?? null;
     retireActor(world, id, by); out.push({ kind: 'state_death', actor: id, absorbed_by: by, year: y });
     // its territories, and its own, pass to the absorber (or to no one): a territory absorbed can secede again

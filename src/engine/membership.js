@@ -62,6 +62,7 @@ export const polygonKey = (id, polygonOf) => polygonOf?.[id] ?? id;
 // keeps the single-stage birth hazard. Death reads whether the state broke up that year and the share of its held
 // territories that left (Austria-Hungary 1918, Czechoslovakia 1993), and a dead state's territories pass to its absorber.
 export const BREAKUP = { rise_years: 3, growth_years: 5 };
+const HOLDERS_FROM = 1886;   // CShapes 2.0's first year (data/holders.json meta.years)
 // The breakup covariates, by name, so a variant can be fitted and scored without editing code (BREAKUP_X selects them;
 // docs/plan-structure.md, "breakup scoring"). Each reads one field of the holder state `s`, built the same way from the
 // panel (fit, scoring) and from a simulated world (src/engine/core.js:stepMembership). A missing value takes a neutral
@@ -199,6 +200,9 @@ export function fitMembership({ panel, polygons, polygonOf = {}, contiguity = {}
       if (occBefore.has(poly.id)) continue;
       const ho = holders ? holderAt(holders, poly.id, t - 1) : null;
       if (ho?.h && ho.h !== 'self' && liveSet.has(ho.h)) { const u = unitKey(ho.h, isColonial(ho.status)); (held.get(u) ?? held.set(u, []).get(u)).push({ poly, colony: isColonial(ho.status), prior: (firstLive.get(poly.id) ?? Infinity) < t - 1 }); continue; }
+      // with holders on, the single-stage hazard is for territories no holder is recorded for; before CShapes starts
+      // (1886) that was every territory, so those years would hand a 19th-century rate to Greenland and the Falklands
+      if (holders && t <= HOLDERS_FROM) continue;
       const ev = bornPolys.has(poly.id) ? 1 : 0; B.X.push(birthX({ recent, area: poly.area, local: localBirths(nb, bornAt, poly.id, t), dem })); B.y.push(ev);
     }
     const broke = new Map();   // holder -> share of its held territories born in t

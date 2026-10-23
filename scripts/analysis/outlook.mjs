@@ -41,7 +41,9 @@ const euBirth = (r, y) => evs(r, y).some(e => e.k === 'state_birth' && (fc.meta.
 line('>= 1 democratic member turns autocratic (RoW 0-1)', (r, y) => euAut(r, y) >= 1);
 line('>= 3 democratic members autocratic at the same time', (r, y) => euAut(r, y) >= 3);
 line('a war between two members', euWar);
+line('  ... a war between two members, neither the one autocratic at origin', (r, y) => { const aut0 = EU.filter(id => !EU0.includes(id)); for (const [p, a] of Object.entries(r.dyads?.at_war ?? {})) { const [x, z] = p.split('|'); if (EU0.includes(x) && EU0.includes(z)) for (let k = 0; k <= K(y); k++) if (at(a, k)) return true; } return false; });
 line('a member ceases to exist as a state', euGone);
+{ const m = new Map(); for (const r of runs) for (const e of evs(r, YEARS[1] ?? YEARS[0])) if (e.k === 'state_death' && EU.includes(e.actor)) { const k = `${e.actor}>${e.absorbed_by ?? '-'}`; m.set(k, (m.get(k) ?? 0) + 1); } console.log(`  ... who, absorbed by whom, by ${YEARS[1] ?? YEARS[0]} (runs): ${[...m].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, n]) => `${k} ${n}`).join('  ')}`); }
 line('internal war (intensity 2) in a member', euIntraWar);
 line('FRACTURE: >= 3 turn autocratic, or a war between members, or one gone', (r, y) => euAut(r, y) >= 3 || euWar(r, y) || euGone(r, y));
 const allied = fc.dyads?.allied ?? {}; const pairs = []; for (let i = 0; i < EU.length; i++) for (let j = i + 1; j < EU.length; j++) pairs.push(pk(EU[i], EU[j]));
@@ -61,6 +63,8 @@ line('Puerto Rico becomes a state', (r, y) => evs(r, y).some(e => e.k === 'state
 line('irregular leader exit', (r, y) => evs(r, y).some(e => e.actor === 'USA' && (kindOf(e) === 'irregular_exit' || (e.k === 'coup' && e.success))));
 line('no longer a great power', (r, y) => !(at(r.actors.USA?.great_power, K(y)) ?? 0));
 line('no longer the top pole (world hegemon)', (r, y) => at(r.world?.hegemon, K(y)) !== 'USA');
+{ const dist = (v, y) => { const m = new Map(); for (const r of runs) { const h = at(r.world?.[v], K(y)); m.set(h, (m.get(h) ?? 0) + 1); } return [...m].sort((a, b) => b[1] - a[1]).map(([h, n]) => `${h} ${pct(n / N).trim()}`).join(' '); };
+  console.log(`  top pole (world hegemon): ${YEARS.map(y => `${y}: ${dist('hegemon', y)}`).join('   ')}`); }
 line('FRACTURE: internal war, or ceases to exist', (r, y) => usIntra(2)(r, y) || !live(r, 'USA', K(y)));
 
 const Y1 = YEARS[0], Y2 = YEARS[Math.min(1, YEARS.length - 1)];

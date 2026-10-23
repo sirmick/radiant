@@ -1,0 +1,4 @@
+# Holders for territories too small for CShapes 2.0 to resolve (scripts/build-holders.mjs leaves them unheld), where the
+# record is unambiguous. Spans [from, to, holder, status], same form as data/holders.json; they replace the built spans.
+HKG: [[1886, 1996, GBR, colony], [1997, 2019, CHN, independent]]   # handover 1 July 1997
+MAC: [[1886, 1998, PRT, colony], [1999, 2019, CHN, independent]]   # handover 20 December 1999

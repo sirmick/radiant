@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import * as turf from '@turf/turf';
 import { feature } from 'topojson-client';
-import { loadActors, makeCodeMap } from './lib/hist.mjs';
+import { loadActors, makeCodeMap, Y } from './lib/hist.mjs';
 import { loadPolygons } from './lib/inputs.mjs';
 import { polygonKey } from '../src/engine/membership.js';
 
@@ -69,6 +69,9 @@ for (const t of territories) {
   }
   holders[t.id] = spans; if (unresolved) unresolvedBy[t.id] = unresolved;
 }
-const meta = { built: new Date().toISOString(), source: 'CShapes 2.0 (GW), via the CRAN cshapes package copy', years: [Y0, Y1], rule: 'feature in force on 1 July containing a point on the territory\'s largest part; holder = feature owner mapped to a model id; self = the territory the holder itself draws on', territories: territories.length, unheld_territory_years: unheld, unmapped_owner_codes: Object.fromEntries(unmapped), resolve_ratio: RESOLVE, unresolved_territory_years: unresolvedBy };
+// overrides for territories the generalised map cannot resolve (data/holders_overrides.yaml)
+let overrides = {}; try { overrides = Y('data/holders_overrides.yaml') ?? {}; } catch {}
+for (const [id, spans] of Object.entries(overrides)) holders[id] = spans.map(([a, b, h, st]) => [a, b, h, st]);
+const meta = { overrides: Object.keys(overrides), built: new Date().toISOString(), source: 'CShapes 2.0 (GW), via the CRAN cshapes package copy', years: [Y0, Y1], rule: 'feature in force on 1 July containing a point on the territory\'s largest part; holder = feature owner mapped to a model id; self = the territory the holder itself draws on', territories: territories.length, unheld_territory_years: unheld, unmapped_owner_codes: Object.fromEntries(unmapped), resolve_ratio: RESOLVE, unresolved_territory_years: unresolvedBy };
 writeFileSync('data/holders.json', JSON.stringify({ meta, holders }));
 console.log(`data/holders.json: ${territories.length} territories, ${unheld} unheld territory-years, unresolved ${JSON.stringify(unresolvedBy)}, unmapped owner codes ${JSON.stringify(meta.unmapped_owner_codes)}`);
