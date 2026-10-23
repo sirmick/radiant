@@ -1,49 +1,49 @@
-fc50f.json: 300 sample worlds from 2025, 50 years, data/fits.json (full sample)
+fc50g.json: 300 sample worlds from 2025, 50 years, data/fits.json (full sample)
 
 EU (27 members as of 2025): P(by year)
-  >= 1 democratic member turns autocratic (RoW 0-1)          2035:  67.0%   2050:  75.7%   2074:  79.3%
-  >= 3 democratic members autocratic at the same time        2035:   4.7%   2050:   7.3%   2074:   8.0%
-  a war between two members                                  2035:   3.7%   2050:  12.7%   2074:  22.3%
-    ... a war between two members, neither the one autocratic at origin 2035:   2.7%   2050:   9.3%   2074:  17.7%
-  a member ceases to exist as a state                        2035:  11.0%   2050:  19.0%   2074:  25.0%
-  ... who, absorbed by whom, by 2050 (runs): IRL>GBR 8  BGR>TUR 5  EST>RUS 5  HUN>RUS 4  ROU>RUS 4  SVN>ITA 4  LTU>RUS 3  LVA>RUS 3  HRV>ITA 3  FIN>RUS 3
+  >= 1 democratic member turns autocratic (RoW 0-1)          2035:  68.7%   2050:  79.3%   2074:  81.7%
+  >= 3 democratic members autocratic at the same time        2035:   4.0%   2050:   7.3%   2074:   8.3%
+  a war between two members                                  2035:   5.0%   2050:  11.7%   2074:  22.7%
+    ... a war between two members, neither the one autocratic at origin 2035:   3.7%   2050:   9.0%   2074:  17.7%
+  a member ceases to exist as a state                        2035:  10.3%   2050:  17.3%   2074:  26.0%
+  ... who, absorbed by whom, by 2050 (runs): IRL>GBR 6  BGR>TUR 6  SVN>ITA 6  HUN>RUS 5  ROU>RUS 4  GRC>TUR 3  LVA>RUS 3  HRV>ITA 3  POL>RUS 3  EST>RUS 3
   internal war (intensity 2) in a member                     2035:   0.0%   2050:   0.0%   2074:   0.0%
-  FRACTURE: >= 3 turn autocratic, or a war between members, or one gone 2035:  18.7%   2050:  35.0%   2074:  47.3%
-  defence-pact graph among members, expected share of the 351 pairs allied: 2035:  97.7%   2050:  95.9%   2074:  95.0%
-  members autocratic at the year, mean over runs: 2035: 1.36   2050: 0.82   2074: 0.34   (at 2025: HUN)
-  most likely to turn autocratic by 2074: HUN 96.3%  BGR 23.0%  GRC 18.0%  PRT 17.7%  ROU 14.3%  HRV 12.7%
+  FRACTURE: >= 3 turn autocratic, or a war between members, or one gone 2035:  18.3%   2050:  31.7%   2074:  47.7%
+  defence-pact graph among members, expected share of the 351 pairs allied: 2035:  97.6%   2050:  95.8%   2074:  94.8%
+  members autocratic at the year, mean over runs: 2035: 1.36   2050: 0.85   2074: 0.32   (at 2025: HUN)
+  most likely to turn autocratic by 2074: HUN 96.7%  BGR 22.7%  GRC 15.7%  HRV 15.3%  ROU 14.7%  SVK 14.7%
   -- the union (simulated membership) --
-  >= 1 member leaves                                         2035:  31.0%   2050:  56.0%   2074:  77.0%
-  >= 3 members leave                                         2035:   1.0%   2050:  14.0%   2074:  36.7%
-  a founding member leaves (BEL FRA DEU ITA LUX NLD)         2035:   7.7%   2050:  17.3%   2074:  30.7%
+  >= 1 member leaves                                         2035:  31.0%   2050:  57.0%   2074:  76.7%
+  >= 3 members leave                                         2035:   1.0%   2050:  13.7%   2074:  36.7%
+  a founding member leaves (BEL FRA DEU ITA LUX NLD)         2035:   7.7%   2050:  19.3%   2074:  30.0%
   fewer than 20 members                                      2035:   0.0%   2050:   0.0%   2074:   0.0%
   UNION BREAKUP: half the 2025 members gone (left or ceased) 2035:   0.0%   2050:   0.0%   2074:   0.0%
-  members, mean over runs: 2035: 29.8   2050: 33.1   2074: 38.6
-  most likely joiners by 2074: CHE 80.3%  GBR 80.3%  MNE 80.0%  NOR 77.0%  MDA 75.3%  KOSOVO 75.3%  MKD 74.3%  TUR 64.0%  ALB 57.0%  BIH 54.7%
-  exits by member (any, by 2074): ROU 9.7%  HUN 9.7%  EST 8.7%  FIN 8.3%  LVA 8.0%  ITA 7.7%  LTU 7.3%  POL 7.3%   (n = 1 recorded exit: who leaves is not identified, only how often)
+  members, mean over runs: 2035: 29.8   2050: 33.5   2074: 39.4
+  most likely joiners by 2074: GBR 78.7%  NOR 78.7%  MKD 78.3%  MNE 78.0%  MDA 77.3%  KOSOVO 76.0%  CHE 75.7%  ALB 58.3%  TUR 55.7%  BIH 51.7%
+  exits by member (any, by 2074): SWE 8.0%  AUT 8.0%  FRA 8.0%  BGR 7.3%  DNK 7.3%  LUX 7.0%  ROU 7.0%  SVN 7.0%   (n = 1 recorded exit: who leaves is not identified, only how often)
 
 US: P(by year)
-  internal armed conflict (any intensity)                    2035:  17.3%   2050:  29.3%   2074:  42.0%
+  internal armed conflict (any intensity)                    2035:  22.7%   2050:  33.7%   2074:  44.0%
   internal war (intensity 2)                                 2035:   0.0%   2050:   0.0%   2074:   0.0%
-  autocratic regime (RoW 0-1) at some point                  2035:   2.7%   2050:   2.7%   2074:   2.7%
+  autocratic regime (RoW 0-1) at some point                  2035:   3.7%   2050:   3.7%   2074:   4.0%
   ceases to exist as a state                                 2035:   0.0%   2050:   0.0%   2074:   0.0%
-  Puerto Rico becomes a state                                2035:   5.0%   2050:  15.0%   2074:  27.7%
-  irregular leader exit                                      2035:   1.7%   2050:   2.7%   2074:   5.0%
-  no longer a great power                                    2035:   2.0%   2050:   3.0%   2074:   6.3%
-  no longer the top pole (world hegemon)                     2035:  23.7%   2050:  32.0%   2074:  37.0%
-  top pole (world hegemon): 2035: USA 76.3% CHN 23.7%   2050: USA 68.0% CHN 31.3% IND 0.7%   2074: USA 63.0% CHN 28.7% IND 7.3% SAU 0.7% JPN 0.3%
+  Puerto Rico becomes a state                                2035:   5.0%   2050:  13.7%   2074:  24.3%
+  irregular leader exit                                      2035:   0.7%   2050:   1.7%   2074:   3.3%
+  no longer a great power                                    2035:   2.3%   2050:   2.3%   2074:   4.3%
+  no longer the top pole (world hegemon)                     2035:  24.3%   2050:  36.3%   2074:  38.0%
+  top pole (world hegemon): 2035: USA 75.7% CHN 24.3%   2050: USA 63.7% CHN 36.0% IND 0.3%   2074: USA 62.0% CHN 31.0% IND 5.7% SAU 1.3%
   FRACTURE: internal war, or ceases to exist                 2035:   0.0%   2050:   0.0%   2074:   0.0%
 
 Middle East (V-Dem region 3, 19 states): MAR DZA TUN LBY IRN TUR IRQ EGY SYR LBN JOR ISR SAU YEM KWT BHR QAT ARE OMN
-  leader exit by 2035                      KWT 91.3%  ISR 87.0%  SAU 86.0%  DZA 85.0%  LBN 83.0%  EGY 82.0%  IRN 81.3%  ARE 77.0%
-  irregular leader exit by 2035            YEM 14.7%  SYR 13.7%  DZA 13.0%  EGY 13.0%  LBY 12.7%  MAR 10.7%  IRN 10.0%  TUN 9.3%
-  new civil conflict by 2035               YEM 70.0%  SYR 64.0%  IRQ 61.7%  IRN 61.0%  TUR 56.7%  EGY 49.7%  DZA 28.3%  ISR 27.3%
-  democratises (a RoW step up) by 2050     ISR 93.0%  TUR 79.3%  BHR 77.7%  QAT 77.3%  KWT 76.3%  OMN 76.0%  LBY 74.3%  SAU 74.3%
-  autocratises (a RoW step down) by 2050   LBN 42.7%  IRQ 38.0%  TUR 37.3%  EGY 36.7%  DZA 35.7%  YEM 33.0%  TUN 32.0%  IRN 31.0%
-  becomes a great power by 2050            IRN 3.3%  TUR 2.3%  SAU 1.7%  EGY 0.7%  JOR 0.3%  KWT 0.3%  MAR 0.0%  DZA 0.0%
-  nuclear weapons at 2050 (ensemble)                   ISR 100.0%  SAU 10.4%  EGY 9.8%  IRN 9.5%  IRQ 4.7%  TUR 4.0%
-  another regional wave (>= 4 states opening within two years): by 2035: 53.7%  by 2050: 77.7%  by 2074: 91.7%
-  wars involving the region by 2050, by pair: IRQ|RUS 15.7%  RUS|SAU 15.0%  COD|EGY 15.0%  ERI|YEM 12.3%  KEN|MAR 12.3%  KEN|OMN 12.0%  IRN|RUS 11.7%  AGO|EGY 11.3%
-  any war between two regional states by 2050: 89.3%
-  new states anywhere by 2050 (top): GRL 30.0%  HKG 23.0%  KAS 19.3%  SOL 17.7%  KOS 17.3%  ESH 17.0%  NCL 16.0%  FLK 15.7%  ALA 15.3%  PRI 15.0%
-  regime mix, mean states closed / electoral autocracy / electoral democracy / liberal: 2025: 11 / 7 / 1 / 0   2035: 7.6 / 8.2 / 1.8 / 1.3   2050: 4.7 / 7.5 / 2.3 / 4.3   2074: 2.0 / 5.4 / 2.0 / 9.4
+  leader exit by 2035                      KWT 87.7%  DZA 84.7%  IRN 84.3%  ISR 83.7%  SAU 83.3%  LBN 82.0%  OMN 79.3%  ARE 78.7%
+  irregular leader exit by 2035            YEM 16.3%  LBY 12.0%  SYR 11.7%  TUN 10.3%  IRN 10.3%  DZA 9.7%  MAR 8.7%  EGY 8.7%
+  new civil conflict by 2035               YEM 68.7%  IRN 62.0%  SYR 61.0%  IRQ 59.3%  TUR 56.0%  EGY 48.7%  DZA 30.0%  ISR 27.3%
+  democratises (a RoW step up) by 2050     ISR 92.7%  TUR 80.0%  QAT 78.3%  KWT 78.0%  BHR 76.7%  OMN 75.7%  ARE 75.3%  SAU 74.0%
+  autocratises (a RoW step down) by 2050   LBN 42.3%  TUN 40.7%  TUR 39.0%  IRQ 39.0%  IRN 38.0%  EGY 38.0%  DZA 34.7%  YEM 34.0%
+  becomes a great power by 2050            IRN 2.7%  TUR 2.3%  SAU 1.3%  EGY 0.7%  MAR 0.3%  ISR 0.3%  KWT 0.3%  ARE 0.3%
+  nuclear weapons at 2050 (ensemble)                   ISR 100.0%  SAU 9.8%  IRN 9.2%  EGY 7.1%  IRQ 5.0%  TUR 4.7%
+  another regional wave (>= 4 states opening within two years): by 2035: 54.3%  by 2050: 83.0%  by 2074: 92.7%
+  wars involving the region by 2050, by pair: RUS|SAU 15.0%  EGY|RUS 14.3%  COD|EGY 13.0%  ERI|YEM 13.0%  IRN|RUS 13.0%  DEU|MAR 11.7%  EGY|TUR 11.7%  EGY|ISR 11.7%
+  any war between two regional states by 2050: 92.0%
+  new states anywhere by 2050 (top): GRL 30.0%  HKG 20.0%  KAS 19.0%  SOL 18.3%  PSE 17.0%  KOS 16.7%  ESH 16.7%  FLK 16.3%  MAC 14.0%  NCL 14.0%
+  regime mix, mean states closed / electoral autocracy / electoral democracy / liberal: 2025: 11 / 7 / 1 / 0   2035: 7.9 / 8.0 / 1.7 / 1.4   2050: 4.7 / 7.4 / 2.4 / 4.3   2074: 2.4 / 5.3 / 1.7 / 9.4

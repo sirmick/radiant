@@ -222,7 +222,11 @@ by the backtest, and published in frames. Order matters — later steps read ear
   that declared one (1946), which is why every post-war institution read "unidentified" before.
   Backtest 1870-2010 (100 runs), trade + unions against Archigos + war outcomes: 9 up, 8 down, mean -0.0361 -> -0.0256
   (record_reopen +0.10, chokepoint +0.03, corridor +0.03; mid_force/mid_war exp/obs 0.81 -> 0.68 / 0.71 -> 0.58).
-  The 50-year run: a war between two members by 2050 40% -> 13%.
+  That run used log(d + 0.001), which gave every pair without recorded trade -6.9 and so a war BOOST for distant pairs
+  (Kenya-Morocco among the Middle East's likeliest wars). Now log(1 + 100 d), standardised: mean -0.0361 -> -0.0328
+  (12 up, 5 down), mid_force/mid_war exp/obs 0.76 / 0.66. The 50-year run: a war between two members by 2050 40% -> 12%.
+  Tested and not adopted: `waited` (years eligible without joining) as a revealed preference to stay out: +0.82
+  (Austria, Sweden, Finland waited 37 years and joined), so Norway or Switzerland read like any eligible democracy.
 - **C6 — done 2026-10-23.** Station open / close hazards over the dated presence layer (`src/engine/stations.js`), the
   presence index rebuilt as the run moves and read at the simulated year; a dyad `presence` variable carries it into
   the frames, and the viewer draws it after the seam. Gate: openings 0.62x, closures 0.56x of the record (between
