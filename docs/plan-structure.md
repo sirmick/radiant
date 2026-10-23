@@ -113,6 +113,16 @@ by the backtest, and published in frames. Order matters — later steps read ear
 | C5 | live set and borders | secession hazard (from intrastate conflict, separatist flag), absorption/union hazard; successor and contiguity edges inherited as `src/engine/core.js` already does for successors | CoW system membership, CShapes | closes the *existence* leak in backtests; decolonisation-era backtests |
 | C6 | military presence | base/garrison open-close hazards on patron–host dyads | `data/presence.yaml` | `guarantor_withdrawal`, patron terms |
 
+## Phase D — fitter upgrades (after C, same gate)
+
+1. **Time-varying coefficients**: era-pooled (hierarchical shrinkage of per-era β toward a common β) in place of
+   hand-typed era flags where the flag only stands in for drift.
+2. **Prior strength per template**: λ estimated (empirical Bayes or rolling-origin CV) instead of λ = 2 everywhere.
+3. **Within-year dependence**: a shared per-actor frailty or same-year cross terms (coup ↔ civil war ↔ war).
+4. **Duration splines** on spell age for the termination hazards.
+5. **Benchmark**: gradient-boosted trees on the same rows, scored only, never simulated — a ceiling that says when
+   the GLM is missing structure.
+
 ## Gate
 
 Event scores alone reward freezing (less variance, better Brier). Each phase-C step is judged on both:
