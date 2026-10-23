@@ -10,7 +10,7 @@
 // Run: node scripts/backtest.mjs --from 1870 --to 2000 --step 10 --horizon 20 --runs 200 [--no-dyads] [--no-refit]
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
-import { loadPolygons } from './lib/inputs.mjs';
+import { loadPolygons, loadHolders } from './lib/inputs.mjs';
 import { createFitter } from './lib/fit.mjs';
 import { loadWaves, WAVE_UNIT } from '../src/engine/waves.js';
 import { createWorld, runEnsemble, CORRIDOR_UNIT, corridorFirstYear, corridorLastYear, corridorTransitionYears, corridorStateAt } from '../src/engine/core.js';
@@ -104,6 +104,7 @@ const warSpellsOn = !(process.env.ENGINE_ABLATE ?? '').includes('war_duration')
 if (process.env.CORRIDOR_DAMPENER) for (const t of templates) { const c = (t.candidates ?? []).find(c => c.id === 'corridor_stake'); if (c) t.covariates = [...t.covariates, c]; }
 const actors = loadActors(); const code = makeCodeMap(actors);
 const { polygons, polygonOf } = loadPolygons(actors);   // C5: the territory pool births are drawn over
+const holders = loadHolders();                          // C5 breakup: who holds each territory
 const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
 const Y0 = panel.meta.y0;
 const liveAt = (id, y) => panel.actors[id]?.live?.[y - Y0] === 1;
@@ -191,7 +192,7 @@ console.log(`alliance graph: ${pactMeta.source}; measured through ${pactMeta.ato
 for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const horizon = Math.min(H, panel.meta.y1 - asOf);
   const F = fitsAt(asOf);
-  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom, corridors, territories, presence, waves, polygons, polygonOf });
+  const make = () => createWorld({ panel, events, fits: F, templates, asOf, pacts, contiguity, universe: UNIVERSE, successors, contiguityFrom, corridors, territories, presence, waves, polygons, polygonOf, holders });
   const t0 = Date.now();
   // `state: true` adds the occupancy tracking. It reads the world after each step and consumes no random numbers, so
   // every event number below is bit-identical to a run without it (docs/escalations.md package 11, test (d)).

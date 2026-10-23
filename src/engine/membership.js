@@ -49,14 +49,45 @@ export const localBirths = (nb, bornAt, poly, y) => { let n = 0; for (const o of
 /** The polygon an actor draws on: its own id, or its modern successor's (`polygonOf` from the entity table). */
 export const polygonKey = (id, polygonOf) => polygonOf?.[id] ?? id;
 
+// Breakup (docs/plan-structure.md, C5): where data/holders.json says which state holds a territory (CShapes 2.0, 1886+),
+// a territory's birth is not an independent coin. It is drawn in two stages over its HOLDER:
+//   breakup  P(at least one territory the state holds becomes a state in t), per live holder, on the holder at t-1:
+//            log1p(territories held), the colonial share of them, its rise in electoral democracy over three years
+//            (a centre that liberalises lets go: Portugal 1974, the USSR 1989-91), at war, a breakup of its own in the
+//            five years before (an empire comes apart over years), the world's recent births, its democratic share,
+//            great-power status
+//   member   P(a held territory is born | its holder breaks up in t), on: colony or integral, log area, territories held
+// The two stages are what correlate the members: the USSR's twelve and Yugoslavia's four come apart in the same draw,
+// not as twelve independent 3% coins. A territory with no holder on record (pre-1886, small islands CShapes omits)
+// keeps the single-stage birth hazard. Death reads whether the state broke up that year and the share of its held
+// territories that left (Austria-Hungary 1918, Czechoslovakia 1993), and a dead state's territories pass to its absorber.
+export const BREAKUP = { rise_years: 3 };
+const breakupX = (s) => [1, Math.log1p(s.held ?? 0), s.colonial ?? 0, Math.max(0, s.rise ?? 0) * 10, s.atWar ? 1 : 0, s.recentBreak ? 1 : 0, Math.log1p(s.recent ?? 0), (s.dem ?? 0.3) * 3, s.great ? 1 : 0];
+const memberX = (s) => [1, s.colony ? 1 : 0, Math.log(Math.max(s.area ?? 1e-5, 1e-7)) + 8, Math.log1p(s.held ?? 0)];
+const deathBX = (s) => [...deathX(s), s.broke ? 1 : 0, s.shareBorn ?? 0];
+
+/** The holder of a territory in year y from data/holders.json spans: { h, status } (h 'self', a model id, or null). */
+export function holderAt(holders, poly, y) {
+  const sp = holders?.[poly]; if (!sp?.length) return null;
+  if (y < sp[0][0]) return null;
+  const yy = Math.min(y, sp[sp.length - 1][1]);
+  for (const [a, b, h, status] of sp) if (yy >= a && yy <= b) return { h, status };
+  return null;
+}
+const COLONIAL = new Set(['colony', 'protectorate', 'mandate', 'occupied']);
+export const isColonial = (status) => COLONIAL.has(status);
+
 /**
- * Fit both hazards on years (Y0, maxYear]. `polygons` = [{ id, area }] (area in steradians, d3.geoArea);
- * `polygonOf` = actor id -> polygon id for entities that draw on another's polygon.
+ * Fit the hazards on years (Y0, maxYear]. `polygons` = [{ id, area }] (area in steradians, d3.geoArea);
+ * `polygonOf` = actor id -> polygon id for entities that draw on another's polygon; `holders` = data/holders.json's
+ * spans (optional: without it every territory takes the single-stage birth hazard, the first C5 build).
  */
-export function fitMembership({ panel, polygons, polygonOf = {}, contiguity = {} }, maxYear) {
-  const memo = (fitMembership.__memo ??= new Map()); const key = `${maxYear}|${polygons.length}`; if (memo.has(key)) return memo.get(key);
-  const Y0 = panel.meta.y0; const area = new Map(polygons.map(p => [p.id, p.area]));
-  const B = { X: [], y: [] }, D = { X: [], y: [] }; const births = []; const nb = neighbours(contiguity); const bornAt = new Map();
+export function fitMembership({ panel, polygons, polygonOf = {}, contiguity = {}, holders = null }, maxYear) {
+  const memo = (fitMembership.__memo ??= new Map()); const key = `${maxYear}|${polygons.length}|${holders ? 1 : 0}`; if (memo.has(key)) return memo.get(key);
+  const Y0 = panel.meta.y0;
+  const B = { X: [], y: [] }, D = { X: [], y: [] }, K = { X: [], y: [] }, C = { X: [], y: [] }; const births = []; const nb = neighbours(contiguity); const bornAt = new Map();
+  const breakYears = new Map();   // holder -> years it broke up
+  const R = BREAKUP.rise_years;
   for (let t = Y0 + 1; t <= Math.min(maxYear, panel.meta.y1); t++) {
     const i = t - Y0;
     const liveBefore = [], liveNow = new Set(), occBefore = new Set(), bornPolys = new Set();
@@ -65,22 +96,43 @@ export function fitMembership({ panel, polygons, polygonOf = {}, contiguity = {}
       if (a.live?.[i - 1]) { liveBefore.push([id, a]); occBefore.add(p); }
       if (a.live?.[i]) { liveNow.add(id); if (!a.live?.[i - 1]) bornPolys.add(p); }
     }
+    const liveSet = new Set(liveBefore.map(([id]) => id));
     const recent = births.filter(y => y >= t - MEMBERSHIP.wave_years && y < t).length;
     let dem = null; for (const [, a] of liveBefore) { const d = a.dem_share?.[i - 1]; if (d != null) { dem = d; break; } }
-    for (const poly of polygons) { if (occBefore.has(poly.id)) continue; const ev = bornPolys.has(poly.id) ? 1 : 0; B.X.push(birthX({ recent, area: poly.area, local: localBirths(nb, bornAt, poly.id, t), dem })); B.y.push(ev); }
+    const held = new Map();   // holder -> [{ poly, colony }]
+    for (const poly of polygons) {
+      if (occBefore.has(poly.id)) continue;
+      const ho = holders ? holderAt(holders, poly.id, t - 1) : null;
+      if (ho?.h && ho.h !== 'self' && liveSet.has(ho.h)) { (held.get(ho.h) ?? held.set(ho.h, []).get(ho.h)).push({ poly, colony: isColonial(ho.status) }); continue; }
+      const ev = bornPolys.has(poly.id) ? 1 : 0; B.X.push(birthX({ recent, area: poly.area, local: localBirths(nb, bornAt, poly.id, t), dem })); B.y.push(ev);
+    }
+    const broke = new Map();   // holder -> share of its held territories born in t
+    for (const [h, list] of held) {
+      const a = panel.actors[h]; const n = list.length; const nBorn = list.filter(x => bornPolys.has(x.poly.id)).length;
+      const p1 = a.polyarchy?.[i - 1], p0 = a.polyarchy?.[i - 1 - R];
+      K.X.push(breakupX({ held: n, colonial: list.filter(x => x.colony).length / n, rise: p1 != null && p0 != null ? p1 - p0 : 0, atWar: (a.at_war?.[i - 1] ?? 0) > 0, recentBreak: (breakYears.get(h) ?? []).some(y => y >= t - 5 && y < t), recent, dem, great: (a.great_power?.[i - 1] ?? 0) > 0 }));
+      K.y.push(nBorn ? 1 : 0);
+      if (nBorn) {
+        broke.set(h, nBorn / n); (breakYears.get(h) ?? breakYears.set(h, []).get(h)).push(t);
+        for (const x of list) { C.X.push(memberX({ colony: x.colony, area: x.poly.area, held: n })); C.y.push(bornPolys.has(x.poly.id) ? 1 : 0); }
+      }
+    }
     for (const p of bornPolys) (bornAt.get(p) ?? bornAt.set(p, []).get(p)).push(t);
     // count every birth for the wave term, including states whose polygon is not on today's map
     for (const [id, a] of Object.entries(panel.actors)) if (a.live?.[i] && !a.live?.[i - 1]) births.push(t);
     const cincs = liveBefore.map(([, a]) => a.cinc?.[i - 1]).filter(x => x != null);
     for (const [id, a] of liveBefore) {
       const died = !liveNow.has(id) && !bornPolys.has(polygonKey(id, polygonOf)) ? 1 : 0;   // a rename is not a death
-      D.X.push(deathX({ cinc: a.cinc?.[i - 1] ?? (cincs.length ? Math.min(...cincs) : 1e-5), atWar: (a.at_war?.[i - 1] ?? 0) > 0, great: (a.great_power?.[i - 1] ?? 0) > 0, dem })); D.y.push(died);
+      const s = { cinc: a.cinc?.[i - 1] ?? (cincs.length ? Math.min(...cincs) : 1e-5), atWar: (a.at_war?.[i - 1] ?? 0) > 0, great: (a.great_power?.[i - 1] ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0 };
+      D.X.push(holders ? deathBX(s) : deathX(s)); D.y.push(died);
     }
   }
   const one = (R) => { const ev = R.y.reduce((s, v) => s + v, 0); return ev < MEMBERSHIP.min_events ? { status: 'unfitted', events: ev, n: R.y.length } : { status: 'fitted', beta: fitLogit(R.X, R.y), events: ev, n: R.y.length }; };
-  const out = { trained_through: Math.min(maxYear, panel.meta.y1), birth: one(B), death: one(D) };
+  const out = { trained_through: Math.min(maxYear, panel.meta.y1), birth: one(B), death: one(D), ...(holders ? { breakup: one(K), member: one(C), deathForm: 'breakup' } : {}) };
   memo.set(key, out); return out;
 }
 const hz = (f, x) => { if (f?.status !== 'fitted') return null; let eta = 0; for (let j = 0; j < x.length; j++) eta += f.beta[j] * x[j]; return sigmoid(eta); };
 export const birthHazard = (fit, s) => hz(fit?.birth, birthX(s));
-export const deathHazard = (fit, s) => hz(fit?.death, deathX(s));
+export const deathHazard = (fit, s) => hz(fit?.death, fit?.deathForm === 'breakup' ? deathBX(s) : deathX(s));
+export const breakupHazard = (fit, s) => hz(fit?.breakup, breakupX(s));
+export const memberHazard = (fit, s) => hz(fit?.member, memberX(s));

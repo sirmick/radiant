@@ -140,6 +140,26 @@ by the backtest, and published in frames. Order matters — later steps read ear
   births (0.35x: the 1960 and 1991 waves are bursts no hazard fitted before them predicts; the fit's own in-sample
   expectation misses them too), deaths 1.31x. Backtest 1950-1990: leader_exit -0.59, democratic_deepening -0.24 of
   skill (the decolonisation cohort is no longer handed to the forecaster). Not promoted by the rule.
+- **C5 breakup — built, inside the C5 candidate, 2026-10-23.** `data/holders.json` (`scripts/build-holders.mjs`, from
+  CShapes 2.0 via the CRAN `cshapes` copy): for every map territory and year 1886-2019, the state that holds it and
+  how (colony / protectorate / mandate / occupied / integral). Births over held territories are drawn in two stages:
+  a per-holder breakup hazard (territories held, colonial share, 3-year rise in electoral democracy, at war, a breakup
+  of its own in the last 5 years, world births, democratic share, great power), then each held territory given the
+  breakup; death reads the breakup and the share that left; a dead state's territories pass to its absorber.
+  Unheld territories keep the single-stage hazard. In-sample (`MEMBERSHIP_FIT_YEAR=2019`, a diagnostic leak) the gate
+  reproduces the record — births 0.97x, deaths 1.00x — so simulation and fit agree; out of sample births are 0.26x
+  (1900: 0.7 vs 21, 1930: 5.9 vs 54, 1960: 22 vs 53, 1990: 10 vs 18): the 1918 and 1945-60 waves had no precedent in
+  the training years. Still a candidate. `ENGINE_ABLATE=breakup` = the first C5 build.
+- **Bloc contagion — tested, not adopted, 2026-10-23.** `ally_up_recent` (a pact partner stepped up a regime category
+  this or last year) on `democratize_step`: raw lift in every era (1.6x in 1946-88) but +0.18 fitted, backtest
+  skill -0.174 -> -0.180 on its own template. Evidence in `data/templates.yaml` (rejected); the column stays.
+- **Case: 1987 (`scripts/analysis/ussr-1987.mjs`).** From 1987, 200 runs, C5 + breakup on, coefficients refit on
+  labels <= 1987: P(>=1 Warsaw Pact member democratises by 1991) 28.5%, P(>=3) 0% [record 6 of 6]; P(USSR
+  democratises by 1990) 16.5%; P(>=1 Soviet republic a state by 1992) 4.5%, P(>=10) 0% [record 12]; East Germany
+  gone 0.5%. With the membership hazards fitted through 2019 (the upper bound): 10% / 1%. Nothing before 1987 looks
+  like 1989-91: no bloc patron had liberalised and taken its clients with it, and the integral states that broke up
+  before (Russia 1917-18, Austria-Hungary) lost some of their parts, not all. With the dated membership list
+  (C5 off) the breakup is "predicted" at 100% — a leak, which is what C5 removes.
 - **C6 — done 2026-10-23.** Station open / close hazards over the dated presence layer (`src/engine/stations.js`), the
   presence index rebuilt as the run moves and read at the simulated year; a dyad `presence` variable carries it into
   the frames, and the viewer draws it after the seam. Gate: openings 0.62x, closures 0.56x of the record (between
@@ -210,9 +230,10 @@ regressions are recorded in `docs/refine-log.md` with the numbers and accepted.
 
 ## Open questions
 
-- C5: what would close the birth gap is a dissolution mechanism (a state's death releasing its constituent
-  territories at once — the 1991 case) and a colonial-ownership layer (whose empire a territory belongs to — the 1960
-  case). Neither is in the data yet.
+- C5: the dissolution mechanism and the colonial-ownership layer are now in (breakup, `data/holders.json`); the birth
+  gap that remains out of sample is regime shift — each wave is larger than anything before it. What could carry it:
+  a world-level state for the post-1945 norm against empire (the democratic share is the only proxy), and for 1991
+  a patron-to-client link that only that case identifies.
 
 - Replay of continuous variables: overwrite from the panel every observed year (exact, but hides drift-model error) or
   replay drift and report the residual (diagnostic). Plan: overwrite, and report the residual in `replay-diff`.

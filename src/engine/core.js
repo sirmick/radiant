@@ -9,7 +9,7 @@ import { fitGreatPower, gpHazard } from './greatpower.js';
 import { fitAlliances, allyHazard, candidate, adjacency, sharedAllies, edgesAt } from './alliances.js';
 import { fitNuclear, nukeHazard } from './nuclear.js';
 import { fitStations, closeHazard, openHazard } from './stations.js';
-import { fitMembership, birthHazard, deathHazard, polygonKey, neighbours, localBirths, MEMBERSHIP } from './membership.js';
+import { fitMembership, birthHazard, deathHazard, breakupHazard, memberHazard, holderAt, isColonial, polygonKey, neighbours, localBirths, MEMBERSHIP, BREAKUP } from './membership.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
 /** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
@@ -159,6 +159,10 @@ const NO_STATIONS = ABLATE.includes('presence');
 // share a coup draws is the old constant, named.
 const COUPLING_ON = (typeof process !== 'undefined' && process.env?.COUPLING) !== '0';
 const COUP_SUCCESS = 0.5;
+const NO_BREAKUP = ABLATE.includes('breakup');
+// diagnostic only (a leak by construction): fit the membership hazards through this year instead of as-of, to tell a
+// fit/simulation mismatch from a regime shift the training years cannot see
+const MEMBERSHIP_FIT_YEAR = typeof process !== 'undefined' && process.env?.MEMBERSHIP_FIT_YEAR ? +process.env.MEMBERSHIP_FIT_YEAR : null;
 const NO_MEMBERSHIP = ABLATE.includes('membership') || !((typeof process !== 'undefined' && process.env?.MEMBERSHIP_HAZARD) === '1');
 /** Whether the wave share REPLACES cinc in the dyadic capability ratio. Declared in the data, forced by the env.
  *  Exported so a publisher can stamp the answer into its output without building a world to ask. */
@@ -547,7 +551,7 @@ function buildActorState({ panel, events, id, vars, at, asOf }) {
   const pg = []; for (let k = 1; k <= 10; k++) { const a = pv('population', at - k), b = pv('population', at - k - 1); if (a && b) pg.push(Math.log(a / b)); }
   // recent-event memory (for win5 covariates) seeded from the panel/events
   const recent = {};
-  for (const v of ['coup_attempt', 'intrastate', 'mid_force', 'at_war']) { recent[v] = []; for (let k = 1; k <= 5; k++) { const x = pv(v, at - k); recent[v].push(x != null && x > 0 ? 1 : 0); } }
+  for (const v of ['coup_attempt', 'intrastate', 'mid_force', 'at_war', 'regime_up']) { recent[v] = []; for (let k = 1; k <= 5; k++) { const x = pv(v, at - k); recent[v].push(x != null && x > 0 ? 1 : 0); } }
   recent.leader_exit = []; for (let k = 1; k <= 5; k++) recent.leader_exit.push(events.some(e => e.kind === 'leader_exit' && e.actor === id && Math.floor(e.year) === at - k) ? 1 : 0);
   const prev = build(at - 1);
   if (cur.gdp_growth == null && g.length) { cur.gdp_growth = g.reduce((a, b) => a + b, 0) / g.length; stale.gdp_growth = null; carry.gdp_growth = 'trailing_mean'; }
@@ -686,7 +690,7 @@ function applyPresence(world, a) {
  * Contiguity 3.2 and covers 1816, so the stand-in no longer fires anywhere in the modelled window; the guard stays
  * because the floor is a property of data/contiguity.json's own meta, not of this code.
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [], polygons = null, polygonOf = null }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [], polygons = null, polygonOf = null, holders = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -797,7 +801,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // already removed, for a successor that enters a year or more after its predecessor leaves.
     lifecycle: { panel, events, ids: lifecycleIds, Y0, successors: successors ?? {}, predecessors: invertMap(successors ?? {}), retiredState: new Map(), contiguity: contiguity ?? {} },
     // C5: drawn membership — the territory pool, the fitted hazards, and the birth years the wave term counts
-    membership: NO_MEMBERSHIP || !polygons?.length ? null : { fit: fitMembership({ panel, polygons, polygonOf, contiguity: contiguity ?? {} }, asOf), polygons, polygonOf: polygonOf ?? {}, births: birthYears(panel, asOf), nb: neighbours(contiguity ?? {}), bornAt: bornAtMap(panel, polygonOf ?? {}, asOf) },
+    membership: NO_MEMBERSHIP || !polygons?.length ? null : { fit: fitMembership({ panel, polygons, polygonOf, contiguity: contiguity ?? {}, holders: NO_BREAKUP ? null : holders }, MEMBERSHIP_FIT_YEAR ?? asOf), polygons, polygonOf: polygonOf ?? {}, births: birthYears(panel, asOf), nb: neighbours(contiguity ?? {}), bornAt: bornAtMap(panel, polygonOf ?? {}, asOf), ...(holders && !NO_BREAKUP ? breakupState(panel, holders, polygons, polygonOf ?? {}, asOf) : {}) },
     fits, templates, log: [],
     // capability waves (operator/capability-waves): attainment is the dated sovereign_by history up to as-of and the
     // fitted wave_attain hazard after it; `capability` says whether the share it produces replaces cinc in the ratio
@@ -812,6 +816,25 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // C4: the acquisition hazard, fitted on weapon events at or before as-of (the event list is already truncated)
     nukeFit: NO_NUKE_DYNAMICS ? null : fitNuclear({ panel, events, contiguity: contiguity ?? {}, alliedAt: (yy) => (pacts?.size ? edgesAt(pacts, yy) : new Set()) }, asOf),
   };
+}
+
+/**
+ * C5 breakup: the holder of every territory at asOf (data/holders.json — knowledge the forecaster has), the years each
+ * holder broke up in the five years to asOf, and each live actor's electoral-democracy index over the last three years
+ * (the liberalisation term's memory). The simulation moves all three: a born territory leaves its holder, a dead
+ * state's territories pass to its absorber.
+ */
+function breakupState(panel, holders, polygons, polygonOf, asOf) {
+  const Y0 = panel.meta.y0; const holder = new Map(); const breakYears = new Map(); const polyHist = new Map();
+  for (const p of polygons) { const o = holderAt(holders, p.id, asOf); if (o?.h && o.h !== 'self') holder.set(p.id, { h: o.h, colony: isColonial(o.status) }); }
+  const born = (id, y) => { const a = panel.actors[id]; return a?.live?.[y - Y0] && !a.live?.[y - Y0 - 1]; };
+  const polyOwner = new Map(); for (const id of Object.keys(panel.actors)) polyOwner.set(polygonKey(id, polygonOf), [...(polyOwner.get(polygonKey(id, polygonOf)) ?? []), id]);
+  for (let y = asOf - 4; y <= asOf; y++) for (const p of polygons) {
+    const o = holderAt(holders, p.id, y - 1); if (!o?.h || o.h === 'self') continue;
+    if ((polyOwner.get(p.id) ?? []).some(id => born(id, y))) { const l = breakYears.get(o.h) ?? breakYears.set(o.h, []).get(o.h); if (!l.includes(y)) l.push(y); }
+  }
+  for (const [id, a] of Object.entries(panel.actors)) polyHist.set(id, Array.from({ length: BREAKUP.rise_years }, (_, k) => a.polyarchy?.[asOf - 1 - k - Y0] ?? null));
+  return { holder, breakYears, polyHist };
 }
 
 /** The years states entered the system in the five years to asOf (the wave term's memory at the origin). */
@@ -900,6 +923,7 @@ function featureActor(world, a, c) {
     milper_share: (s) => (s.milper != null && s.tpop ? (s.milper * 1e3) / s.tpop : null),
     leader_exit_recent: () => (a.recent.leader_exit.some(x => x) ? 1 : 0),
     regime_change: () => (a.fired.regime_change ? 1 : 0),
+    ally_up_recent: () => (world.upAllies?.has(a.id) ? 1 : 0),   // bloc contagion: set by stepYear from the year's pact graph
   };
   if (c.transform === 'win5') { if (derived[v]) return derived[v](a.cur); return a.recent[v]?.some(x => x) ? 1 : 0; }
   const lag = c.lag ?? (c.transform === 'lag1' ? 1 : 0);
@@ -1218,17 +1242,39 @@ function stepMembership(world, y, rng) {
   const M = world.membership; const out = [];
   const occupied = new Set(Object.keys(world.actors).map(id => polygonKey(id, M.polygonOf)));
   const recent = M.births.filter(b => b >= y - MEMBERSHIP.wave_years && b < y).length;
+  const dem = world.pol?.demShare;
   const born = [];
-  for (const poly of M.polygons) { if (occupied.has(poly.id) || world.actors[poly.id]) continue; const p = birthHazard(M.fit, { recent, area: poly.area, local: localBirths(M.nb, M.bornAt, poly.id, y), dem: world.pol?.demShare }); if (p != null && rng() < p) born.push(poly.id); }
+  const held = new Map();   // C5 breakup: live holder -> [{ poly, colony }] over the unoccupied territories it holds
+  if (M.holder) for (const [id, a] of Object.entries(world.actors)) { const h = M.polyHist.get(id) ?? []; h.unshift(a.cur.polyarchy ?? null); h.length = BREAKUP.rise_years + 1; M.polyHist.set(id, h); }
+  for (const poly of M.polygons) {
+    if (occupied.has(poly.id) || world.actors[poly.id]) continue;
+    const ho = M.holder?.get(poly.id);
+    if (ho && world.actors[ho.h]) { (held.get(ho.h) ?? held.set(ho.h, []).get(ho.h)).push({ poly, colony: ho.colony }); continue; }
+    const p = birthHazard(M.fit, { recent, area: poly.area, local: localBirths(M.nb, M.bornAt, poly.id, y), dem }); if (p != null && rng() < p) born.push(poly.id);
+  }
+  const broke = new Map();
+  for (const [h, list] of held) {
+    const a = world.actors[h]; const ph = M.polyHist.get(h) ?? []; const n = list.length;
+    const pB = breakupHazard(M.fit, { held: n, colonial: list.filter(x => x.colony).length / n, rise: ph[0] != null && ph[BREAKUP.rise_years] != null ? ph[0] - ph[BREAKUP.rise_years] : 0, atWar: (a.cur.at_war ?? 0) > 0, recentBreak: (M.breakYears.get(h) ?? []).some(b => b >= y - 5 && b < y), recent, dem, great: (a.cur.great_power ?? 0) > 0 });
+    if (pB == null || !(rng() < pB)) continue;
+    // members, conditional on the breakup; a breakup is at least one, so an all-miss draw takes one in proportion to q
+    const q = list.map(x => memberHazard(M.fit, { colony: x.colony, area: x.poly.area, held: n }) ?? 0);
+    let go = list.filter((x, k) => rng() < q[k]);
+    if (!go.length) { const tot = q.reduce((s, v) => s + v, 0); let u = rng() * tot; go = [list.find((x, k) => (u -= q[k]) <= 0) ?? list[0]]; }
+    for (const x of go) born.push(x.poly.id);
+    broke.set(h, go.length / n); (M.breakYears.get(h) ?? M.breakYears.set(h, []).get(h)).push(y);
+  }
   const deaths = [];
-  for (const [id, a] of Object.entries(world.actors)) { const p = deathHazard(M.fit, { cinc: a.cur.cinc, atWar: (a.cur.at_war ?? 0) > 0, great: (a.cur.great_power ?? 0) > 0, dem: world.pol?.demShare }); if (p != null && rng() < p) deaths.push(id); }
+  for (const [id, a] of Object.entries(world.actors)) { const p = deathHazard(M.fit, { cinc: a.cur.cinc, atWar: (a.cur.at_war ?? 0) > 0, great: (a.cur.great_power ?? 0) > 0, dem, broke: broke.has(id), shareBorn: broke.get(id) ?? 0 }); if (p != null && rng() < p) deaths.push(id); }
   for (const id of deaths) {
     const nb = [...world.contiguous].map(k => k.split('|')).filter(([p, q]) => (p === id || q === id)).map(([p, q]) => (p === id ? q : p)).filter(o => world.actors[o] && !deaths.includes(o));
     const by = nb.sort((p, q) => (world.actors[q].cur.cinc ?? 0) - (world.actors[p].cur.cinc ?? 0))[0] ?? null;
     retireActor(world, id, by); out.push({ kind: 'state_death', actor: id, absorbed_by: by, year: y });
+    // its territories, and its own, pass to the absorber (or to no one): a territory absorbed can secede again
+    if (M.holder) { for (const [p, o] of M.holder) if (o.h === id) { if (by) o.h = by; else M.holder.delete(p); } const own = polygonKey(id, M.polygonOf); if (by && !born.includes(own)) M.holder.set(own, { h: by, colony: false }); }
   }
   for (const id of born) {
-    introduceActor(world, id, y); M.births.push(y); (M.bornAt.get(id) ?? M.bornAt.set(id, []).get(id)).push(y);
+    introduceActor(world, id, y); M.births.push(y); (M.bornAt.get(id) ?? M.bornAt.set(id, []).get(id)).push(y); M.holder?.delete(id);
     // borders are geography: a new state takes every edge the contiguity source has ever recorded for its territory
     for (const k of Object.keys(world.lifecycle.contiguity ?? {})) { const [p, q] = k.split('|'); const other = p === id ? q : q === id ? p : null; if (other && world.actors[other]) world.contiguous.add(k); }
     out.push({ kind: 'state_birth', actor: id, year: y });
@@ -1363,7 +1409,7 @@ export function stepYear(world, rng, opts = {}) {
     }
     a.cur.conflict_duration = a.cur.intrastate && a.conflictStart != null ? y - a.conflictStart : (a.cur.intrastate ? 0 : null);
     for (const v of Object.keys(a.recent)) { a.recent[v].unshift(0); a.recent[v].length = 5; }
-    if (a.prev.coup_attempt) a.recent.coup_attempt[0] = 1; if (a.prev.intrastate) a.recent.intrastate[0] = 1; if (a.prev.mid_force) a.recent.mid_force[0] = 1; if (a.prev.at_war) a.recent.at_war[0] = 1;
+    if (a.prev.coup_attempt) a.recent.coup_attempt[0] = 1; if (a.prev.intrastate) a.recent.intrastate[0] = 1; if (a.prev.mid_force) a.recent.mid_force[0] = 1; if (a.prev.at_war) a.recent.at_war[0] = 1; if (a.prev.regime_up && a.recent.regime_up) a.recent.regime_up[0] = 1;
   }
   // the wave layer, before the derived world state and before any hazard reads a capability ratio. Its draws come
   // from a stream of their own (opts.waveRng), so with the layer ablated the main stream is untouched.
@@ -1402,6 +1448,9 @@ export function stepYear(world, rng, opts = {}) {
   // p_child) only in the years the parent fired — the same construction, and the same cap, as the war-inside-dispute
   // nesting below. One random number per template per actor-year either way, so ENGINE_ABLATE=exit_nesting differs by
   // mechanism only.
+  // bloc contagion (ally_up_recent): the actors with a pact partner that moved up a regime category in the last two
+  // years — recent.regime_up[0] is last year, [1] the year before, the panel's regime_up at the row year and the one before
+  { const up = (id) => { const r = world.actors[id]?.recent?.regime_up; return !!(r && (r[0] || r[1])); }; const s = new Set(); for (const k of world.allied ?? []) { const i = k.indexOf('|'); const p = k.slice(0, i), q = k.slice(i + 1); if (up(q)) s.add(p); if (up(p)) s.add(q); } world.upAllies = s; }
   const nest = world.subsetNesting ??= subsetNesting(world.templates);
   const CP = world.coupling;
   for (const id of ids) {

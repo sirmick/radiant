@@ -86,6 +86,13 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
   const hasNukes = (a, y) => nukeYear[a] != null && y >= nukeYear[a];
 
   // ---------------------------------------------------------------- covariate access
+  const partnerMemo = new Map();
+  const partnersAt = (y) => {
+    if (partnerMemo.has(y)) return partnerMemo.get(y);
+    const m = new Map(); const suf = `|${y}`;
+    for (const k of pacts ?? []) { if (!k.endsWith(suf)) continue; const pk = k.slice(0, -suf.length); const i = pk.indexOf('|'); const a = pk.slice(0, i), b = pk.slice(i + 1); (m.get(a) ?? m.set(a, []).get(a)).push(b); (m.get(b) ?? m.set(b, []).get(b)).push(a); }
+    partnerMemo.set(y, m); return m;
+  };
   const pv = (actor, v, y) => { const arr = panel.actors[actor]?.[v]; const i = y - Y0; return arr && i >= 0 && i < arr.length ? arr[i] : null; };
   const win5 = (actor, v, y) => { let s = 0; for (let k = 1; k <= 5; k++) { const x = pv(actor, v, y - k); if (x != null && x > 0) s = 1; } return s; };
   const win5ev = (kind, actor, y) => { for (let k = 1; k <= 5; k++) if (hasEvent(kind, actor, y - k)) return 1; return 0; };
@@ -97,6 +104,9 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
     // over the panel's own `intrastate` column, which is the flag the engine sets and clears, so the duration fitted
     // and the duration simulated are the same quantity. Past years only — it cannot see the row's label.
     conflict_duration: (a, y) => spellAge((yy) => (pv(a, 'intrastate', yy) ?? 0) > 0, y),
+    // bloc contagion: a defence-pact partner moved up a regime category this year or last (the dated pact graph of y).
+    // The neighbour version (nbr_regime_up_recent) was ≈0; this is the alliance version — a bloc, not a border
+    ally_up_recent: (a, y) => (partnersAt(y).get(a) ?? []).some(b => (pv(b, 'regime_up', y) ?? 0) > 0 || (pv(b, 'regime_up', y - 1) ?? 0) > 0) ? 1 : 0,
   };
   function rawValue(actor, c, y) {
     const v = c.var;
