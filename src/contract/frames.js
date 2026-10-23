@@ -23,24 +23,27 @@ const sig4 = (x) => (x == null ? null : +x.toPrecision(4));
  * panel measures it that year (a value the engine carried forward to fill a gap is not a measurement), and nothing is
  * emitted outside the variable's coverage window.
  */
-export function observe(world, { strict = false } = {}) {
+export function observe(world, { strict = false, vars = null } = {}) {
   const y = world.year;
+  const want = vars ? new Set(vars) : null; const has = (v) => !want || want.has(varKey(v));
   const inCov = (v) => !strict || !v.coverage || (y >= v.coverage[0] && y <= v.coverage[1]);
   const actors = {};
   for (const [id, a] of Object.entries(world.actors)) {
     const o = {};
     for (const v of varsOf('actor')) {
+      if (!has(v)) continue;
       if (!inCov(v)) { o[v.id] = null; continue; }
       if (strict && v.truth?.startsWith('panel:')) { const col = v.truth.slice(6); if (a.carry?.[col] || a.cur[col] == null) { o[v.id] = null; continue; } }
       o[v.id] = v.read(world, a);
     }
     actors[id] = o;
   }
-  const dyads = { at_war: new Set(world.atWarPairs ?? []), allied: new Set(world.allied ?? []) };
+  // the pact graph is only copied when it is asked for: it is the largest object in the world and is frozen in a run
+  const dyads = { at_war: new Set(world.atWarPairs ?? []), allied: !want || want.has('dyad:allied') ? (strict ? new Set(world.allied ?? []) : world.allied ?? new Set()) : new Set() };
   const records = {};
   const recordKinds = {};
   for (const e of [...(world.corridors ?? []), ...(world.territories ?? [])]) if (e.state?.status != null) { records[e.rec.id] = e.state.status; recordKinds[e.rec.id] = e.rec.kind ?? 'territory'; }
-  const w = {}; for (const v of varsOf('world')) w[v.id] = inCov(v) ? v.read(world) : null;
+  const w = {}; for (const v of varsOf('world')) if (has(v)) w[v.id] = inCov(v) ? v.read(world) : null;
   return { year: y, actors, dyads, records, recordKinds, world: w };
 }
 
@@ -61,6 +64,7 @@ export class FrameBuilder {
   constructor({ from, years, runs = 1, vars = null, events = true }) {
     this.from = from; this.H = years; this.runs = runs; this.keepEvents = events;
     this.vars = (vars ? VARS.filter(v => vars.includes(varKey(v))) : VARS);
+    this.keys = this.vars.map(varKey);
     this.actorLive = new Map();          // id -> Uint32Array(H)
     this.bin = new Map();                // `${var}|${id}` -> Uint32Array(H)
     this.cat = new Map();                // `${var}|${id}` -> Uint32Array(H * L)
@@ -95,7 +99,7 @@ export class FrameBuilder {
     if (v.kind === 'binary') { if (x) (this.bin.get(key) ?? this.bin.set(key, new Uint32Array(H)).get(key))[k]++; return; }
     if (v.kind === 'categorical' && v.levels) { const L = v.levels.length; (this.cat.get(key) ?? this.cat.set(key, new Uint32Array(H * L)).get(key))[k * L + x]++; return; }
     if (v.kind === 'categorical') { const m = this.word.get(key) ?? this.word.set(key, new Map()).get(key); (m.get(x) ?? m.set(x, new Uint32Array(H)).get(x))[k]++; return; }
-    if (v.positive && !(x > 0)) return;
+    if (v.positive && this.runs > 1 && !(x > 0)) return;   // a share of 0 is out of an ensemble's quantiles, but a recorded 0 is an observation
     (this.cont.get(key) ?? this.cont.set(key, new Float32Array(this.runs * H).fill(NaN)).get(key))[r * H + k] = x;
   }
   /** The published frame set. `meta` is merged into the frame's own meta. */

@@ -56,14 +56,15 @@ export function newsOf(events, name, y, ongoing = []) {
 }
 
 /** Recorded wars still running in each year after the one they started in: year -> [items]. Memoised on the record. */
+const ONGOING = new WeakMap();   // memo keyed by the record object (a reactive object cannot take a defined property)
 export function warsOngoing(record, name) {
-  if (record.__ongoing) return record.__ongoing;
+  if (ONGOING.has(record)) return ONGOING.get(record);
   const m = new Map();
   for (const evs of record.events ?? []) for (const e of evs) {
     if (e.k !== 'war' || e.end == null) continue;
     for (let y = Math.floor(e.start) + 1; y <= Math.floor(e.end); y++) (m.get(y) ?? m.set(y, []).get(y)).push({ k: 'war', y, a: e.sides.flat(), sides: e.sides, ongoing: true, t: `War continues: ${slug(e.id)}`, s: e.source });
   }
-  Object.defineProperty(record, '__ongoing', { value: m, enumerable: false });
+  ONGOING.set(record, m);
   return m;
 }
 
@@ -80,6 +81,9 @@ export function viewNews(view) {
       else if (it.sides) { const pk = [it.sides[0][0], it.sides[1][0]].sort().join('|'); it.p = inc(hz.dyad?.[pk]?.[it.k === 'war' ? 'mid_war' : 'mid_force']?.curve); }
       it.sample = true;
     }
+    // a world's news leads with what changes the world, then by the ensemble's odds
+    const SAMPLE_ORDER = { war: 0, coup: 1, conflict: 2, territory: 3, corridor: 4, regime: 5, dispute: 6, leader: 7, capability: 8 };
+    items.sort((x, y) => (SAMPLE_ORDER[x.k] ?? 9) - (SAMPLE_ORDER[y.k] ?? 9) || (y.p ?? 0) - (x.p ?? 0));
     return { mode: 'sample', items };
   }
   if (view.isForecast) return { mode: 'forecast', items: forecastNews(view) };

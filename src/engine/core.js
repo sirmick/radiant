@@ -1400,6 +1400,7 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
   // observer the record is built with — into one ensemble frame set, plus the first `framePaths` runs kept whole as
   // record-shaped frame sets (a sample world reads exactly like history). Observation draws no random numbers.
   const fb = frames ? new FrameBuilder({ from: frames.from, years: horizon, runs, vars: frameVars }) : null;
+  const obsKeys = fb ? [...new Set([...fb.keys, ...(frames.pathVars ?? [])])] : null;
   const pathFb = fb ? Array.from({ length: Math.min(framePaths, runs) }, () => new FrameBuilder({ from: frames.from, years: horizon, runs: 1, vars: frames.pathVars ?? frameVars })) : [];
   const regimeHist = {};  // actor -> Uint32Array(horizon*4): counts of regime level per year offset
   const gdpRuns = {};     // actor -> Float32Array(runs*horizon)
@@ -1435,7 +1436,7 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
       const fired = stepYear(w, rng, { skipDyads, waveRng });
-      if (fb) { const snap = observe(w); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
+      if (fb) { const snap = observe(w, { vars: obsKeys }); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
         if (a.cur.gdp_pc != null) (gdpRuns[id] ??= new Float32Array(runs * horizon))[r * horizon + (h - 1)] = a.cur.gdp_pc;
