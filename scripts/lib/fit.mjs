@@ -377,6 +377,11 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
       } else if (c.transform === 'log') {
         const xs = rows.map(r => Math.log(r.feats[v] + 1e-3)); const m = stats[`log_${v}`]?.mean ?? mean(xs); stats[`log_${v}`] = { mean: m };
         cols.push({ name: `log(${v})`, prior: c.prior, get: r => Math.log(r.feats[v] + 1e-3) - m });
+      } else if (c.transform === 'hinge') {
+        // D4: a duration spline's hinge — max(0, x - knot), per decade — beside the template's linear duration term, so
+        // the termination hazard can bend where the spell's age changes what it means (a war in its first years vs a
+        // frozen one)
+        cols.push({ name: `hinge(${v},${c.knot})`, prior: c.prior ?? 0, get: r => Math.max(0, r.feats[v] - c.knot) / 10 });
       } else cols.push({ name: c.transform === 'win5' ? `win5(${v})` : c.transform === 'lag1' ? `lag1(${v})` : v, prior: c.prior, get: r => (r.feats[v] > 0 ? 1 : 0) });
     }
     return cols;

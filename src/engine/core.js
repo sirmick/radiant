@@ -155,6 +155,10 @@ const NO_NUKE_DYNAMICS = ABLATE.includes('nuclear');
 // C6: military presence as fitted station open/close hazards (src/engine/stations.js); ENGINE_ABLATE=presence freezes
 // the layer at as-of
 const NO_STATIONS = ABLATE.includes('presence');
+// D3: same-year coupling of the coup with what follows it — promoted 2026-10-23 (COUPLING=0 turns it off). The success
+// share a coup draws is the old constant, named.
+const COUPLING_ON = (typeof process !== 'undefined' && process.env?.COUPLING) !== '0';
+const COUP_SUCCESS = 0.5;
 const NO_MEMBERSHIP = ABLATE.includes('membership') || !((typeof process !== 'undefined' && process.env?.MEMBERSHIP_HAZARD) === '1');
 /** Whether the wave share REPLACES cinc in the dyadic capability ratio. Declared in the data, forced by the env.
  *  Exported so a publisher can stamp the answer into its output without building a world to ask. */
@@ -786,6 +790,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // station, so `presence_change` can age out of its window during the horizon instead of firing for all of it.
     presence: stationFit ? presenceIndex(stations, { y0: Y0, y1: asOf + 201, simulated: true }) : pres, patrons: pres ? patronMap(pres, asOf) : new Map(),
     stations, stationFit,
+    coupling: COUPLING_ON ? couplingRates(events, asOf) : null,
     allied: NO_ALLY_DYNAMICS ? allied : new Set(allied), contiguous: contiguousAt(contiguity, contiguityFrom == null ? asOf : Math.max(asOf, contiguityFrom)),
     // `predecessors` is the successor map inverted, so a state entering the horizon can be seeded from the state it
     // succeeds instead of from the world median; `retiredState` keeps the last state of an actor stepLifecycle has
@@ -820,6 +825,17 @@ function bornAtMap(panel, polygonOf, asOf) {
   const Y0 = panel.meta.y0; const m = new Map();
   for (const [id, a] of Object.entries(panel.actors)) for (let y = Math.max(Y0 + 1, asOf - MEMBERSHIP.wave_years + 1); y <= asOf; y++) { const i = y - Y0; if (a.live?.[i] && !a.live?.[i - 1]) { const p = polygonKey(id, polygonOf); (m.get(p) ?? m.set(p, []).get(p)).push(y); } }
   return m;
+}
+/**
+ * D3: the empirical same-year conditionals the coupling draws from, on the record up to asOf: P(an autocratic step | a
+ * successful coup) and P(an internal-conflict onset | a coup attempt). Null where fewer than 5 coups are on record.
+ */
+function couplingRates(events, asOf) {
+  const key = (e) => `${e.actor}|${Math.floor(e.year)}`;
+  const won = new Set(), tried = new Set(), down = new Set(), onset = new Set();
+  for (const e of events) { if ((e.year ?? 0) > asOf || !e.actor) continue; if (e.kind === 'coup') { tried.add(key(e)); if (e.success) won.add(key(e)); } else if (e.kind === 'regime_change' && e.to < e.from && !e.cause) down.add(key(e)); else if (e.kind === 'intrastate_onset') onset.add(key(e)); }
+  const share = (A, B) => (A.size >= 5 ? [...A].filter(k => B.has(k)).length / A.size : null);
+  return { qClose: share(won, down), qIntra: share(tried, onset), n_won: won.size, n_tried: tried.size };
 }
 /** id -> [ids that name it as their successor] — the successor map read backwards. */
 function invertMap(successors) {
@@ -902,6 +918,7 @@ function linearPredictor(fit, t, feats) {
     if (c.transform === 'cat') { const levels = Object.keys(c.prior).map(Number).sort(); for (const L of levels.slice(1)) { const k = `${v}=${L}`; if (fit.coefs[k] && x === L) eta += fit.coefs[k].value; } }
     else if (c.transform === 'z') { const s = fit.stats[v]; eta += fit.coefs[`z(${v})`].value * ((x - s.mean) / (s.sd || 1)); }
     else if (c.transform === 'log') { const s = fit.stats[`log_${v}`]; eta += fit.coefs[`log(${v})`].value * (Math.log(x + 1e-3) - s.mean); }
+    else if (c.transform === 'hinge') eta += fit.coefs[`hinge(${v},${c.knot})`].value * (Math.max(0, x - c.knot) / 10);   // D4
     else { const k = c.transform === 'win5' ? `win5(${v})` : c.transform === 'lag1' ? `lag1(${v})` : v; eta += fit.coefs[k].value * (x > 0 ? 1 : 0); }
   }
   return eta;
@@ -1075,7 +1092,7 @@ function applyActorEvent(world, a, kind, rng) {
     // era-1945-1991-r2/engine-3 the panel column was 1 for 99.3% of actor-years, so the `= 1` assignments below were
     // a no-op and the engine had no coup-trap feedback at all despite reading as if it did.
     case 'leader_exit': a.cur.leader_tenure = 0; a.cur.leader_age = 45 + Math.floor(rng() * 25); a.cur.leader_military = rng() < 0.2 ? 1 : 0; a.cur.leader_irregular_entry = 0; a.recent.leader_exit[0] = 1; break;
-    case 'coup': a.cur.coup_attempt = 1; if (rng() < 0.5) { a.cur.coup_success = 1; if (a.fired.leader_exit !== y) applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (COUP_REGIME_STEP && a.cur.regime > 0 && rng() < 0.6) a.cur.regime -= 1; } break;
+    case 'coup': a.cur.coup_attempt = 1; if (rng() < COUP_SUCCESS) { a.cur.coup_success = 1; if (a.fired.leader_exit !== y) applyActorEvent(world, a, 'leader_exit', rng); a.cur.leader_irregular_entry = 1; if (COUP_REGIME_STEP && a.cur.regime > 0 && rng() < 0.6) a.cur.regime -= 1; } break;
     case 'autocratization_onset': case 'autocratize_step': if (a.cur.regime > 0) a.cur.regime -= 1; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); a.cur.regime_down = 1; break;
     case 'democratization_onset': case 'democratize_step': if (a.cur.regime < 3) a.cur.regime += 1; a.cur.polyarchy = Math.min(1, (a.cur.polyarchy ?? 0.5) + 0.1); a.cur.regime_up = 1; break;
     case 'autocratic_closure': if (a.cur.regime > 0) a.cur.regime -= 1; a.cur.polyarchy = Math.max(0, (a.cur.polyarchy ?? 0.5) - 0.1); a.cur.regime_down = 1; break;
@@ -1386,13 +1403,30 @@ export function stepYear(world, rng, opts = {}) {
   // nesting below. One random number per template per actor-year either way, so ENGINE_ABLATE=exit_nesting differs by
   // mechanism only.
   const nest = world.subsetNesting ??= subsetNesting(world.templates);
+  const CP = world.coupling;
   for (const id of ids) {
     const a = world.actors[id]; const hz = actorHazards(world, a);
-    const order = Object.entries(hz).sort((x, z) => (nest.has(x[0]) ? 1 : 0) - (nest.has(z[0]) ? 1 : 0));
+    // D3: with coupling on the coup is drawn first, because what follows a coup in the same year is not independent of it
+    const order = Object.entries(hz).sort((x, z) => (CP ? (x[0] === 'coup_attempt' ? -1 : 0) - (z[0] === 'coup_attempt' ? -1 : 0) : 0) || (nest.has(x[0]) ? 1 : 0) - (nest.has(z[0]) ? 1 : 0));
     const firedHere = new Set();
-    for (const [kind, p] of order) {
+    let coupFired = false, coupWon = false; const pCoup = hz.coup_attempt ?? 0, pWon = pCoup * COUP_SUCCESS;
+    // D3 (docs/plan-structure.md): marginal-preserving coupling. A follower fires with its empirical conditional q in a year
+    // its trigger fired, and at (p - p_t q) / (1 - p_t) otherwise, so its overall rate stays the fitted p. A successful coup
+    // IS an irregular leader exit (REIGN codes it so), so for the exit pair q = 1 and the exit is logged, not redrawn.
+    const coupled = (kind, p) => {
+      if (!CP) return null;
+      if (kind === 'leader_exit' || kind === 'irregular_exit') return coupWon ? 'forced' : Math.max(0, (p - pWon) / Math.max(1e-9, 1 - pWon));
+      if (kind === 'autocratic_closure' && CP.qClose != null) return coupWon ? CP.qClose : Math.max(0, (p - pWon * CP.qClose) / Math.max(1e-9, 1 - pWon));
+      if (kind === 'intrastate_onset' && CP.qIntra != null) return coupFired ? CP.qIntra : Math.max(0, (p - pCoup * CP.qIntra) / Math.max(1e-9, 1 - pCoup));
+      return null;
+    };
+    for (const [kind, p0] of order) {
+      const c = coupled(kind, p0);
+      if (c === 'forced') { const u = rng(); if (kind === 'irregular_exit' && !firedHere.has('irregular_exit')) { firedHere.add('irregular_exit'); firedHere.add('leader_exit'); fired.push({ kind: 'leader_exit', template: 'irregular_exit', actor: id, year: y, irregular: 1, via: 'coup' }); } else firedHere.add(kind); continue; }
+      const p = c ?? p0;
       const parent = NO_EXIT_NESTING ? null : nest.get(kind);
-      const pDraw = parent == null ? p : (firedHere.has(parent) ? Math.min(1, p / Math.max(hz[parent] ?? 0, p)) : 0);
+      const pParent = parent == null ? null : (coupled(parent, hz[parent] ?? 0) ?? hz[parent] ?? 0);
+      const pDraw = parent == null ? p : (firedHere.has(parent) ? Math.min(1, p / Math.max(typeof pParent === 'number' ? pParent : 0, p)) : 0);
       if (rng() < pDraw) {
         firedHere.add(kind);
         const t = world.templates.find(t => t.id === kind); const ev = { kind: t.event, template: kind, actor: id, year: y };
@@ -1400,6 +1434,7 @@ export function stepYear(world, rng, opts = {}) {
         if (!HANDLED.has(rewrite)) throw new Error(`stepYear: template '${kind}' fires but applyActorEvent has no rewrite for '${rewrite}'`);
         const before = a.cur.regime;
         fired.push(ev); applyActorEvent(world, a, rewrite, rng);
+        if (kind === 'coup_attempt') { coupFired = true; coupWon = !!a.cur.coup_success; }
         // the event in the record's own shape (data/events.json), so a sample world's news reads like history: a regime
         // step carries from/to, a coup whether it succeeded. Read off the state after the rewrite; no random numbers.
         if (ev.kind === 'regime_change') { ev.from = before; ev.to = a.cur.regime; ev.direction = a.cur.regime > before ? 'democratize' : 'autocratize'; }

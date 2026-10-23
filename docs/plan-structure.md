@@ -155,7 +155,22 @@ by the backtest, and published in frames. Order matters — later steps read ear
   the same rows and era split beat the penalised logistic out of sample on no template except `wave_attain` — the
   linear form is not what limits the model; out-of-era, strong priors (λ = 32) generalise best, which is the drift
   D1 addresses.
-- **D3 (within-year dependence) and D4 (duration splines)** — open.
+- **D3 — promoted 2026-10-23.** `scripts/analysis/dependence.mjs`: the panel's events co-occur in a state-year far beyond
+  conditional independence (coup + irregular exit 10x, coup + civil-war onset 2.4x), and simulated worlds reproduced
+  0.11x / 0.33x of the record's co-occurrence: a successful coup replaced the leader but logged no exit, and its
+  followers were drawn independently. Now the coup is drawn first and its followers are coupled with marginal-
+  preserving conditionals (q from the record up to as-of; (p - p_t q) / (1 - p_t) without the trigger). Co-occurrence
+  0.80x (coup + irregular exit), 0.61x (coup + onset), 0.29x (coup + autocratic step — no liberal-erosion template).
+  Backtest 1870-2010 (40 runs): the coupled templates gain (irregular_exit +0.034, leader_exit +0.028,
+  intrastate_onset +0.017, autocratic_closure +0.011); the pooled mean dips -0.0243 -> -0.0290 on democratic_deepening
+  (-0.09, a template coupling does not touch: random-stream divergence on 17 events, already out of calibration).
+  `COUPLING=0` restores independent draws.
+- **D4 — tested, not promoted.** `scripts/analysis/duration.mjs`: a hinge on spell age at knots 1-8 years improves no
+  termination hazard's era holdout (best: intrastate_end at 5 y, log-loss 0.4293 -> 0.4263, AUC +0.001). The `hinge`
+  transform stays in the fitter and the engine for later use.
+- **Next data item**: war outcomes (CoW war outcome coding). In war years the weaker side's capability share is far
+  more volatile (sd 0.35 vs 0.12 in peace) but the mean shift is unidentifiable without who won — and defeat is what
+  produces the great-power exits (0.36x) and top-pole changes (0.24x) the gate still misses.
 
 ## Phase D — fitter upgrades (after C, same gate)
 
