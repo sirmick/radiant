@@ -4,7 +4,7 @@
   "file": "frames/record.json",
   "from": 1870,
   "to": 2025,
-  "built": "2026-10-23T21:34:14.804Z"
+  "built": "2026-10-23T23:09:18.242Z"
  },
  "ensembles": [
   {
@@ -16,7 +16,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 1900",
-   "built": "2026-10-23T21:36:12.861Z"
+   "built": "2026-10-23T23:10:47.464Z"
   },
   {
    "asOf": 1930,
@@ -27,7 +27,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 1930",
-   "built": "2026-10-23T21:39:33.653Z"
+   "built": "2026-10-23T23:13:31.569Z"
   },
   {
    "asOf": 1955,
@@ -38,7 +38,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 1955",
-   "built": "2026-10-23T21:46:48.770Z"
+   "built": "2026-10-23T23:18:27.747Z"
   },
   {
    "asOf": 1975,
@@ -49,7 +49,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 1975",
-   "built": "2026-10-23T21:56:29.247Z"
+   "built": "2026-10-23T23:27:54.982Z"
   },
   {
    "asOf": 1990,
@@ -60,7 +60,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 1990",
-   "built": "2026-10-23T22:07:29.226Z"
+   "built": "2026-10-23T23:38:15.035Z"
   },
   {
    "asOf": 2005,
@@ -71,7 +71,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 2005",
-   "built": "2026-10-23T22:20:11.828Z"
+   "built": "2026-10-23T23:52:00.787Z"
   },
   {
    "asOf": 2025,
