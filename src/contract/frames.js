@@ -113,6 +113,9 @@ export class FrameBuilder {
     for (const [id, live] of this.actorLive) { const o = (out.actors[id] ??= {}); if (!one || live.some(x => !x)) o.live = Array.from(live, x => (one ? (x ? 1 : 0) : r3(x / R))); }
     for (const v of this.vars) {
       if (v.entity === 'dyad') continue;
+      // `live` is the share of runs the actor exists in (actorLive above); its reader is 1 wherever it exists, which
+      // over the seen-denominator would publish P(live | exists) = 1 and make every born state look certain
+      if (v.entity === 'actor' && v.id === 'live') continue;
       // a binary actor variable is published for every actor that was live, so that "absent" can safely mean 0: an
       // actor never observed on it gets an explicit array of nulls rather than disappearing into the default
       const ids = v.entity === 'world' ? ['_'] : v.entity === 'actor' && v.kind === 'binary' ? [...this.actorLive.keys()] : [...new Set([...this.seen.keys()].filter(k => k.startsWith(`${v.id}|`)).map(k => k.slice(v.id.length + 1)))];
