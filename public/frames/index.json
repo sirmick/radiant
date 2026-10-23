@@ -4,7 +4,7 @@
   "file": "frames/record.json",
   "from": 1870,
   "to": 2025,
-  "built": "2026-10-23T12:07:29.602Z"
+  "built": "2026-10-23T19:38:34.424Z"
  },
  "ensembles": [
   {
@@ -16,7 +16,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 1900",
-   "built": "2026-10-23T12:09:07.026Z"
+   "built": "2026-10-23T19:40:26.733Z"
   },
   {
    "asOf": 1930,
