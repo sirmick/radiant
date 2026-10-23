@@ -113,6 +113,19 @@ by the backtest, and published in frames. Order matters — later steps read ear
 | C5 | live set and borders | secession hazard (from intrastate conflict, separatist flag), absorption/union hazard; successor and contiguity edges inherited as `src/engine/core.js` already does for successors | CoW system membership, CShapes | closes the *existence* leak in backtests; decolonisation-era backtests |
 | C6 | military presence | base/garrison open-close hazards on patron–host dyads | `data/presence.yaml` | `guarantor_withdrawal`, patron terms |
 
+### Status
+
+- **A1–A4, B — done 2026-10-23.** Contract, replay, fork scorer (reproduces every event row and occupancy row of the
+  old backtest), exporter, viewer on `makeView`.
+- **C1 + C2 — done 2026-10-23.** Fitted three-part growth process (`src/engine/growth.js`, fit by
+  `scripts/analysis/growth.mjs`), CINC moved by output growth (`stepCinc`), great-power entry/exit fitted at as-of
+  (`src/engine/greatpower.js`). Gate (`scripts/analysis/structure.mjs`, 1900–1990 step 30, +30y, 20 runs): polarity
+  transitions 2.07 → 4.61 per 100 world-years (record 4.31), great-power entry 0 → 1.21 (1.72), exit 0 → 0.65 (3.45 —
+  recorded exits are war defeats, and simulated great-power wars are too rare), top-pole change 0.04 → 1.90 (6.90).
+  p10–p90 coverage on the 1950–1990 fork backtest: gdp_pc 0.20 → 0.70, cinc 0.00 → 0.67, pol_share 0.12 → 0.52.
+  Event scores: 10 of 15 pooled templates improve, 5 fall (intrastate_onset skill 0.15 → 0.11, democratic_deepening
+  0.41 → 0.34) — accepted under the gate.
+
 ## Phase D — fitter upgrades (after C, same gate)
 
 1. **Time-varying coefficients**: era-pooled (hierarchical shrinkage of per-era β toward a common β) in place of

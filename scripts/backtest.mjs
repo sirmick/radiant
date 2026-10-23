@@ -16,6 +16,7 @@ import { createWorld, runEnsemble, CORRIDOR_UNIT, corridorFirstYear, corridorLas
 import { IMPAIRED, RESOLVED, SPELL_UNITS, territoryFirstYear, territoryStateAt, endYears } from '../src/engine/termination.js';
 import { recordFrames } from '../src/engine/replay.js';
 import { scoreFork, pool, report } from '../src/contract/score.js';
+import { ENSEMBLE_VARS } from '../src/contract/vars.js';
 
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i >= 0 ? process.argv[i + 1] : d; };
 const FROM = +arg('from', 1870), TO = +arg('to', 2000), STEP = +arg('step', 10), H = +arg('horizon', 20), RUNS = +arg('runs', 200);
@@ -192,7 +193,7 @@ for (let asOf = FROM; asOf <= TO; asOf += STEP) {
   const t0 = Date.now();
   // `state: true` adds the occupancy tracking. It reads the world after each step and consumes no random numbers, so
   // every event number below is bit-identical to a run without it (docs/escalations.md package 11, test (d)).
-  const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads, state: true, frames: { from: asOf + 1, meta: { source: `fc-${asOf}`, asOf } } });
+  const ens = runEnsemble(make, { runs: RUNS, horizon, seed: asOf, skipDyads, state: true, frames: { from: asOf + 1, meta: { source: `fc-${asOf}`, asOf } }, frameVars: ENSEMBLE_VARS() });
   const real = realized(asOf, horizon);
   const w0 = make(); const ids = Object.keys(w0.actors);
   // every actor the engine can hold during the horizon, including ones born inside it (the engine introduces and retires

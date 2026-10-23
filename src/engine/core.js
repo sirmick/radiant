@@ -4,6 +4,8 @@
 // No country names anywhere in this file.
 
 import { observe, FrameBuilder } from '../contract/frames.js';
+import { GROWTH_PROCESS, trailingMean, drawGrowth } from './growth.js';
+import { fitGreatPower, gpHazard } from './greatpower.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
 /** The dyadic conflict-onset kinds the rivalry trace remembers. MID stops in 2010; UCDP's interstate onsets run to
@@ -131,6 +133,13 @@ const NO_TERM = {
 // place of CINC. The first is a forecast the model publishes; the second is a claim about what decides a war, and it
 // is the claim test (b) in docs/escalations.md grades.
 const NO_WAVES = ABLATE.includes('waves');
+// C1 (docs/plan-structure.md): the fitted growth process (src/engine/growth.js) and capability shares that move with it;
+// C2: great-power status as fitted entry/exit transitions (src/engine/greatpower.js). Each ablates back to the frozen
+// world it replaced: ENGINE_ABLATE=growth_process (uniform noise around a decaying trailing mean), cinc_dynamics (cinc
+// carried from as-of), great_power (status frozen at as-of).
+const NO_GROWTH_PROCESS = ABLATE.includes('growth_process');
+const NO_CINC_DYNAMICS = ABLATE.includes('cinc_dynamics');
+const NO_GP_DYNAMICS = ABLATE.includes('great_power');
 /** Whether the wave share REPLACES cinc in the dyadic capability ratio. Declared in the data, forced by the env.
  *  Exported so a publisher can stamp the answer into its output without building a world to ask. */
 export const waveCapabilityOn = (templates) => {
@@ -765,6 +774,10 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     // capability waves (operator/capability-waves): attainment is the dated sovereign_by history up to as-of and the
     // fitted wave_attain hazard after it; `capability` says whether the share it produces replaces cinc in the ratio
     waves: initWaves({ waves, actors, asOf, templates }),
+    // C1: the world's trailing mean growth at the origin, the centre of every actor's growth process
+    growthMean: trailingMean(panel, asOf, GROWTH_MEAN),
+    // C2: the great-power transitions, fitted on the panel's CoW column with labels at or before as-of
+    gpFit: NO_GP_DYNAMICS ? null : fitGreatPower(panel, asOf),
   };
 }
 
@@ -1117,6 +1130,28 @@ function stepLifecycle(world, y) {
   }
 }
 
+/** C1: capability shares follow total output growth, renormalised to last year's total over the same actors. */
+function stepCinc(world, ids) {
+  let before = 0, after = 0; const moved = [];
+  for (const id of ids) {
+    const a = world.actors[id]; const c = a.prev.cinc; if (c == null || !(c > 0)) continue;
+    before += c; const x = c * Math.exp((a.cur.gdp_growth ?? world.growthMean) + (a.popGrowth ?? POP_GROWTH_MEAN)); after += x; moved.push([a, x]);
+  }
+  if (!(after > 0)) return;
+  for (const [a, x] of moved) a.cur.cinc = (x * before) / after;
+}
+/** C2: great-power entry and exit, drawn on the moved shares. Returns the events. */
+function stepGreatPower(world, ids, rng) {
+  const ranked = ids.map(id => world.actors[id]).filter(a => a.cur.cinc != null && a.cur.great_power != null).sort((p, q) => q.cur.cinc - p.cur.cinc);
+  const out = [];
+  ranked.forEach((a, r) => {
+    const was = a.cur.great_power > 0;
+    const p = gpHazard(world.gpFit, was, a.cur.cinc, r + 1, a.prev.at_war > 0); if (p == null) return;
+    if (rng() < p) { a.cur.great_power = was ? 0 : 1; out.push({ kind: was ? 'great_power_exit' : 'great_power_entry', actor: a.id, year: world.year }); }
+  });
+  return out;
+}
+
 /** One annual step: lifecycle, structural drift, then hazards. */
 export function stepYear(world, rng, opts = {}) {
   world.year += 1; const y = world.year; const fired = [];
@@ -1126,19 +1161,20 @@ export function stepYear(world, rng, opts = {}) {
   for (const id of ids) {
     const a = world.actors[id]; a.prev = { ...a.cur };
     const warShock = a.cur.at_war ? -0.04 : 0;
-    const shock = (rng() - 0.5) * 0.04;
+    const shock = (rng() - 0.5) * 0.04;   // drawn either way, so the main stream stays aligned with the frozen engine's
     // the trailing 10-year growth rate is a state, not a constant: it decays toward the panel's long-run mean.
     // Freezing it for a 20-year horizon projected the 1910–20 collapse forward to 1940 (one actor's gdp_pc fell to
     // 1/12 of the observed value, 3.3 sd on a covariate carrying −0.37 on autocratic_closure).
     a.driftYears = (a.driftYears ?? 0) + 1;
     const g0 = GROWTH_MEAN + (a.growth - GROWTH_MEAN) * Math.pow(GROWTH_PHI, a.driftYears);
-    if (a.cur.gdp_pc != null) { const g = g0 + warShock + shock; a.cur.gdp_pc *= Math.exp(g); a.cur.gdp_growth = g; a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc); }
+    // C1: the fitted process draws from a stream of its own (opts.growthRng), so the event stream is untouched by it
+    if (a.cur.gdp_pc != null) { const g = NO_GROWTH_PROCESS || !opts.growthRng ? g0 + warShock + shock : drawGrowth(a, opts.growthRng, world.growthMean, a.cur.at_war); a.cur.gdp_pc *= Math.exp(g); a.cur.gdp_growth = g; a.cur.log_gdp_pc = Math.log(a.cur.gdp_pc); }
     if (a.cur.population != null) a.cur.population *= Math.exp(a.popGrowth);
     if (a.cur.tpop != null) a.cur.tpop *= Math.exp(a.popGrowth);
     if (a.cur.leader_age != null) { a.cur.leader_age += 1; a.cur.leader_tenure = (a.cur.leader_tenure ?? 0) + 1; }
     a.cur.sp_client_any = (a.cur.pact_usa || a.cur.pact_rus) ? 1 : 0;
     a.cur.sp_client_one = ((a.cur.pact_usa ? 1 : 0) + (a.cur.pact_rus ? 1 : 0)) === 1 ? 1 : 0;
-    // major-power status is frozen at as-of, like the alliance and border graphs and like world.nukes: who stops being a
+    // major-power status: frozen at as-of under ENGINE_ABLATE=great_power; otherwise moved after the drift by stepGreatPower. Was: frozen, like the alliance and border graphs and like world.nukes: who stops being a
     // great power in 1917, 1918, 1943 and 1945 is an outcome of the horizon, not a fact the forecaster holds. Reading the
     // panel forward was worth ~0.03 of the pre-1946 dyad AUC (it gates the politically-relevant filter and carries
     // major_power_any). Great-power entry/exit as a modelled hazard is an escalation (docs/escalations.md).
@@ -1162,6 +1198,12 @@ export function stepYear(world, rng, opts = {}) {
   }
   // the wave layer, before the derived world state and before any hazard reads a capability ratio. Its draws come
   // from a stream of their own (opts.waveRng), so with the layer ablated the main stream is untouched.
+  // C1: capability shares move with each actor's own total output growth and are renormalised to the share the
+  // simulated universe held a year ago — an assumption (CINC tracks output only loosely, and military personnel and
+  // spending can move without it), stated here and ablatable. Then C2: who is a great power is re-drawn from the
+  // fitted transitions on the moved shares. Both before any hazard reads a capability ratio or the major-power flag.
+  if (!NO_CINC_DYNAMICS && opts.growthRng) stepCinc(world, ids);
+  if (world.gpFit && opts.growthRng) fired.push(...stepGreatPower(world, ids, opts.growthRng));
   stepWaves(world, opts.waveRng ?? rng);
   // the derived world state, after the drift (it reads this year's growth) and before any hazard reads an era term
   stepPolarity(world);
@@ -1433,9 +1475,10 @@ export function runEnsemble(makeWorld, { runs = 200, horizon = 20, seed = 1, ski
     // the wave layer's own stream (operator/capability-waves): switching the layer on must perturb the event process
     // through the capability ratio and not through the random numbers, so its draws never come out of `rng`.
     const waveRng = mulberry32(seed * 104729 + r);
+    const growthRng = mulberry32(seed * 15485863 + r);   // C1/C2: the structural draws' own stream
     const seen = new Set(), seenD = new Set();
     for (let h = 1; h <= horizon; h++) {
-      const fired = stepYear(w, rng, { skipDyads, waveRng });
+      const fired = stepYear(w, rng, { skipDyads, waveRng, growthRng });
       if (fb) { const snap = observe(w, { vars: obsKeys }); fb.add(r, h - 1, snap, fired); if (r < pathFb.length) pathFb[r].add(0, h - 1, snap, fired); }
       if (track) for (const [id, a] of Object.entries(w.actors)) {
         if (a.cur.regime != null) { const hh = (regimeHist[id] ??= new Uint32Array(horizon * 4)); hh[(h - 1) * 4 + Math.max(0, Math.min(3, Math.round(a.cur.regime)))]++; }
