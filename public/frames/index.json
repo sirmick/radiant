@@ -60,7 +60,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 1990",
-   "built": "2026-10-23T12:36:37.802Z"
+   "built": "2026-10-23T22:07:29.226Z"
   },
   {
    "asOf": 2005,
@@ -71,7 +71,7 @@
    "runs": 200,
    "horizon": 40,
    "fit_source": "refit on labels ≤ 2005",
-   "built": "2026-10-23T12:46:16.627Z"
+   "built": "2026-10-23T22:20:11.828Z"
   },
   {
    "asOf": 2025,
