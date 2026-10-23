@@ -227,6 +227,15 @@ by the backtest, and published in frames. Order matters — later steps read ear
   (12 up, 5 down), mid_force/mid_war exp/obs 0.76 / 0.66. The 50-year run: a war between two members by 2050 40% -> 12%.
   Tested and not adopted: `waited` (years eligible without joining) as a revealed preference to stay out: +0.82
   (Austria, Sweden, Finland waited 37 years and joined), so Norway or Switzerland read like any eligible democracy.
+- **Viewer catch-up — 2026-10-23.** The frame contract carries what the engine now moves: `actor:freexp` (simulated),
+  `actor:wave` (the region's opening multiplier; a model state, not in the record), `actor:union` (open vocabulary,
+  P(member) in an ensemble), `dyad:trade` (continuous, the weak-link dependence; frozen at as-of), `dyad:holds` and
+  `dyad:colony` (directed holder>territory keys, CShapes holders; moved by C5 breakup). Dyad variables now declare their
+  own reader and kind; a continuous one is the value (the run mean). Viewer: trade and holdings layers, a "Union member
+  (EU)" map variable, freedom of expression and wave as map variables, the Detail tab's Ties (EU, top trade partners,
+  holdings / held by), "X defeated" on a simulated war's end. The site's forecasts run with `MEMBERSHIP_HAZARD=1`
+  (recorded in `meta.engine_env`): a forecast that cannot move holdings or create states would show a static map, and
+  the past origins no longer read the dated membership list.
 - **C6 — done 2026-10-23.** Station open / close hazards over the dated presence layer (`src/engine/stations.js`), the
   presence index rebuilt as the run moves and read at the simulated year; a dyad `presence` variable carries it into
   the frames, and the viewer draws it after the seam. Gate: openings 0.62x, closures 0.56x of the record (between

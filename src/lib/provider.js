@@ -105,7 +105,7 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   /** Values keyed by map polygon for a whole variable: historical entities draw on their successor's polygon. */
   function cells(v, { gradient: grad = false } = {}) {
     const out = {};
-    for (const id of liveIds) { const key = neKey(id); if (key !== id && liveSet.has(key)) continue; const c = grad ? gradient(id) : cell(v, id); if (c) out[key] = c; }
+    for (const id of liveIds) { const key = neKey(id); if (key !== id && liveSet.has(key)) continue; const c = grad ? gradient(id) : v === 'union' ? unionCell(id) : cell(v, id); if (c) out[key] = c; }
     return out;
   }
   // Industrial base as a share of the world: the series that best covers the year's states, carried up to 3 years
@@ -141,6 +141,23 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   const allied = () => (model ? dyadsAt(model, 'allied', y, 0.5) : dyadsAt(record, 'allied', recY, 0.5)).map(([pk]) => pk.split('|'));
   /** C6: patron-host station pairs at the year — P >= 0.5 in an ensemble (sample worlds do not carry them), 1 in the record. */
   const presencePairs = () => (model ? dyadsAt(model, 'presence', y, 0.5) : inRec ? dyadsAt(record, 'presence', y, 0.5) : []).map(([pk, p]) => [pk, p]);
+  /** Trade links at the year as [pair, dependence] (a forecast holds the as-of value: trade is not simulated). */
+  const tradePairs = (min = 0.02) => (model ? dyadsAt(model, 'trade', y, min) : dyadsAt(record, 'trade', recY, min));
+  /** An actor's partners, largest dependence first. */
+  const tradePartners = (id, n = 8) => tradePairs(0).map(([pk, d]) => { const [a, b] = pk.split('|'); return a === id ? [b, d] : b === id ? [a, d] : null; }).filter(Boolean).sort((p, q) => q[1] - p[1]).slice(0, n);
+  /** Territory holdings at the year: [{ holder, territory, colony, p }] — P(held) in an ensemble, 1 in the record. */
+  const holdings = (min = 0.5) => ['holds', 'colony'].flatMap(v => (model ? dyadsAt(model, v, y, min) : dyadsAt(record, v, recY, min)).map(([k, p]) => { const [holder, territory] = k.split('>'); return { holder, territory, colony: v === 'colony', p }; }));
+  /** P(the actor belongs to a supranational union): 0/1 in the record and a sample world, a share of runs in an ensemble. */
+  function unionP(id) {
+    if (!model) { if (!inRec) return null; const [w] = carry('union', id); return w == null ? null : w !== 'none' ? 1 : 0; }
+    const d = distAt(sample ?? model, 'actor', id, 'union', y)?.dist; if (!d) return null;
+    return Object.entries(d).reduce((t, [w, p]) => t + (w !== 'none' ? p : 0), 0);
+  }
+  /** The union cell for the map: the same shape as cell(). */
+  function unionCell(id) {
+    const p = unionP(id); if (p == null) return null;
+    return { year: y, actor: id, name: name(id), value: p, history: !model, forecast: !!model, state: true, p, conf: model ? Math.max(p, 1 - p) : 1 };
+  }
   /** A record's status at the year: the record's word, or the ensemble's distribution / one world's word. */
   function recordStatus(id) {
     if (model) {
@@ -166,7 +183,7 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   return {
     year: y, record, ensemble, model, sample, inRec, isForecast: !!model, lead, asOf, mode, run,
     liveIds, live: (id) => liveSet.has(id), neKey, name, entity: (id) => ent[id] ?? null,
-    cell, cells, gradient, industry, carry, presencePairs, atWarP, intrastateW, intrastateLevel, regime, number, great, dyadWar, allied, recordStatus, events, hazard, hazards: hz,
+    cell, cells, gradient, industry, carry, presencePairs, tradePairs, tradePartners, holdings, unionP, atWarP, intrastateW, intrastateLevel, regime, number, great, dyadWar, allied, recordStatus, events, hazard, hazards: hz,
     regime0: (id) => (asOf == null ? null : carry('regime', id, asOf)[0]),
     pop: (id) => number('population', id), cap: (id) => number('cinc', id),
     varMeta: (key) => varMeta(record, key) ?? varMeta(ensemble ?? {}, key),

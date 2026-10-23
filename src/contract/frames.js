@@ -11,8 +11,9 @@
 //   runs = 1   binary 0/1 · categorical level index (or level word for an open vocabulary) · continuous number · null
 //   runs > 1   binary P(1) · categorical probability vector (or {word: p}) · continuous [p10, p50, p90] · null
 // A binary array that is zero everywhere is omitted: absent = 0 wherever the entity is live and the variable covered.
-// A dyad value that is the same in every year may be stored as one number instead of an array.
-import { VARS, varKey, varsOf, publishVars } from './vars.js';
+// A dyad value that is the same in every year may be stored as one number instead of an array. A continuous dyad
+// variable (trade) is the value itself (the mean over runs in an ensemble); a directed one (holds) keys "from>to".
+import { VARS, VAR, varKey, varsOf, publishVars } from './vars.js';
 
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const r3 = (x) => +x.toFixed(3);
@@ -42,6 +43,8 @@ export function observe(world, { strict = false, vars = null } = {}) {
   // C6: land stations active this year, as patron-host pairs (sorted keys; the patron is the great power)
   const presence = new Set(); if (!want || want.has('dyad:presence')) for (const r of world.stations ?? []) if (world.actors[r.host] && world.actors[r.actor] && r.from <= y && (r.to == null || y < r.to)) presence.add(pairKey(r.actor, r.host));   // both sides states: a station on a colony is not a state-to-state tie
   const dyads = { presence, at_war: new Set(world.atWarPairs ?? []), allied: !want || want.has('dyad:allied') ? (strict ? new Set(world.allied ?? []) : world.allied ?? new Set()) : new Set() };
+  // every other dyad variable declares its own reader (a Set of keys for binary, a Map key -> value for continuous)
+  for (const v of varsOf('dyad')) if (v.read && has(v)) dyads[v.id] = v.read(world);
   const records = {};
   const recordKinds = {};
   for (const e of [...(world.corridors ?? []), ...(world.territories ?? [])]) if (e.state?.status != null) { records[e.rec.id] = e.state.status; recordKinds[e.rec.id] = e.rec.kind ?? 'territory'; }
@@ -73,7 +76,7 @@ export class FrameBuilder {
     this.word = new Map();               // `${var}|${id}` -> Map(word -> Uint32Array(H))
     this.cont = new Map();               // `${var}|${id}` -> Float32Array(runs * H), NaN = absent
     this.seen = new Map();               // `${var}|${id}` -> Uint32Array(H): runs in which a non-null value was seen
-    this.dyad = { at_war: new Map(), allied: new Map(), presence: new Map() };
+    this.dyad = Object.fromEntries(varsOf('dyad').map(v => [v.id, new Map()]));   // binary: counts per offset; continuous: sums
     this.events = Array.from({ length: years }, () => []);
     this.recordKinds = {};
   }
@@ -85,10 +88,11 @@ export class FrameBuilder {
       (this.actorLive.get(id) ?? this.actorLive.set(id, new Uint32Array(H)).get(id))[k]++;
       for (const v of this.vars) if (v.entity === 'actor') this.#put(v, id, r, k, o[v.id]);
     }
-    for (const name of ['at_war', 'allied', 'presence']) {
-      if (!this.has('dyad', name)) continue;
-      const m = this.dyad[name];
-      for (const pk of snap.dyads[name] ?? []) (m.get(pk) ?? m.set(pk, new Uint32Array(H)).get(pk))[k]++;
+    for (const v of varsOf('dyad')) {
+      if (!this.has('dyad', v.id)) continue;
+      const m = this.dyad[v.id]; const src = snap.dyads[v.id];
+      if (v.kind === 'continuous') { for (const [pk, x] of src ?? []) (m.get(pk) ?? m.set(pk, new Float32Array(H)).get(pk))[k] += x; continue; }
+      for (const pk of src ?? []) (m.get(pk) ?? m.set(pk, new Uint32Array(H)).get(pk))[k]++;
     }
     if (this.has('record', 'status')) { const v = this.vars.find(x => x.entity === 'record'); for (const [id, s] of Object.entries(snap.records)) { this.#put(v, id, r, k, s); this.recordKinds[id] ??= snap.recordKinds?.[id] ?? null; } }
     for (const v of this.vars) if (v.entity === 'world') this.#put(v, '_', r, k, snap.world[v.id]);
@@ -149,7 +153,8 @@ export class FrameBuilder {
       if (!this.has('dyad', name)) continue;
       const o = (out.dyads[name] = {});
       // a pair whose value is the same in every year is stored as that single number (a frozen pact graph is 1 everywhere)
-      for (const [pk, c] of m) { const arr = Array.from(c, x => (one ? (x ? 1 : 0) : r3(x / R))); o[pk] = arr.every(x => x === arr[0]) ? arr[0] : arr; }
+      const cont = VAR[`dyad:${name}`]?.kind === 'continuous';   // continuous: the mean over runs (a frozen value is the same in each)
+      for (const [pk, c] of m) { const arr = Array.from(c, x => (cont ? r3(x / R) : one ? (x ? 1 : 0) : r3(x / R))); o[pk] = arr.every(x => x === arr[0]) ? arr[0] : arr; }
     }
     return out;
   }

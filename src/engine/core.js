@@ -11,7 +11,7 @@ import { fitNuclear, nukeHazard } from './nuclear.js';
 import { fitStations, closeHazard, openHazard } from './stations.js';
 import { fitWarOutcome, loseProb } from './waroutcome.js';
 import { igoIndex } from './igo.js';
-import { tradeIndex } from './trade.js';
+import { tradeIndex, tradePairs } from './trade.js';
 import { fitUnions, candidates as unionCandidates, roundHazard, joinerHazard } from './unions.js';
 import { fitMembership, birthHazard, deathHazard, breakupHazard, memberHazard, holderAt, isColonial, polygonKey, neighbours, localBirths, MEMBERSHIP, BREAKUP, unitKey, unitHolder, holderStateWorld, firstLiveIndex } from './membership.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
@@ -822,6 +822,9 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     igoAt: igoIndex(igo),
     // bilateral trade dependence per pair, held at as-of (trade is not simulated)
     tradeAt: tradeIndex(trade),
+    // the frame contract's view of trade and territories (src/contract/vars.js dyad:trade, dyad:holds, dyad:colony)
+    tradePairsAt: trade ? tradePairs(trade) : null,
+    holdsStatic: holders && polygons ? polygons.map(p => [p.id, holderAt(holders, p.id, asOf)]).filter(([, o]) => o?.h && o.h !== 'self').map(([t, o]) => [o.h, t, isColonial(o.status)]) : [],
     // supranational unions (src/engine/unions.js): members at as-of, entry/exit hazards fitted on the record to as-of
     ...unionState(unions, panel, contiguity, asOf),
     // regional waves: the shared shock's persistence and its state at as-of (see frailtyInit)
@@ -916,6 +919,11 @@ function stepUnions(world, ids, rng) {
     U.lastRound[u] = y;
   }
   return out;
+}
+/** Territory holdings in force: the simulated holder map where C5 breakup runs, else the record's at as-of. */
+export function holdings(world) {
+  const M = world.membership; if (M?.holder) return [...M.holder].map(([t, o]) => [o.h, t, !!o.colony]).filter(([h]) => world.actors[h]);
+  return (world.holdsStatic ?? []).filter(([h]) => world.actors[h]);
 }
 /** Both members of the same union this year. */
 const jointUnion = (world, a, b) => { if (!world.unions) return 0; for (const m of world.unions.members.values()) if (m.has(a) && m.has(b)) return 1; return 0; };

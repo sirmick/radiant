@@ -35,7 +35,7 @@
     const t = setInterval(() => { year = year >= Y1 ? Y0 : year + 1; }, 250);
     return () => clearInterval(t);
   });
-  let layers = $state({ territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false, waves: false });
+  let layers = $state({ territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false, waves: false, trade: false, holdings: false });
   let mode = $state('2d');
   let view = $state('politics');
   let advanced = $state(false);
@@ -43,7 +43,7 @@
     politics: { label: 'Politics', layers: { territories: true, corridors: false, alliances: false, conflicts: false, presence: false, field: false, labels: true, glyphs: false }, variable: () => 'h_regime' },
     power:    { label: 'Power',    layers: { territories: false, corridors: false, alliances: 'major', conflicts: false, presence: true, field: 'influence', labels: false, glyphs: false }, variable: () => 'h_wave_share' },
     conflict: { label: 'Conflict', layers: { territories: true, corridors: true, alliances: false, conflicts: true, presence: false, field: 'conflict', labels: false, glyphs: false }, variable: () => 'h_at_war' },
-    routes:   { label: 'Routes',   layers: { territories: false, corridors: true, alliances: false, conflicts: false, presence: false, field: 'routes', labels: false, glyphs: false }, variable: () => 'h_energy_twh' },
+    routes:   { label: 'Routes',   layers: { territories: false, corridors: true, alliances: false, conflicts: false, presence: false, field: 'routes', labels: false, glyphs: false, trade: true }, variable: () => 'h_energy_twh' },
     industry: { label: 'Industry', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'industry', labels: false, glyphs: 'industry', waves: true }, variable: () => 'h_wave_share' },
     forecast: { label: 'Forecast', layers: { territories: false, corridors: false, alliances: false, conflicts: false, presence: false, field: 'hazard', labels: true, glyphs: false }, variable: () => 'h_regime', year: 2036 },
   };
@@ -111,7 +111,7 @@
     {#if advanced}
       <div class="drawer">
         <span class="muted tiny">layers</span>
-        {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities'], ['waves', 'capability waves']] as [k, label]}
+        {#each [['territories', 'territories'], ['corridors', 'corridors'], ['conflicts', 'conflicts'], ['presence', 'military presence'], ['labels', 'flags · regime'], ['glyphs', 'qualities'], ['waves', 'capability waves'], ['trade', 'trade'], ['holdings', 'holdings']] as [k, label]}
           <button class:on={layers[k]} onclick={() => layers[k] = !layers[k]}>{label}</button>
         {/each}
         <button class:on={!!layers.alliances} onclick={() => layers.alliances = layers.alliances === 'major' ? 'all' : layers.alliances === 'all' ? false : 'major'} title="cycle: great-power pacts → all pacts → off">alliances{layers.alliances ? ` · ${layers.alliances}` : ''}</button>

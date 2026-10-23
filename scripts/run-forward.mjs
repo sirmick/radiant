@@ -65,7 +65,7 @@ const producedIds = new Set([...Object.keys(ens.pAny), ...Object.keys(ens.pAnyDy
 // (scripts/export-frames.mjs) — plus the one thing only an ensemble has: `hazards`, the first-occurrence curves
 // P(first event within k years) per template and unit, which the viewer's forecast variables and hazard field read.
 const out = ens.frames.ensemble;
-Object.assign(out.meta, { built: new Date().toISOString(), asOf, runs: RUNS, horizon: H, universe: UNIVERSE, engine: 'generic templates only', fit_source: fitSource, templates: simulated.map(t => ({ id: t.id, label: t.label, unit: t.unit, event: t.event, produced: producedIds.has(t.id) || producedIds.has(t.event) })) });
+Object.assign(out.meta, { engine_env: Object.fromEntries(['MEMBERSHIP_HAZARD', 'FRAILTY', 'ENGINE_ABLATE', 'COUPLING'].filter(k => process.env[k] != null).map(k => [k, process.env[k]])), built: new Date().toISOString(), asOf, runs: RUNS, horizon: H, universe: UNIVERSE, engine: 'generic templates only', fit_source: fitSource, templates: simulated.map(t => ({ id: t.id, label: t.label, unit: t.unit, event: t.event, produced: producedIds.has(t.id) || producedIds.has(t.event) })) });
 const r3 = (x) => +x.toFixed(3);
 out.hazards = { actor: {}, dyad: {}, record: {} };
 for (const id of ids) for (const t of simulated) if (t.unit === 'actor-year') { const c = ens.cumulative(`${t.id}|${id}`); if (c.some(x => x > 0)) (out.hazards.actor[id] ??= {})[t.id] = c.map(r3); }

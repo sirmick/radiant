@@ -23,6 +23,8 @@ export const REGIME_LEVELS = [0, 1, 2, 3];
 export const REGIME_LABELS = ['closed autocracy', 'electoral autocracy', 'electoral democracy', 'liberal democracy'];
 export const POLARITY_LEVELS = ['multipolar', 'bipolar', 'unipolar'];
 
+// the holdings a world reports (src/engine/core.js:holdings), duplicated here so the contract does not import the engine
+const holdingsOf = (w) => { const M = w.membership; if (M?.holder) return [...M.holder].map(([t, o]) => [o.h, t, !!o.colony]).filter(([h]) => w.actors[h]); return (w.holdsStatic ?? []).filter(([h]) => w.actors[h]); };
 const lvl = (x, n) => (x == null ? null : Math.max(0, Math.min(n - 1, Math.round(x))));
 
 export const VARS = [
@@ -62,6 +64,18 @@ export const VARS = [
   // simulated series: the map sizes labels by it after the seam as well as before
   { id: 'population', entity: 'actor', kind: 'continuous', label: 'Population', display: { format: '.3s', unit: 'persons', log: true }, family: 'economy', forecast: 'simulated', positive: true,
     truth: 'panel:population', read: (w, a) => a.cur.population ?? null },
+  // freedom of expression (V-Dem v2x_freexp_altinf), moved in a run by the opening / closing templates
+  { id: 'freexp', entity: 'actor', kind: 'continuous', label: 'Freedom of expression', display: { format: '.2f', unit: 'V-Dem' }, family: 'politics', forecast: 'simulated',
+    truth: 'panel:freexp', coverage: [1789, 2025], read: (w, a) => a.cur.freexp ?? null },
+  // the regional wave the actor's region is in: the opening hazard's multiplier from the shared regional shock
+  // (src/engine/core.js, regional waves). A model state, not an observation: the record does not carry it.
+  { id: 'wave', entity: 'actor', kind: 'continuous', label: 'Regional wave (opening odds x)', display: { format: '.2f', unit: 'x' }, family: 'politics', forecast: 'simulated', coverage: [9999, 9999],
+    note: 'exp(sigma u - sigma^2/2) for the opening template, u the region-year shock (AR(1), seeded from the wave visible at as-of); 1 = a quiet year',
+    read: (w, a) => { const u = w.frailU?.get(a.cur.region_pol); const sg = w.frailSigma?.opening; return u == null || !sg ? null : +Math.exp(sg * u - (sg * sg) / 2).toFixed(3); } },
+  // supranational union membership (data/unions.yaml; simulated entry rounds and exits: src/engine/unions.js)
+  { id: 'union', entity: 'actor', kind: 'categorical', levels: null, label: 'Union', family: 'structure', forecast: 'simulated', coverage: [1958, 2026],
+    note: 'open vocabulary: the union id (eu) or none',
+    read: (w, a) => { if (!w.unions) return null; for (const [u, m] of w.unions.members) if (m.has(a.id)) return u; return 'none'; } },
   // ---- display-only panel columns: observed by the record, never simulated. A forecast frame set does not carry them
   // (`forecast: 'carried'`); a reader past the record's end carries the last observation and says how stale it is.
   ...[
@@ -86,6 +100,17 @@ export const VARS = [
     note: 'the dated pact graph (scripts/lib/hist.mjs:loadPacts) at as-of, moved by fitted formation / dissolution hazards (src/engine/alliances.js, C3)' },
   { id: 'presence', entity: 'dyad', kind: 'binary', label: 'Military presence', family: 'structure', forecast: 'simulated', coverage: [1870, 2026],
     note: 'a great-power station of either side on the other (data/presence.yaml at as-of, then fitted open / close hazards: src/engine/stations.js, C6); the key is the sorted pair, the patron is the great power' },
+  // continuous: the weak-link trade dependence of the pair (CoW dyadic trade v3), >= 0.02; held at as-of in a run
+  { id: 'trade', entity: 'dyad', kind: 'continuous', label: 'Trade dependence', display: { format: '.0%', unit: 'of the weaker side\'s trade' }, family: 'economy', forecast: 'frozen', coverage: [1870, 2026],
+    note: 'min(s_ij, s_ji), s = the pair\'s trade over each side\'s total recorded trade; the series ends 2006-2009 and carries; a forecast holds the as-of value',
+    read: (w) => new Map((w.tradePairsAt ? w.tradePairsAt(w.asOf) : []).filter(([k]) => { const i = k.indexOf('|'); return w.actors[k.slice(0, i)] && w.actors[k.slice(i + 1)]; })) },
+  // directed: the key is "holder>territory" (a map polygon id); integral territory and dependencies separately
+  { id: 'holds', entity: 'dyad', kind: 'binary', label: 'Holds territory', family: 'structure', forecast: 'simulated', coverage: [1886, 2026], directed: true,
+    note: 'CShapes 2.0 holders (data/holders.json); with C5 breakup a territory can leave its holder in a run',
+    read: (w) => new Set(holdingsOf(w).filter(([, , c]) => !c).map(([h, t]) => `${h}>${t}`)) },
+  { id: 'colony', entity: 'dyad', kind: 'binary', label: 'Holds a dependency', family: 'structure', forecast: 'simulated', coverage: [1886, 2026], directed: true,
+    note: 'colony, protectorate, mandate or occupation (CShapes 2.0 status)',
+    read: (w) => new Set(holdingsOf(w).filter(([, , c]) => c).map(([h, t]) => `${h}>${t}`)) },
   // ---- record (corridors, chokepoints, territories)
   { id: 'status', entity: 'record', kind: 'categorical', levels: null, label: 'Status', family: 'records', forecast: 'simulated', coverage: [1869, 2025],
     note: 'open vocabulary: the status words of data/corridors.yaml and data/territories.yaml; control transfer is not simulated' },

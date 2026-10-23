@@ -22,7 +22,7 @@ export function newsItem(e, name, y) {
     case 'intrastate_onset': return { k: 'conflict', y: e.year, a: [e.actor], t: `${nm(e.actor)}: internal armed conflict${e.territory ? ` over ${e.territory}` : ''}${e.intensity === 2 ? ' (war)' : ''}`, s };
     case 'intrastate_end': return { k: 'conflict', y: e.year, a: [e.actor], t: `${nm(e.actor)}: internal armed conflict ends${e.duration ? ` after ${e.duration}y` : ''}`, s };
     case 'interstate_onset': return { k: 'conflict', y: e.year, a: [e.a, e.b], sides: [[e.a], [e.b]], t: `${nm(e.a)} – ${nm(e.b)}: interstate conflict${e.intensity === 2 ? ' (war)' : ''}`, s };
-    case 'war_end': return { k: 'war', y: e.year, a: [e.a, e.b], t: `${nm(e.a)} – ${nm(e.b)}: war ends${e.duration ? ` after ${e.duration}y` : ''}`, s };
+    case 'war_end': return { k: 'war', y: e.year, a: [e.a, e.b], t: `${nm(e.a)} – ${nm(e.b)}: war ends${e.duration ? ` after ${e.duration}y` : ''}${e.loser ? ` — ${nm(e.loser)} defeated` : ''}`, s };
     case 'war': return { k: 'war', y: e.start, a: e.sides.flat(), sides: e.sides, end: e.end ?? null, t: `War: ${slug(e.id)} — ${e.sides[0].map(nm).join(', ')} vs ${e.sides[1].map(nm).join(', ')}${e.end ? ` (to ${Math.floor(e.end)})` : ''}`, s, n: e.notes };
     case 'chokepoint': case 'corridor': { const id = e.id ?? e.record; return { k: 'corridor', y: e.year, c: id, t: `${slug(id)}: ${e.status}${e.controller ? ` (${nm(e.controller)})` : ''}`, s, n: e.notes }; }
     case 'record_reopen': return null;   // logged beside the status event it duplicates

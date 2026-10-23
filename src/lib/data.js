@@ -46,11 +46,13 @@ export const GRADIENT_VAR = { id: 'h_regime_gradient', group: 'history', label: 
 // (WDI, from the late 1990s once the largest producers report), else electricity generation (from the 1960s), else iron
 // and steel (CoW NMC, 1816-). A state's value is carried up to 3 years so a late reporter does not vanish from the total.
 export const INDUSTRY_VAR = { id: 'h_industry', group: 'history', label: 'Industrial base', unit: 'share of world · steel → electricity → manufacturing value added', kind: 'history', scope: 'actor', var: 'irst', industry: true, display: { map: true, format: '.1%', log: true } };
+// Union membership as a share: 1 / 0 in the record, P(member) in a forecast (the registry's `union` is an open vocabulary)
+export const UNION_VAR = { id: 'h_union', group: 'history', label: 'Union member (EU)', unit: 'member in the record · P(member) in a forecast', kind: 'history', scope: 'actor', var: 'union', display: { map: true, format: '.0%', domain: [0, 1] } };
 /** The map's history variables: every actor variable the record's registry carries, plus the two composites. */
 export function historyVariables(record) {
   if (!record) return [];
-  const vars = Object.entries(record.meta.vars).filter(([key, v]) => key.startsWith('actor:') && v.id !== 'live');
-  return [GRADIENT_VAR, INDUSTRY_VAR, ...vars.map(([, v]) => {
+  const vars = Object.entries(record.meta.vars).filter(([key, v]) => key.startsWith('actor:') && v.id !== 'live' && v.id !== 'union');
+  return [GRADIENT_VAR, INDUSTRY_VAR, ...(record.meta.vars['actor:union'] ? [UNION_VAR] : []), ...vars.map(([, v]) => {
     const categorical = v.kind === 'binary' ? [0, 1] : v.kind === 'categorical' ? v.levels : undefined;
     const categoricalLabels = v.kind === 'binary' ? ['no', 'yes'] : v.kind === 'categorical' ? v.labels : undefined;
     return { id: `h_${v.id}`, group: 'history', label: v.label, unit: v.display?.unit ?? v.unit ?? '', kind: 'history', scope: 'actor', var: v.id, forecast: v.forecast, note: v.note, display: { map: true, format: v.display?.format ?? (categorical ? '.0f' : undefined), log: v.display?.log ?? v.log, categorical, categoricalLabels } };
@@ -104,7 +106,7 @@ export function colorScale(variable, values) {
   }
   const nums = values.filter(v => Number.isFinite(v));
   if (!nums.length) return { color: () => null, kind: 'empty' };
-  let [lo, hi] = d3.extent(nums);
+  let [lo, hi] = variable?.display?.domain ?? d3.extent(nums);
   const log = variable?.display?.log && lo > 0;
   const interp = d3.interpolateViridis;
   const sc = log ? d3.scaleSequentialLog(interp).domain([lo, hi]) : d3.scaleSequential(interp).domain([lo, hi]);
