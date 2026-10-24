@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { ENSEMBLE_VARS } from '../src/contract/vars.js';
 import { updateIndex } from './lib/frames-index.mjs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './lib/hist.mjs';
-import { loadPolygons, loadHolders, loadWarOutcomes, loadIgo, loadTrade, loadUnions } from './lib/inputs.mjs';
+import { loadPolygons, loadHolders, loadWarOutcomes, loadIgo, loadTrade, loadUnions, loadCapitals } from './lib/inputs.mjs';
 import { createWorld, runEnsemble, waveCapabilityOn } from '../src/engine/core.js';
 import { createFitter, loadFitInputs } from './lib/fit.mjs';
 import { loadWaves } from '../src/engine/waves.js';
@@ -37,6 +37,7 @@ const warOutcomes = loadWarOutcomes();                  // who loses a simulated
 const igo = loadIgo();                                  // shared IGO memberships per pair
 const trade = loadTrade();                              // bilateral trade dependence per pair
 const unions = loadUnions();                            // supranational unions (data/unions.yaml)
+const capitals = loadCapitals();                        // capital coordinates (union candidate proximity)
 const successors = Object.fromEntries([...actors.values()].filter(a => a.successor).map(a => [a.id, a.successor]));
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 // alliances: the dated graph (scripts/lib/hist.mjs:loadPacts — CoW 3.03 to 2000, ATOP 5.1 to 2018, dated accessions
@@ -51,9 +52,9 @@ if (asOf < panel.meta.y1) {   // honest past forecast: coefficients from labels 
   fits = fitter.fitAll({ maxYear: asOf, holdout: false, ablation: false }).fits;
   fitSource = `refit on labels ≤ ${asOf}`;
 }
-const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves, polygons, polygonOf, holders, warOutcomes, igo, trade, unions });
+const make = () => createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe: UNIVERSE, presence, corridors, territories, successors, contiguityFrom, waves, polygons, polygonOf, holders, warOutcomes, igo, trade, unions, capitals });
 const t0 = Date.now();
-const PATH_VARS = ['actor:live', 'actor:regime', 'actor:at_war', 'actor:intrastate', 'actor:occupied', 'actor:great_power', 'dyad:at_war', 'record:status', 'world:polarity', 'world:hegemon'];
+const PATH_VARS = ['actor:live', 'actor:regime', 'actor:at_war', 'actor:intrastate', 'actor:occupied', 'actor:great_power', 'dyad:at_war', 'dyad:member', 'record:status', 'world:polarity', 'world:hegemon'];
 const ens = runEnsemble(make, { runs: RUNS, horizon: H, seed: 2026, frames: { from: asOf + 1, pathVars: PATH_VARS, meta: { source: `fc-${asOf}`, kind: 'ensemble', asOf } }, framePaths: Math.min(PATHS, RUNS), frameVars: ENSEMBLE_VARS() });
 const w0 = make(); const ids = Object.keys(w0.actors);
 const simulated = templates.filter(t => fits[t.id]?.status === 'fitted' && t.status !== 'monitored');
@@ -65,7 +66,7 @@ const producedIds = new Set([...Object.keys(ens.pAny), ...Object.keys(ens.pAnyDy
 // (scripts/export-frames.mjs) — plus the one thing only an ensemble has: `hazards`, the first-occurrence curves
 // P(first event within k years) per template and unit, which the viewer's forecast variables and hazard field read.
 const out = ens.frames.ensemble;
-Object.assign(out.meta, { engine_env: Object.fromEntries(['MEMBERSHIP_HAZARD', 'FRAILTY', 'ENGINE_ABLATE', 'COUPLING'].filter(k => process.env[k] != null).map(k => [k, process.env[k]])), built: new Date().toISOString(), asOf, runs: RUNS, horizon: H, universe: UNIVERSE, engine: 'generic templates only', fit_source: fitSource, templates: simulated.map(t => ({ id: t.id, label: t.label, unit: t.unit, event: t.event, produced: producedIds.has(t.id) || producedIds.has(t.event) })) });
+Object.assign(out.meta, { unions: Object.fromEntries((unions ?? []).map(u => [u.id, { name: u.name, depth: u.depth, founded: u.founded, dissolved: u.dissolved ?? null }])), engine_env: Object.fromEntries(['MEMBERSHIP_HAZARD', 'FRAILTY', 'ENGINE_ABLATE', 'COUPLING'].filter(k => process.env[k] != null).map(k => [k, process.env[k]])), built: new Date().toISOString(), asOf, runs: RUNS, horizon: H, universe: UNIVERSE, engine: 'generic templates only', fit_source: fitSource, templates: simulated.map(t => ({ id: t.id, label: t.label, unit: t.unit, event: t.event, produced: producedIds.has(t.id) || producedIds.has(t.event) })) });
 const r3 = (x) => +x.toFixed(3);
 out.hazards = { actor: {}, dyad: {}, record: {} };
 for (const id of ids) for (const t of simulated) if (t.unit === 'actor-year') { const c = ens.cumulative(`${t.id}|${id}`); if (c.some(x => x > 0)) (out.hazards.actor[id] ??= {})[t.id] = c.map(r3); }

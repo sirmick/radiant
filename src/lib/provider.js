@@ -105,7 +105,7 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   /** Values keyed by map polygon for a whole variable: historical entities draw on their successor's polygon. */
   function cells(v, { gradient: grad = false } = {}) {
     const out = {};
-    for (const id of liveIds) { const key = neKey(id); if (key !== id && liveSet.has(key)) continue; const c = grad ? gradient(id) : v === 'union' ? unionCell(id) : cell(v, id); if (c) out[key] = c; }
+    for (const id of liveIds) { const key = neKey(id); if (key !== id && liveSet.has(key)) continue; const c = grad ? gradient(id) : v.startsWith('member:') ? unionCell(id, v.slice(7)) : cell(v, id); if (c) out[key] = c; }
     return out;
   }
   // Industrial base as a share of the world: the series that best covers the year's states, carried up to 3 years
@@ -147,15 +147,19 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   const tradePartners = (id, n = 8) => tradePairs(0).map(([pk, d]) => { const [a, b] = pk.split('|'); return a === id ? [b, d] : b === id ? [a, d] : null; }).filter(Boolean).sort((p, q) => q[1] - p[1]).slice(0, n);
   /** Territory holdings at the year: [{ holder, territory, colony, p }] — P(held) in an ensemble, 1 in the record. */
   const holdings = (min = 0.5) => ['holds', 'colony'].flatMap(v => (model ? dyadsAt(model, v, y, min) : dyadsAt(record, v, recY, min)).map(([k, p]) => { const [holder, territory] = k.split('>'); return { holder, territory, colony: v === 'colony', p }; }));
-  /** P(the actor belongs to a supranational union): 0/1 in the record and a sample world, a share of runs in an ensemble. */
-  function unionP(id) {
-    if (!model) { if (!inRec) return null; const [w] = carry('union', id); return w == null ? null : w !== 'none' ? 1 : 0; }
-    const d = distAt(sample ?? model, 'actor', id, 'union', y)?.dist; if (!d) return null;
-    return Object.entries(d).reduce((t, [w, p]) => t + (w !== 'none' ? p : 0), 0);
+  /** The unions the frame sets know (meta.unions): { id: { name, depth, founded, dissolved } }. */
+  const unionsMeta = { ...(record.meta.unions ?? {}), ...(ensemble?.meta.unions ?? {}) };
+  /** P(id is a member of union u at the year): 0/1 in the record (and a sample world), a share of runs in an ensemble. */
+  function unionP(id, u) {
+    const k = `${id}>${u}`;
+    if (!model) { if (!inRec) return null; return dyadsAt(record, 'member', recY, 0).some(([pk]) => pk === k) ? 1 : 0; }
+    const arr = model.dyads?.member?.[k]; if (arr == null) return 0; return typeof arr === 'number' ? arr : arr[lead] ?? 0;
   }
-  /** The union cell for the map: the same shape as cell(). */
-  function unionCell(id) {
-    const p = unionP(id); if (p == null) return null;
+  /** The unions an actor is in (P >= min), with P. */
+  const unionsOf = (id, min = 0.05) => Object.keys(unionsMeta).map(u => [u, unionP(id, u)]).filter(([, p]) => p != null && p >= min);
+  /** A union membership cell for the map: the same shape as cell(). */
+  function unionCell(id, u) {
+    const p = unionP(id, u); if (p == null) return null;
     return { year: y, actor: id, name: name(id), value: p, history: !model, forecast: !!model, state: true, p, conf: model ? Math.max(p, 1 - p) : 1 };
   }
   /** A record's status at the year: the record's word, or the ensemble's distribution / one world's word. */
@@ -183,7 +187,7 @@ export function makeView({ record, ensemble = null, paths = null, mode = 'consen
   return {
     year: y, record, ensemble, model, sample, inRec, isForecast: !!model, lead, asOf, mode, run,
     liveIds, live: (id) => liveSet.has(id), neKey, name, entity: (id) => ent[id] ?? null,
-    cell, cells, gradient, industry, carry, presencePairs, tradePairs, tradePartners, holdings, unionP, atWarP, intrastateW, intrastateLevel, regime, number, great, dyadWar, allied, recordStatus, events, hazard, hazards: hz,
+    cell, cells, gradient, industry, carry, presencePairs, tradePairs, tradePartners, holdings, unionP, unionsOf, unionsMeta, atWarP, intrastateW, intrastateLevel, regime, number, great, dyadWar, allied, recordStatus, events, hazard, hazards: hz,
     regime0: (id) => (asOf == null ? null : carry('regime', id, asOf)[0]),
     pop: (id) => number('population', id), cap: (id) => number('cinc', id),
     varMeta: (key) => varMeta(record, key) ?? varMeta(ensemble ?? {}, key),

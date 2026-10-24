@@ -227,6 +227,18 @@ by the backtest, and published in frames. Order matters — later steps read ear
   (12 up, 5 down), mid_force/mid_war exp/obs 0.76 / 0.66. The 50-year run: a war between two members by 2050 40% -> 12%.
   Tested and not adopted: `waited` (years eligible without joining) as a revealed preference to stay out: +0.82
   (Austria, Sweden, Finland waited 37 years and joined), so Norway or Switzerland read like any eligible democracy.
+- **Unions, generalised — 2026-10-24 (`data/unions.yaml`, `src/engine/unions.js`).** Ten unions with dated membership:
+  the EU (deep); Comecon (dissolved 1991), the East African Community (dissolved 1977, re-founded 2000), ASEAN, the GCC,
+  Mercosur, the EAEU (customs); the OAU/AU and the Arab League (political). Entry rounds, joiners, exits and whole-union
+  dissolution are POOLED across them (2024 fit: 49 rounds, 79 joiners; democracy matters only for a deep union, +2.81;
+  a state born in the last 3 years +1.81; 6 exits in 6,708 member-years; 2 dissolutions in 429 union-years — exit and
+  dissolution rates drawn per run from their posteriors). Candidates: contiguous with a member or capital within
+  3,000 km of a member's (`data/capitals.json`, CoW capitals) — the first rule (a V-Dem region with three members) had
+  Canada joining the EU in half the runs. Joint membership is a graded dyad pacifier: on mid_force deep -2.61, customs
+  -0.65, political -0.30; on mid_war deep -0.95, customs -0.49 (political -0.80 on wars lowered the holdout AUC, not
+  adopted). Backtest 1870-2010 (100 runs) against the EU-only build: 10 up, 7 down, mean -0.0328 -> -0.0331 (neutral).
+  Viewer: `dyad:member` ("member>union", directed), one map variable per union (meta.unions), unions in Ties for every
+  state, join / exit / dissolve in the news.
 - **Viewer catch-up — 2026-10-23.** The frame contract carries what the engine now moves: `actor:freexp` (simulated),
   `actor:wave` (the region's opening multiplier; a model state, not in the record), `actor:union` (open vocabulary,
   P(member) in an ensemble), `dyad:trade` (continuous, the weak-link dependence; frozen at as-of), `dyad:holds` and

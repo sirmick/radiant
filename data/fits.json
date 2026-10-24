@@ -1,6 +1,6 @@
 {
  "meta": {
-  "built": "2026-10-23T23:07:26.629Z"
+  "built": "2026-10-24T02:21:38.249Z"
  },
  "fits": {
   "leader_exit": {
@@ -183,7 +183,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "irregular_exit": {
@@ -425,7 +425,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "coup_attempt": {
@@ -746,7 +746,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "democratize_step": {
@@ -960,7 +960,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "opening": {
@@ -1102,7 +1102,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "closing": {
@@ -1240,7 +1240,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "democratic_deepening": {
@@ -1421,7 +1421,7 @@
    },
    "lambda": 0.5,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 1.41 (λ by inner holdout)"
   },
   "autocratic_closure": {
@@ -1690,7 +1690,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "intrastate_onset": {
@@ -1924,134 +1924,101 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "mid_force": {
    "ablation": [
     {
      "variant": "base",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 965,
-     "auc_holdout": 0.9262411467687824,
-     "brier_holdout": 0.005699862709932569,
-     "exp_obs_holdout": 1.2193704350259598,
+     "auc_holdout": 0.8734652178023652,
+     "brier_holdout": 0.00875120457527966,
+     "exp_obs_holdout": 0.9914472354153476,
      "coefs": {},
      "coefs_insample": {}
     },
     {
-     "variant": "joint_union",
-     "split": 1990,
-     "n": 94287,
-     "events": 965,
-     "auc_holdout": 0.9262953675149954,
-     "brier_holdout": 0.005699749530491518,
-     "exp_obs_holdout": 1.2186500775337354,
-     "coefs": {
-      "joint_union": -0.6962163444313154
-     },
-     "coefs_insample": {
-      "joint_union": -0.8253356183722944
-     }
-    },
-    {
      "variant": "igo_deep",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 965,
-     "auc_holdout": 0.9265476445980699,
-     "brier_holdout": 0.005699551025168036,
-     "exp_obs_holdout": 1.2151707457319054,
-     "coefs": {
-      "hinge(igo,70)": -0.45139654010893604
-     },
-     "coefs_insample": {
-      "hinge(igo,70)": -0.772057018760486
-     }
+     "degenerate_in_train": [
+      "hinge(igo,70)"
+     ],
+     "note": "unidentified at this split: hinge(igo,70) is constant over the training rows (< 1946), so the coefficient cannot leave its prior and any movement in the holdout score is the prior applied to the test rows"
     },
     {
      "variant": "igo",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 965,
-     "auc_holdout": 0.925978515029313,
-     "brier_holdout": 0.005699419337432937,
-     "exp_obs_holdout": 1.2708485870491042,
+     "auc_holdout": 0.8710115067941339,
+     "brier_holdout": 0.008742816196743346,
+     "exp_obs_holdout": 1.1400155403267245,
      "coefs": {
-      "log(igo)": 0.02357735466818567
+      "log(igo)": 0.06359349507875374
      },
      "coefs_insample": {
-      "log(igo)": 0.00949049598592407
+      "log(igo)": 0.01704154126277997
      }
     },
     {
      "variant": "patron_presence",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 965,
-     "auc_holdout": 0.9251787590226711,
-     "brier_holdout": 0.005701800485553524,
-     "exp_obs_holdout": 1.2444130959278228,
+     "auc_holdout": 0.8719550509206302,
+     "brier_holdout": 0.00875065910567336,
+     "exp_obs_holdout": 1.032686774528926,
      "coefs": {
-      "patron_presence": 0.21093752436018007
+      "patron_presence": 0.2116436399002244
      },
      "coefs_insample": {
-      "patron_presence": 0.051306782609383574
+      "patron_presence": 0.0392397004718185
      }
     },
     {
      "variant": "patron_presence_rival",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 965,
-     "auc_holdout": 0.926364461313121,
-     "brier_holdout": 0.005700627238743493,
-     "exp_obs_holdout": 1.218072069713905,
+     "auc_holdout": 0.8699780468881934,
+     "brier_holdout": 0.008769746923249602,
+     "exp_obs_holdout": 1.034898919674368,
      "coefs": {
-      "patron_presence_rival": 0.31912626080788714
+      "patron_presence_rival": 0.9098133358525506
      },
      "coefs_insample": {
-      "patron_presence_rival": 0.31544516223481534
+      "patron_presence_rival": 0.31503171133619706
      }
     },
     {
      "variant": "corridor_stake",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 965,
-     "auc_holdout": 0.9257783877611727,
-     "brier_holdout": 0.005702670969066547,
-     "exp_obs_holdout": 1.2394415852480318,
+     "auc_holdout": 0.8677846594869916,
+     "brier_holdout": 0.008772706002484958,
+     "exp_obs_holdout": 1.1097172436892577,
      "coefs": {
-      "z(corridor_stake)": 0.12299410356790601
+      "z(corridor_stake)": 0.20493845362870033
      },
      "coefs_insample": {
-      "z(corridor_stake)": 0.09081626478958567
+      "z(corridor_stake)": 0.08530348437755222
      }
     },
     {
      "variant": "all",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 965,
-     "auc_holdout": 0.9259207172199818,
-     "brier_holdout": 0.0057021352330254085,
-     "exp_obs_holdout": 1.272232273632395,
-     "coefs": {
-      "joint_union": -0.6781255796742022,
-      "hinge(igo,70)": -0.4250872019443234,
-      "patron_presence": 0.09242412160089146,
-      "patron_presence_rival": 0.18065628094541028,
-      "z(corridor_stake)": 0.09465782839122601
-     },
-     "coefs_insample": {
-      "joint_union": -0.7506697122261548,
-      "hinge(igo,70)": -0.7325067920949769,
-      "patron_presence": -0.05840039845881599,
-      "patron_presence_rival": 0.3106493249349972,
-      "z(corridor_stake)": 0.08786532295594172
-     }
+     "degenerate_in_train": [
+      "hinge(igo,70)"
+     ],
+     "note": "unidentified at this split: hinge(igo,70) is constant over the training rows (< 1946), so the coefficient cannot leave its prior and any movement in the holdout score is the prior applied to the test rows"
     }
    ],
    "status": "fitted",
@@ -2066,53 +2033,61 @@
     2010
    ],
    "degenerate": [],
-   "epv": 96.5,
+   "epv": 80.41666666666667,
    "trained_through": 2010,
    "train_years": [
     1821,
     2010
    ],
-   "intercept": -5.449118350184247,
+   "intercept": -5.362552437358355,
    "coefs": {
     "contiguous": {
-     "value": 1.0842023492328097,
+     "value": 1.0845678324891268,
      "prior": 1.5
     },
     "allied": {
-     "value": -0.34107869537691177,
+     "value": -0.25331907077491916,
      "prior": -0.6
     },
     "joint_democracy": {
-     "value": -1.180120557855317,
+     "value": -1.2350872801870385,
      "prior": -0.8
     },
     "log(cap_ratio)": {
-     "value": -0.2603663389524246,
+     "value": -0.2630011123291636,
      "prior": -0.3
     },
     "major_power_any": {
-     "value": -0.1567641010141154,
+     "value": -0.23146898209144046,
      "prior": 0.8
     },
     "z(rivalry)": {
-     "value": 0.3742003403098583,
+     "value": 0.37098992676122833,
      "prior": 0.26
     },
     "lag1(at_war_any)": {
-     "value": 1.2345525781618603,
+     "value": 1.203527806993665,
      "prior": 0.5
     },
     "lag1(at_war_any_post46)": {
-     "value": -0.7223282597757653,
+     "value": -0.7072490743011791,
      "prior": 0
     },
     "z(trade_dep)": {
-     "value": -0.13930878330690985,
+     "value": -0.13692361723133015,
      "prior": -0.2
     },
-    "joint_union": {
-     "value": -2.5646041834189455,
+    "joint_union_deep": {
+     "value": -2.6132151226482434,
      "prior": -0.5
+    },
+    "joint_union_customs": {
+     "value": -0.6535404200521374,
+     "prior": -0.3
+    },
+    "joint_union_political": {
+     "value": -0.29705949833366396,
+     "prior": -0.1
     }
    },
    "stats": {
@@ -2128,57 +2103,57 @@
      "sd": 0.5679655349835842
     }
    },
-   "auc_in": 0.8715723363743761,
-   "brier_in": 0.009697292766398512,
+   "auc_in": 0.8725146861837664,
+   "brier_in": 0.009694815919410162,
    "calibration": [
     {
-     "pred": 0.0005841084554089659,
+     "pred": 0.0005739443564314527,
      "obs": 0.0003182011030971574,
      "n": 9428
     },
     {
-     "pred": 0.0013926568233025907,
+     "pred": 0.001381852761459266,
      "obs": 0.0006363347120585428,
      "n": 9429
     },
     {
-     "pred": 0.0020603479707278073,
-     "obs": 0.0006363347120585428,
+     "pred": 0.002063036619718288,
+     "obs": 0.0007423904974016332,
      "n": 9429
     },
     {
-     "pred": 0.0026480060735506795,
+     "pred": 0.002667119563786478,
      "obs": 0.0013788714467543488,
      "n": 9428
     },
     {
-     "pred": 0.0032675223955963115,
-     "obs": 0.001802948350832538,
+     "pred": 0.003301931408729552,
+     "obs": 0.0016968925654894473,
      "n": 9429
     },
     {
-     "pred": 0.004041006680771013,
-     "obs": 0.003181673560292714,
+     "pred": 0.004090176000956614,
+     "obs": 0.0032877293456358044,
      "n": 9429
     },
     {
-     "pred": 0.005364839980234837,
+     "pred": 0.005406268488260567,
      "obs": 0.0043487484089944845,
      "n": 9428
     },
     {
-     "pred": 0.008581556425044795,
-     "obs": 0.011029801675681409,
+     "pred": 0.00839245497360769,
+     "obs": 0.010923745890338317,
      "n": 9429
     },
     {
-     "pred": 0.015576776273820868,
-     "obs": 0.018877929791070103,
+     "pred": 0.015287342020174203,
+     "obs": 0.01845370664969774,
      "n": 9429
     },
     {
-     "pred": 0.05882792354635693,
-     "obs": 0.060133630289532294,
+     "pred": 0.05918062376258767,
+     "obs": 0.060557853430904654,
      "n": 9429
     }
    ],
@@ -2186,140 +2161,122 @@
     "split": 1975,
     "n_train": 50116,
     "n_test": 44171,
-    "auc": 0.9120214630902429,
-    "brier": 0.006923966281089891,
+    "auc": 0.913250524229795,
+    "brier": 0.006921891898113094,
     "base_rate_test": 0.007448325824636073
    },
    "lambda": 0.125,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 2.83 (λ by inner holdout)"
   },
   "mid_war": {
    "ablation": [
     {
      "variant": "base",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8517735129138283,
-     "brier_holdout": 0.0004392255642616068,
-     "exp_obs_holdout": 2.1374654462723455,
+     "auc_holdout": 0.8663814939209241,
+     "brier_holdout": 0.0010586391225776636,
+     "exp_obs_holdout": 3.92883223584633,
      "coefs": {},
      "coefs_insample": {}
     },
     {
-     "variant": "joint_union",
-     "split": 1990,
+     "variant": "joint_union_political",
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8517683287194003,
-     "brier_holdout": 0.0004392259698113203,
-     "exp_obs_holdout": 2.1349177516377145,
+     "auc_holdout": 0.8664051779844911,
+     "brier_holdout": 0.001056884814805564,
+     "exp_obs_holdout": 3.8679967294166127,
      "coefs": {
-      "joint_union": -0.5208172105280027
+      "joint_union_political": -0.1086578245913235
      },
      "coefs_insample": {
-      "joint_union": -0.5395406391838506
+      "joint_union_political": -0.420920657675411
      }
     },
     {
      "variant": "igo_deep",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8520042095658755,
-     "brier_holdout": 0.0004392241443164692,
-     "exp_obs_holdout": 2.1324319518678787,
-     "coefs": {
-      "hinge(igo,70)": -0.31440824623633334
-     },
-     "coefs_insample": {
-      "hinge(igo,70)": -0.36387602648909867
-     }
+     "degenerate_in_train": [
+      "hinge(igo,70)"
+     ],
+     "note": "unidentified at this split: hinge(igo,70) is constant over the training rows (< 1946), so the coefficient cannot leave its prior and any movement in the holdout score is the prior applied to the test rows"
     },
     {
      "variant": "igo",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8514728296370027,
-     "brier_holdout": 0.0004394911573683458,
-     "exp_obs_holdout": 2.2664957144599565,
+     "auc_holdout": 0.8484506633532246,
+     "brier_holdout": 0.001084917821739312,
+     "exp_obs_holdout": 4.991709920982785,
      "coefs": {
-      "log(igo)": 0.06062434498077899
+      "log(igo)": 0.12266654671886751
      },
      "coefs_insample": {
-      "log(igo)": 0.05426568939605518
+      "log(igo)": 0.05424465225358077
      }
     },
     {
      "variant": "patron_presence",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8415450973073294,
-     "brier_holdout": 0.0004393887205086772,
-     "exp_obs_holdout": 2.215318950985299,
+     "auc_holdout": 0.8658045999936178,
+     "brier_holdout": 0.0010573411927953585,
+     "exp_obs_holdout": 3.8794827985153835,
      "coefs": {
-      "patron_presence": 0.40176848239157215
+      "patron_presence": -0.06228228022466542
      },
      "coefs_insample": {
-      "patron_presence": 0.23397010213796543
+      "patron_presence": 0.23154453047033718
      }
     },
     {
      "variant": "patron_presence_rival",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8510917913465427,
-     "brier_holdout": 0.00043919005574512206,
-     "exp_obs_holdout": 2.121446686476559,
+     "auc_holdout": 0.8632424829275298,
+     "brier_holdout": 0.0010639103431834538,
+     "exp_obs_holdout": 4.056804026256288,
      "coefs": {
-      "patron_presence_rival": 0.21189357663401134
+      "patron_presence_rival": 0.6153351933811297
      },
      "coefs_insample": {
-      "patron_presence_rival": 0.226590580796317
+      "patron_presence_rival": 0.225230341287633
      }
     },
     {
      "variant": "corridor_stake",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8525718788557446,
-     "brier_holdout": 0.00043915056039937124,
-     "exp_obs_holdout": 2.145370572241661,
+     "auc_holdout": 0.8613559849379328,
+     "brier_holdout": 0.001073160556094271,
+     "exp_obs_holdout": 4.590949314700204,
      "coefs": {
-      "z(corridor_stake)": 0.18326913603418862
+      "z(corridor_stake)": 0.244252324622433
      },
      "coefs_insample": {
-      "z(corridor_stake)": 0.1842926733648731
+      "z(corridor_stake)": 0.18370112298458038
      }
     },
     {
      "variant": "all",
-     "split": 1990,
+     "split": 1946,
      "n": 94287,
      "events": 263,
-     "auc_holdout": 0.8447722583387768,
-     "brier_holdout": 0.0004395831623386406,
-     "exp_obs_holdout": 2.319366126499413,
-     "coefs": {
-      "joint_union": -0.5174167894199787,
-      "hinge(igo,70)": -0.3101564422067804,
-      "patron_presence": 0.33016248186215047,
-      "patron_presence_rival": -0.05468326218368661,
-      "z(corridor_stake)": 0.11478144814831005
-     },
-     "coefs_insample": {
-      "joint_union": -0.5300559075818662,
-      "hinge(igo,70)": -0.35070428173475626,
-      "patron_presence": 0.10689305680427759,
-      "patron_presence_rival": 0.09739427919700316,
-      "z(corridor_stake)": 0.1397799799912773
-     }
+     "degenerate_in_train": [
+      "hinge(igo,70)"
+     ],
+     "note": "unidentified at this split: hinge(igo,70) is constant over the training rows (< 1946), so the coefficient cannot leave its prior and any movement in the holdout score is the prior applied to the test rows"
     }
    ],
    "status": "fitted",
@@ -2334,61 +2291,65 @@
     2010
    ],
    "degenerate": [],
-   "epv": 21.916666666666668,
+   "epv": 20.23076923076923,
    "trained_through": 2010,
    "train_years": [
     1821,
     2010
    ],
-   "intercept": -7.855621821854878,
+   "intercept": -7.840941286548732,
    "coefs": {
     "contiguous": {
-     "value": 0.7644896022612648,
+     "value": 0.7653344203682009,
      "prior": 1.5
     },
     "allied": {
-     "value": -0.4955314969412451,
+     "value": -0.48502569777557347,
      "prior": -0.5
     },
     "joint_democracy": {
-     "value": -2.1594190274777336,
+     "value": -2.1665080849093945,
      "prior": -1
     },
     "log(cap_ratio)": {
-     "value": -0.43122796377807737,
+     "value": -0.431162355242438,
      "prior": -0.4
     },
     "major_power_any": {
-     "value": 0.3910220214898883,
+     "value": 0.38703680503998156,
      "prior": 1
     },
     "z(rivalry)": {
-     "value": 0.13617533142289445,
+     "value": 0.1358593832551529,
      "prior": 0.35
     },
     "nuclear_both": {
-     "value": -2.927016840604774,
+     "value": -2.9299707655768485,
      "prior": -1.5
     },
     "pre_1946": {
-     "value": 1.1072189783654405,
+     "value": 1.0949422082263247,
      "prior": 0
     },
     "lag1(at_war_any)": {
-     "value": 1.9666604609641827,
+     "value": 1.9675780380207126,
      "prior": 0.9
     },
     "lag1(at_war_any_post46)": {
-     "value": -0.4952903001933909,
+     "value": -0.5051023064321802,
      "prior": 0
     },
     "z(trade_dep)": {
-     "value": -0.2431538238598111,
+     "value": -0.24091660981154409,
      "prior": -0.2
     },
-    "joint_union": {
-     "value": -0.9488059349928137,
+    "joint_union_deep": {
+     "value": -0.9539196127671455,
      "prior": -0.5
+    },
+    "joint_union_customs": {
+     "value": -0.4863799787666025,
+     "prior": -0.3
     }
    },
    "stats": {
@@ -2404,56 +2365,56 @@
      "sd": 0.5679655349835842
     }
    },
-   "auc_in": 0.888759531989082,
-   "brier_in": 0.0027434804907171912,
+   "auc_in": 0.8888696891239483,
+   "brier_in": 0.0027434254886471113,
    "calibration": [
     {
-     "pred": 0.000033611515013872254,
+     "pred": 0.00003368188451751277,
      "obs": 0,
      "n": 9428
     },
     {
-     "pred": 0.00012164181667774765,
+     "pred": 0.0001224212206695504,
      "obs": 0,
      "n": 9429
     },
     {
-     "pred": 0.0002615993221222286,
-     "obs": 0,
+     "pred": 0.00026191115628561713,
+     "obs": 0.00010605578534309046,
      "n": 9429
     },
     {
-     "pred": 0.0004562647580816609,
-     "obs": 0.00042426813746287653,
+     "pred": 0.0004572001660979841,
+     "obs": 0.0003182011030971574,
      "n": 9428
     },
     {
-     "pred": 0.000709011513709967,
-     "obs": 0.0006363347120585428,
+     "pred": 0.0007046573153829993,
+     "obs": 0.0005302789267154523,
      "n": 9429
     },
     {
-     "pred": 0.0010611570878194271,
-     "obs": 0.00042422314137236184,
+     "pred": 0.001054740186465835,
+     "obs": 0.0005302789267154523,
      "n": 9429
     },
     {
-     "pred": 0.0015521125514752706,
+     "pred": 0.0015493001930392159,
      "obs": 0.0012728044123886295,
      "n": 9428
     },
     {
-     "pred": 0.002334846405723422,
+     "pred": 0.0023380789564988414,
      "obs": 0.002545338848234171,
      "n": 9429
     },
     {
-     "pred": 0.004074603901349968,
+     "pred": 0.004077687226150475,
      "obs": 0.0043482871990667095,
      "n": 9429
     },
     {
-     "pred": 0.017288039237987576,
+     "pred": 0.017293209613274626,
      "obs": 0.01824159507901156,
      "n": 9429
     }
@@ -2462,13 +2423,13 @@
     "split": 1975,
     "n_train": 50116,
     "n_test": 44171,
-    "auc": 0.8656460869081767,
-    "brier": 0.0005015735124716149,
+    "auc": 0.8653876644997621,
+    "brier": 0.0005015806313236162,
     "base_rate_test": 0.0004980643408571234
    },
    "lambda": 0.125,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 2.83 (λ by inner holdout)"
   },
   "interstate_onset": {
@@ -2500,18 +2461,33 @@
      }
     },
     {
-     "variant": "joint_union",
+     "variant": "joint_union_customs",
      "split": 1990,
      "n": 83391,
      "events": 79,
-     "auc_holdout": 0.8908067350467144,
-     "brier_holdout": 0.0004239245830890893,
-     "exp_obs_holdout": 2.150159550427015,
+     "auc_holdout": 0.8914814509894099,
+     "brier_holdout": 0.0004239354365511666,
+     "exp_obs_holdout": 2.147058980806702,
      "coefs": {
-      "joint_union": -0.5528908538399581
+      "joint_union_customs": -0.43142634945238206
      },
      "coefs_insample": {
-      "joint_union": -0.6045819156406096
+      "joint_union_customs": -0.3987768680003475
+     }
+    },
+    {
+     "variant": "joint_union_political",
+     "split": 1990,
+     "n": 83391,
+     "events": 79,
+     "auc_holdout": 0.8883699979465167,
+     "brier_holdout": 0.0004236255339012694,
+     "exp_obs_holdout": 2.126471803512649,
+     "coefs": {
+      "joint_union_political": -0.2805381131418793
+     },
+     "coefs_insample": {
+      "joint_union_political": -0.26060292595403717
      }
     },
     {
@@ -2549,18 +2525,20 @@
      "split": 1990,
      "n": 83391,
      "events": 79,
-     "auc_holdout": 0.8930267681484867,
-     "brier_holdout": 0.00042339033044950586,
-     "exp_obs_holdout": 2.081927516647834,
+     "auc_holdout": 0.8920624826707774,
+     "brier_holdout": 0.0004231886553027725,
+     "exp_obs_holdout": 2.0575557998878917,
      "coefs": {
-      "z(trade_dep)": -0.013210490193225037,
-      "joint_union": -0.5448811035773042,
-      "hinge(igo,70)": -0.3213075681036786
+      "z(trade_dep)": -0.014056510161464258,
+      "joint_union_customs": -0.43011271251327254,
+      "joint_union_political": -0.27915676618103846,
+      "hinge(igo,70)": -0.3336166551185703
      },
      "coefs_insample": {
-      "z(trade_dep)": 0.008272956428956053,
-      "joint_union": -0.5780773057968597,
-      "hinge(igo,70)": -0.3977715235602485
+      "z(trade_dep)": 0.007856082702689152,
+      "joint_union_customs": -0.4044035519838648,
+      "joint_union_political": -0.24447431115144186,
+      "hinge(igo,70)": -0.43137988674054695
      }
     }
    ],
@@ -2690,7 +2668,7 @@
    },
    "lambda": 0.125,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 2.83 (λ by inner holdout)"
   },
   "war_end": {
@@ -2915,7 +2893,7 @@
    },
    "lambda": 2,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71 (λ by inner holdout)"
   },
   "intrastate_end": {
@@ -3053,7 +3031,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "record_reopen": {
@@ -3169,7 +3147,7 @@
    },
    "lambda": 0.125,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 2.83 (λ by inner holdout)"
   },
   "contest_settle": {
@@ -3353,7 +3331,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   },
   "wave_attain": {
@@ -3489,7 +3467,7 @@
    },
    "lambda": 2,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71 (λ by inner holdout)"
   },
   "weaponization": {
@@ -3655,7 +3633,7 @@
    },
    "lambda": 2,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.71 (λ by inner holdout)"
   },
   "corridor_status": {
@@ -3804,7 +3782,7 @@
    },
    "lambda": 32,
    "half_life": null,
-   "fitted": "2026-10-23",
+   "fitted": "2026-10-24",
    "source": "fit on data/panel.json + data/events.json, MAP logistic, prior sd 0.18 (λ by inner holdout)"
   }
  }

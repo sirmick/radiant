@@ -16,7 +16,7 @@ const FROM = +arg('from', 1870), TO = +arg('to', inp.panel.meta.y1);
 const t0 = Date.now();
 // ISO2 (emoji flags) from the countrycode list; a historical entity draws on its modern successor's polygon (`map_to`)
 const iso2 = {}; try { for (const r of readCsv('data/raw/hist/codelist.csv')) if (r.iso3c && r.iso2c) iso2[r.iso3c] = r.iso2c; } catch { }
-const f = recordFrames(worldArgs(inp, FROM), { from: FROM, to: TO, meta: { sources: inp.panel.meta.sources, alliance_source: inp.pactMeta.source } });
+const f = recordFrames(worldArgs(inp, FROM), { from: FROM, to: TO, meta: { sources: inp.panel.meta.sources, alliance_source: inp.pactMeta.source, unions: Object.fromEntries((inp.unions ?? []).map(u => [u.id, { name: u.name, depth: u.depth, founded: u.founded, dissolved: u.dissolved ?? null }])) } });
 const entities = {};
 for (const id of Object.keys(f.actors)) { const a = inp.actors.get(id); entities[id] = { name: a?.name ?? id, iso2: iso2[id] ?? null, map_to: a?.owid && a.owid !== id ? a.owid : undefined, spans: a?.spans }; }
 f.meta.entities = entities;

@@ -72,10 +72,6 @@ export const VARS = [
   { id: 'wave', entity: 'actor', kind: 'continuous', label: 'Regional wave (opening odds x)', display: { format: '.2f', unit: 'x' }, family: 'politics', forecast: 'simulated', coverage: [9999, 9999],
     note: 'exp(sigma u - sigma^2/2) for the opening template, u the region-year shock (AR(1), seeded from the wave visible at as-of); 1 = a quiet year',
     read: (w, a) => { const u = w.frailU?.get(a.cur.region_pol); const sg = w.frailSigma?.opening; return u == null || !sg ? null : +Math.exp(sg * u - (sg * sg) / 2).toFixed(3); } },
-  // supranational union membership (data/unions.yaml; simulated entry rounds and exits: src/engine/unions.js)
-  { id: 'union', entity: 'actor', kind: 'categorical', levels: null, label: 'Union', family: 'structure', forecast: 'simulated', coverage: [1958, 2026],
-    note: 'open vocabulary: the union id (eu) or none',
-    read: (w, a) => { if (!w.unions) return null; for (const [u, m] of w.unions.members) if (m.has(a.id)) return u; return 'none'; } },
   // ---- display-only panel columns: observed by the record, never simulated. A forecast frame set does not carry them
   // (`forecast: 'carried'`); a reader past the record's end carries the last observation and says how stale it is.
   ...[
@@ -104,6 +100,10 @@ export const VARS = [
   { id: 'trade', entity: 'dyad', kind: 'continuous', label: 'Trade dependence', display: { format: '.0%', unit: 'of the weaker side\'s trade' }, family: 'economy', forecast: 'frozen', coverage: [1870, 2026],
     note: 'min(s_ij, s_ji), s = the pair\'s trade over each side\'s total recorded trade; the series ends 2006-2009 and carries; a forecast holds the as-of value',
     read: (w) => new Map((w.tradePairsAt ? w.tradePairsAt(w.asOf) : []).filter(([k]) => { const i = k.indexOf('|'); return w.actors[k.slice(0, i)] && w.actors[k.slice(i + 1)]; })) },
+  // directed: the key is "member>union" (data/unions.yaml); simulated entry rounds, exits and dissolution (src/engine/unions.js)
+  { id: 'member', entity: 'dyad', kind: 'binary', label: 'Union member', family: 'structure', forecast: 'simulated', coverage: [1945, 2026], directed: true,
+    note: 'membership of the unions in data/unions.yaml (meta.unions names them and their depth)',
+    read: (w) => { const s = new Set(); for (const [u, m] of w.unions?.members ?? []) for (const id of m) if (w.actors[id]) s.add(`${id}>${u}`); return s; } },
   // directed: the key is "holder>territory" (a map polygon id); integral territory and dependencies separately
   { id: 'holds', entity: 'dyad', kind: 'binary', label: 'Holds territory', family: 'structure', forecast: 'simulated', coverage: [1886, 2026], directed: true,
     note: 'CShapes 2.0 holders (data/holders.json); with C5 breakup a territory can leave its holder in a run',

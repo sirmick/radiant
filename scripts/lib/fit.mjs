@@ -9,7 +9,7 @@
 // Nothing here knows about country names; it reads data/panel.json, data/events.json and data/templates.yaml only.
 import { igoIndex } from '../../src/engine/igo.js';
 import { tradeIndex } from '../../src/engine/trade.js';
-import { memberIndex } from '../../src/engine/unions.js';
+import { memberIndex, jointByDepth } from '../../src/engine/unions.js';
 import { readFileSync } from 'node:fs';
 import { readCsv, Y, loadActors, makeCodeMap, loadPacts } from './hist.mjs';
 import { rivalryScore, rivalryDecay, coalitionRule, warDyadSpans, warPartnersAt, warLinked,
@@ -44,7 +44,6 @@ export function loadFitInputs() {
 
 export function createFitter({ panel, events, templates, contiguity, contiguityFrom = null, pacts, corridors = [], territories = [], successors = {}, presence = null, waves = [], igo = null, trade = null, unions = null }) {
   const igoAt = igoIndex(igo); const tradeAt = tradeIndex(trade); const unionIdx = memberIndex(unions);
-  const jointUnion = (a, b, y) => (unionIdx.unions.some(u => unionIdx.isMember(u, a, y) && unionIdx.isMember(u, b, y)) ? 1 : 0);
   const YEARS = panel.years, Y0 = panel.meta.y0;
   // the rivalry trace's decay, declared on the templates and shared with src/engine/core.js (one process, one δ)
   const DECAY = rivalryDecay(templates);
@@ -327,7 +326,7 @@ export function createFitter({ panel, events, templates, contiguity, contiguityF
           allied: pacts.has(`${pairKey(a, b)}|${y}`) ? 1 : 0,
           igo: igoAt(pairKey(a, b), y),   // shared IGO memberships (CoW IGO v3; src/engine/igo.js)
           trade_dep: tradeAt(pairKey(a, b), y),   // weak-link trade dependence (CoW dyadic trade v3; src/engine/trade.js)
-          joint_union: jointUnion(a, b, y),   // both members of a supranational union (data/unions.yaml)
+          ...(() => { const j = jointByDepth(unionIdx, a, b, y); return { joint_union_deep: j.deep, joint_union_customs: j.customs, joint_union_political: j.political }; })(),   // both members of a union, by depth (data/unions.yaml)
           joint_democracy: pv(a, 'regime', y) >= 2 && pv(b, 'regime', y) >= 2 ? 1 : 0,
           cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),
           major_power_any: (pv(a, 'great_power', y) || pv(b, 'great_power', y)) ? 1 : 0,

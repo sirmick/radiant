@@ -12,7 +12,7 @@ import { fitStations, closeHazard, openHazard } from './stations.js';
 import { fitWarOutcome, loseProb } from './waroutcome.js';
 import { igoIndex } from './igo.js';
 import { tradeIndex, tradePairs } from './trade.js';
-import { fitUnions, candidates as unionCandidates, roundHazard, joinerHazard } from './unions.js';
+import { fitUnions, candidates as unionCandidates, roundHazard, joinerHazard, capitalIndex } from './unions.js';
 import { fitMembership, birthHazard, deathHazard, breakupHazard, memberHazard, holderAt, isColonial, polygonKey, neighbours, localBirths, MEMBERSHIP, BREAKUP, unitKey, unitHolder, holderStateWorld, firstLiveIndex } from './membership.js';
 import { POLARITY, normalise, smoothShares, classify, eraFlags, conditionality, greatGame, infoStep, INFO_WAVE } from './polarity.js';
 
@@ -698,7 +698,7 @@ function applyPresence(world, a) {
  * Contiguity 3.2 and covers 1816, so the stand-in no longer fires anywhere in the modelled window; the guard stays
  * because the floor is a property of data/contiguity.json's own meta, not of this code.
  */
-export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [], polygons = null, polygonOf = null, holders = null, warOutcomes = null, igo = null, trade = null, unions = null }) {
+export function createWorld({ panel, events, fits, templates, asOf, pacts, contiguity, universe = 'modeled', successors, contiguityFrom = null, corridors = [], territories = [], presence = null, waves = [], polygons = null, polygonOf = null, holders = null, warOutcomes = null, igo = null, trade = null, unions = null, capitals = null }) {
   const Y0 = panel.meta.y0; const idx = asOf - Y0;
   // as-of dating: nothing dated after asOf is knowledge a forecaster has. The event list is truncated once here so it
   // cannot leak back in through buildActorState's `recent` scan when an actor is introduced mid-horizon.
@@ -710,6 +710,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     lifecycleIds.push(id);
     if (!vars.live?.[idx]) continue;
     actors[id] = buildActorState({ panel, events, id, vars, at: asOf, asOf });
+    { const i0 = vars.live?.findIndex(x => x === 1); actors[id].bornYear = i0 != null && i0 >= 0 ? Y0 + i0 : null; }   // unions: a newly independent state
   }
   // dyad memory: the year of the pair's last militarized dispute, over the whole observed history (the rivalry trace
   // decays, so it has no window to truncate at — and the year itself, not asOf, is what δ^(age) is measured from).
@@ -826,7 +827,7 @@ export function createWorld({ panel, events, fits, templates, asOf, pacts, conti
     tradePairsAt: trade ? tradePairs(trade) : null,
     holdsStatic: holders && polygons ? polygons.map(p => [p.id, holderAt(holders, p.id, asOf)]).filter(([, o]) => o?.h && o.h !== 'self').map(([t, o]) => [o.h, t, isColonial(o.status)]) : [],
     // supranational unions (src/engine/unions.js): members at as-of, entry/exit hazards fitted on the record to as-of
-    ...unionState(unions, panel, contiguity, asOf),
+    ...unionState(unions, panel, contiguity, asOf, capitals),
     // regional waves: the shared shock's persistence and its state at as-of (see frailtyInit)
     ...frailtyInit(panel, events, fits, asOf),
     // the mean freedom-of-expression step of an opening / a closing on record up to as-of (V-Dem; the events are truncated)
@@ -889,29 +890,35 @@ function frailtyInit(panel, events, fits, asOf) {
   return { frailRho: rho, frailInit: init };
 }
 
-/** Union membership at as-of and the fits; NO_UNIONS (ENGINE_ABLATE=unions) leaves it out. */
-function unionState(unions, panel, contiguity, asOf) {
+/** Union membership at as-of and the pooled fits; NO_UNIONS (ENGINE_ABLATE=unions) leaves it out. */
+function unionState(unions, panel, contiguity, asOf, capitals) {
   if (!unions?.length || NO_UNIONS) return { unions: null };
-  const { idx, fits } = fitUnions({ unions, panel, contiguity }, asOf);
-  const members = new Map(idx.unions.map(u => [u, new Set(idx.members(u, asOf))]));
-  return { unions: { ids: idx.unions, fits, members, members0: new Map([...members].map(([u, m]) => [u, new Set(m)])), pool: {}, lastRound: Object.fromEntries(idx.unions.map(u => [u, fits[u].lastRound])), lambda: {} } };
+  const { idx, fit } = fitUnions({ unions, panel, contiguity, capitals }, asOf); const capAt = capitalIndex(capitals);
+  const live = idx.unions.filter(u => idx.alive(u, asOf));
+  const members = new Map(live.map(u => [u, new Set(idx.members(u, asOf))]));
+  return { unions: { ids: live, meta: idx.meta, fit, members, members0: new Map([...members].map(([u, m]) => [u, new Set(m)])), pool: {}, lastRound: { ...fit.lastRound }, rate: null, cap: (id) => capAt(id, asOf) } };
 }
-/** One year of union membership: exits at the run's own drawn rate, then an enlargement round and its joiners. */
+/**
+ * One year of unions: a whole union may dissolve, members leave, and a union may hold an enlargement round. Exit and
+ * dissolution rates are drawn ONCE per run from their posteriors (fitUnions): a forecast carries the uncertainty of
+ * six exits and two dissolutions instead of a point rate.
+ */
 function stepUnions(world, ids, rng) {
-  const U = world.unions; const y = world.year; const out = []; const A = world.actors;
-  for (const u of U.ids) {
-    const f = U.fits[u]; const mem = U.members.get(u);
+  const U = world.unions; const y = world.year; const out = []; const A = world.actors; const f = U.fit;
+  U.rate ??= { exit: drawGamma(rng, f.exit.shape) / f.exit.rate, dissolve: drawGamma(rng, f.dissolve.shape) / f.dissolve.rate };
+  for (const u of [...U.ids]) {
+    const mem = U.members.get(u); const depth = U.meta[u].depth;
     for (const m of [...mem]) if (!A[m]) mem.delete(m);   // a member that ceased to exist
-    // the run's exit rate, drawn once from the posterior Gamma(shape, rate) (n = 1 recorded exit: the uncertainty is the point)
-    U.lambda[u] ??= drawGamma(rng, f.exit.shape) / f.exit.rate;
-    for (const m of [...mem]) if (rng() < 1 - Math.exp(-U.lambda[u])) { mem.delete(m); out.push({ kind: 'union_exit', actor: m, union: u, year: y }); }
-    const pR = roundHazard(f, y - U.lastRound[u]); if (pR == null || !(rng() < pR)) continue;
-    const st = (id) => { const a = A[id]; return a ? { live: true, regime: a.cur.regime, log_gdp_pc: a.cur.log_gdp_pc, region: a.cur.region_pol } : null; };
+    if (rng() < 1 - Math.exp(-U.rate.dissolve)) { out.push({ kind: 'union_dissolve', union: u, members: [...mem], year: y }); U.members.delete(u); U.ids = U.ids.filter(x => x !== u); continue; }
+    for (const m of [...mem]) if (rng() < 1 - Math.exp(-U.rate.exit)) { mem.delete(m); out.push({ kind: 'union_exit', actor: m, union: u, year: y }); }
+    const pR = roundHazard(f, y - U.lastRound[u], depth); if (pR == null || !(rng() < pR)) continue;
+    const st = (id) => { const a = A[id]; return a ? { live: true, regime: a.cur.regime, log_gdp_pc: a.cur.log_gdp_pc, region: a.cur.region_pol, born: a.bornYear ?? null } : null; };
     // the candidate pool is the one a forecaster sees at as-of (bordering a member, or in a region the union already
-    // spans): new members do not extend it, or the union walks across the Caucasus one border at a time (52 members by
-    // 2074 in the first run)
-    U.pool[u] ??= new Set(unionCandidates({ members: () => [...U.members0.get(u)] }, u, y, ids.filter(id => A[id]), st, (a, b) => world.contiguous.has(pairKey(a, b))).map(c => c.id));
-    const cands = unionCandidates({ members: () => [...mem] }, u, y, ids.filter(id => A[id] && U.pool[u].has(id)), st, (a, b) => world.contiguous.has(pairKey(a, b)));
+    // spans), plus states born in the run inside the union's regions: new members do not extend the pool, or a union
+    // walks across a continent one border at a time (the EU reached 52 members by 2074 in the first run)
+    if (!U.pool[u]) { const c0 = unionCandidates([...U.members0.get(u)], y, ids.filter(id => A[id]), st, (a, b) => world.contiguous.has(pairKey(a, b)), U.cap); U.pool[u] = { ids: new Set(c0.map(c => c.id)), regions: new Set([...U.members0.get(u)].map(m => A[m]?.cur.region_pol).filter(r => r != null)) }; }
+    const pool = U.pool[u];
+    const cands = unionCandidates([...mem], y, ids.filter(id => A[id] && (pool.ids.has(id) || (A[id].bornYear != null && pool.regions.has(A[id].cur.region_pol)))), st, (a, b) => world.contiguous.has(pairKey(a, b)), U.cap).map(c => ({ ...c, depth }));
     if (!cands.length) continue;
     const q = cands.map(c => joinerHazard(f, c) ?? 0); let go = cands.filter((c, k) => rng() < q[k]);
     if (!go.length) { const tot = q.reduce((a, b) => a + b, 0); if (!(tot > 0)) continue; let r = rng() * tot; go = [cands.find((c, k) => (r -= q[k]) <= 0) ?? cands[0]]; }
@@ -920,13 +927,8 @@ function stepUnions(world, ids, rng) {
   }
   return out;
 }
-/** Territory holdings in force: the simulated holder map where C5 breakup runs, else the record's at as-of. */
-export function holdings(world) {
-  const M = world.membership; if (M?.holder) return [...M.holder].map(([t, o]) => [o.h, t, !!o.colony]).filter(([h]) => world.actors[h]);
-  return (world.holdsStatic ?? []).filter(([h]) => world.actors[h]);
-}
-/** Both members of the same union this year. */
-const jointUnion = (world, a, b) => { if (!world.unions) return 0; for (const m of world.unions.members.values()) if (m.has(a) && m.has(b)) return 1; return 0; };
+/** Joint membership of a pair by union depth this year: { deep, customs, political } as 0/1. */
+const jointUnions = (world, a, b) => { const o = { deep: 0, customs: 0, political: 0 }; if (!world.unions) return o; for (const [u, m] of world.unions.members) if (m.has(a) && m.has(b)) o[world.unions.meta[u].depth] = 1; return o; };
 
 /** The years states entered the system in the five years to asOf (the wave term's memory at the origin). */
 function birthYears(panel, asOf) {
@@ -1092,7 +1094,7 @@ export function dyadHazards(world, a, b) {
     allied: world.allied.has(k) ? 1 : 0,
     igo: world.igoAt ? world.igoAt(k, world.asOf) : 0,
     trade_dep: world.tradeAt ? world.tradeAt(k, world.asOf) : 0,
-    joint_union: jointUnion(world, a.id, b.id),
+    ...(() => { const j = jointUnions(world, a.id, b.id); return { joint_union_deep: j.deep, joint_union_customs: j.customs, joint_union_political: j.political }; })(),
     joint_democracy: a.cur.regime >= 2 && b.cur.regime >= 2 ? 1 : 0,
     cap_ratio: Math.max(ca, cb) / Math.max(1e-6, Math.min(ca, cb)),
     major_power_any: (a.cur.great_power || b.cur.great_power) ? 1 : 0,
@@ -1269,7 +1271,7 @@ function introduceActor(world, id, y) {
   const lc = world.lifecycle; const { panel, events } = lc;
   const vars = panel.actors[id] ?? {};
   const a = buildActorState({ panel, events, id, vars, at: Math.min(y, world.asOf), asOf: world.asOf });
-  a.imputed = [];
+  a.imputed = []; a.bornYear = y;
   // seed from the predecessor before the world median: a state that succeeds another inherits its capability
   // scaled by the population share it takes with it, and its income and regime outright. Both the successor map
   // and the predecessor's own state are as-of knowledge, so this adds nothing the forecaster does not hold — where

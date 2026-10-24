@@ -46,13 +46,14 @@ export const GRADIENT_VAR = { id: 'h_regime_gradient', group: 'history', label: 
 // (WDI, from the late 1990s once the largest producers report), else electricity generation (from the 1960s), else iron
 // and steel (CoW NMC, 1816-). A state's value is carried up to 3 years so a late reporter does not vanish from the total.
 export const INDUSTRY_VAR = { id: 'h_industry', group: 'history', label: 'Industrial base', unit: 'share of world · steel → electricity → manufacturing value added', kind: 'history', scope: 'actor', var: 'irst', industry: true, display: { map: true, format: '.1%', log: true } };
-// Union membership as a share: 1 / 0 in the record, P(member) in a forecast (the registry's `union` is an open vocabulary)
-export const UNION_VAR = { id: 'h_union', group: 'history', label: 'Union member (EU)', unit: 'member in the record · P(member) in a forecast', kind: 'history', scope: 'actor', var: 'union', display: { map: true, format: '.0%', domain: [0, 1] } };
+// Union membership, one map variable per union in the frame sets' meta.unions: 1 / 0 in the record, P(member) in a
+// forecast (the registry's dyad:member, keyed "member>union")
+export const unionVariables = (meta) => Object.entries(meta ?? {}).map(([u, m]) => ({ id: `h_union_${u}`, group: 'history', label: `Member: ${m.name}`, unit: `${m.depth} union · member in the record · P(member) in a forecast`, kind: 'history', scope: 'actor', var: `member:${u}`, display: { map: true, format: '.0%', domain: [0, 1] } }));
 /** The map's history variables: every actor variable the record's registry carries, plus the two composites. */
 export function historyVariables(record) {
   if (!record) return [];
-  const vars = Object.entries(record.meta.vars).filter(([key, v]) => key.startsWith('actor:') && v.id !== 'live' && v.id !== 'union');
-  return [GRADIENT_VAR, INDUSTRY_VAR, ...(record.meta.vars['actor:union'] ? [UNION_VAR] : []), ...vars.map(([, v]) => {
+  const vars = Object.entries(record.meta.vars).filter(([key, v]) => key.startsWith('actor:') && v.id !== 'live');
+  return [GRADIENT_VAR, INDUSTRY_VAR, ...unionVariables(record.meta.unions), ...vars.map(([, v]) => {
     const categorical = v.kind === 'binary' ? [0, 1] : v.kind === 'categorical' ? v.levels : undefined;
     const categoricalLabels = v.kind === 'binary' ? ['no', 'yes'] : v.kind === 'categorical' ? v.labels : undefined;
     return { id: `h_${v.id}`, group: 'history', label: v.label, unit: v.display?.unit ?? v.unit ?? '', kind: 'history', scope: 'actor', var: v.id, forecast: v.forecast, note: v.note, display: { map: true, format: v.display?.format ?? (categorical ? '.0f' : undefined), log: v.display?.log ?? v.log, categorical, categoricalLabels } };

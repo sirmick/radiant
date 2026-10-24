@@ -1,8 +1,14 @@
-# Supranational unions — dated membership, the as-of record (docs/plan-structure.md, "unions").
-# A union here is a treaty order deeper than a defence pact: a single market, common institutions, pooled law. The model
-# reads membership as state (src/engine/unions.js): who is in at as-of, entry and exit as fitted hazards in a run, and
-# joint membership as a dyad covariate. members: [id, from, to?] (to = the year the state left; absent = still in).
-# Dates are entry into force. Sources: the accession treaties; Treaty on European Union art. 49 (entry) and art. 50 (exit).
+# Supranational and regional unions — dated membership, the as-of record (docs/plan-structure.md, "unions").
+# A union here is a standing treaty organisation of states with a regional membership rule: a single market, a customs
+# union, or a political organisation. Defence pacts are not here (they are the pact graph, scripts/lib/hist.mjs).
+# The model reads membership as state (src/engine/unions.js): who is in at as-of, then entry rounds, member exits and the
+# dissolution of a whole union as hazards POOLED across these unions, and joint membership as a dyad covariate split by
+# depth. members: [id, from, to?] — to = the year the state left or was suspended; a second row is a return.
+#   depth  deep      single market, common law and institutions (the EU)
+#          customs   customs union / free-trade area / planned-economy integration
+#          political a political organisation without an economic union
+#   dissolved: the year the union ceased (its members' spells end there).
+# Dates are entry into force; hand-coded from the founding and accession treaties (sources per union).
 unions:
   - id: eu
     name: European Union (EEC 1958, EC 1967/1993, EU 1993)
@@ -36,4 +42,194 @@ unions:
       - [BGR, 2007]
       - [ROU, 2007]
       - [HRV, 2013]
+    depth: deep
+    source: "Treaties of Rome (1957) and the accession treaties; Treaty on European Union art. 49 (entry) and 50 (exit)"
     notes: "Norway signed accession treaties in 1972 and 1994 and rejected both by referendum; Greenland (a territory) left the EC in 1985. Neither is a member-state exit."
+
+  - id: comecon
+    name: Council for Mutual Economic Assistance (Comecon)
+    founded: 1949
+    dissolved: 1991
+    depth: customs
+    source: "Comecon founding communique Jan 1949; dissolved 28 Jun 1991. Albania ceased to take part in 1961 (formal withdrawal 1987)"
+    members:
+      - [RUS, 1949]
+      - [POL, 1949]
+      - [CZECHOSLOVAKIA, 1949]
+      - [HUN, 1949]
+      - [ROU, 1949]
+      - [BGR, 1949]
+      - [ALB, 1949, 1961]
+      - [DDR, 1950, 1990]    # ends with unification
+      - [MNG, 1962]
+      - [CUB, 1972]
+      - [VNM, 1978]
+  - id: eac1
+    name: East African Community (1967-1977)
+    founded: 1967
+    dissolved: 1977
+    depth: customs
+    source: "Treaty for East African Co-operation 1967; collapsed 1977 (formally wound up 1984)"
+    members:
+      - [KEN, 1967]
+      - [TZA, 1967]
+      - [UGA, 1967]
+  - id: eac
+    name: East African Community
+    founded: 2000
+    depth: customs
+    source: "EAC Treaty in force 7 Jul 2000; accessions 2007 (RWA, BDI), 2016 (SSD), 2022 (COD), 2024 (SOM)"
+    members:
+      - [KEN, 2000]
+      - [TZA, 2000]
+      - [UGA, 2000]
+      - [RWA, 2007]
+      - [BDI, 2007]
+      - [SSD, 2016]
+      - [COD, 2022]
+      - [SOM, 2024]
+  - id: asean
+    name: Association of Southeast Asian Nations
+    founded: 1967
+    depth: customs
+    source: "Bangkok Declaration Aug 1967; Brunei 1984, Vietnam 1995, Laos and Myanmar 1997, Cambodia 1999, Timor-Leste Oct 2025. AFTA from 1992 — the depth is the current one, held over the record (a stated simplification)"
+    members:
+      - [IDN, 1967]
+      - [MYS, 1967]
+      - [PHL, 1967]
+      - [SGP, 1967]
+      - [THA, 1967]
+      - [BRN, 1984]
+      - [VNM, 1995]
+      - [LAO, 1997]
+      - [MMR, 1997]
+      - [KHM, 1999]
+      - [TLS, 2025]
+  - id: au
+    name: Organisation of African Unity / African Union
+    founded: 1963
+    depth: political
+    source: "OAU Charter May 1963 (AU from 2002): a state joins in 1963 or at independence. Dated exceptions: Zimbabwe 1980 (not Rhodesia's 1965), Namibia 1990, Eritrea 1993, South Africa 1994, South Sudan 2011; Morocco left 1984 over Western Sahara and rejoined 2017. Suspensions after coups are not coded (temporary, and the panel's coup events carry them)"
+    members:
+      - [BDI, 1963]
+      - [BEN, 1963]
+      - [BFA, 1963]
+      - [CAF, 1963]
+      - [CIV, 1963]
+      - [CMR, 1963]
+      - [COD, 1963]
+      - [COG, 1963]
+      - [DZA, 1963]
+      - [EGY, 1963]
+      - [ETH, 1963]
+      - [GAB, 1963]
+      - [GHA, 1963]
+      - [GIN, 1963]
+      - [KEN, 1963]
+      - [LBR, 1963]
+      - [LBY, 1963]
+      - [MAR, 1963, 1984]
+      - [MDG, 1963]
+      - [MLI, 1963]
+      - [MRT, 1963]
+      - [NER, 1963]
+      - [NGA, 1963]
+      - [RWA, 1963]
+      - [SDN, 1963]
+      - [SEN, 1963]
+      - [SLE, 1963]
+      - [SOM, 1963]
+      - [TCD, 1963]
+      - [TGO, 1963]
+      - [TUN, 1963]
+      - [TZA, 1963]
+      - [UGA, 1963]
+      - [MWI, 1964]
+      - [ZMB, 1964]
+      - [GMB, 1965]
+      - [BWA, 1966]
+      - [LSO, 1966]
+      - [GNQ, 1968]
+      - [MUS, 1968]
+      - [SWZ, 1968]
+      - [GNB, 1974]
+      - [AGO, 1975]
+      - [COM, 1975]
+      - [CPV, 1975]
+      - [MOZ, 1975]
+      - [STP, 1975]
+      - [SYC, 1976]
+      - [DJI, 1977]
+      - [ZWE, 1980]
+      - [NAM, 1990]
+      - [ERI, 1993]
+      - [ZAF, 1994]
+      - [SSD, 2011]
+      - [MAR, 2017]
+
+  - id: arab_league
+    name: League of Arab States
+    founded: 1945
+    depth: political
+    source: "Pact of the League, Mar 1945, and admissions; Egypt suspended 1979-1989 (Camp David), Syria suspended 2011-2023. Palestine (1976) is not a state in the panel"
+    members:
+      - [EGY, 1945, 1979]
+      - [EGY, 1989]
+      - [IRQ, 1945]
+      - [JOR, 1945]
+      - [LBN, 1945]
+      - [SAU, 1945]
+      - [SYR, 1945, 2011]
+      - [SYR, 2023]
+      - [YEMEN_ARAB_REPUBLIC, 1945, 1990]
+      - [YEM, 1990]
+      - [LBY, 1953]
+      - [SDN, 1956]
+      - [MAR, 1958]
+      - [TUN, 1958]
+      - [KWT, 1961]
+      - [DZA, 1962]
+      - [YEMEN_PEOPLE_S_REPUBLIC, 1967, 1990]
+      - [BHR, 1971]
+      - [QAT, 1971]
+      - [OMN, 1971]
+      - [ARE, 1971]
+      - [MRT, 1973]
+      - [SOM, 1974]
+      - [DJI, 1977]
+      - [COM, 1993]
+  - id: gcc
+    name: Gulf Cooperation Council
+    founded: 1981
+    depth: customs
+    source: "GCC Charter May 1981; customs union 2003"
+    members:
+      - [SAU, 1981]
+      - [KWT, 1981]
+      - [BHR, 1981]
+      - [QAT, 1981]
+      - [ARE, 1981]
+      - [OMN, 1981]
+  - id: mercosur
+    name: Mercosur
+    founded: 1991
+    depth: customs
+    source: "Treaty of Asuncion Mar 1991; Venezuela full member 2012, suspended Dec 2016; Bolivia full member Jul 2024"
+    members:
+      - [ARG, 1991]
+      - [BRA, 1991]
+      - [PRY, 1991]
+      - [URY, 1991]
+      - [VEN, 2012, 2016]
+      - [BOL, 2024]
+  - id: eaeu
+    name: Eurasian Economic Union (customs union of 2010)
+    founded: 2010
+    depth: customs
+    source: "Customs Union of Belarus, Kazakhstan and Russia Jan 2010; Eurasian Economic Union treaty in force Jan 2015; Armenia Jan 2015, Kyrgyzstan Aug 2015"
+    members:
+      - [RUS, 2010]
+      - [BLR, 2010]
+      - [KAZ, 2010]
+      - [ARM, 2015]
+      - [KGZ, 2015]

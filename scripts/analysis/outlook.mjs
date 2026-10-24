@@ -65,11 +65,27 @@ console.log(`  most likely to turn autocratic by ${YEARS[YEARS.length - 1]}: ${a
     line('a founding member leaves (BEL FRA DEU ITA LUX NLD)', (r, y) => exits(r, y).some(e => ['BEL', 'FRA', 'DEU', 'ITA', 'LUX', 'NLD'].includes(e.actor)));
     line('fewer than 20 members', (r, y) => size(r, y) < 20);
     line('UNION BREAKUP: half the 2025 members gone (left or ceased)', (r, y) => size(r, y) - new Set(joins(r, y).map(e => e.actor)).size <= 13);
+    line('the union dissolves', (r, y) => evs(r, y).some(e => e.k === 'union_dissolve' && e.union === 'eu'));
     console.log(`  members, mean over runs: ${YEARS.map(y => `${y}: ${(runs.reduce((a, r) => a + size(r, y), 0) / N).toFixed(1)}`).join('   ')}`);
     const jm = new Map(); for (const r of runs) for (const e of joins(r, YEARS[YEARS.length - 1])) jm.set(e.actor, (jm.get(e.actor) ?? 0) + 1);
     console.log(`  most likely joiners by ${YEARS[YEARS.length - 1]}: ${[...jm].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([id, n]) => `${id} ${pct(n / N).trim()}`).join('  ')}`);
     const xm = new Map(); for (const r of runs) for (const e of exits(r, YEARS[YEARS.length - 1])) xm.set(e.actor, (xm.get(e.actor) ?? 0) + 1);
     console.log(`  exits by member (any, by ${YEARS[YEARS.length - 1]}): ${[...xm].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([id, n]) => `${id} ${pct(n / N).trim()}`).join('  ')}   (n = 1 recorded exit: who leaves is not identified, only how often)`);
+  }
+}
+
+// every union: dissolution, exits, size (src/engine/unions.js, pooled hazards)
+{
+  const U = fc.meta.unions ?? {}; const live0 = Object.entries(U).filter(([, m]) => m.dissolved == null || m.dissolved > F0 - 1).map(([u]) => u);
+  if (live0.length) {
+    console.log(`\nUnions (pooled entry / exit / dissolution hazards): P(by year) and members`);
+    for (const u of live0) {
+      const dis = (r, y) => evs(r, y).some(e => e.k === 'union_dissolve' && e.union === u);
+      const ex = (r, y) => evs(r, y).some(e => e.k === 'union_exit' && e.union === u);
+      const n0 = Object.keys(runs[0].dyads?.member ?? {}).filter(k => k.endsWith(`>${u}`) && at(runs[0].dyads.member[k], 0)).length;
+      const size = (r, y) => dis(r, y) ? 0 : Object.entries(r.dyads?.member ?? {}).filter(([k, a]) => k.endsWith(`>${u}`) && at(a, K(y))).length;
+      console.log(`  ${(U[u].name ?? u).slice(0, 40).padEnd(40)} dissolves ${YEARS.map(y => pct(anyBy(dis)(y)).trim()).join(' / ')}   >=1 exit ${YEARS.map(y => pct(anyBy(ex)(y)).trim()).join(' / ')}   members ${n0} -> ${YEARS.map(y => (runs.reduce((a, r) => a + size(r, y), 0) / N).toFixed(1)).join(' / ')}`);
+    }
   }
 }
 

@@ -6,6 +6,9 @@ export const NEWS_ORDER = { war: 0, nuclear: 1, territory: 2, corridor: 3, allia
 const slug = (s) => String(s ?? '').replace(/_/g, ' ');
 
 /** One frame event as a news item (null for kinds the feed does not show on their own). */
+// union ids to readable names (data/unions.yaml ids; the frame meta carries full names, which the panel uses)
+const UNION_NAMES = { eu: 'the EU', comecon: 'Comecon', eac1: 'the East African Community', eac: 'the East African Community', asean: 'ASEAN', au: 'the African Union', arab_league: 'the Arab League', gcc: 'the GCC', mercosur: 'Mercosur', eaeu: 'the Eurasian Economic Union' };
+const unionName = (u) => UNION_NAMES[u] ?? String(u).replace(/_/g, ' ');
 export function newsItem(e, name, y) {
   const nm = (id) => name(id);
   const s = e.source;
@@ -13,8 +16,9 @@ export function newsItem(e, name, y) {
     case 'leader_exit': return { k: 'leader', y: e.year, a: [e.actor], t: `${nm(e.actor)}: leader leaves office${e.irregular ? ' (irregular)' : ''}${e.tenure_years ? ` after ${e.tenure_years}y` : ''}`, s };
     case 'coup': return { k: 'coup', y: e.year, a: [e.actor], t: `${nm(e.actor)}: coup ${e.success ? 'succeeds' : 'attempt fails'}`, s };
     case 'regime_change': return { k: 'regime', y: e.year, a: [e.actor], t: e.from != null && e.to != null ? `${nm(e.actor)}: ${REG[e.from]} → ${REG[e.to]}` : `${nm(e.actor)}: regime ${slug(e.t ?? e.direction)}`, s };
-    case 'union_join': return { k: 'alliance', y: e.year, a: [e.actor], t: `${nm(e.actor)}: joins the ${String(e.union).toUpperCase()}`, s };
-    case 'union_exit': return { k: 'alliance', y: e.year, a: [e.actor], t: `${nm(e.actor)}: leaves the ${String(e.union).toUpperCase()}`, s };
+    case 'union_join': return { k: 'alliance', y: e.year, a: [e.actor], t: `${nm(e.actor)}: joins ${unionName(e.union)}`, s };
+    case 'union_exit': return { k: 'alliance', y: e.year, a: [e.actor], t: `${nm(e.actor)}: leaves ${unionName(e.union)}`, s };
+    case 'union_dissolve': return { k: 'alliance', y: e.year, a: e.members ?? [], t: `${unionName(e.union)} dissolves${e.members?.length ? ` (${e.members.length} members)` : ''}`, s };
     case 'opening': return { k: 'regime', y: e.year, a: [e.actor], t: `${nm(e.actor)}: opening — freedom of expression rises${e.size ? ` (+${e.size})` : ''}`, s };
     case 'closing': return { k: 'regime', y: e.year, a: [e.actor], t: `${nm(e.actor)}: crackdown — freedom of expression falls${e.size ? ` (−${e.size})` : ''}`, s };
     case 'autocratization_onset': return { k: 'regime', y: e.year, a: [e.actor], t: `${nm(e.actor)}: autocratization episode begins`, s };

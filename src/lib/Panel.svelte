@@ -47,6 +47,22 @@
   const pct = (x) => `${Math.round(x * 100)}%`;
 </script>
 
+{#snippet ties(aid)}
+  {@const ups = view.unionsOf(aid)}
+  {@const partners = view.tradePartners(aid, 6)}
+  {@const held = view.holdings(0.05).filter(h => h.holder === aid)}
+  {@const holder = view.holdings(0.05).find(h => h.territory === aid)}
+        <h3>Ties <span class="muted tiny">{view.isForecast ? `year ${year} of the forecast` : year}</span></h3>
+        <div class="kv">
+          {#if ups.length}<span>unions</span><b>{ups.map(([u, p]) => `${view.unionsMeta[u]?.name ?? u}${view.isForecast ? ` ${(p * 100).toFixed(0)}%` : ''}`).join(' · ')}</b>{/if}
+          {#if partners.length}<span>trade</span><b>{#each partners as [id, d], i}<span class="clickable" onclick={() => onSelect({ kind: 'actor', id })}>{view.name(id)}</span> <i class="muted">{(d * 100).toFixed(0)}%</i>{i < partners.length - 1 ? ' · ' : ''}{/each}{#if view.isForecast}<i class="muted"> (held at {view.asOf})</i>{/if}</b>{/if}
+          {#if held.length}<span>holds</span><b>{held.map(h => `${view.name(h.territory)}${h.colony ? ' (dependency)' : ''}${view.isForecast ? ` ${(h.p * 100).toFixed(0)}%` : ''}`).join(' · ')}</b>{/if}
+          {#if holder}<span>held by</span><b>{view.name(holder.holder)}{holder.colony ? ' (dependency)' : ''}{view.isForecast ? ` · ${(holder.p * 100).toFixed(0)}% of runs` : ''}</b>{/if}
+        </div>
+        <div class="src muted">trade: the weaker side's share of its own trade with the partner (CoW dyadic trade, to 2009) · holdings: CShapes 2.0</div>
+{/snippet}
+
+
 <div class="panel">
   <div class="tabs">
     {#each [['news', `News · ${year}`], ['detail', 'Detail'], ['territories', `Territories · ${world.territories.length}`], ['corridors', `Corridors · ${world.corridors.length}`], ['scores', 'Scores']] as [id, label]}
@@ -92,18 +108,7 @@
         </div>
         <div class="src muted">{actor.regime.source}</div>
         {#if actor.notes}<p class="notes">{actor.notes}</p>{/if}
-        {@const up = view.unionP(actor.id)}
-        {@const partners = view.tradePartners(actor.id, 6)}
-        {@const held = view.holdings(0.05).filter(h => h.holder === actor.id)}
-        {@const holder = view.holdings(0.05).find(h => h.territory === actor.id)}
-        <h3>Ties <span class="muted tiny">{view.isForecast ? `year ${year} of the forecast` : year}</span></h3>
-        <div class="kv">
-          {#if up != null}<span>EU</span><b>{view.isForecast ? `${(up * 100).toFixed(0)}% of runs a member` : up ? 'member' : 'not a member'}</b>{/if}
-          {#if partners.length}<span>trade</span><b>{#each partners as [id, d], i}<span class="clickable" onclick={() => onSelect({ kind: 'actor', id })}>{view.name(id)}</span> <i class="muted">{(d * 100).toFixed(0)}%</i>{i < partners.length - 1 ? ' · ' : ''}{/each}{#if view.isForecast}<i class="muted"> (held at {view.asOf})</i>{/if}</b>{/if}
-          {#if held.length}<span>holds</span><b>{held.map(h => `${view.name(h.territory)}${h.colony ? ' (dependency)' : ''}${view.isForecast ? ` ${(h.p * 100).toFixed(0)}%` : ''}`).join(' · ')}</b>{/if}
-          {#if holder}<span>held by</span><b>{view.name(holder.holder)}{holder.colony ? ' (dependency)' : ''}{view.isForecast ? ` · ${(holder.p * 100).toFixed(0)}% of runs` : ''}</b>{/if}
-        </div>
-        <div class="src muted">trade: the weaker side's share of its own trade with the partner (CoW dyadic trade, to 2009) · holdings: CShapes 2.0</div>
+        {@render ties(actor.id)}
 
         <h3>Capabilities</h3>
         <div class="caps">
@@ -177,6 +182,7 @@
         {@const d = fcActor?.regime}
         {@const rg2 = view.regime(selected.id)}
         <h2>{flagEmoji(histActor?.iso2) ?? ''} {histActor?.name ?? selected.id} <span class="mono muted">{selected.id}</span>{#if rg2 != null} <span style="color:{REGIME_COL4[rg2]}">{REGIME_GLYPH[rg2]}</span>{/if} <span class="muted tiny">fit-only state</span></h2>
+        {@render ties(selected.id)}
         {#if histId && inRecord}
           <h3>The record · {year}</h3>
           {#if !liveInRecord}<div class="tiny muted">not a system member in {year}</div>{/if}
